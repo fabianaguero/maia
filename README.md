@@ -7,7 +7,7 @@ A desktop application for analyzing audio tracks, visualizing waveforms/beat gri
 | Component | Technology |
 |-----------|-----------|
 | Desktop shell | Tauri 2 + React + TypeScript |
-| Analyzer | Python (librosa, Essentia) |
+| Analyzer | Python (librosa) |
 | Local database | SQLite |
 | Repo parsing | tree-sitter |
 | Optional optimization | Rust |

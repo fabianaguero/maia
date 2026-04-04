@@ -15,6 +15,10 @@ function App() {
   const [activeView, setActiveView] = useState<"waveform" | "beatgrid" | "bpmcurve">("waveform");
 
   const handleAnalyzeTrack = useCallback(async () => {
+    // TODO: replace prompt with tauri-plugin-dialog file picker once added as a dependency
+    const filePath = window.prompt("Enter the path to an audio file:");
+    if (!filePath) return;
+
     setIsAnalyzing(true);
     setError(null);
     try {
@@ -22,7 +26,7 @@ function App() {
         "analyze_track",
         {
           request: {
-            file_path: "/path/to/track.mp3",
+            file_path: filePath,
           },
         }
       );
