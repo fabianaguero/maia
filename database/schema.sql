@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS musical_assets (
   asset_type TEXT NOT NULL CHECK (asset_type IN ('track_analysis', 'repo_analysis', 'base_asset', 'composition_result')),
   title TEXT NOT NULL,
   source_path TEXT NOT NULL,
-  source_kind TEXT NOT NULL CHECK (source_kind IN ('file', 'directory')),
+  source_kind TEXT NOT NULL CHECK (source_kind IN ('file', 'directory', 'url')),
   suggested_bpm REAL,
   confidence REAL NOT NULL DEFAULT 0,
   tags_json TEXT NOT NULL DEFAULT '[]',

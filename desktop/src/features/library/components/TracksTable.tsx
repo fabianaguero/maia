@@ -40,7 +40,9 @@ export function TracksTable({
               >
                 <td>
                   <strong>{track.title}</strong>
-                  <small>{track.fileExtension}</small>
+                  <small>
+                    {track.fileExtension} · {track.musicStyleLabel}
+                  </small>
                 </td>
                 <td title={track.sourcePath}>{track.sourcePath}</td>
                 <td>

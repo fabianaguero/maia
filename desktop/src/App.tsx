@@ -4,14 +4,22 @@ import { loadBootstrapManifest, runAnalyzerRequest } from "./api/analyzer";
 import { AppSidebar } from "./components/AppSidebar";
 import { AnalyzerScreen } from "./features/analyzer/AnalyzerScreen";
 import { LibraryScreen } from "./features/library/LibraryScreen";
+import { useBaseAssets } from "./hooks/useBaseAssets";
 import { useLibrary } from "./hooks/useLibrary";
+import { useRepositories } from "./hooks/useRepositories";
 import {
   createHealthRequest,
   type AnalyzerResponse,
   type BootstrapManifest,
   type HealthResponse,
 } from "./contracts";
-import type { AppScreen, ImportTrackInput } from "./types/library";
+import type {
+  AnalyzerViewMode,
+  AppScreen,
+  ImportBaseAssetInput,
+  ImportRepositoryInput,
+  ImportTrackInput,
+} from "./types/library";
 
 function isHealthResponse(
   response: AnalyzerResponse | null,
@@ -28,7 +36,10 @@ export default function App() {
   const [health, setHealth] = useState<AnalyzerResponse | null>(null);
   const [booting, setBooting] = useState(true);
   const [screen, setScreen] = useState<AppScreen>("library");
+  const [analysisMode, setAnalysisMode] = useState<AnalyzerViewMode>("track");
   const library = useLibrary();
+  const repositories = useRepositories();
+  const baseAssets = useBaseAssets();
 
   useEffect(() => {
     let active = true;
@@ -58,6 +69,29 @@ export default function App() {
   async function handleImportTrack(input: ImportTrackInput) {
     const nextTrack = await library.importLibraryTrack(input);
     if (nextTrack) {
+      setAnalysisMode("track");
+      setScreen("analyzer");
+      return true;
+    }
+
+    return false;
+  }
+
+  async function handleImportRepository(input: ImportRepositoryInput) {
+    const nextRepository = await repositories.importRepositorySource(input);
+    if (nextRepository) {
+      setAnalysisMode("repo");
+      setScreen("analyzer");
+      return true;
+    }
+
+    return false;
+  }
+
+  async function handleImportBaseAsset(input: ImportBaseAssetInput) {
+    const nextBaseAsset = await baseAssets.importLibraryBaseAsset(input);
+    if (nextBaseAsset) {
+      setAnalysisMode("base");
       setScreen("analyzer");
       return true;
     }
@@ -70,6 +104,21 @@ export default function App() {
     : booting
       ? "Booting analyzer bridge"
       : "Analyzer unavailable";
+  const selectedItemTitle =
+    analysisMode === "repo"
+      ? repositories.selectedRepository?.title
+        ?? library.selectedTrack?.title
+        ?? baseAssets.selectedBaseAsset?.title
+        ?? null
+      : analysisMode === "base"
+        ? baseAssets.selectedBaseAsset?.title
+          ?? library.selectedTrack?.title
+          ?? repositories.selectedRepository?.title
+          ?? null
+        : library.selectedTrack?.title
+          ?? repositories.selectedRepository?.title
+          ?? baseAssets.selectedBaseAsset?.title
+          ?? null;
 
   return (
     <main className="app-shell">
@@ -77,7 +126,9 @@ export default function App() {
         currentScreen={screen}
         onScreenChange={setScreen}
         trackCount={library.tracks.length}
-        selectedTrackTitle={library.selectedTrack?.title ?? null}
+        repositoryCount={repositories.repositories.length}
+        baseAssetCount={baseAssets.baseAssets.length}
+        selectedItemTitle={selectedItemTitle}
         manifest={manifest}
         analyzerLabel={analyzerLabel}
       />
@@ -88,8 +139,9 @@ export default function App() {
             <p className="eyebrow">Desktop runtime</p>
             <h2>Local analysis workspace</h2>
             <p className="support-copy">
-              Tracks and mocked analyzer state persist locally, ready for the
-              real waveform and repo heuristics to replace them.
+              Tracks, repositories, and reusable base assets persist locally,
+              mixing analyzer heuristics with deterministic fallbacks while the
+              MVP matures.
             </p>
           </div>
 
@@ -120,22 +172,63 @@ export default function App() {
         {screen === "library" ? (
           <LibraryScreen
             tracks={library.tracks}
+            repositories={repositories.repositories}
+            baseAssets={baseAssets.baseAssets}
             selectedTrackId={library.selectedTrackId}
+            selectedRepositoryId={repositories.selectedRepositoryId}
+            selectedBaseAssetId={baseAssets.selectedBaseAssetId}
             manifest={manifest}
-            loading={library.loading}
-            busy={library.mutating}
-            error={library.error}
+            musicStyles={manifest?.musicStyles ?? []}
+            baseAssetCategories={manifest?.baseAssetCategories ?? []}
+            defaultTrackMusicStyleId={manifest?.defaultTrackMusicStyleId}
+            defaultBaseAssetCategoryId={manifest?.defaultBaseAssetCategoryId}
+            trackLoading={library.loading}
+            repositoryLoading={repositories.loading}
+            baseAssetLoading={baseAssets.loading}
+            trackBusy={library.mutating}
+            repositoryBusy={repositories.mutating}
+            baseAssetBusy={baseAssets.mutating}
+            trackError={library.error}
+            repositoryError={repositories.error}
+            baseAssetError={baseAssets.error}
             onImportTrack={handleImportTrack}
+            onImportRepository={handleImportRepository}
+            onImportBaseAsset={handleImportBaseAsset}
             onSeedDemo={library.seedLibrary}
-            onSelectTrack={library.setSelectedTrackId}
+            onSelectTrack={(trackId) => {
+              library.setSelectedTrackId(trackId);
+              setAnalysisMode("track");
+            }}
+            onSelectRepository={(repositoryId) => {
+              repositories.setSelectedRepositoryId(repositoryId);
+              setAnalysisMode("repo");
+            }}
+            onSelectBaseAsset={(baseAssetId) => {
+              baseAssets.setSelectedBaseAssetId(baseAssetId);
+              setAnalysisMode("base");
+            }}
             onInspectTrack={(trackId) => {
               library.setSelectedTrackId(trackId);
+              setAnalysisMode("track");
+              setScreen("analyzer");
+            }}
+            onInspectRepository={(repositoryId) => {
+              repositories.setSelectedRepositoryId(repositoryId);
+              setAnalysisMode("repo");
+              setScreen("analyzer");
+            }}
+            onInspectBaseAsset={(baseAssetId) => {
+              baseAssets.setSelectedBaseAssetId(baseAssetId);
+              setAnalysisMode("base");
               setScreen("analyzer");
             }}
           />
         ) : (
           <AnalyzerScreen
             track={library.selectedTrack}
+            repository={repositories.selectedRepository}
+            baseAsset={baseAssets.selectedBaseAsset}
+            mode={analysisMode}
             analyzerLabel={analyzerLabel}
             onGoLibrary={() => setScreen("library")}
           />

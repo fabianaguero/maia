@@ -102,7 +102,8 @@
           "type": "string",
           "enum": [
             "file",
-            "directory"
+            "directory",
+            "url"
           ]
         },
         "path": {
@@ -133,10 +134,16 @@
         },
         "inferCodeSuggestedBpm": {
           "type": "boolean"
+        },
+        "baseAssetCategory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "baseAssetReusable": {
+          "type": "boolean"
         }
       }
     }
   },
   "additionalProperties": false
 }
-

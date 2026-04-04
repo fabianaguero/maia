@@ -1,3 +1,6 @@
+import type { BaseAssetCategoryOption } from "./types/baseAsset";
+import type { MusicStyleOption } from "./types/music";
+
 export const CONTRACT_VERSION = "1.0";
 
 export type MusicalAssetType =
@@ -7,7 +10,7 @@ export type MusicalAssetType =
   | "composition_result";
 
 export type AnalyzerAction = "health" | "analyze";
-export type SourceKind = "file" | "directory";
+export type SourceKind = "file" | "directory" | "url";
 
 export interface SourceRef {
   kind: SourceKind;
@@ -20,6 +23,8 @@ export interface AnalyzeOptions {
   beatGridResolution?: number;
   captureBpmCurve?: boolean;
   inferCodeSuggestedBpm?: boolean;
+  baseAssetCategory?: string;
+  baseAssetReusable?: boolean;
 }
 
 export interface HealthRequest {
@@ -74,6 +79,7 @@ export interface HealthResponse {
     runtime: string;
     supportedActions: AnalyzerAction[];
     modes: string[];
+    supportedTrackFormats?: string[];
   };
   warnings: string[];
 }
@@ -116,6 +122,12 @@ export interface BootstrapManifest {
   persistenceMode: string;
   docsDir: string;
   runtimeMode: string;
+  musicStyleConfigPath: string;
+  defaultTrackMusicStyleId: string;
+  musicStyles: MusicStyleOption[];
+  baseAssetCategoryConfigPath: string;
+  defaultBaseAssetCategoryId: string;
+  baseAssetCategories: BaseAssetCategoryOption[];
 }
 
 function createRequestId(prefix: string): string {
@@ -135,18 +147,14 @@ export function createHealthRequest(): HealthRequest {
   };
 }
 
-export function createRepoAnalysisRequest(repoPath: string): AnalyzeRequest {
+export function createRepoAnalysisRequest(source: SourceRef): AnalyzeRequest {
   return {
     contractVersion: CONTRACT_VERSION,
     requestId: createRequestId("repo"),
     action: "analyze",
     payload: {
       assetType: "repo_analysis",
-      source: {
-        kind: "directory",
-        path: repoPath,
-        label: "current-workspace",
-      },
+      source,
       options: {
         inferCodeSuggestedBpm: true,
       },

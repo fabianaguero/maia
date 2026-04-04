@@ -1,0 +1,47 @@
+{
+  "defaultTrackMusicStyleId": "house",
+  "musicStyles": [
+    {
+      "id": "house",
+      "label": "House",
+      "description": "Warm 4x4 club prior for steady groove imports.",
+      "minBpm": 118,
+      "maxBpm": 128
+    },
+    {
+      "id": "melodic-house",
+      "label": "Melodic House",
+      "description": "Broader melodic phrasing with restrained peak energy.",
+      "minBpm": 120,
+      "maxBpm": 126
+    },
+    {
+      "id": "progressive-house",
+      "label": "Progressive House",
+      "description": "Long-build arrangements with progressive lift and spacious transitions.",
+      "minBpm": 122,
+      "maxBpm": 130
+    },
+    {
+      "id": "techno",
+      "label": "Techno",
+      "description": "Driving warehouse prior for denser, percussive imports.",
+      "minBpm": 128,
+      "maxBpm": 136
+    },
+    {
+      "id": "trance",
+      "label": "Trance",
+      "description": "High-lift euphoric prior with faster peak-time momentum.",
+      "minBpm": 132,
+      "maxBpm": 140
+    },
+    {
+      "id": "edm",
+      "label": "EDM",
+      "description": "Festival-oriented prior for broader hooks and mainstage pacing.",
+      "minBpm": 126,
+      "maxBpm": 132
+    }
+  ]
+}

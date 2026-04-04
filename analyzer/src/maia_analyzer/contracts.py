@@ -55,10 +55,10 @@ def parse_request(raw: Any) -> dict[str, Any]:
             raise ContractError("invalid_source", "payload.source must be a JSON object.")
 
         source_kind = source.get("kind")
-        if source_kind not in {"file", "directory"}:
+        if source_kind not in {"file", "directory", "url"}:
             raise ContractError(
                 "invalid_source_kind",
-                "payload.source.kind must be 'file' or 'directory'.",
+                "payload.source.kind must be 'file', 'directory', or 'url'.",
             )
 
         source_path = source.get("path")
@@ -110,4 +110,3 @@ def error_response(
         },
         "warnings": warnings or [],
     }
-

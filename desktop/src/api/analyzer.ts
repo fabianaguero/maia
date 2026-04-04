@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
+import { baseAssetCategoryCatalog } from "../config/baseAssetCategories";
+import { musicStyleCatalog } from "../config/musicStyles";
 import {
   CONTRACT_VERSION,
   type AnalyzerRequest,
@@ -18,6 +20,13 @@ const frontendOnlyManifest: BootstrapManifest = {
   persistenceMode: "local-storage-fallback",
   docsDir: "../docs",
   runtimeMode: "frontend-only",
+  musicStyleConfigPath: "../desktop/src/config/music-styles.json",
+  defaultTrackMusicStyleId: musicStyleCatalog.defaultTrackMusicStyleId,
+  musicStyles: musicStyleCatalog.musicStyles,
+  baseAssetCategoryConfigPath: "../desktop/src/config/base-asset-categories.json",
+  defaultBaseAssetCategoryId:
+    baseAssetCategoryCatalog.defaultBaseAssetCategoryId,
+  baseAssetCategories: baseAssetCategoryCatalog.baseAssetCategories,
 };
 
 export async function loadBootstrapManifest(): Promise<BootstrapManifest> {
@@ -44,6 +53,7 @@ export async function runAnalyzerRequest(
           runtime: "browser",
           supportedActions: ["health"],
           modes: ["mock"],
+          supportedTrackFormats: [],
         },
         warnings: [
           "Tauri runtime not detected. Open the desktop shell with `npm run tauri dev` for native analyzer IPC.",

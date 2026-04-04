@@ -1,13 +1,22 @@
 from __future__ import annotations
 
+import hashlib
 from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 from uuid import uuid4
 
 
-def analyze_repository(source_path: str) -> tuple[dict[str, Any], list[str]]:
+def analyze_repository(source_kind: str, source_path: str) -> tuple[dict[str, Any], list[str]]:
+    if source_kind == "url":
+        return _analyze_remote_repository(source_path)
+
+    return _analyze_local_repository(source_path)
+
+
+def _analyze_local_repository(source_path: str) -> tuple[dict[str, Any], list[str]]:
     root = Path(source_path).expanduser().resolve()
     if not root.is_dir():
         raise FileNotFoundError(f"Repository path does not exist or is not a directory: {root}")
@@ -151,3 +160,58 @@ def analyze_repository(source_path: str) -> tuple[dict[str, Any], list[str]]:
 
     return asset, warnings
 
+
+def _analyze_remote_repository(source_path: str) -> tuple[dict[str, Any], list[str]]:
+    parsed = urlparse(source_path)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError(f"Repository URL is invalid: {source_path}")
+
+    path_parts = [part for part in parsed.path.split("/") if part]
+    repo_name = path_parts[-1].removesuffix(".git") if path_parts else parsed.netloc
+    owner = path_parts[-2] if len(path_parts) >= 2 else "unknown"
+    provider = "github" if parsed.netloc.lower() == "github.com" else parsed.netloc.lower()
+
+    seed = int(hashlib.sha1(source_path.encode("utf-8")).hexdigest()[:8], 16)
+    suggested_bpm = 88 + (seed % 48)
+    confidence = 0.34 if provider == "github" else 0.22
+
+    asset = {
+        "id": str(uuid4()),
+        "assetType": "repo_analysis",
+        "title": repo_name or "remote-repository",
+        "sourcePath": source_path,
+        "suggestedBpm": float(suggested_bpm),
+        "confidence": confidence,
+        "tags": ["repo-analysis", "remote-url", provider],
+        "metrics": {
+            "buildSystem": "unknown",
+            "primaryLanguage": "unknown",
+            "javaFileCount": 0,
+            "kotlinFileCount": 0,
+            "testFileCount": 0,
+            "controllerCount": 0,
+            "serviceCount": 0,
+            "repositoryCount": 0,
+            "entityCount": 0,
+            "resourceCount": 0,
+            "samplePackages": [],
+            "fileExtensionBreakdown": {},
+            "importMode": "remote-url",
+            "provider": provider,
+            "owner": owner,
+            "repoName": repo_name,
+            "remoteCloneAvailable": False,
+        },
+        "artifacts": {
+            "waveformBins": [],
+            "beatGrid": [],
+            "bpmCurve": [],
+        },
+        "createdAt": datetime.now(UTC).isoformat(),
+    }
+
+    warnings = [
+        "Remote repository intake is metadata-only for MVP.",
+        "Clone or import a local checkout to run code heuristics over filesystem contents.",
+    ]
+    return asset, warnings

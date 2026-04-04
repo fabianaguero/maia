@@ -5,7 +5,9 @@ interface AppSidebarProps {
   currentScreen: AppScreen;
   onScreenChange: (screen: AppScreen) => void;
   trackCount: number;
-  selectedTrackTitle: string | null;
+  repositoryCount: number;
+  baseAssetCount: number;
+  selectedItemTitle: string | null;
   manifest: BootstrapManifest | null;
   analyzerLabel: string;
 }
@@ -18,12 +20,12 @@ const navigationItems: Array<{
   {
     id: "library",
     label: "Library",
-    description: "Imported tracks and local intake",
+    description: "Tracks, repos, and reusable bases",
   },
   {
     id: "analyzer",
     label: "Analyzer",
-    description: "Waveform placeholder and BPM view",
+    description: "Waveform and BPM review",
   },
 ];
 
@@ -31,7 +33,9 @@ export function AppSidebar({
   currentScreen,
   onScreenChange,
   trackCount,
-  selectedTrackTitle,
+  repositoryCount,
+  baseAssetCount,
+  selectedItemTitle,
   manifest,
   analyzerLabel,
 }: AppSidebarProps) {
@@ -41,8 +45,8 @@ export function AppSidebar({
         <p className="eyebrow">Maia</p>
         <h1>DJ analyzer shell</h1>
         <p>
-          Local-first desktop workflow for track intake, BPM review, and
-          repository-aware rhythm tooling.
+          Local-first desktop workflow for track intake, reusable base assets,
+          BPM review, and repository-aware rhythm tooling.
         </p>
       </div>
 
@@ -66,8 +70,12 @@ export function AppSidebar({
 
       <div className="sidebar-meta">
         <div className="sidebar-stat">
-          <span>Tracks</span>
-          <strong>{trackCount}</strong>
+          <span>Assets</span>
+          <strong>{trackCount + repositoryCount + baseAssetCount}</strong>
+        </div>
+        <div className="sidebar-stat">
+          <span>Tracks / Repos / Bases</span>
+          <strong>{trackCount} / {repositoryCount} / {baseAssetCount}</strong>
         </div>
         <div className="sidebar-stat">
           <span>Persistence</span>
@@ -81,9 +89,8 @@ export function AppSidebar({
 
       <div className="sidebar-footer">
         <span>Selected</span>
-        <strong>{selectedTrackTitle ?? "No track selected"}</strong>
+        <strong>{selectedItemTitle ?? "No asset selected"}</strong>
       </div>
     </aside>
   );
 }
-
