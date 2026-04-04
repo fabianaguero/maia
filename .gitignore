@@ -1,0 +1,29 @@
+# Tauri build artifacts
+src-tauri/target/
+dist/
+
+# Node
+node_modules/
+*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+*.db
+
+# OS
+.DS_Store
+*.swp
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
