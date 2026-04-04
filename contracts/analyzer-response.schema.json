@@ -1,0 +1,271 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://maia.local/contracts/analyzer-response.schema.json",
+  "title": "Maia Analyzer Response",
+  "type": "object",
+  "required": [
+    "contractVersion",
+    "requestId",
+    "status",
+    "warnings"
+  ],
+  "properties": {
+    "contractVersion": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "requestId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "error"
+      ]
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "payload": {
+      "type": "object"
+    },
+    "error": {
+      "$ref": "#/$defs/errorInfo"
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "status": {
+          "const": "ok"
+        },
+        "payload": {
+          "$ref": "#/$defs/healthPayload"
+        }
+      },
+      "required": [
+        "payload"
+      ]
+    },
+    {
+      "properties": {
+        "status": {
+          "const": "ok"
+        },
+        "payload": {
+          "$ref": "#/$defs/analysisPayload"
+        }
+      },
+      "required": [
+        "payload"
+      ]
+    },
+    {
+      "properties": {
+        "status": {
+          "const": "error"
+        },
+        "error": {
+          "$ref": "#/$defs/errorInfo"
+        }
+      },
+      "required": [
+        "error"
+      ]
+    }
+  ],
+  "$defs": {
+    "errorInfo": {
+      "type": "object",
+      "required": [
+        "code",
+        "message"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "healthPayload": {
+      "type": "object",
+      "required": [
+        "analyzerVersion",
+        "runtime",
+        "supportedActions",
+        "modes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "analyzerVersion": {
+          "type": "string"
+        },
+        "runtime": {
+          "type": "string"
+        },
+        "supportedActions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "health",
+              "analyze"
+            ]
+          }
+        },
+        "modes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "analysisPayload": {
+      "type": "object",
+      "required": [
+        "summary",
+        "musicalAsset"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "summary": {
+          "type": "string"
+        },
+        "musicalAsset": {
+          "$ref": "#/$defs/musicalAsset"
+        }
+      }
+    },
+    "musicalAsset": {
+      "type": "object",
+      "required": [
+        "id",
+        "assetType",
+        "title",
+        "sourcePath",
+        "confidence",
+        "tags",
+        "metrics",
+        "artifacts",
+        "createdAt"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "assetType": {
+          "type": "string",
+          "enum": [
+            "track_analysis",
+            "repo_analysis",
+            "base_asset",
+            "composition_result"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "sourcePath": {
+          "type": "string"
+        },
+        "suggestedBpm": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "artifacts": {
+          "type": "object",
+          "required": [
+            "waveformBins",
+            "beatGrid",
+            "bpmCurve"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "waveformBins": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "beatGrid": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "index",
+                  "second"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "index": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "second": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                }
+              }
+            },
+            "bpmCurve": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "second",
+                  "bpm"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "second": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "bpm": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
+
