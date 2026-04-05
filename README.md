@@ -16,7 +16,8 @@ Local-first desktop app for code/log sonification and music analysis. Maia combi
 
 ## Product premise
 
-MAIA is a local-first desktop app that turns repositories, logs, and reusable sonic assets into audible operational signals and musical response plans. Code and logs — not imported tracks — are the primary signal sources.
+
+MAIA is a local-first desktop app that turns repositories, local log files, and live session streams into audible operational signals and musical response plans. The current MVP already ships repository intake with Java/Kotlin structural parsing, local log-file analysis with live tail sonification, session-based monitoring for local growing files and spawned process output, reusable base assets, sequencer presets with component routing, reference-track anchoring, multi-track reference playlist blending, beat-aware cue scheduling, per-repo settings persistence, and saveable preview artifacts such as `plan.json` and `preview.wav`. The next priority is always-on background monitoring (sessions survive screen navigation), followed by broader stream adapters and test coverage.
 
 The core product loop:
 
@@ -25,13 +26,14 @@ The core product loop:
 - map those events to reusable sonic assets and genre-configured musical responses
 - let teams hear their systems as an evolving operational signal surface
 
-Current MVP ships: repository intake with Java/Kotlin code parsing, local log-file analysis, reusable base assets, composition previews with in-app playback, a live log-tail sonification loop with runtime scenes, session-based stream polling for growing files and spawned process output, and a genre-configured instrumental palette.
+
+Current MVP ships: repository intake with Java/Kotlin code parsing, local log-file analysis, reusable base assets, composition previews with in-app playback, a live log-tail sonification loop with runtime scenes, session-based stream polling for growing files and spawned process output, a genre-configured instrumental palette, sequencer presets with component-level routing, reference-track anchor, multi-track reference playlist, beat-phase-aware scheduling with persistent beat clock, and per-repo monitor-settings persistence.
 
 **Scope and expectations for this release:**
 
 - Genre/style selection shapes the instrumental palette and sonification feel (waveform profile, tempo range, pitch register per log severity). It is a guided musical direction for all-instrumental output — not a full composition engine.
 - Saved output is previews and composition artifacts (`plan.json`, `preview.wav`) stored locally under Maia-managed storage. A full audio export/bounce pipeline is future work.
-- Stream sessions are tied to the active analyzer screen (session-based polling). Always-on background monitoring outside an open session is future work.
+- Stream sessions are tied to the active analyzer screen (session-based polling). Always-on background monitoring outside an open session is the **next priority feature**.
 - Track intake is a reference/calibration lane. Broader integrations (external services, network streams) are long-term product direction.
 
 ## Repository layout
@@ -123,4 +125,7 @@ printf '%s\n' '{"contractVersion":"1.0","requestId":"demo-url","action":"analyze
 - The analyzer is intentionally lightweight in v1: repository heuristics and embedded track heuristics work now, while higher-fidelity audio DSP is still deferred to `librosa` and `Essentia`
 - Genre/style selection (configured in `desktop/src/config/music-styles.json`) shapes a guided instrumental palette for live sonification: waveform type, tempo range, pitch register, and gain/duration multipliers per log severity level. All output is instrumental and deterministic; this is not a full genre composition engine and does not produce genre-specific musical arrangements.
 - Stream sessions (ring buffer + process adapter, backed by `SessionRegistry` in Rust + four Tauri commands) extend live monitoring to spawned-process sources in addition to local growing log files. Sessions are scoped to the active analyzer screen; ring buffers are transient and do not persist across screen navigations.
+- The live monitor now supports a reference playlist of one or more imported tracks. `blendAnchors` blends BPM (median), energy (mean), and music-style (mode) into a composite anchor that steers the live scene. Playlist order is preserved and reorderable via ↑/↓ buttons.
+- Beat-phase-aware scheduling keeps a persistent `BeatClock` seeded from the reference anchor's BPM. Each poll window's first cue aligns to the nearest subdivision boundary; the clock gently re-syncs on >12% BPM drift while the origin stays fixed to preserve phase.
+- Per-repo monitor settings (reference playlist, genre, and preset) are automatically saved to `localStorage` and restored when switching between repos.
 - Current product and architecture decisions live in `docs/decisions.md`

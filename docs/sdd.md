@@ -70,38 +70,51 @@ Maia is a local-first desktop app that turns repositories, logs, and reusable so
 - DSP integration via librosa (tempo/onset/beat tracking replacing pure heuristics). ✅
 - Session-based stream polling: ring buffer + process adapter in `stream.py`; `SessionRegistry` + 4 Tauri commands in `main.rs`; adapter selector in `LiveLogMonitorPanel`. ✅
 - Genre-configured instrumental palette: 8 curated genres in `music-styles.json`, per-severity waveform/pitch/gain profiles in `liveSonificationScene.ts`, genre selector in pre-start toolbar. ✅
-- Reference anchor: select an imported track as a creative anchor; `deriveReferenceAnchor` extracts BPM, energy, and music-style to override genre, auto-suggest sequencer preset, and tilt gain. ✅
+- Sequencer presets (sparse / balanced / beat-locked / cascade) and component routes: `COMPONENT_ROUTES` maps log-event patterns to oscillator/sample routes; presets control cue density, gain spread, and scheduling mode. ✅
+- Reference anchor: `deriveReferenceAnchor` extracts BPM, energy level, and music-style from one imported track to override genre, auto-suggest preset, and tilt gain in the live scene. ✅
+- Reference playlist: `blendAnchors` blends multiple anchor tracks into one composite (BPM median, energy mean, musicStyleId mode); add/remove pill UI with ↑/↓ reorder buttons. ✅
 - Beat-phase-aware scheduling: persistent `BeatClock` seeded from anchor BPM (or first live-detected BPM); `nextBeatTime` aligns cue start to the nearest subdivision boundary; gentle ±12% drift re-sync per poll window. ✅
+- Reference playlist persistence: `MonitorPrefs` (referencePlaylistIds, selectedGenreId, selectedPresetId) saved to `localStorage` keyed by `repository.id`; restored on repo switch. ✅
+- Blend details in scene panel: `LiveSonificationScenePanel` shows a "Blend style" row when the active anchor is a playlist composite. ✅
 
 ## Still missing / future work
-- Support for additional audio formats (e.g. m4a) beyond current decoders.
-- Generalized stream adapters beyond local file tail and spawned process. Over time this can expand from local files to managed log platforms and event-stream sources such as Amazon CloudWatch Logs, Elastic/ELK, Grafana Loki, Splunk, Datadog Log Management, Google Cloud Logging, Azure Monitor Logs, and other comparable systems.
-- Always-on background monitoring outside the active analyzer screen.
-- Richer sonification engine (dense sequencing, component-level event mapping, multi-track arrangement).
-- Export/bounce pipeline: `plan.json` and `preview.wav` exist; full offline render + stems + export UI do not.
-- Stronger test coverage for contracts and analysis artifacts.
+The most realistic implementation order from this point: (1) always-on background monitoring so sonification keeps running when the user navigates away from the analyzer screen; (2) broader stream adapters beyond local files and spawned processes; (3) consolidation and test coverage for the shipped workflow; (4) a richer sonification engine with denser sequencing and component-level mapping; (5) a full export and bounce pipeline beyond `plan.json` and `preview.wav`; and (6) additional format support and broader curated palette coverage.
+
+- **Always-on background monitoring** — stream sessions are currently scoped to the active analyzer screen; no background monitoring survives navigation or screen sleep.
+- **Broader stream adapters** — only local file tail and process adapters exist today. Long-term targets: WebSocket/HTTP push, Amazon CloudWatch Logs, Elastic/ELK, Grafana Loki, Splunk, Datadog, Google Cloud Logging, Azure Monitor Logs.
+- **Test coverage** — zero test files exist in the project; no contract fixtures, no golden analysis tests, no native-vs-mock gate.
+- **Dense multi-track arrangement** — current live scene still does one cue per event; no pad/kit sequencer, no per-component routing beyond generic log levels.
+- **Export/bounce pipeline** — `plan.json` and `preview.wav` exist; export dialog, full offline render, stems, and format options are not built.
+- **Additional audio formats** — `m4a` and other compressed containers still fall back to deterministic local stubs.
+- **Tree-sitter beyond Java/Kotlin** — TypeScript, Python, Go, Rust, and other grammars not yet wired.
 
 ## Implementation plan (summary)
-1) Consolidation and test coverage
-- Contract fixtures, analysis golden tests, mock vs native gates.
+1) Always-on background monitoring
+- Keep stream sessions alive when the analyzer screen is unmounted; surface status in AppSidebar.
 
-2) Repo parsing with tree-sitter ✅ (shipped: Java/Kotlin)
-- Java/Jakarta first, structural metrics, deterministic mapping.
+2) Broader stream adapters
+- WebSocket + HTTP push adapters; later connect to managed log platforms.
 
-3) DSP integration ✅ (shipped: librosa tempo/onset; Essentia and additional formats still pending)
+3) Consolidation and test coverage
+- Contract fixtures, analysis golden tests, mock vs native gates. Pipeline hardening.
+
+4) Repo parsing with tree-sitter ✅ (shipped: Java/Kotlin)
+- Java/Jakarta first, structural metrics, deterministic mapping. Future: TS, Python, Go, Rust.
+
+5) DSP integration ✅ (shipped: librosa tempo/onset; additional formats still pending)
 - Replace heuristics with real tempo/onset/beat tracking.
-- Extend supported formats.
+- Extend supported formats (m4a etc.).
 
-4) Stream adapters + session monitoring ✅ (shipped: file + process adapters, ring buffer, SessionRegistry)
-- Broader adapters (sockets, HTTP) and always-on background monitoring still pending. Long-term targets include managed log platforms such as Amazon CloudWatch Logs, Elastic/ELK, Grafana Loki, Splunk, Datadog Log Management, Google Cloud Logging, and Azure Monitor Logs.
+6) Stream adapters + session monitoring ✅ (shipped: file + process adapters, ring buffer, SessionRegistry)
+- Always-on background monitoring and broader platform adapters still pending.
 
-5) Sonification engine upgrades (in progress: genre palette, reference anchor, beat-phase scheduling shipped; dense multi-track arrangement pending)
-- Scene presets, routing by component/pattern, sequencing.
+7) Sonification engine ✅ (shipped: genre palette ✅, sequencer presets ✅, reference anchor ✅, reference playlist ✅, beat-phase scheduling ✅, persistence ✅; dense multi-track arrangement pending)
+- Next: denser cue sequencing, per-component event mapping, multi-track arrangement.
 
-6) Composition export (pending: preview.wav exists; full offline render + stems + export UI not started)
+8) Reference anchor + playlist ✅ (fully shipped: single anchor, playlist blend, beat clock, persistence, reorder, blend details)
+
+9) Composition export (pending: preview.wav exists; full offline render + stems + export UI not started)
 - Offline render + stems + export UI.
-
-## Risks and mitigations
 - Heavy DSP dependencies -> keep deterministic fallback and gate by capability.
 - Long-running monitoring -> isolate in background tasks with explicit stop.
 - Cross-platform file access -> keep managed snapshots as source of truth.
