@@ -211,6 +211,34 @@ function levelCount(levelCounts: Record<string, number>, level: string): number 
   return levelCounts[level] ?? 0;
 }
 
+// ---------------------------------------------------------------------------
+// Beat clock — phase-accurate scheduling across poll windows
+// ---------------------------------------------------------------------------
+
+interface BeatClock {
+  /** AudioContext time at session start — the phase anchor */
+  originTime: number;
+  /** BPM the clock was initialised with (anchor or live-detected) */
+  bpm: number;
+}
+
+/**
+ * Returns the next subdivision boundary after `contextNow + lookaheadS`.
+ * subdivision=4 → quarter notes, 8 → eighth notes, 16 → sixteenth notes.
+ */
+function nextBeatTime(
+  contextNow: number,
+  originTime: number,
+  bpm: number,
+  subdivision: number,
+  lookaheadS: number,
+): number {
+  const subdivPeriodS = 60 / bpm / Math.max(1, subdivision / 4);
+  const elapsed = contextNow + lookaheadS - originTime;
+  const nextCount = Math.max(0, Math.ceil(elapsed / subdivPeriodS));
+  return originTime + nextCount * subdivPeriodS;
+}
+
 function statusLabel(liveEnabled: boolean, polling: boolean): string {
   if (!liveEnabled) {
     return "Stopped";
@@ -257,6 +285,8 @@ export function LiveLogMonitorPanel({
   );
   const [selectedPresetId, setSelectedPresetId] = useState("balanced");
   const [selectedReferenceTrackId, setSelectedReferenceTrackId] = useState("");
+  const beatClockRef = useRef<BeatClock | null>(null);
+  const [beatClockBpm, setBeatClockBpm] = useState<number | null>(null);
   const knownComponentsRef = useRef<string[]>([]);
   const [sceneBaseAssetId, setSceneBaseAssetId] = useState(() =>
     preferredBaseAssetId(availableBaseAssets, preferredBaseAssetIdProp),
@@ -443,6 +473,8 @@ export function LiveLogMonitorPanel({
       preferredCompositionId(availableCompositions, preferredCompositionIdProp),
     );
     setSelectedReferenceTrackId("");
+    beatClockRef.current = null;
+    setBeatClockBpm(null);
   }, [repository.id]);
 
   useEffect(() => {
@@ -481,16 +513,32 @@ export function LiveLogMonitorPanel({
       return;
     }
 
-    const startAt = context.currentTime + 0.04;
     const preset = scene.preset;
     const cappedCues = cues.slice(0, preset.maxCuesPerWindow);
-    const gapSeconds =
-      preset.useBeatGrid && typeof liveBpm === "number" && liveBpm > 0
-        ? (60 / liveBpm) / (preset.rhythmDivision / 4)
-        : preset.scheduleGapMs / 1000;
+
+    // Prefer the beat clock (seeded from the reference anchor), then fall back to the
+    // live-detected BPM, then fall through to the free-running gap.
+    const clock = beatClockRef.current;
+    const activeBpm =
+      clock?.bpm ??
+      (typeof liveBpm === "number" && liveBpm > 0 ? liveBpm : null);
+    const useBeat = preset.useBeatGrid && activeBpm !== null && clock !== null;
+
+    const firstCueAt = useBeat
+      ? nextBeatTime(
+          context.currentTime,
+          clock!.originTime,
+          activeBpm!,
+          preset.rhythmDivision,
+          0.04,
+        )
+      : context.currentTime + 0.04;
+    const gapSeconds = useBeat
+      ? 60 / activeBpm! / Math.max(1, preset.rhythmDivision / 4)
+      : preset.scheduleGapMs / 1000;
 
     for (const [index, cue] of cappedCues.entries()) {
-      const cueStartAt = startAt + index * gapSeconds;
+      const cueStartAt = firstCueAt + index * gapSeconds;
       const sampleBuffer =
         sampleStatus === "ready" && cue.samplePath
           ? sampleBuffersRef.current.get(cue.samplePath) ?? null
@@ -667,6 +715,18 @@ export function LiveLogMonitorPanel({
     }
 
     await ensureAudioReady();
+
+    // Initialise the beat clock from the reference anchor BPM if available
+    const anchorBpm = referenceAnchor?.bpm ?? null;
+    const ctx = audioContextRef.current;
+    if (ctx && anchorBpm && anchorBpm > 0) {
+      beatClockRef.current = { originTime: ctx.currentTime, bpm: anchorBpm };
+      setBeatClockBpm(anchorBpm);
+    } else {
+      beatClockRef.current = null;
+      setBeatClockBpm(null);
+    }
+
     liveEnabledRef.current = true;
     setLiveEnabled(true);
   }
@@ -689,6 +749,8 @@ export function LiveLogMonitorPanel({
     liveEnabledRef.current = false;
     setLiveEnabled(false);
     setPolling(false);
+    beatClockRef.current = null;
+    setBeatClockBpm(null);
   }
 
   const currentLevelCounts = lastUpdate?.levelCounts ?? {};
@@ -832,6 +894,12 @@ export function LiveLogMonitorPanel({
         <div>
           <span>Anomalies heard</span>
           <strong>{totalAnomalies}</strong>
+        </div>
+        <div>
+          <span>Beat clock</span>
+          <strong>
+            {beatClockBpm !== null ? `${beatClockBpm.toFixed(0)} BPM` : "Free"}
+          </strong>
         </div>
       </div>
 
