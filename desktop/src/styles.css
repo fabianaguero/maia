@@ -1050,6 +1050,19 @@ dd {
   background: rgba(239, 127, 69, 0.32);
 }
 
+.pill-reorder {
+  width: 16px !important;
+  height: 16px !important;
+  font-size: 0.7rem !important;
+  border-radius: 4px !important;
+}
+
+.pill-reorder:disabled {
+  opacity: 0.25;
+  cursor: default;
+  pointer-events: none;
+}
+
 .live-log-warning-list li small {
   margin-top: 4px;
 }

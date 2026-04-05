@@ -139,6 +139,12 @@ export function LiveSonificationScenePanel({
               <span>Anchor energy</span>
               <strong>{(scene.referenceAnchor.energyLevel * 100).toFixed(0)} %</strong>
             </div>
+            {scene.referenceAnchor.trackId === "playlist-blend" ? (
+              <div>
+                <span>Blend style</span>
+                <strong>{scene.referenceAnchor.musicStyleId ?? "—"}</strong>
+              </div>
+            ) : null}
           </>
         ) : null}
       </div>

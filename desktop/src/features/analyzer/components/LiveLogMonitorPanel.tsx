@@ -100,6 +100,29 @@ function preferredCompositionId(
   return "";
 }
 
+interface MonitorPrefs {
+  referencePlaylistIds: string[];
+  selectedGenreId: string;
+  selectedPresetId: string;
+}
+
+function loadMonitorPrefs(repoId: string): MonitorPrefs | null {
+  try {
+    const raw = localStorage.getItem(`maia.monitor-prefs.${repoId}`);
+    return raw ? (JSON.parse(raw) as MonitorPrefs) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveMonitorPrefs(repoId: string, prefs: MonitorPrefs): void {
+  try {
+    localStorage.setItem(`maia.monitor-prefs.${repoId}`, JSON.stringify(prefs));
+  } catch {
+    // ignore quota / private-browsing storage errors
+  }
+}
+
 function scheduleCue(context: AudioContext, cue: RoutedLiveCue, startAt: number): void {
   const oscillator = context.createOscillator();
   const gainNode = context.createGain();
@@ -282,10 +305,14 @@ export function LiveLogMonitorPanel({
   const [processCommand, setProcessCommand] = useState("");
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [selectedGenreId, setSelectedGenreId] = useState(
-    () => musicStyleCatalog.defaultTrackMusicStyleId,
+    () => loadMonitorPrefs(repository.id)?.selectedGenreId ?? musicStyleCatalog.defaultTrackMusicStyleId,
   );
-  const [selectedPresetId, setSelectedPresetId] = useState("balanced");
-  const [referencePlaylistIds, setReferencePlaylistIds] = useState<string[]>([]);
+  const [selectedPresetId, setSelectedPresetId] = useState(
+    () => loadMonitorPrefs(repository.id)?.selectedPresetId ?? "balanced",
+  );
+  const [referencePlaylistIds, setReferencePlaylistIds] = useState<string[]>(
+    () => loadMonitorPrefs(repository.id)?.referencePlaylistIds ?? [],
+  );
   const [pendingAddTrackId, setPendingAddTrackId] = useState("");
   const beatClockRef = useRef<BeatClock | null>(null);
   const [beatClockBpm, setBeatClockBpm] = useState<number | null>(null);
@@ -475,7 +502,10 @@ export function LiveLogMonitorPanel({
     setSceneCompositionId(
       preferredCompositionId(availableCompositions, preferredCompositionIdProp),
     );
-    setReferencePlaylistIds([]);
+    const nextPrefs = loadMonitorPrefs(repository.id);
+    setReferencePlaylistIds(nextPrefs?.referencePlaylistIds ?? []);
+    setSelectedGenreId(nextPrefs?.selectedGenreId ?? musicStyleCatalog.defaultTrackMusicStyleId);
+    setSelectedPresetId(nextPrefs?.selectedPresetId ?? "balanced");
     setPendingAddTrackId("");
     beatClockRef.current = null;
     setBeatClockBpm(null);
@@ -484,6 +514,10 @@ export function LiveLogMonitorPanel({
   useEffect(() => {
     sessionIdRef.current = activeSessionId;
   }, [activeSessionId]);
+
+  useEffect(() => {
+    saveMonitorPrefs(repository.id, { referencePlaylistIds, selectedGenreId, selectedPresetId });
+  }, [repository.id, referencePlaylistIds, selectedGenreId, selectedPresetId]);
 
   const ensureAudioReady = useEffectEvent(async (): Promise<AudioContext | null> => {
     if (!audioContextRef.current) {
@@ -857,7 +891,6 @@ export function LiveLogMonitorPanel({
                   </button>
                 </>
               ) : null}
-              </select>
               <select
                 className="compact-select"
                 value={adapterKind}
@@ -882,15 +915,45 @@ export function LiveLogMonitorPanel({
 
       {referencePlaylistIds.length > 0 ? (
         <div className="pill-strip top-spaced">
-          {referencePlaylistIds.map((id) => {
+          {referencePlaylistIds.map((id, idx) => {
             const track = availableTracks.find((t) => t.id === id);
             if (!track) {
               return null;
             }
             return (
               <span key={id} className="pill-removable">
+                <button
+                  type="button"
+                  className="pill-reorder"
+                  aria-label={`Move ${track.title} up`}
+                  disabled={idx === 0}
+                  onClick={() =>
+                    setReferencePlaylistIds((ids) => {
+                      const next = [...ids];
+                      [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                      return next;
+                    })
+                  }
+                >
+                  ↑
+                </button>
                 {track.title}
                 {track.bpm !== null ? ` · ${track.bpm.toFixed(0)} BPM` : ""}
+                <button
+                  type="button"
+                  className="pill-reorder"
+                  aria-label={`Move ${track.title} down`}
+                  disabled={idx === referencePlaylistIds.length - 1}
+                  onClick={() =>
+                    setReferencePlaylistIds((ids) => {
+                      const next = [...ids];
+                      [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+                      return next;
+                    })
+                  }
+                >
+                  ↓
+                </button>
                 <button
                   type="button"
                   aria-label={`Remove ${track.title} from reference playlist`}
