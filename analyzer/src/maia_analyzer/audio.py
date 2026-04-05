@@ -25,6 +25,8 @@ MIN_BPM = 70
 MAX_BPM = 180
 WAVE_EXTENSIONS = {".wav", ".wave"}
 MINIAUDIO_EXTENSIONS = WAVE_EXTENSIONS | {".mp3", ".flac", ".ogg", ".oga"}
+# Formats that miniaudio cannot decode; attempted via librosa/audioread (needs FFmpeg/GStreamer)
+LIBROSA_EXTENDED_EXTENSIONS = {".m4a", ".mp4", ".aac", ".aif", ".aiff", ".wma"}
 
 
 def analyze_track(source_path: str, waveform_bins: int = 24) -> tuple[dict[str, Any], list[str]]:
@@ -40,15 +42,24 @@ def analyze_track(source_path: str, waveform_bins: int = 24) -> tuple[dict[str, 
 
 
 def get_supported_track_formats() -> list[str]:
+    formats: list[str] = ["wav"]
     if miniaudio is not None:
-        return ["wav", "mp3", "flac", "ogg"]
-    return ["wav"]
+        formats += ["mp3", "flac", "ogg"]
+    try:
+        import librosa  # noqa: F401 — test presence only
+        formats += ["m4a", "aac", "aiff", "mp4"]
+    except ModuleNotFoundError:  # pragma: no cover
+        pass
+    return formats
 
 
 def _supported_track_format_summary() -> str:
-    if miniaudio is not None:
-        return "WAV, MP3, FLAC, and OGG/Vorbis"
-    return "WAV/PCM"
+    fmts = get_supported_track_formats()
+    if len(fmts) == 1:
+        return "WAV/PCM"
+    label_map = {"mp3": "MP3", "flac": "FLAC", "ogg": "OGG/Vorbis", "m4a": "M4A/AAC", "aac": "AAC", "aiff": "AIFF", "mp4": "MP4"}
+    labels = ["WAV"] + [label_map.get(f, f.upper()) for f in fmts if f != "wav"]
+    return ", ".join(labels[:-1]) + (f", and {labels[-1]}" if len(labels) > 1 else "")
 
 
 def _build_embedded_track_asset(
@@ -177,7 +188,56 @@ def _decode_track_audio(track_path: Path) -> dict[str, Any] | None:
     if extension in WAVE_EXTENSIONS:
         return _decode_wave_audio(track_path)
 
+    if extension in LIBROSA_EXTENDED_EXTENSIONS:
+        return _decode_librosa_audio(track_path)
+
     return None
+
+
+def _decode_librosa_audio(track_path: Path) -> dict[str, Any] | None:
+    """Decode formats miniaudio cannot handle (m4a, aac, mp4, aiff, wma) via librosa/audioread.
+
+    Requires FFmpeg or GStreamer to be present on the host; returns None gracefully if not.
+    """
+    try:
+        import numpy as np  # guaranteed present (librosa dep)
+        import librosa  # type: ignore[import-untyped]
+    except ModuleNotFoundError:  # pragma: no cover
+        return None
+
+    try:
+        y, sr = librosa.load(
+            str(track_path),
+            sr=None,          # preserve native sample rate
+            mono=True,        # downmix to mono
+            duration=float(MAX_ANALYSIS_SECONDS),
+        )
+    except Exception:  # noqa: BLE001 — audioread/FFmpeg not available or corrupt file
+        return None
+
+    if y is None or len(y) == 0:
+        return None
+
+    sample_rate_hz = int(sr)
+    total_frames = len(y)
+    if sample_rate_hz <= 0 or total_frames <= 0:
+        return None
+
+    mono_list = y.tolist() if hasattr(y, "tolist") else list(y)
+
+    extension = track_path.suffix.lower().lstrip(".")
+    duration_seconds = total_frames / sample_rate_hz
+    analysis_seconds = min(duration_seconds, float(MAX_ANALYSIS_SECONDS))
+
+    return {
+        "samples": mono_list,
+        "sampleRateHz": sample_rate_hz,
+        "channels": 1,
+        "durationSeconds": round(duration_seconds, 3),
+        "analysisSeconds": round(analysis_seconds, 3),
+        "formatName": extension or "unknown",
+        "decoder": "librosa-audioread",
+    }
 
 
 def _decode_miniaudio_audio(track_path: Path) -> dict[str, Any] | None:

@@ -22,7 +22,8 @@ export const contentEs = {
     lanes: ["snapshot del repositorio", "tail del log", "sesión de proceso", "pack de base assets"],
     metricsTitle: "Métricas de señal",
     responseTitle: "Superficie de respuesta musical",
-    tags: ["info → pulso suave", "warn → elevación tonal", "error → golpe sampleado"]
+    tags: ["info → pulso suave", "warn → elevación tonal", "error → golpe sampleado"],
+    miniCards: ["Pulso del repositorio", "Anomalías de señal", "Cues alineados al beat"]
   },
   product: {
     eyebrow: "Producto",

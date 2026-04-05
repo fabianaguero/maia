@@ -21,11 +21,16 @@ import type {
 import { useMonitor } from "../../monitor/MonitorContext";
 import { musicStyleCatalog } from "../../../config/musicStyles";
 import { LiveSonificationScenePanel } from "./LiveSonificationScenePanel";
+import { ComponentRoutingPanel } from "./ComponentRoutingPanel";
 import {
   blendAnchors,
+  clampPan,
   deriveReferenceAnchor,
   resolveLiveSonificationScene,
+  resolveArrangementVoices,
   routeCueThroughScene,
+  type ArrangementVoice,
+  type ComponentOverride,
   type RoutedLiveCue,
 } from "./liveSonificationScene";
 
@@ -258,6 +263,67 @@ function nextBeatTime(
   return originTime + nextCount * subdivPeriodS;
 }
 
+// ---------------------------------------------------------------------------
+// Beat looper — background rhythm pulse for beat-locked preset
+// ---------------------------------------------------------------------------
+
+interface BeatLooperState {
+  cancelled: boolean;
+}
+
+/**
+ * Schedules a repeating low-level rhythm pulse at the given BPM using the
+ * AudioContext clock + a lightweight setTimeout driver (100 ms lookahead).
+ * Downbeats (every 4th pulse) use a lower pitch and higher gain than off-beats.
+ * Only used when the beat-locked preset is active.
+ */
+function startBeatLooper(
+  context: AudioContext,
+  bpm: number,
+  subdivision: number,
+  stateRef: React.MutableRefObject<BeatLooperState | null>,
+): void {
+  const state: BeatLooperState = { cancelled: false };
+  stateRef.current = state;
+  const periodMs = (60 / bpm / Math.max(1, subdivision / 4)) * 1000;
+  const lookaheadS = 0.1;
+  let step = 0;
+
+  const tick = (): void => {
+    if (state.cancelled) return;
+    const now = context.currentTime;
+    const at = now + lookaheadS;
+    const isDownbeat = step % 4 === 0;
+    const noteHz = isDownbeat ? 58 : 136;
+    const peakGain = isDownbeat ? 0.058 : 0.026;
+    const durS = isDownbeat ? 0.09 : 0.052;
+    const osc = context.createOscillator();
+    const gn = context.createGain();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(noteHz, at);
+    gn.gain.setValueAtTime(0.0001, at);
+    gn.gain.linearRampToValueAtTime(peakGain, at + 0.007);
+    gn.gain.exponentialRampToValueAtTime(0.0001, at + durS);
+    osc.connect(gn);
+    gn.connect(context.destination);
+    osc.start(at);
+    osc.stop(at + durS + 0.02);
+    step++;
+    setTimeout(tick, periodMs);
+  };
+
+  tick();
+}
+
+function stopBeatLooper(
+  stateRef: React.MutableRefObject<BeatLooperState | null>,
+): void {
+  if (stateRef.current) {
+    stateRef.current.cancelled = true;
+    stateRef.current = null;
+  }
+}
+
 function statusLabel(liveEnabled: boolean): string {
   return liveEnabled ? "Live" : "Stopped";
 }
@@ -307,8 +373,14 @@ export function LiveLogMonitorPanel({
   );
   const [pendingAddTrackId, setPendingAddTrackId] = useState("");
   const beatClockRef = useRef<BeatClock | null>(null);
+  const beatLooperRef = useRef<BeatLooperState | null>(null);
   const [beatClockBpm, setBeatClockBpm] = useState<number | null>(null);
+  const [beatLooperActive, setBeatLooperActive] = useState(false);
   const knownComponentsRef = useRef<string[]>([]);
+  const [knownComponents, setKnownComponents] = useState<string[]>([]);
+  const [componentOverrides, setComponentOverrides] = useState<Map<string, ComponentOverride>>(
+    () => new Map(),
+  );
   const [sceneBaseAssetId, setSceneBaseAssetId] = useState(() =>
     preferredBaseAssetId(availableBaseAssets, preferredBaseAssetIdProp),
   );
@@ -319,7 +391,9 @@ export function LiveLogMonitorPanel({
   const [sampleStatus, setSampleStatus] = useState<SampleEngineStatus>("unavailable");
   const [lastUpdate, setLastUpdate] = useState<LiveLogStreamUpdate | null>(null);
   const [emittedCueCount, setEmittedCueCount] = useState(0);
+  const [emittedVoiceCount, setEmittedVoiceCount] = useState(0);
   const [recentCues, setRecentCues] = useState<RoutedLiveCue[]>([]);
+  const [recentVoices, setRecentVoices] = useState<ArrangementVoice[]>([]);
   const [recentMarkers, setRecentMarkers] = useState<LiveLogMarker[]>([]);
   const [recentWarnings, setRecentWarnings] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -457,11 +531,15 @@ export function LiveLogMonitorPanel({
   useEffect(() => {
     setLastUpdate(null);
     setEmittedCueCount(0);
+    setEmittedVoiceCount(0);
     setRecentCues([]);
+    setRecentVoices([]);
     setRecentMarkers([]);
     setRecentWarnings([]);
     setError(null);
     knownComponentsRef.current = [];
+    setKnownComponents([]);
+    setComponentOverrides(new Map());
     setSceneBaseAssetId(preferredBaseAssetId(availableBaseAssets, preferredBaseAssetIdProp));
     setSceneCompositionId(
       preferredCompositionId(availableCompositions, preferredCompositionIdProp),
@@ -473,6 +551,8 @@ export function LiveLogMonitorPanel({
     setPendingAddTrackId("");
     beatClockRef.current = null;
     setBeatClockBpm(null);
+    stopBeatLooper(beatLooperRef);
+    setBeatLooperActive(false);
   }, [repository.id]);useEffect(() => {
     saveMonitorPrefs(repository.id, { referencePlaylistIds, selectedGenreId, selectedPresetId });
   }, [repository.id, referencePlaylistIds, selectedGenreId, selectedPresetId]);
@@ -533,18 +613,31 @@ export function LiveLogMonitorPanel({
       ? 60 / activeBpm! / Math.max(1, preset.rhythmDivision / 4)
       : preset.scheduleGapMs / 1000;
 
-    for (const [index, cue] of cappedCues.entries()) {
-      const cueStartAt = firstCueAt + index * gapSeconds;
+    // Expand each cue into 1–3 arrangement voices (foundation / motion / accent).
+    // Foundation voices may use the managed sample; motion and accent are synthesis-only.
+    const voices = resolveArrangementVoices(cappedCues);
+    let scheduledVoices = 0;
+    for (const voice of voices) {
+      const cuePriority = cappedCues.indexOf(voice.cue);
+      const cueStartAt = firstCueAt + cuePriority * gapSeconds + voice.timeOffsetMs / 1000;
+      const voicedCue: RoutedLiveCue = {
+        ...voice.cue,
+        noteHz: Number((voice.cue.noteHz * voice.noteMultiplier).toFixed(2)),
+        gain: Number(Math.min(0.34, Math.max(0.005, voice.cue.gain * voice.gainMultiplier)).toFixed(3)),
+        pan: clampPan(voice.cue.pan + voice.panOffset),
+      };
       const sampleBuffer =
-        sampleStatus === "ready" && cue.samplePath
-          ? sampleBuffersRef.current.get(cue.samplePath) ?? null
+        sampleStatus === "ready" && voice.cue.samplePath && voice.track === "foundation"
+          ? sampleBuffersRef.current.get(voice.cue.samplePath) ?? null
           : null;
       if (sampleBuffer) {
-        scheduleSampleCue(context, cue, sampleBuffer, cueStartAt);
+        scheduleSampleCue(context, voicedCue, sampleBuffer, cueStartAt);
       } else {
-        scheduleCue(context, cue, cueStartAt);
+        scheduleCue(context, voicedCue, cueStartAt);
       }
+      scheduledVoices++;
     }
+    setEmittedVoiceCount((c) => c + scheduledVoices);
   });
 
   // ---------------------------------------------------------------------------
@@ -557,15 +650,20 @@ export function LiveLogMonitorPanel({
 
     // Accumulate known components for per-component stereo routing
     const updatedComponents = [...knownComponentsRef.current];
+    let componentsChanged = false;
     for (const cmp of update.topComponents.map((c) => c.component)) {
       if (!updatedComponents.includes(cmp)) {
         updatedComponents.push(cmp);
+        componentsChanged = true;
       }
     }
     knownComponentsRef.current = updatedComponents.slice(0, 12);
+    if (componentsChanged) {
+      setKnownComponents(knownComponentsRef.current.slice());
+    }
 
     const routedCues = update.sonificationCues.map((cue, index) =>
-      routeCueThroughScene(cue, scene, index, knownComponentsRef.current),
+      routeCueThroughScene(cue, scene, index, knownComponentsRef.current, componentOverrides),
     );
 
     startTransition(() => {
@@ -584,6 +682,7 @@ export function LiveLogMonitorPanel({
         ...update.anomalyMarkers.slice().reverse(),
         ...current,
       ].slice(0, MAX_RECENT_MARKERS));
+      setRecentVoices(resolveArrangementVoices(routedCues).slice(0, 12));
     });
 
     if (update.hasData) {
@@ -623,6 +722,7 @@ export function LiveLogMonitorPanel({
     setLastUpdate(null);
     setEmittedCueCount(0);
     setRecentCues([]);
+    setRecentVoices([]);
     setRecentMarkers([]);
     setRecentWarnings([]);
     setError(null);
@@ -689,12 +789,20 @@ export function LiveLogMonitorPanel({
       beatClockRef.current = null;
       setBeatClockBpm(null);
     }
+    // Start the background rhythm pulse when beat-locked preset is active
+    if (ctx && scene.preset.useBeatGrid) {
+      const looperBpm = anchorBpm ?? 120;
+      startBeatLooper(ctx, looperBpm, scene.preset.rhythmDivision, beatLooperRef);
+      setBeatLooperActive(true);
+    }
   }
 
   function handleStop() {
     void monitor.stopSession();
     beatClockRef.current = null;
     setBeatClockBpm(null);
+    stopBeatLooper(beatLooperRef);
+    setBeatLooperActive(false);
   }
 
   const currentLevelCounts = lastUpdate?.levelCounts ?? {};
@@ -950,6 +1058,14 @@ export function LiveLogMonitorPanel({
             {beatClockBpm !== null ? `${beatClockBpm.toFixed(0)} BPM` : "Free"}
           </strong>
         </div>
+        <div>
+          <span>Voices emitted</span>
+          <strong>{emittedVoiceCount}</strong>
+        </div>
+        <div>
+          <span>Rhythm pulse</span>
+          <strong>{beatLooperActive ? "Active" : "Off"}</strong>
+        </div>
       </div>
 
       <div className="audio-path-card top-spaced">
@@ -965,6 +1081,19 @@ export function LiveLogMonitorPanel({
         onSceneBaseAssetIdChange={setSceneBaseAssetId}
         onSceneCompositionIdChange={setSceneCompositionId}
         scene={scene}
+      />
+
+      <ComponentRoutingPanel
+        knownComponents={knownComponents}
+        overrides={componentOverrides}
+        liveActive={monitor.session?.repoId === repository.id}
+        onOverrideChange={(component, override) =>
+          setComponentOverrides((current) => {
+            const next = new Map(current);
+            next.set(component, override);
+            return next;
+          })
+        }
       />
 
       {lastUpdate ? (
@@ -1041,6 +1170,42 @@ export function LiveLogMonitorPanel({
             Start the live tail to listen to newly appended log lines as internal cues inside
             Maia.
           </p>
+        </div>
+      )}
+
+      <div className="panel-header compact top-spaced">
+        <div>
+          <h2>Arrangement layers</h2>
+          <p className="support-copy">
+            Last scheduled foundation / motion / accent voices from the multi-track engine.
+          </p>
+        </div>
+      </div>
+
+      {recentVoices.length > 0 ? (
+        <div className="arrangement-lane-grid">
+          {(["foundation", "motion", "accent"] as const).map((track) => {
+            const trackVoices = recentVoices.filter((v) => v.track === track);
+            return (
+              <div key={track} className={`arrangement-lane arrangement-lane--${track}`}>
+                <span className="arrangement-lane-label">{track}</span>
+                <div className="arrangement-lane-chips">
+                  {trackVoices.map((v, i) => (
+                    <span key={i} className="arrangement-lane-chip">
+                      {v.cue.component} · {v.cue.routeLabel}
+                    </span>
+                  ))}
+                  {trackVoices.length === 0 && (
+                    <span className="arrangement-lane-empty">—</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="empty-state">
+          <p>No arrangement voices fired yet.</p>
         </div>
       )}
 

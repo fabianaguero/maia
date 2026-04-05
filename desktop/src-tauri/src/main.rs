@@ -494,6 +494,7 @@ struct AnalyzerErrorInfo {
 enum NativePickerKind {
     File,
     Directory,
+    SaveFile,
 }
 
 #[tauri::command]
@@ -1084,6 +1085,38 @@ fn import_repository(
     let conn = open_database(&app_handle)?;
     let managed_root = managed_repositories_root(&app_handle)?;
     insert_repository(&conn, input, &managed_root)
+}
+
+#[tauri::command]
+fn pick_export_save_path(default_name: String) -> Result<Option<String>, String> {
+    let home = home_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_else(|| "/tmp".to_string());
+    let default_path = format!("{home}/{default_name}");
+    let ext = Path::new(&default_name).extension().and_then(|e| e.to_str()).unwrap_or("*");
+    let filter = format!("Export files (*.{ext})");
+    pick_native_path(
+        NativePickerKind::SaveFile,
+        Some(default_path),
+        "Choose export destination",
+        Some(&filter),
+    )
+}
+
+#[tauri::command]
+fn export_composition_file(source_path: String, dest_path: String) -> Result<String, String> {
+    let src = Path::new(&source_path);
+    if !src.exists() {
+        return Err(format!("Source file does not exist: {source_path}"));
+    }
+
+    let dest = Path::new(&dest_path);
+    if let Some(parent) = dest.parent() {
+        if !parent.as_os_str().is_empty() && !parent.exists() {
+            fs::create_dir_all(parent).map_err(|e| format!("Failed to create destination directory: {e}"))?;
+        }
+    }
+
+    fs::copy(src, dest).map_err(|e| format!("Failed to copy file: {e}"))?;
+    Ok(dest_path)
 }
 
 fn execute_analyzer_request(request: &Value) -> Result<Value, String> {
@@ -1995,6 +2028,13 @@ fn pick_with_kdialog(
             args.push("--getexistingdirectory");
             args.push(default_path);
         }
+        NativePickerKind::SaveFile => {
+            args.push("--getsavefilename");
+            args.push(default_path);
+            if let Some(filter) = filter {
+                args.push(filter);
+            }
+        }
     }
 
     run_native_picker_command("kdialog", &args)
@@ -2017,6 +2057,10 @@ fn pick_with_zenity(
 
     if matches!(kind, NativePickerKind::Directory) {
         args.push("--directory");
+    }
+
+    if matches!(kind, NativePickerKind::SaveFile) {
+        args.push("--save");
     }
 
     if let Some(filter) = filter {
@@ -3973,6 +4017,8 @@ fn main() {
             pick_track_source_path,
             pick_repository_directory,
             pick_repository_file,
+            pick_export_save_path,
+            export_composition_file,
             poll_log_stream,
             start_stream_session,
             stop_stream_session,

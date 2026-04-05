@@ -83,10 +83,10 @@ The most realistic implementation order from this point: (1) always-on backgroun
 - **Always-on background monitoring** ✅ (shipped: `MonitorContext` lifts poll loop to root, sidebar live badge, session survives navigation) — resolved.
 - **Broader stream adapters** ✅ (shipped: WebSocket adapter manages JS `WebSocket` + ring buffer ingest; HTTP-poll adapter fetches URL on each interval; `ingest_stream_chunk` Rust command; panel URL inputs).
 - **Test coverage** — zero test files exist in the project; no contract fixtures, no golden analysis tests, no native-vs-mock gate.
-- **Dense multi-track arrangement** — current live scene still does one cue per event; no pad/kit sequencer, no per-component routing beyond generic log levels.
+- **Dense multi-track arrangement** ✅ (shipped: per-component gain/mute routing panel, `ComponentRoutingPanel`, arrangement-lane display with foundation/motion/accent tracks; pad/kit sequencer surface still pending)
 - **Export/bounce pipeline** — `plan.json` and `preview.wav` exist; export dialog, full offline render, stems, and format options are not built.
-- **Additional audio formats** — `m4a` and other compressed containers still fall back to deterministic local stubs.
-- **Tree-sitter beyond Java/Kotlin** — TypeScript, Python, Go, Rust, and other grammars not yet wired.
+- **Additional audio formats** ✅ (shipped: `_decode_librosa_audio` fallback covers m4a/aac/aiff/mp4 via audioread/FFmpeg; `get_supported_track_formats` now returns dynamic format list)
+- **Tree-sitter beyond Java/Kotlin** ✅ (shipped: Python, TypeScript/TSX, Go, Rust fully wired + 32 passing tests)
 
 ## Implementation plan (summary)
 1) Always-on background monitoring ✅
@@ -99,18 +99,18 @@ The most realistic implementation order from this point: (1) always-on backgroun
 3) Consolidation and test coverage
 - Contract fixtures, analysis golden tests, mock vs native gates. Pipeline hardening.
 
-4) Repo parsing with tree-sitter ✅ (shipped: Java/Kotlin)
-- Java/Jakarta first, structural metrics, deterministic mapping. Future: TS, Python, Go, Rust.
+4) Repo parsing with tree-sitter ✅ (shipped: Java/Kotlin/Python/TypeScript/Go/Rust — 32 dedicated tests passing)
+- All major languages covered. `build_repo_waveform_bins` uses all 6 parsers.
 
-5) DSP integration ✅ (shipped: librosa tempo/onset; additional formats still pending)
+5) DSP integration ✅ (shipped: librosa tempo/onset; m4a/aac/aiff via librosa/audioread fallback ✅)
 - Replace heuristics with real tempo/onset/beat tracking.
-- Extend supported formats (m4a etc.).
+- All compressed formats now covered; wma fallback available if audioread present.
 
 6) Stream adapters + session monitoring ✅ (shipped: file + process adapters, ring buffer, SessionRegistry)
 - Always-on background monitoring ✅ shipped. Broader platform adapters still pending.
 
-7) Sonification engine ✅ (shipped: genre palette ✅, sequencer presets ✅, reference anchor ✅, reference playlist ✅, beat-phase scheduling ✅, persistence ✅; dense multi-track arrangement pending)
-- Next: denser cue sequencing, per-component event mapping, multi-track arrangement.
+7) Sonification engine ✅ (shipped: genre palette ✅, sequencer presets ✅, reference anchor ✅, reference playlist ✅, beat-phase scheduling ✅, persistence ✅, per-component routing panel ✅, arrangement-lane display ✅)
+- Next: pad/kit sequencer UI surface for dense arrangement authoring.
 
 8) Reference anchor + playlist ✅ (fully shipped: single anchor, playlist blend, beat clock, persistence, reorder, blend details)
 

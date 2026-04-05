@@ -1,8 +1,9 @@
 import SectionTitle from "../layout/SectionTitle";
+
 export default function VisionSection({ t, theme }) {
   return (
     <section id="vision" className="mx-auto max-w-7xl px-6 py-20 lg:px-10">
-      <SectionTitle eyebrow={t.vision.eyebrow} title={t.vision.title} text={t.vision.text} classes={{ eyebrow: theme.eyebrow, title: theme.title, body: theme.body }} />
+      <SectionTitle eyebrow={t.vision.eyebrow} title={t.vision.title} text={t.vision.text} theme={theme} />
       <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         {t.vision.cards.map((item) => (
           <div key={item.title} className={`rounded-[1.7rem] border p-6 ${theme.card}`}>

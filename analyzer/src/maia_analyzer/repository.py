@@ -9,7 +9,15 @@ from typing import Any
 from urllib.parse import urlparse
 from uuid import uuid4
 
-from .treesitter import analyze_java_sources, analyze_kotlin_sources, build_repo_waveform_bins
+from .treesitter import (
+    analyze_java_sources,
+    analyze_kotlin_sources,
+    analyze_python_sources,
+    analyze_typescript_sources,
+    analyze_rust_sources,
+    analyze_go_sources,
+    build_repo_waveform_bins,
+)
 from .stream import ingest_lines
 
 MAX_LOG_LINES = 4000
@@ -97,6 +105,10 @@ def _analyze_local_repository(
 
     java_files = 0
     kotlin_files = 0
+    python_files = 0
+    typescript_files = 0
+    rust_files = 0
+    go_files = 0
     test_files = 0
     controller_count = 0
     service_count = 0
@@ -108,11 +120,19 @@ def _analyze_local_repository(
 
     java_paths: list[Path] = []
     kotlin_paths: list[Path] = []
+    python_paths: list[Path] = []
+    ts_paths: list[Path] = []
+    rust_paths: list[Path] = []
+    go_paths: list[Path] = []
     allowed_extensions = _normalize_extension_filter(options)
     allowed_languages = _normalize_language_filter(options)
-    extension_by_language = {
+    extension_by_language: dict[str, str | list[str]] = {
         "java": ".java",
         "kotlin": ".kt",
+        "python": ".py",
+        "typescript": [".ts", ".tsx"],
+        "rust": ".rs",
+        "go": ".go",
     }
 
     for file_path in root.rglob("*"):
@@ -166,25 +186,78 @@ def _analyze_local_repository(
             if len(kotlin_paths) < 400:
                 kotlin_paths.append(file_path)
 
+        if extension == ".py":
+            python_files += 1
+            if len(python_paths) < 400:
+                python_paths.append(file_path)
+            lower_parts = [part.lower() for part in file_path.parts]
+            if "test" in lower_parts or file_path.name.lower().startswith("test_"):
+                test_files += 1
+
+        if extension in {".ts", ".tsx"}:
+            typescript_files += 1
+            if len(ts_paths) < 400:
+                ts_paths.append(file_path)
+
+        if extension == ".rs":
+            rust_files += 1
+            if len(rust_paths) < 400:
+                rust_paths.append(file_path)
+            lower_parts_rs = [part.lower() for part in file_path.parts]
+            if "test" in lower_parts_rs or "tests" in lower_parts_rs:
+                test_files += 1
+
+        if extension == ".go":
+            go_files += 1
+            if len(go_paths) < 400:
+                go_paths.append(file_path)
+
     build_system = "plain"
     if (root / "pom.xml").exists():
         build_system = "maven"
     elif any((root / name).exists() for name in ("build.gradle", "build.gradle.kts", "settings.gradle.kts")):
         build_system = "gradle"
+    elif (root / "Cargo.toml").exists():
+        build_system = "cargo"
+    elif (root / "go.mod").exists():
+        build_system = "go-modules"
+    elif any((root / name).exists() for name in ("package.json",)):
+        build_system = "npm"
+    elif (root / "pyproject.toml").exists() or (root / "setup.py").exists():
+        build_system = "python-build"
 
-    if java_files == 0 and kotlin_files == 0:
-        warnings.append("No Java or Kotlin source files were detected.")
+    all_source_files = java_files + kotlin_files + python_files + typescript_files + rust_files + go_files
+    if all_source_files == 0:
+        warnings.append("No recognized source files were detected.")
 
     ast_metrics = analyze_java_sources(java_paths)
     kt_metrics = analyze_kotlin_sources(kotlin_paths)
+    py_metrics = analyze_python_sources(python_paths)
+    ts_metrics = analyze_typescript_sources(ts_paths)
+    rs_metrics = analyze_rust_sources(rust_paths)
+    go_metrics = analyze_go_sources(go_paths)
+
     ast_enabled = bool(ast_metrics.get("enabled"))
     kt_enabled = bool(kt_metrics.get("enabled")) and kotlin_files > 0
+    py_enabled = bool(py_metrics.get("enabled")) and python_files > 0
+    ts_enabled = bool(ts_metrics.get("enabled")) and typescript_files > 0
+    rs_enabled = bool(rs_metrics.get("enabled")) and rust_files > 0
+    go_enabled = bool(go_metrics.get("enabled")) and go_files > 0
+
     ast_class_count = int(ast_metrics.get("classCount", 0) or 0)
     ast_method_count = int(ast_metrics.get("methodCount", 0) or 0)
     ast_annotation_count = int(ast_metrics.get("annotationCount", 0) or 0)
     ast_endpoint_count = int(ast_metrics.get("endpointAnnotationCount", 0) or 0)
     kt_class_count = int(kt_metrics.get("classCount", 0) or 0)
     kt_function_count = int(kt_metrics.get("functionCount", 0) or 0)
+    py_function_count = int(py_metrics.get("functionCount", 0) or 0)
+    py_class_count = int(py_metrics.get("classCount", 0) or 0)
+    ts_function_count = int(ts_metrics.get("functionCount", 0) or 0)
+    ts_class_count = int(ts_metrics.get("classCount", 0) or 0)
+    rs_function_count = int(rs_metrics.get("functionCount", 0) or 0)
+    rs_struct_count = int(rs_metrics.get("structCount", 0) or 0)
+    go_function_count = int(go_metrics.get("functionCount", 0) or 0)
+    go_goroutine_count = int(go_metrics.get("goroutineCount", 0) or 0)
 
     suggested_bpm = max(
         85,
@@ -193,6 +266,10 @@ def _analyze_local_repository(
             96
             + min(32, java_files // 8)
             + min(12, kotlin_files // 10)
+            + min(14, python_files // 12)
+            + min(14, typescript_files // 10)
+            + min(10, rust_files // 8)
+            + min(10, go_files // 8)
             + controller_count * 2
             + service_count
             + repository_count
@@ -205,6 +282,14 @@ def _analyze_local_repository(
             + (min(8, ast_endpoint_count * 2) if ast_enabled else 0)
             + (min(8, kt_function_count // 30) if kt_enabled else 0)
             + (min(6, kt_class_count // 20) if kt_enabled else 0)
+            + (min(8, py_function_count // 30) if py_enabled else 0)
+            + (min(6, py_class_count // 20) if py_enabled else 0)
+            + (min(8, ts_function_count // 30) if ts_enabled else 0)
+            + (min(6, ts_class_count // 20) if ts_enabled else 0)
+            + (min(8, rs_function_count // 25) if rs_enabled else 0)
+            + (min(4, rs_struct_count // 20) if rs_enabled else 0)
+            + (min(8, go_function_count // 25) if go_enabled else 0)
+            + (min(4, go_goroutine_count // 5) if go_enabled else 0)
             + (4 if build_system == "maven" else 2 if build_system == "gradle" else 0),
         ),
     )
@@ -215,18 +300,31 @@ def _analyze_local_repository(
             0.3
             + min(0.35, java_files / 400)
             + min(0.12, kotlin_files / 200)
-            + (0.1 if build_system != "plain" else 0)
+            + min(0.12, python_files / 200)
+            + min(0.12, typescript_files / 200)
+            + min(0.10, rust_files / 150)
+            + min(0.10, go_files / 150)
+            + (0.1 if build_system not in {"plain", "npm"} else 0.04)
             + (0.07 if has_jakarta or has_javax else 0)
             + (0.06 if ast_enabled and ast_metrics.get("parseErrors", 0) == 0 else 0)
-            + (0.04 if kt_enabled and kt_metrics.get("parseErrors", 0) == 0 else 0),
+            + (0.04 if kt_enabled and kt_metrics.get("parseErrors", 0) == 0 else 0)
+            + (0.04 if py_enabled and py_metrics.get("parseErrors", 0) == 0 else 0)
+            + (0.04 if ts_enabled and ts_metrics.get("parseErrors", 0) == 0 else 0),
         ),
         2,
     )
 
-    primary_language = "java"
-    if kotlin_files > java_files:
-        primary_language = "kotlin"
-    elif java_files == 0 and kotlin_files == 0:
+    # Determine primary language by file count
+    lang_counts = {
+        "java": java_files,
+        "kotlin": kotlin_files,
+        "python": python_files,
+        "typescript": typescript_files,
+        "rust": rust_files,
+        "go": go_files,
+    }
+    primary_language = max(lang_counts, key=lambda k: lang_counts[k])
+    if lang_counts[primary_language] == 0:
         primary_language = "unknown"
 
     tags = ["repo-analysis", build_system, primary_language]
@@ -238,12 +336,24 @@ def _analyze_local_repository(
         tags.append("tree-sitter-java")
     if kt_enabled:
         tags.append("tree-sitter-kotlin")
+    if py_enabled:
+        tags.append("tree-sitter-python")
+    if ts_enabled:
+        tags.append("tree-sitter-typescript")
+    if rs_enabled:
+        tags.append("tree-sitter-rust")
+    if go_enabled:
+        tags.append("tree-sitter-go")
 
     metrics = {
         "buildSystem": build_system,
         "primaryLanguage": primary_language,
         "javaFileCount": java_files,
         "kotlinFileCount": kotlin_files,
+        "pythonFileCount": python_files,
+        "typescriptFileCount": typescript_files,
+        "rustFileCount": rust_files,
+        "goFileCount": go_files,
         "testFileCount": test_files,
         "controllerCount": controller_count,
         "serviceCount": service_count,
@@ -252,6 +362,7 @@ def _analyze_local_repository(
         "resourceCount": resource_count,
         "samplePackages": sorted(sample_packages),
         "fileExtensionBreakdown": dict(extension_counts.most_common(8)),
+        # Java AST
         "astEnabled": ast_enabled,
         "astFileCount": ast_metrics.get("fileCount", 0),
         "astFileLimit": ast_metrics.get("fileLimit", 0),
@@ -267,6 +378,7 @@ def _analyze_local_repository(
         "astJakartaImportCount": ast_metrics.get("jakartaImportCount", 0),
         "astJavaxImportCount": ast_metrics.get("javaxImportCount", 0),
         "astAnnotationBreakdown": ast_metrics.get("annotationBreakdown", {}),
+        # Kotlin AST
         "ktAstEnabled": kt_enabled,
         "ktAstFileCount": kt_metrics.get("fileCount", 0),
         "ktAstClassCount": kt_metrics.get("classCount", 0),
@@ -274,6 +386,42 @@ def _analyze_local_repository(
         "ktAstPropertyCount": kt_metrics.get("propertyCount", 0),
         "ktAstEndpointAnnotationCount": kt_metrics.get("endpointAnnotationCount", 0),
         "ktAstAnnotationBreakdown": kt_metrics.get("annotationBreakdown", {}),
+        # Python AST
+        "pyAstEnabled": py_enabled,
+        "pyAstFileCount": py_metrics.get("fileCount", 0),
+        "pyAstClassCount": py_metrics.get("classCount", 0),
+        "pyAstFunctionCount": py_metrics.get("functionCount", 0),
+        "pyAstAsyncFunctionCount": py_metrics.get("asyncFunctionCount", 0),
+        "pyAstDecoratorCount": py_metrics.get("decoratorCount", 0),
+        "pyAstDetectedFrameworks": py_metrics.get("detectedFrameworks", []),
+        # TypeScript AST
+        "tsAstEnabled": ts_enabled,
+        "tsAstFileCount": ts_metrics.get("fileCount", 0),
+        "tsAstClassCount": ts_metrics.get("classCount", 0),
+        "tsAstFunctionCount": ts_metrics.get("functionCount", 0),
+        "tsAstInterfaceCount": ts_metrics.get("interfaceCount", 0),
+        "tsAstTypeAliasCount": ts_metrics.get("typeAliasCount", 0),
+        "tsAstDecoratorCount": ts_metrics.get("decoratorCount", 0),
+        "tsAstDetectedFrameworks": ts_metrics.get("detectedFrameworks", []),
+        # Rust AST
+        "rsAstEnabled": rs_enabled,
+        "rsAstFileCount": rs_metrics.get("fileCount", 0),
+        "rsAstStructCount": rs_metrics.get("structCount", 0),
+        "rsAstEnumCount": rs_metrics.get("enumCount", 0),
+        "rsAstTraitCount": rs_metrics.get("traitCount", 0),
+        "rsAstImplCount": rs_metrics.get("implCount", 0),
+        "rsAstFunctionCount": rs_metrics.get("functionCount", 0),
+        "rsAstMacroCount": rs_metrics.get("macroCount", 0),
+        "rsAstUnsafeCount": rs_metrics.get("unsafeCount", 0),
+        # Go AST
+        "goAstEnabled": go_enabled,
+        "goAstFileCount": go_metrics.get("fileCount", 0),
+        "goAstFunctionCount": go_metrics.get("functionCount", 0),
+        "goAstMethodCount": go_metrics.get("methodCount", 0),
+        "goAstStructCount": go_metrics.get("structCount", 0),
+        "goAstInterfaceCount": go_metrics.get("interfaceCount", 0),
+        "goAstGoroutineCount": go_metrics.get("goroutineCount", 0),
+        "goAstChannelCount": go_metrics.get("channelCount", 0),
     }
 
     if ast_enabled is False and ast_metrics.get("error"):
@@ -283,7 +431,14 @@ def _analyze_local_repository(
         metrics["parseExtensionFilter"] = sorted(allowed_extensions)
         metrics["parseLanguageFilter"] = sorted(allowed_languages)
 
-    repo_waveform = build_repo_waveform_bins(java_paths, kotlin_paths)
+    repo_waveform = build_repo_waveform_bins(
+        java_paths,
+        kotlin_paths,
+        python_files=python_paths,
+        ts_files=ts_paths,
+        rust_files=rust_paths,
+        go_files=go_paths,
+    )
     repo_beat_grid = _repo_beat_grid(float(suggested_bpm), len(repo_waveform))
     repo_bpm_curve = _repo_bpm_curve(float(suggested_bpm), len(repo_waveform))
 
@@ -330,7 +485,7 @@ def _should_include_extension(
     extension: str,
     allowed_extensions: set[str],
     allowed_languages: set[str],
-    extension_by_language: dict[str, str],
+    extension_by_language: dict[str, str | list[str]],
 ) -> bool:
     if not allowed_extensions and not allowed_languages:
         return True
@@ -340,7 +495,11 @@ def _should_include_extension(
 
     if allowed_languages:
         for language in allowed_languages:
-            if extension_by_language.get(language) == extension:
+            lang_exts = extension_by_language.get(language)
+            if isinstance(lang_exts, list):
+                if extension in lang_exts:
+                    return True
+            elif lang_exts == extension:
                 return True
 
     return False

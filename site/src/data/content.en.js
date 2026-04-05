@@ -22,7 +22,8 @@ export const contentEn = {
     lanes: ["repository snapshot", "log tail", "process session", "base asset pack"],
     metricsTitle: "Signal metrics",
     responseTitle: "Musical response surface",
-    tags: ["info → soft pulse", "warn → tonal lift", "error → sample hit"]
+    tags: ["info → soft pulse", "warn → tonal lift", "error → sample hit"],
+    miniCards: ["Repository pulse", "Signal anomalies", "Beat-synced cues"]
   },
   product: {
     eyebrow: "Product",

@@ -1,43 +1,43 @@
-import { Moon, Sun } from "lucide-react";
+import { Globe2, Moon, Sun } from "lucide-react";
+import { brandAssets } from "../../data/brandAssets";
 
 export default function Header({ t, theme, lang, setLang, isDark, setIsDark }) {
   return (
-    <header className={`sticky top-0 z-50 border-b backdrop-blur-md ${theme.soft}`}>
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-10">
-        <span className={`text-lg font-bold tracking-tight ${theme.title}`}>MAIA</span>
+    <header className="relative z-10 mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-6 lg:px-10">
+      <a href="#top" className={`group flex items-center gap-3 rounded-2xl border px-3 py-2 ${theme.soft}`}>
+        <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-slate-950/60 ring-1 ring-cyan-400/20">
+          <img src={brandAssets.icon} alt="MAIA icon" className="h-10 w-10 object-contain" />
+        </div>
+        <div className="hidden rounded-xl bg-slate-950/80 px-3 py-2 sm:block">
+          <img src={brandAssets.wordmark} alt="MAIA" className="h-6 w-auto object-contain" />
+        </div>
+      </a>
 
-        <nav className="hidden gap-7 text-sm font-medium md:flex">
-          {[
-            { label: t.nav.product, href: "#product" },
-            { label: t.nav.how, href: "#how" },
-            { label: t.nav.mvp, href: "#mvp" },
-            { label: t.nav.vision, href: "#vision" },
-          ].map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className={`transition hover:text-cyan-300 ${theme.muted}`}
-            >
-              {item.label}
-            </a>
-          ))}
+      <div className="flex items-center gap-3">
+        <nav className={`hidden items-center gap-8 text-sm md:flex ${theme.body}`}>
+          <a href="#product" className="transition hover:text-cyan-300">{t.nav.product}</a>
+          <a href="#how-it-works" className="transition hover:text-cyan-300">{t.nav.how}</a>
+          <a href="#mvp" className="transition hover:text-cyan-300">{t.nav.mvp}</a>
+          <a href="#vision" className="transition hover:text-cyan-300">{t.nav.vision}</a>
         </nav>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setLang(lang === "en" ? "es" : "en")}
-            className={`rounded-xl border px-3 py-1.5 text-xs font-medium transition ${theme.control}`}
-          >
-            {t.controls.lang}
-          </button>
-          <button
-            onClick={() => setIsDark(!isDark)}
-            aria-label={isDark ? t.controls.theme.light : t.controls.theme.dark}
-            className={`rounded-xl border p-2 transition ${theme.control}`}
-          >
-            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setLang(lang === "en" ? "es" : "en")}
+          className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-medium transition ${theme.control}`}
+        >
+          <Globe2 className="h-4 w-4" />
+          {t.controls.lang}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setIsDark(!isDark)}
+          className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-medium transition ${theme.control}`}
+        >
+          {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          {isDark ? t.controls.theme.light : t.controls.theme.dark}
+        </button>
       </div>
     </header>
   );

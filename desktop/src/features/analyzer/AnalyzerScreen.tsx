@@ -12,6 +12,7 @@ import { BpmCurvePanel } from "./components/BpmCurvePanel";
 import { BpmPanel } from "./components/BpmPanel";
 import { CompositionMetricsPanel } from "./components/CompositionMetricsPanel";
 import { CompositionOverviewPanel } from "./components/CompositionOverviewPanel";
+import { ExportCompositionPanel } from "./components/ExportCompositionPanel";
 import { CompositionRenderPreviewPanel } from "./components/CompositionRenderPreviewPanel";
 import { CompositionTimelinePanel } from "./components/CompositionTimelinePanel";
 import { LiveLogMonitorPanel } from "./components/LiveLogMonitorPanel";
@@ -127,6 +128,7 @@ export function AnalyzerScreen({
             />
             <CompositionTimelinePanel composition={composition} />
             <CompositionRenderPreviewPanel composition={composition} />
+            <ExportCompositionPanel composition={composition} />
             <CompositionOverviewPanel composition={composition} />
           </div>
 

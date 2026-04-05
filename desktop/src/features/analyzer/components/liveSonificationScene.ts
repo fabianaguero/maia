@@ -153,6 +153,11 @@ export interface ComponentRoute {
   noteMultiplier: number;
 }
 
+export interface ComponentOverride {
+  gainMult: number;   // 0.0 = muted, 1.0 = unity, >1.0 = boost
+  muted: boolean;
+}
+
 interface CategoryProfile {
   baseWaveform: OscillatorType;
   warnWaveform: OscillatorType;
@@ -612,6 +617,9 @@ const PLAYABLE_AUDIO_EXTENSIONS = new Set([
   ".oga",
   ".aif",
   ".aiff",
+  ".m4a",
+  ".aac",
+  ".mp4",
 ]);
 
 function fallbackCategoryProfile(categoryId: string): CategoryProfile {
@@ -622,7 +630,7 @@ function fallbackStrategyProfile(strategy: string): StrategyProfile {
   return STRATEGY_PROFILES[strategy] ?? STRATEGY_PROFILES["layered-pack"];
 }
 
-function clampPan(pan: number): number {
+export function clampPan(pan: number): number {
   return Math.max(-1, Math.min(1, pan));
 }
 
@@ -951,6 +959,7 @@ export function routeCueThroughScene(
   scene: ResolvedLiveSonificationScene,
   index: number,
   knownComponents?: readonly string[],
+  componentOverrides?: ReadonlyMap<string, ComponentOverride>,
 ): RoutedLiveCue {
   const routeKey = routeKeyForCue(cue);
   const route = scene.routes.find((candidate) => candidate.key === routeKey) ?? scene.routes[0];
@@ -987,6 +996,24 @@ export function routeCueThroughScene(
   const anchorEnergyGain = scene.referenceAnchor
     ? 0.7 + scene.referenceAnchor.energyLevel * 0.6
     : 1.0;
+  const override = componentOverrides?.get(cue.component);
+  if (override?.muted) {
+    return {
+      ...cue,
+      noteHz: cue.noteHz,
+      durationMs: 0,
+      gain: 0,
+      waveform: "sine",
+      pan: 0,
+      routeKey,
+      routeLabel: "muted",
+      stemLabel: "",
+      sectionLabel: "",
+      focus: "",
+      samplePath: null,
+      sampleLabel: null,
+    };
+  }
   const gain =
     cue.gain *
     categoryProfile.gainScale *
@@ -994,7 +1021,8 @@ export function routeCueThroughScene(
     genreProfile.gainScale *
     route.gainScale *
     presetGainMultiplier *
-    anchorEnergyGain;
+    anchorEnergyGain *
+    (override?.gainMult ?? 1.0);
   const pan =
     componentRoute && knownComponents && knownComponents.length > 1
       ? clampPan(route.pan * 0.4 + componentRoute.pan * 0.6)
@@ -1015,4 +1043,84 @@ export function routeCueThroughScene(
     samplePath: route.samplePath,
     sampleLabel: route.sampleLabel,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Multi-track arrangement voices
+// ---------------------------------------------------------------------------
+
+/**
+ * An arrangement track layer.
+ * - foundation: primary voice, matches the route's tone — uses sample if available
+ * - motion:     harmonic fifth above (×1.498) — synthesis only
+ * - accent:     upper octave (×2.0) or detuned variant — synthesis only
+ */
+export type ArrangementTrack = "foundation" | "motion" | "accent";
+
+export interface ArrangementVoice {
+  cue: RoutedLiveCue;
+  track: ArrangementTrack;
+  /** Additional pan offset stacked on top of the cue's existing pan value */
+  panOffset: number;
+  /** Frequency multiplier applied on top of the cue's noteHz */
+  noteMultiplier: number;
+  /** Gain multiplier applied on top of the cue's gain value */
+  gainMultiplier: number;
+  /** Milliseconds to offset this voice from the base schedule time of its cue */
+  timeOffsetMs: number;
+}
+
+interface VoiceDef {
+  track: ArrangementTrack;
+  panOffset: number;
+  noteMultiplier: number;
+  gainMultiplier: number;
+  timeOffsetMs: number;
+}
+
+/**
+ * Per severity level: how many parallel voices to spawn and their offsets.
+ *
+ * info    → 1 voice  (simple monophonic texture — foundation only)
+ * warn    → 2 voices (foundation + fifth-harmonic motion layer)
+ * error   → 3 voices (foundation + fifth + octave above — a sparse triad)
+ * anomaly → 3 voices (fifth + octave + detuned octave — all forward layers)
+ */
+const ARRANGEMENT_VOICE_MAP: Record<string, VoiceDef[]> = {
+  info: [
+    { track: "foundation", panOffset: 0,     noteMultiplier: 1.0,   gainMultiplier: 1.0,  timeOffsetMs: 0  },
+  ],
+  warn: [
+    { track: "foundation", panOffset: -0.18, noteMultiplier: 1.0,   gainMultiplier: 0.9,  timeOffsetMs: 0  },
+    { track: "motion",     panOffset:  0.22, noteMultiplier: 1.498, gainMultiplier: 0.52, timeOffsetMs: 14 },
+  ],
+  error: [
+    { track: "foundation", panOffset: -0.24, noteMultiplier: 1.0,   gainMultiplier: 0.88, timeOffsetMs: 0  },
+    { track: "motion",     panOffset:  0,    noteMultiplier: 1.498, gainMultiplier: 0.60, timeOffsetMs: 10 },
+    { track: "accent",     panOffset:  0.26, noteMultiplier: 2.0,   gainMultiplier: 0.40, timeOffsetMs: 20 },
+  ],
+  anomaly: [
+    { track: "motion",     panOffset: -0.28, noteMultiplier: 1.498, gainMultiplier: 0.78, timeOffsetMs: 0  },
+    { track: "accent",     panOffset:  0.24, noteMultiplier: 2.0,   gainMultiplier: 0.82, timeOffsetMs: 8  },
+    { track: "accent",     panOffset:  0.12, noteMultiplier: 2.245, gainMultiplier: 0.36, timeOffsetMs: 24 },
+  ],
+};
+
+/**
+ * Expand a flat list of routed cues into a multi-voice arrangement list.
+ * Each cue multiplies into 1–3 voices depending on its severity level.
+ * The caller is responsible for applying panOffset and noteMultiplier when
+ * scheduling the resulting voices.
+ */
+export function resolveArrangementVoices(
+  cues: readonly RoutedLiveCue[],
+): ArrangementVoice[] {
+  const voices: ArrangementVoice[] = [];
+  for (const cue of cues) {
+    const defs: VoiceDef[] = ARRANGEMENT_VOICE_MAP[cue.routeKey] ?? ARRANGEMENT_VOICE_MAP.info ?? [];
+    for (const def of defs) {
+      voices.push({ cue, ...def });
+    }
+  }
+  return voices;
 }

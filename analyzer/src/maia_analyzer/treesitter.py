@@ -8,17 +8,44 @@ from typing import Any
 try:
     import tree_sitter_java as _ts_java
     import tree_sitter_kotlin as _ts_kotlin
+    import tree_sitter_python as _ts_python
+    import tree_sitter_rust as _ts_rust
+    import tree_sitter_go as _ts_go
     from tree_sitter import Language as _Language
     from tree_sitter import Parser as _Parser
 
     _JAVA_LANGUAGE: Any = _Language(_ts_java.language())
     _KOTLIN_LANGUAGE: Any = _Language(_ts_kotlin.language())
+    _PYTHON_LANGUAGE: Any = _Language(_ts_python.language())
+    _RUST_LANGUAGE: Any = _Language(_ts_rust.language())
+    _GO_LANGUAGE: Any = _Language(_ts_go.language())
     _TS_AVAILABLE = True
 except (ImportError, ModuleNotFoundError):  # pragma: no cover - optional dependency
     _JAVA_LANGUAGE = None
     _KOTLIN_LANGUAGE = None
+    _PYTHON_LANGUAGE = None
+    _RUST_LANGUAGE = None
+    _GO_LANGUAGE = None
     _Parser = None  # type: ignore[assignment,misc]
     _TS_AVAILABLE = False
+
+try:
+    import tree_sitter_typescript as _ts_typescript
+
+    _TYPESCRIPT_LANGUAGE: Any = _Language(_ts_typescript.language_typescript())
+    _TSX_LANGUAGE: Any = _Language(_ts_typescript.language_tsx())
+    _TS_TYPESCRIPT_AVAILABLE = _TS_AVAILABLE
+except (ImportError, ModuleNotFoundError, AttributeError):  # pragma: no cover
+    try:
+        import tree_sitter_typescript as _ts_typescript  # type: ignore[import]
+
+        _TYPESCRIPT_LANGUAGE = _Language(_ts_typescript.language())
+        _TSX_LANGUAGE = _TYPESCRIPT_LANGUAGE
+        _TS_TYPESCRIPT_AVAILABLE = _TS_AVAILABLE
+    except Exception:  # pragma: no cover
+        _TYPESCRIPT_LANGUAGE = None
+        _TSX_LANGUAGE = None
+        _TS_TYPESCRIPT_AVAILABLE = False
 
 
 def _java_parser():
@@ -31,6 +58,36 @@ def _kotlin_parser():
     if not _TS_AVAILABLE:
         return None
     return _Parser(_KOTLIN_LANGUAGE)
+
+
+def _python_parser():
+    if not _TS_AVAILABLE:
+        return None
+    return _Parser(_PYTHON_LANGUAGE)
+
+
+def _typescript_parser():
+    if not _TS_TYPESCRIPT_AVAILABLE or _TYPESCRIPT_LANGUAGE is None:
+        return None
+    return _Parser(_TYPESCRIPT_LANGUAGE)
+
+
+def _tsx_parser():
+    if not _TS_TYPESCRIPT_AVAILABLE or _TSX_LANGUAGE is None:
+        return None
+    return _Parser(_TSX_LANGUAGE)
+
+
+def _rust_parser():
+    if not _TS_AVAILABLE:
+        return None
+    return _Parser(_RUST_LANGUAGE)
+
+
+def _go_parser():
+    if not _TS_AVAILABLE:
+        return None
+    return _Parser(_GO_LANGUAGE)
 
 JAVA_ANNOTATIONS = {
     "Path",
@@ -206,22 +263,346 @@ def analyze_kotlin_sources(kotlin_files: list[Path], max_files: int = 220) -> di
     }
 
 
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+
+PYTHON_FRAMEWORK_IMPORTS = {
+    "fastapi",
+    "flask",
+    "django",
+    "starlette",
+    "aiohttp",
+    "tornado",
+    "sanic",
+    "falcon",
+    "bottle",
+}
+
+
+def analyze_python_sources(python_files: list[Path], max_files: int = 220) -> dict[str, Any]:
+    parser = _python_parser()
+    if parser is None:
+        return {
+            "enabled": False,
+            "error": "tree-sitter is not installed",
+            "fileCount": 0,
+            "parseErrors": 0,
+        }
+
+    file_count = 0
+    parse_errors = 0
+    class_count = 0
+    function_count = 0
+    async_function_count = 0
+    decorator_count = 0
+    import_count = 0
+    framework_imports: set[str] = set()
+
+    for file_path in python_files[:max_files]:
+        try:
+            source_bytes = file_path.read_bytes()
+        except OSError:
+            continue
+
+        file_count += 1
+        tree = parser.parse(source_bytes)
+        if tree.root_node.has_error:
+            parse_errors += 1
+
+        for node in _walk_nodes(tree.root_node):
+            if node.type == "class_definition":
+                class_count += 1
+            elif node.type == "function_definition":
+                function_count += 1
+            elif node.type == "decorated_definition":
+                # May wrap a function or class
+                pass
+            elif node.type == "decorator":
+                decorator_count += 1
+            elif node.type == "async_function_statement":
+                async_function_count += 1
+            elif node.type in {"import_statement", "import_from_statement"}:
+                import_count += 1
+                raw = source_bytes[node.start_byte:node.end_byte].decode("utf-8", "ignore")
+                for fw in PYTHON_FRAMEWORK_IMPORTS:
+                    if fw in raw.lower():
+                        framework_imports.add(fw)
+
+        # Detect async functions from source text (simpler than tree traversal)
+        text = source_bytes.decode("utf-8", "ignore")
+        async_function_count = text.count("async def ")
+
+    return {
+        "enabled": True,
+        "fileCount": file_count,
+        "fileLimit": max_files,
+        "parseErrors": parse_errors,
+        "classCount": class_count,
+        "functionCount": function_count,
+        "asyncFunctionCount": async_function_count,
+        "decoratorCount": decorator_count,
+        "importCount": import_count,
+        "detectedFrameworks": sorted(framework_imports),
+    }
+
+
+# ---------------------------------------------------------------------------
+# TypeScript / TSX
+# ---------------------------------------------------------------------------
+
+TYPESCRIPT_FRAMEWORK_IMPORTS = {
+    "react",
+    "next",
+    "vue",
+    "angular",
+    "svelte",
+    "express",
+    "fastify",
+    "nestjs",
+    "@nestjs",
+    "koa",
+}
+
+
+def analyze_typescript_sources(ts_files: list[Path], max_files: int = 220) -> dict[str, Any]:
+    if not _TS_TYPESCRIPT_AVAILABLE or _TYPESCRIPT_LANGUAGE is None:
+        return {
+            "enabled": False,
+            "error": "tree-sitter-typescript is not installed",
+            "fileCount": 0,
+            "parseErrors": 0,
+        }
+
+    ts_parser = _typescript_parser()
+    tsx_parser = _tsx_parser()
+
+    file_count = 0
+    parse_errors = 0
+    class_count = 0
+    function_count = 0
+    interface_count = 0
+    type_alias_count = 0
+    decorator_count = 0
+    framework_imports: set[str] = set()
+
+    for file_path in ts_files[:max_files]:
+        try:
+            source_bytes = file_path.read_bytes()
+        except OSError:
+            continue
+
+        file_count += 1
+        is_tsx = file_path.suffix.lower() == ".tsx"
+        parser = tsx_parser if is_tsx else ts_parser
+        if parser is None:
+            continue
+
+        tree = parser.parse(source_bytes)
+        if tree.root_node.has_error:
+            parse_errors += 1
+
+        for node in _walk_nodes(tree.root_node):
+            if node.type == "class_declaration":
+                class_count += 1
+            elif node.type in {"function_declaration", "arrow_function", "method_definition"}:
+                function_count += 1
+            elif node.type == "interface_declaration":
+                interface_count += 1
+            elif node.type == "type_alias_declaration":
+                type_alias_count += 1
+            elif node.type == "decorator":
+                decorator_count += 1
+            elif node.type in {"import_statement", "import_declaration"}:
+                raw = source_bytes[node.start_byte:node.end_byte].decode("utf-8", "ignore").lower()
+                for fw in TYPESCRIPT_FRAMEWORK_IMPORTS:
+                    if fw in raw:
+                        framework_imports.add(fw.lstrip("@"))
+
+    return {
+        "enabled": True,
+        "fileCount": file_count,
+        "fileLimit": max_files,
+        "parseErrors": parse_errors,
+        "classCount": class_count,
+        "functionCount": function_count,
+        "interfaceCount": interface_count,
+        "typeAliasCount": type_alias_count,
+        "decoratorCount": decorator_count,
+        "detectedFrameworks": sorted(framework_imports),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Rust
+# ---------------------------------------------------------------------------
+
+
+def analyze_rust_sources(rust_files: list[Path], max_files: int = 220) -> dict[str, Any]:
+    parser = _rust_parser()
+    if parser is None:
+        return {
+            "enabled": False,
+            "error": "tree-sitter is not installed",
+            "fileCount": 0,
+            "parseErrors": 0,
+        }
+
+    file_count = 0
+    parse_errors = 0
+    struct_count = 0
+    enum_count = 0
+    trait_count = 0
+    impl_count = 0
+    function_count = 0
+    macro_count = 0
+    unsafe_count = 0
+
+    for file_path in rust_files[:max_files]:
+        try:
+            source_bytes = file_path.read_bytes()
+        except OSError:
+            continue
+
+        file_count += 1
+        tree = parser.parse(source_bytes)
+        if tree.root_node.has_error:
+            parse_errors += 1
+
+        for node in _walk_nodes(tree.root_node):
+            if node.type == "struct_item":
+                struct_count += 1
+            elif node.type == "enum_item":
+                enum_count += 1
+            elif node.type == "trait_item":
+                trait_count += 1
+            elif node.type == "impl_item":
+                impl_count += 1
+            elif node.type in {"function_item", "function_signature_item"}:
+                function_count += 1
+            elif node.type == "macro_invocation":
+                macro_count += 1
+            elif node.type == "unsafe_block":
+                unsafe_count += 1
+
+    return {
+        "enabled": True,
+        "fileCount": file_count,
+        "fileLimit": max_files,
+        "parseErrors": parse_errors,
+        "structCount": struct_count,
+        "enumCount": enum_count,
+        "traitCount": trait_count,
+        "implCount": impl_count,
+        "functionCount": function_count,
+        "macroCount": macro_count,
+        "unsafeCount": unsafe_count,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Go
+# ---------------------------------------------------------------------------
+
+
+def analyze_go_sources(go_files: list[Path], max_files: int = 220) -> dict[str, Any]:
+    parser = _go_parser()
+    if parser is None:
+        return {
+            "enabled": False,
+            "error": "tree-sitter is not installed",
+            "fileCount": 0,
+            "parseErrors": 0,
+        }
+
+    file_count = 0
+    parse_errors = 0
+    function_count = 0
+    method_count = 0
+    struct_count = 0
+    interface_count = 0
+    goroutine_count = 0
+    channel_count = 0
+    import_count = 0
+
+    for file_path in go_files[:max_files]:
+        try:
+            source_bytes = file_path.read_bytes()
+        except OSError:
+            continue
+
+        file_count += 1
+        tree = parser.parse(source_bytes)
+        if tree.root_node.has_error:
+            parse_errors += 1
+
+        for node in _walk_nodes(tree.root_node):
+            if node.type == "function_declaration":
+                function_count += 1
+            elif node.type == "method_declaration":
+                method_count += 1
+            elif node.type == "type_declaration":
+                # Inspect inner type to distinguish struct vs interface
+                for child in getattr(node, "children", []):
+                    if child.type == "type_spec":
+                        for grandchild in getattr(child, "children", []):
+                            if grandchild.type == "struct_type":
+                                struct_count += 1
+                            elif grandchild.type == "interface_type":
+                                interface_count += 1
+            elif node.type == "go_statement":
+                goroutine_count += 1
+            elif node.type in {"channel_type", "receive_statement", "send_statement"}:
+                channel_count += 1
+            elif node.type == "import_declaration":
+                import_count += 1
+
+    return {
+        "enabled": True,
+        "fileCount": file_count,
+        "fileLimit": max_files,
+        "parseErrors": parse_errors,
+        "functionCount": function_count,
+        "methodCount": method_count,
+        "structCount": struct_count,
+        "interfaceCount": interface_count,
+        "goroutineCount": goroutine_count,
+        "channelCount": channel_count,
+        "importCount": import_count,
+    }
+
+
 def build_repo_waveform_bins(
     java_files: list[Path],
     kotlin_files: list[Path],
+    python_files: list[Path] | None = None,
+    ts_files: list[Path] | None = None,
+    rust_files: list[Path] | None = None,
+    go_files: list[Path] | None = None,
     waveform_bins: int = 56,
 ) -> list[float]:
     """Derive waveform bins from per-file structural density as if tailing the codebase."""
-    all_files = java_files + kotlin_files
+    all_files = (
+        java_files
+        + kotlin_files
+        + (python_files or [])
+        + (ts_files or [])
+        + (rust_files or [])
+        + (go_files or [])
+    )
     if not all_files:
         return []
 
     if not _TS_AVAILABLE:
         return []
 
-    densities: list[float] = []
     java_parser = _java_parser()
     kotlin_parser = _kotlin_parser()
+    python_parser_ = _python_parser()
+    ts_parser_ = _typescript_parser()
+    rust_parser_ = _rust_parser()
+    go_parser_ = _go_parser()
+
     structure_nodes_java = {
         "class_declaration",
         "interface_declaration",
@@ -236,17 +617,60 @@ def build_repo_waveform_bins(
         "annotation",
         "single_annotation",
     }
+    structure_nodes_python = {
+        "class_definition",
+        "function_definition",
+        "decorator",
+    }
+    structure_nodes_ts = {
+        "class_declaration",
+        "function_declaration",
+        "interface_declaration",
+        "type_alias_declaration",
+        "arrow_function",
+        "decorator",
+    }
+    structure_nodes_rust = {
+        "struct_item",
+        "function_item",
+        "trait_item",
+        "impl_item",
+        "enum_item",
+    }
+    structure_nodes_go = {
+        "function_declaration",
+        "method_declaration",
+        "type_declaration",
+    }
+
+    ext_to_parser = {
+        ".java": (java_parser, structure_nodes_java),
+        ".kt": (kotlin_parser, structure_nodes_kotlin),
+        ".py": (python_parser_, structure_nodes_python),
+        ".ts": (ts_parser_, structure_nodes_ts),
+        ".tsx": (ts_parser_, structure_nodes_ts),
+        ".rs": (rust_parser_, structure_nodes_rust),
+        ".go": (go_parser_, structure_nodes_go),
+    }
+
+    densities: list[float] = []
 
     for file_path in all_files[:400]:
+        ext = file_path.suffix.lower()
+        entry = ext_to_parser.get(ext)
+        if entry is None:
+            densities.append(0.0)
+            continue
+        parser, node_types = entry
+        if parser is None:
+            densities.append(0.0)
+            continue
+
         try:
             source_bytes = file_path.read_bytes()
         except OSError:
             densities.append(0.0)
             continue
-
-        is_kotlin = file_path.suffix.lower() == ".kt"
-        parser = kotlin_parser if is_kotlin else java_parser
-        node_types = structure_nodes_kotlin if is_kotlin else structure_nodes_java
 
         tree = parser.parse(source_bytes)
         count = sum(

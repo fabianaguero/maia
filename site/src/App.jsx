@@ -26,14 +26,14 @@ export default function App() {
       </div>
       <Header t={t} theme={theme} lang={lang} setLang={setLang} isDark={isDark} setIsDark={setIsDark} />
       <main className="relative z-10">
-        <HeroSection t={t} theme={theme} isDark={isDark} />
+        <HeroSection t={t} theme={theme} />
         <ProductSection t={t} theme={theme} />
         <HowItWorksSection t={t} theme={theme} />
         <DidacticLogSection t={t} theme={theme} isDark={isDark} />
         <MvpSection t={t} theme={theme} />
         <VisionSection t={t} theme={theme} />
         <RoadmapSection t={t} theme={theme} />
-        <FooterCTA t={t} theme={theme} isDark={isDark} />
+        <FooterCTA t={t} theme={theme} />
       </main>
     </div>
   );

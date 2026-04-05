@@ -71,6 +71,27 @@ export async function pickRepositoryFile(
   }
 }
 
+export async function pickExportSavePath(
+  defaultName: string,
+): Promise<string | null> {
+  try {
+    return await invoke<string | null>("pick_export_save_path", { defaultName });
+  } catch (error) {
+    if (isNativeBridgeUnavailable(error)) {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+export async function exportCompositionFile(
+  sourcePath: string,
+  destPath: string,
+): Promise<string> {
+  return invoke<string>("export_composition_file", { sourcePath, destPath });
+}
+
 export async function pollLogStream(
   sourcePath: string,
   cursor?: number,
