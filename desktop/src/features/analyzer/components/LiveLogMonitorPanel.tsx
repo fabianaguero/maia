@@ -7,12 +7,6 @@ import {
 } from "react";
 import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
 
-import {
-  pollLogStream,
-  startStreamSession,
-  stopStreamSession,
-  pollStreamSession,
-} from "../../../api/repositories";
 import type {
   BaseAssetRecord,
   CompositionResultRecord,
@@ -21,8 +15,10 @@ import type {
   LiveLogMarker,
   LiveLogStreamUpdate,
   RepositoryAnalysis,
+  StartSessionInput,
   StreamAdapterKind,
 } from "../../../types/library";
+import { useMonitor } from "../../monitor/MonitorContext";
 import { musicStyleCatalog } from "../../../config/musicStyles";
 import { LiveSonificationScenePanel } from "./LiveSonificationScenePanel";
 import {
@@ -33,7 +29,6 @@ import {
   type RoutedLiveCue,
 } from "./liveSonificationScene";
 
-const POLL_INTERVAL_MS = 1100;
 const MAX_RECENT_CUES = 8;
 const MAX_RECENT_MARKERS = 6;
 const MAX_RECENT_WARNINGS = 4;
@@ -263,12 +258,8 @@ function nextBeatTime(
   return originTime + nextCount * subdivPeriodS;
 }
 
-function statusLabel(liveEnabled: boolean, polling: boolean): string {
-  if (!liveEnabled) {
-    return "Stopped";
-  }
-
-  return polling ? "Polling" : "Live";
+function statusLabel(liveEnabled: boolean): string {
+  return liveEnabled ? "Live" : "Stopped";
 }
 
 function audioLabel(status: AudioEngineStatus, liveEnabled: boolean): string {
@@ -295,15 +286,16 @@ export function LiveLogMonitorPanel({
   preferredCompositionId: preferredCompositionIdProp,
   availableTracks,
 }: LiveLogMonitorPanelProps) {
+  const monitor = useMonitor();
+  // Session is live for THIS repo when the global monitor owns it
+  const liveEnabled = monitor.session?.repoId === repository.id;
+
   const audioContextRef = useRef<AudioContext | null>(null);
   const sampleBuffersRef = useRef(new Map<string, AudioBuffer>());
-  const pollTimerRef = useRef<number | null>(null);
-  const liveEnabledRef = useRef(false);
-  const cursorRef = useRef<number | undefined>(undefined);
-  const sessionIdRef = useRef<string | null>(null);
   const [adapterKind, setAdapterKind] = useState<StreamAdapterKind>("file");
   const [processCommand, setProcessCommand] = useState("");
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [wsUrl, setWsUrl] = useState("ws://");
+  const [httpUrl, setHttpUrl] = useState("http://");
   const [selectedGenreId, setSelectedGenreId] = useState(
     () => loadMonitorPrefs(repository.id)?.selectedGenreId ?? musicStyleCatalog.defaultTrackMusicStyleId,
   );
@@ -323,15 +315,9 @@ export function LiveLogMonitorPanel({
   const [sceneCompositionId, setSceneCompositionId] = useState(() =>
     preferredCompositionId(availableCompositions, preferredCompositionIdProp),
   );
-  const [liveEnabled, setLiveEnabled] = useState(false);
-  const [polling, setPolling] = useState(false);
-  const [cursor, setCursor] = useState<number | undefined>(undefined);
   const [audioStatus, setAudioStatus] = useState<AudioEngineStatus>("idle");
   const [sampleStatus, setSampleStatus] = useState<SampleEngineStatus>("unavailable");
   const [lastUpdate, setLastUpdate] = useState<LiveLogStreamUpdate | null>(null);
-  const [windowCount, setWindowCount] = useState(0);
-  const [processedLines, setProcessedLines] = useState(0);
-  const [totalAnomalies, setTotalAnomalies] = useState(0);
   const [emittedCueCount, setEmittedCueCount] = useState(0);
   const [recentCues, setRecentCues] = useState<RoutedLiveCue[]>([]);
   const [recentMarkers, setRecentMarkers] = useState<LiveLogMarker[]>([]);
@@ -379,19 +365,9 @@ export function LiveLogMonitorPanel({
     );
   }, [availableCompositions, preferredCompositionIdProp, sceneCompositionId]);
 
-  useEffect(() => {
-    liveEnabledRef.current = liveEnabled;
-  }, [liveEnabled]);
-
-  useEffect(() => {
-    cursorRef.current = cursor;
-  }, [cursor]);
-
+  // Close AudioContext on unmount — the background poll loop lives in MonitorContext
   useEffect(() => {
     return () => {
-      if (pollTimerRef.current !== null) {
-        window.clearTimeout(pollTimerRef.current);
-      }
       if (audioContextRef.current) {
         void audioContextRef.current.close();
       }
@@ -477,21 +453,9 @@ export function LiveLogMonitorPanel({
     };
   }, [scene.sampleSources]);
 
+  // Reset local display state when switching repos; the background monitor keeps running
   useEffect(() => {
-    if (pollTimerRef.current !== null) {
-      window.clearTimeout(pollTimerRef.current);
-      pollTimerRef.current = null;
-    }
-
-    liveEnabledRef.current = false;
-    cursorRef.current = undefined;
-    setLiveEnabled(false);
-    setPolling(false);
-    setCursor(undefined);
     setLastUpdate(null);
-    setWindowCount(0);
-    setProcessedLines(0);
-    setTotalAnomalies(0);
     setEmittedCueCount(0);
     setRecentCues([]);
     setRecentMarkers([]);
@@ -509,13 +473,7 @@ export function LiveLogMonitorPanel({
     setPendingAddTrackId("");
     beatClockRef.current = null;
     setBeatClockBpm(null);
-  }, [repository.id]);
-
-  useEffect(() => {
-    sessionIdRef.current = activeSessionId;
-  }, [activeSessionId]);
-
-  useEffect(() => {
+  }, [repository.id]);useEffect(() => {
     saveMonitorPrefs(repository.id, { referencePlaylistIds, selectedGenreId, selectedPresetId });
   }, [repository.id, referencePlaylistIds, selectedGenreId, selectedPresetId]);
 
@@ -589,194 +547,139 @@ export function LiveLogMonitorPanel({
     }
   });
 
-  const pollWindow = useEffectEvent(async () => {
-    setPolling(true);
+  // ---------------------------------------------------------------------------
+  // Stream update handler — receives poll windows from MonitorContext
+  // ---------------------------------------------------------------------------
 
-    try {
-      let update: LiveLogStreamUpdate;
-      const currentSessionId = sessionIdRef.current;
+  const onStreamUpdate = useEffectEvent((update: LiveLogStreamUpdate) => {
+    // Only process updates for the repo this panel is showing
+    if (monitor.session?.repoId !== repository.id) return;
 
-      if (currentSessionId) {
-        // Session mode: use the stream session registry (both file and process adapters)
-        const result = await pollStreamSession(currentSessionId);
-        if (!liveEnabledRef.current) {
-          return;
-        }
-        update = {
-          sourcePath: repository.sourcePath,
-          fromOffset: result.session.fileCursor ?? 0,
-          toOffset: result.session.fileCursor ?? 0,
-          hasData: result.hasData,
-          summary: result.summary,
-          suggestedBpm: result.suggestedBpm,
-          confidence: result.confidence,
-          dominantLevel: result.dominantLevel,
-          lineCount: result.lineCount,
-          anomalyCount: result.anomalyCount,
-          levelCounts: result.levelCounts,
-          anomalyMarkers: result.anomalyMarkers,
-          topComponents: result.topComponents,
-          sonificationCues: result.sonificationCues,
-          warnings: result.warnings,
-        };
-      } else {
-        // Direct file tail mode
-        update = await pollLogStream(repository.sourcePath, cursorRef.current);
-        if (!liveEnabledRef.current) {
-          return;
-        }
-        cursorRef.current = update.toOffset;
-        setCursor(update.toOffset);
+    // Accumulate known components for per-component stereo routing
+    const updatedComponents = [...knownComponentsRef.current];
+    for (const cmp of update.topComponents.map((c) => c.component)) {
+      if (!updatedComponents.includes(cmp)) {
+        updatedComponents.push(cmp);
       }
+    }
+    knownComponentsRef.current = updatedComponents.slice(0, 12);
 
-      // Accumulate known components for per-component stereo routing
-      const updatedComponents = [...knownComponentsRef.current];
-      for (const cmp of update.topComponents.map((c) => c.component)) {
-        if (!updatedComponents.includes(cmp)) {
-          updatedComponents.push(cmp);
-        }
-      }
-      knownComponentsRef.current = updatedComponents.slice(0, 12);
+    const routedCues = update.sonificationCues.map((cue, index) =>
+      routeCueThroughScene(cue, scene, index, knownComponentsRef.current),
+    );
 
-      const routedCues = update.sonificationCues.map((cue, index) =>
-        routeCueThroughScene(cue, scene, index, knownComponentsRef.current),
-      );
+    startTransition(() => {
+      setLastUpdate(update);
+      setRecentWarnings(update.warnings.slice(0, MAX_RECENT_WARNINGS));
+      setError(null);
 
-      startTransition(() => {
-        setLastUpdate(update);
-        setRecentWarnings(update.warnings.slice(0, MAX_RECENT_WARNINGS));
-        setError(null);
+      if (!update.hasData) return;
 
-        if (!update.hasData) {
-          return;
-        }
+      setEmittedCueCount((current) => current + routedCues.length);
+      setRecentCues((current) => [
+        ...routedCues.slice().reverse(),
+        ...current,
+      ].slice(0, MAX_RECENT_CUES));
+      setRecentMarkers((current) => [
+        ...update.anomalyMarkers.slice().reverse(),
+        ...current,
+      ].slice(0, MAX_RECENT_MARKERS));
+    });
 
-        setWindowCount((current) => current + 1);
-        setProcessedLines((current) => current + update.lineCount);
-        setTotalAnomalies((current) => current + update.anomalyCount);
-        setEmittedCueCount((current) => current + routedCues.length);
-        setRecentCues((current) => [
-          ...routedCues.slice().reverse(),
-          ...current,
-        ].slice(0, MAX_RECENT_CUES));
-        setRecentMarkers((current) => [
-          ...update.anomalyMarkers.slice().reverse(),
-          ...current,
-        ].slice(0, MAX_RECENT_MARKERS));
-      });
-
-      if (update.hasData) {
-        // Auto-seed beat clock from the first live BPM when beat-locked preset is active
-        // but no reference anchor was provided (anchor already seeds at handleStart).
-        // Also gently re-sync the running clock when live tempo drifts > 12% from its
-        // current value — keeps phase anchor fixed, only updates the BPM interval.
-        const liveBpmVal = update.suggestedBpm;
-        if (typeof liveBpmVal === "number" && liveBpmVal > 0) {
-          if (beatClockRef.current === null && scene.preset.useBeatGrid) {
-            const ctx = audioContextRef.current;
-            if (ctx) {
-              beatClockRef.current = { originTime: ctx.currentTime, bpm: liveBpmVal };
-              setBeatClockBpm(liveBpmVal);
-            }
-          } else if (beatClockRef.current !== null) {
-            const drift =
-              Math.abs(liveBpmVal - beatClockRef.current.bpm) / beatClockRef.current.bpm;
-            if (drift > 0.12) {
-              beatClockRef.current = { ...beatClockRef.current, bpm: liveBpmVal };
-              setBeatClockBpm(liveBpmVal);
-            }
+    if (update.hasData) {
+      // Auto-seed beat clock from the first live BPM; re-sync on >12% drift
+      const liveBpmVal = update.suggestedBpm;
+      if (typeof liveBpmVal === "number" && liveBpmVal > 0) {
+        if (beatClockRef.current === null && scene.preset.useBeatGrid) {
+          const ctx = audioContextRef.current;
+          if (ctx) {
+            beatClockRef.current = { originTime: ctx.currentTime, bpm: liveBpmVal };
+            setBeatClockBpm(liveBpmVal);
+          }
+        } else if (beatClockRef.current !== null) {
+          const drift =
+            Math.abs(liveBpmVal - beatClockRef.current.bpm) / beatClockRef.current.bpm;
+          if (drift > 0.12) {
+            beatClockRef.current = { ...beatClockRef.current, bpm: liveBpmVal };
+            setBeatClockBpm(liveBpmVal);
           }
         }
+      }
 
-        await playWithCurrentEngine(routedCues, update.suggestedBpm);
-      }
-    } catch (nextError) {
-      if (liveEnabledRef.current) {
-        startTransition(() => {
-          setError(toMessage(nextError));
-        });
-      }
-    } finally {
-      if (liveEnabledRef.current) {
-        pollTimerRef.current = window.setTimeout(() => {
-          void pollWindow();
-        }, POLL_INTERVAL_MS);
-      }
-      setPolling(false);
+      void playWithCurrentEngine(routedCues, update.suggestedBpm);
     }
   });
 
+  // Subscribe to the global monitor stream while this panel is mounted
   useEffect(() => {
-    if (!liveEnabled) {
-      if (pollTimerRef.current !== null) {
-        window.clearTimeout(pollTimerRef.current);
-        pollTimerRef.current = null;
-      }
-      return;
-    }
+    return monitor.subscribe(onStreamUpdate);
+  }, [monitor]);
 
-    void pollWindow();
-
-    return () => {
-      if (pollTimerRef.current !== null) {
-        window.clearTimeout(pollTimerRef.current);
-        pollTimerRef.current = null;
-      }
-    };
-  }, [liveEnabled, repository.sourcePath]);
+  // ---------------------------------------------------------------------------
+  // Start / stop (delegate to MonitorContext)
+  // ---------------------------------------------------------------------------
 
   async function handleStart() {
-    if (pollTimerRef.current !== null) {
-      window.clearTimeout(pollTimerRef.current);
-      pollTimerRef.current = null;
-    }
-
-    cursorRef.current = undefined;
-    setCursor(undefined);
     setLastUpdate(null);
-    setWindowCount(0);
-    setProcessedLines(0);
-    setTotalAnomalies(0);
     setEmittedCueCount(0);
     setRecentCues([]);
     setRecentMarkers([]);
     setRecentWarnings([]);
     setError(null);
 
-    // Start a stream session (file or process adapter)
-    try {
-      const sessionId = `sess-${repository.id}-${Date.now()}`;
-      const input =
-        adapterKind === "process"
-          ? {
-              sessionId,
-              adapterKind: "process" as const,
-              source: repository.sourcePath,
-              label: repository.title,
-              command: processCommand
-                .split(/\s+/)
-                .map((s) => s.trim())
-                .filter(Boolean),
-            }
-          : {
-              sessionId,
-              adapterKind: "file" as const,
-              source: repository.sourcePath,
-              label: repository.title,
-            };
+    const sessionId = `sess-${repository.id}-${Date.now()}`;
+    let input: StartSessionInput;
 
-      await startStreamSession(input);
-      sessionIdRef.current = sessionId;
-      setActiveSessionId(sessionId);
-    } catch {
-      // Fall back to direct file tailing if session creation fails (e.g. in browser)
-      sessionIdRef.current = null;
-      setActiveSessionId(null);
+    if (adapterKind === "process") {
+      input = {
+        sessionId,
+        adapterKind: "process",
+        source: repository.sourcePath,
+        label: repository.title,
+        command: processCommand
+          .split(/\s+/)
+          .map((s) => s.trim())
+          .filter(Boolean),
+      };
+    } else if (adapterKind === "websocket") {
+      const trimmedWsUrl = wsUrl.trim();
+      if (!trimmedWsUrl || trimmedWsUrl === "ws://") {
+        setError("A WebSocket URL is required (e.g. ws://localhost:9000/logs).");
+        return;
+      }
+      input = {
+        sessionId,
+        adapterKind: "websocket",
+        source: trimmedWsUrl,
+        label: repository.title,
+        wsUrl: trimmedWsUrl,
+      };
+    } else if (adapterKind === "http-poll") {
+      const trimmedHttpUrl = httpUrl.trim();
+      if (!trimmedHttpUrl || trimmedHttpUrl === "http://") {
+        setError("An HTTP URL is required (e.g. http://localhost:9200/logs/stream).");
+        return;
+      }
+      input = {
+        sessionId,
+        adapterKind: "http-poll",
+        source: trimmedHttpUrl,
+        label: repository.title,
+        httpUrl: trimmedHttpUrl,
+      };
+    } else {
+      input = {
+        sessionId,
+        adapterKind: "file",
+        source: repository.sourcePath,
+        label: repository.title,
+      };
     }
 
-    await ensureAudioReady();
+    await monitor.startSession(repository, input);
 
-    // Initialise the beat clock from the reference anchor BPM if available
+    // Warm the audio engine and seed the beat clock from the reference anchor
+    await ensureAudioReady();
     const anchorBpm = referenceAnchor?.bpm ?? null;
     const ctx = audioContextRef.current;
     if (ctx && anchorBpm && anchorBpm > 0) {
@@ -786,29 +689,10 @@ export function LiveLogMonitorPanel({
       beatClockRef.current = null;
       setBeatClockBpm(null);
     }
-
-    liveEnabledRef.current = true;
-    setLiveEnabled(true);
   }
 
   function handleStop() {
-    if (pollTimerRef.current !== null) {
-      window.clearTimeout(pollTimerRef.current);
-      pollTimerRef.current = null;
-    }
-
-    const sid = sessionIdRef.current;
-    if (sid) {
-      void stopStreamSession(sid).catch(() => {
-        // best-effort cleanup
-      });
-      sessionIdRef.current = null;
-      setActiveSessionId(null);
-    }
-
-    liveEnabledRef.current = false;
-    setLiveEnabled(false);
-    setPolling(false);
+    void monitor.stopSession();
     beatClockRef.current = null;
     setBeatClockBpm(null);
   }
@@ -828,7 +712,7 @@ export function LiveLogMonitorPanel({
         </div>
         <div className="live-log-toolbar">
           <span className={`live-log-badge ${liveEnabled ? "live" : "idle"}`}>
-            {statusLabel(liveEnabled, polling)}
+            {statusLabel(liveEnabled)}
           </span>
           {!liveEnabled ? (
             <>
@@ -898,7 +782,26 @@ export function LiveLogMonitorPanel({
               >
                 <option value="file">File tail</option>
                 <option value="process">Process stdout</option>
+                <option value="websocket">WebSocket</option>
+                <option value="http-poll">HTTP poll</option>
               </select>
+              {adapterKind === "websocket" ? (
+                <input
+                  className="compact-input compact-input--url"
+                  placeholder="ws://host:port/path"
+                  value={wsUrl}
+                  onChange={(e) => setWsUrl(e.target.value)}
+                  aria-label="WebSocket URL"
+                />
+              ) : adapterKind === "http-poll" ? (
+                <input
+                  className="compact-input compact-input--url"
+                  placeholder="http://host:port/logs/stream"
+                  value={httpUrl}
+                  onChange={(e) => setHttpUrl(e.target.value)}
+                  aria-label="HTTP poll URL"
+                />
+              ) : null}
             </>
           ) : null}
           {liveEnabled ? (
@@ -982,17 +885,32 @@ export function LiveLogMonitorPanel({
         </div>
       ) : null}
 
-      {liveEnabled && activeSessionId ? (
+      {liveEnabled && monitor.session ? (
         <div className="audio-path-card">
           <span>Session</span>
-          <strong>{activeSessionId}</strong>
+          <strong>{monitor.session.sessionId}</strong>
+          {monitor.session.pollMode === "direct" ? (
+            <em> (fallback — direct file poll)</em>
+          ) : monitor.session.pollMode === "websocket" ? (
+            <em> · WebSocket — {monitor.session.sourcePath}</em>
+          ) : monitor.session.pollMode === "http-poll" ? (
+            <em> · HTTP poll — {monitor.session.sourcePath}</em>
+          ) : null}
         </div>
       ) : null}
 
       <div className="metric-grid">
         <div>
           <span>Mode</span>
-          <strong>{adapterKind === "process" ? "Process stdout" : "File tail"}</strong>
+          <strong>
+            {adapterKind === "process"
+              ? "Process stdout"
+              : adapterKind === "websocket"
+                ? "WebSocket"
+                : adapterKind === "http-poll"
+                  ? "HTTP poll"
+                  : "File tail"}
+          </strong>
         </div>
         <div>
           <span>Audio</span>
@@ -1011,16 +929,8 @@ export function LiveLogMonitorPanel({
           </strong>
         </div>
         <div>
-          <span>Cursor</span>
-          <strong>{formatCursor(cursor)}</strong>
-        </div>
-        <div>
-          <span>Poll cadence</span>
-          <strong>{(POLL_INTERVAL_MS / 1000).toFixed(1)}s</strong>
-        </div>
-        <div>
           <span>Windows heard</span>
-          <strong>{windowCount}</strong>
+          <strong>{monitor.metrics.windowCount}</strong>
         </div>
         <div>
           <span>Cues emitted</span>
@@ -1028,11 +938,11 @@ export function LiveLogMonitorPanel({
         </div>
         <div>
           <span>Lines processed</span>
-          <strong>{processedLines}</strong>
+          <strong>{monitor.metrics.processedLines}</strong>
         </div>
         <div>
           <span>Anomalies heard</span>
-          <strong>{totalAnomalies}</strong>
+          <strong>{monitor.metrics.totalAnomalies}</strong>
         </div>
         <div>
           <span>Beat clock</span>

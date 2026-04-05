@@ -403,7 +403,10 @@ def _analyze_log_chunk(
 ) -> tuple[dict[str, Any], list[str]]:
     log_path = Path(source_path).expanduser().resolve()
     if not log_path.is_file():
-        raise FileNotFoundError(f"Log path does not exist or is not a file: {log_path}")
+        if not live_mode:
+            raise FileNotFoundError(f"Log path does not exist or is not a file: {log_path}")
+        # Virtual / URL / directory sources are valid in live mode —
+        # log_path is used only for cosmetic title derivation below.
 
     raw_lines = chunk.splitlines()
     return _summarize_log_signal(

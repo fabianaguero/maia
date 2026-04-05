@@ -80,7 +80,7 @@ Maia is a local-first desktop app that turns repositories, logs, and reusable so
 ## Still missing / future work
 The most realistic implementation order from this point: (1) always-on background monitoring so sonification keeps running when the user navigates away from the analyzer screen; (2) broader stream adapters beyond local files and spawned processes; (3) consolidation and test coverage for the shipped workflow; (4) a richer sonification engine with denser sequencing and component-level mapping; (5) a full export and bounce pipeline beyond `plan.json` and `preview.wav`; and (6) additional format support and broader curated palette coverage.
 
-- **Always-on background monitoring** — stream sessions are currently scoped to the active analyzer screen; no background monitoring survives navigation or screen sleep.
+- **Always-on background monitoring** ✅ (shipped: `MonitorContext` lifts poll loop to root, sidebar live badge, session survives navigation) — resolved.
 - **Broader stream adapters** — only local file tail and process adapters exist today. Long-term targets: WebSocket/HTTP push, Amazon CloudWatch Logs, Elastic/ELK, Grafana Loki, Splunk, Datadog, Google Cloud Logging, Azure Monitor Logs.
 - **Test coverage** — zero test files exist in the project; no contract fixtures, no golden analysis tests, no native-vs-mock gate.
 - **Dense multi-track arrangement** — current live scene still does one cue per event; no pad/kit sequencer, no per-component routing beyond generic log levels.
@@ -89,8 +89,8 @@ The most realistic implementation order from this point: (1) always-on backgroun
 - **Tree-sitter beyond Java/Kotlin** — TypeScript, Python, Go, Rust, and other grammars not yet wired.
 
 ## Implementation plan (summary)
-1) Always-on background monitoring
-- Keep stream sessions alive when the analyzer screen is unmounted; surface status in AppSidebar.
+1) Always-on background monitoring ✅
+- `MonitorContext` at app root holds the poll loop; `AppSidebar` shows live status badge; `LiveLogMonitorPanel` is now a pure subscriber.
 
 2) Broader stream adapters
 - WebSocket + HTTP push adapters; later connect to managed log platforms.
@@ -106,7 +106,7 @@ The most realistic implementation order from this point: (1) always-on backgroun
 - Extend supported formats (m4a etc.).
 
 6) Stream adapters + session monitoring ✅ (shipped: file + process adapters, ring buffer, SessionRegistry)
-- Always-on background monitoring and broader platform adapters still pending.
+- Always-on background monitoring ✅ shipped. Broader platform adapters still pending.
 
 7) Sonification engine ✅ (shipped: genre palette ✅, sequencer presets ✅, reference anchor ✅, reference playlist ✅, beat-phase scheduling ✅, persistence ✅; dense multi-track arrangement pending)
 - Next: denser cue sequencing, per-component event mapping, multi-track arrangement.

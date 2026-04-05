@@ -110,3 +110,18 @@ export async function pollStreamSession(
 ): Promise<StreamSessionPollResult> {
   return invoke<StreamSessionPollResult>("poll_stream_session", { sessionId });
 }
+
+/**
+ * Feed a raw chunk of newline-delimited log text into a session ring buffer and
+ * return the accumulated analysis.  Used by the WebSocket and HTTP-poll adapters
+ * which manage their own connections on the JS side.
+ *
+ * If `chunk` is empty the ring buffer is not updated, but `session_poll` is
+ * still called so callers always get the current accumulated state.
+ */
+export async function ingestStreamChunk(
+  sessionId: string,
+  chunk: string,
+): Promise<StreamSessionPollResult> {
+  return invoke<StreamSessionPollResult>("ingest_stream_chunk", { sessionId, chunk });
+}

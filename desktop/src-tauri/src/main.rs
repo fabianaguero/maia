@@ -871,6 +871,107 @@ fn poll_stream_session(
     })
 }
 
+// ---------------------------------------------------------------------------
+// ingest_stream_chunk — used by WebSocket and HTTP-poll adapters that manage
+// their own connection on the JS side.  Feeds a raw text chunk into the
+// session ring buffer via the Python analyzer, then polls for accumulated
+// analysis.  If `chunk` is empty the feed step is skipped; `session_poll` is
+// always called so callers still receive the current accumulated state.
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+fn ingest_stream_chunk(
+    session_id: String,
+    chunk: String,
+    registry: State<'_, SessionRegistryState>,
+) -> Result<StreamSessionPollResult, String> {
+    let mut warnings: Vec<String> = Vec::new();
+
+    // Feed non-empty chunks into the Python ring buffer
+    if !chunk.trim().is_empty() {
+        let source_path = {
+            let reg = registry.lock().map_err(|e| format!("Registry lock: {e}"))?;
+            reg.sessions.get(&session_id)
+                .map(|s| s.source.clone())
+                .unwrap_or_else(|| session_id.clone())
+        };
+
+        let feed_request = json!({
+            "contractVersion": CONTRACT_VERSION,
+            "requestId": format!("sess-feed-{session_id}"),
+            "action": "analyze",
+            "payload": {
+                "assetType": "repo_analysis",
+                "source": { "kind": "file", "path": source_path },
+                "options": {
+                    "logTailChunk": chunk,
+                    "logTailSessionId": session_id,
+                    "logTailFromOffset": 0,
+                    "logTailLiveMode": true
+                }
+            }
+        });
+        let _ = execute_analyzer_request(&feed_request);
+    }
+
+    // Update session metadata
+    {
+        let mut reg = registry.lock().map_err(|e| format!("Registry lock: {e}"))?;
+        if let Some(session) = reg.sessions.get_mut(&session_id) {
+            session.last_polled_at = Some(now_iso());
+            session.total_polls += 1;
+        }
+    }
+
+    // Ask Python to analyse the accumulated ring buffer
+    let poll_request = json!({
+        "contractVersion": CONTRACT_VERSION,
+        "requestId": format!("sess-poll-{session_id}"),
+        "action": "session_poll",
+        "payload": { "sessionId": session_id }
+    });
+    let response = execute_analyzer_request(&poll_request)?;
+    let parsed: AnalyzerResponseEnvelope = serde_json::from_value(response)
+        .map_err(|e| format!("Failed to decode session_poll response: {e}"))?;
+
+    if parsed.status == "error" {
+        let message = parsed.error
+            .map(|e| e.message)
+            .unwrap_or_else(|| "Analyzer returned unknown session_poll error.".to_string());
+        return Err(message);
+    }
+
+    let resp_payload = parsed.payload
+        .ok_or_else(|| "Analyzer did not return session_poll payload.".to_string())?;
+    warnings.extend(parsed.warnings);
+
+    let has_data: bool = resp_payload.summary != "Session buffer empty — waiting for data.";
+    let metrics = &resp_payload.musical_asset.metrics;
+
+    let session_record = {
+        let reg = registry.lock().map_err(|e| format!("Registry lock: {e}"))?;
+        reg.sessions.get(&session_id).cloned()
+            .ok_or_else(|| format!("Session disappeared during ingest_stream_chunk: {session_id}"))?
+    };
+
+    Ok(StreamSessionPollResult {
+        session: session_record,
+        has_data,
+        summary: resp_payload.summary,
+        suggested_bpm: resp_payload.musical_asset.suggested_bpm,
+        confidence: resp_payload.musical_asset.confidence,
+        dominant_level: metric_string(metrics, "dominantLevel"),
+        line_count: metric_i64(metrics, "lineCount"),
+        anomaly_count: metric_i64(metrics, "anomalyCount"),
+        level_counts: metrics.get("levelCounts").cloned()
+            .unwrap_or_else(|| Value::Object(serde_json::Map::new())),
+        anomaly_markers: decode_json_metric(metrics, "anomalyMarkers")?,
+        top_components: decode_json_metric(metrics, "topComponents")?,
+        sonification_cues: decode_json_metric(metrics, "sonificationCues")?,
+        warnings,
+    })
+}
+
 #[tauri::command]
 fn pick_base_asset_path(
     source_kind: String,
@@ -3877,6 +3978,7 @@ fn main() {
             stop_stream_session,
             list_stream_sessions,
             poll_stream_session,
+            ingest_stream_chunk,
             pick_base_asset_path,
             list_tracks,
             import_track,

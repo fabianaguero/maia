@@ -179,7 +179,7 @@ export interface ImportRepositoryInput {
   label?: string;
 }
 
-export type StreamAdapterKind = "file" | "process";
+export type StreamAdapterKind = "file" | "process" | "websocket" | "http-poll";
 
 export interface StreamSessionRecord {
   sessionId: string;
@@ -198,6 +198,10 @@ export interface StartSessionInput {
   source: string;
   label?: string;
   command?: string[];
+  /** WebSocket URL — required when adapterKind is "websocket" */
+  wsUrl?: string;
+  /** HTTP endpoint URL — required when adapterKind is "http-poll" */
+  httpUrl?: string;
 }
 
 export interface StreamSessionPollResult {
