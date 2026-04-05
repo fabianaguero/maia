@@ -70,6 +70,8 @@ Maia is a local-first desktop app that turns repositories, logs, and reusable so
 - DSP integration via librosa (tempo/onset/beat tracking replacing pure heuristics). ✅
 - Session-based stream polling: ring buffer + process adapter in `stream.py`; `SessionRegistry` + 4 Tauri commands in `main.rs`; adapter selector in `LiveLogMonitorPanel`. ✅
 - Genre-configured instrumental palette: 8 curated genres in `music-styles.json`, per-severity waveform/pitch/gain profiles in `liveSonificationScene.ts`, genre selector in pre-start toolbar. ✅
+- Reference anchor: select an imported track as a creative anchor; `deriveReferenceAnchor` extracts BPM, energy, and music-style to override genre, auto-suggest sequencer preset, and tilt gain. ✅
+- Beat-phase-aware scheduling: persistent `BeatClock` seeded from anchor BPM (or first live-detected BPM); `nextBeatTime` aligns cue start to the nearest subdivision boundary; gentle ±12% drift re-sync per poll window. ✅
 
 ## Still missing / future work
 - Support for additional audio formats (e.g. m4a) beyond current decoders.
@@ -93,7 +95,7 @@ Maia is a local-first desktop app that turns repositories, logs, and reusable so
 4) Stream adapters + session monitoring ✅ (shipped: file + process adapters, ring buffer, SessionRegistry)
 - Broader adapters (sockets, HTTP) and always-on background monitoring still pending. Long-term targets include managed log platforms such as Amazon CloudWatch Logs, Elastic/ELK, Grafana Loki, Splunk, Datadog Log Management, Google Cloud Logging, and Azure Monitor Logs.
 
-5) Sonification engine upgrades (in progress: genre palette shipped; dense sequencing and component routing pending)
+5) Sonification engine upgrades (in progress: genre palette, reference anchor, beat-phase scheduling shipped; dense multi-track arrangement pending)
 - Scene presets, routing by component/pattern, sequencing.
 
 6) Composition export (pending: preview.wav exists; full offline render + stems + export UI not started)

@@ -10,7 +10,7 @@ Code and logs — not imported tracks — are the primary signal sources. The bu
 - map those events to reusable sonic assets and genre-configured musical changes
 - let teams listen to systems and repositories as an operational signal surface
 
-Current MVP ships: local repository intake (Java/Kotlin tree-sitter parsing), local log-file analysis, reusable base assets, composition previews with in-app playback, a live log-tail sonification loop with runtime scenes, session-based stream polling for growing files and spawned process output, and a genre-configured instrumental palette shaping live cues. Generalized multi-source stream ingestion and always-on background monitoring are still product direction.
+Current MVP ships: local repository intake (Java/Kotlin tree-sitter parsing), local log-file analysis, reusable base assets, composition previews with in-app playback, a live log-tail sonification loop with runtime scenes, session-based stream polling for growing files and spawned process output, a genre-configured instrumental palette shaping live cues, a reference-anchor system that aligns live cues to an imported favourite track's BPM and energy, and beat-phase-aware scheduling with a persistent beat clock. Generalized multi-source stream ingestion and always-on background monitoring are still product direction.
 
 ## Main modules
 - `desktop/`: Tauri + React + TypeScript desktop shell
@@ -83,4 +83,5 @@ Tracks are currently a reference/control lane. Repositories and, later, logs are
 - Saved output for composition results is previews and arrangement artifacts (`plan.json`, `preview.wav`) under Maia-managed local storage. A full audio export/bounce pipeline has not been built yet.
 - Browser fallback and Tauri/SQLite paths now also emit the same `composition_result` shape so composition UX does not fork by runtime.
 - Missing or unresolved track sources still fall back to deterministic mock analysis so demo flows keep working without blocking the library.
+- A reference track selected as a creative anchor seeds the `BeatClock` origin at session start with the anchor BPM. `nextBeatTime` then aligns each poll window's first cue to the nearest subdivision boundary of that clock. If no anchor is set, the clock auto-seeds from the first live-detected BPM. The clock's BPM re-syncs gently (>12% drift threshold) while the origin stays fixed, preserving phase across tempo changes.
 - Live log-stream sonification now exists for local growing files in the analyzer UI, but broader stream adapters and background monitoring outside the active screen are not part of the current MVP.

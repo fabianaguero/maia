@@ -628,6 +628,28 @@ export function LiveLogMonitorPanel({
       });
 
       if (update.hasData) {
+        // Auto-seed beat clock from the first live BPM when beat-locked preset is active
+        // but no reference anchor was provided (anchor already seeds at handleStart).
+        // Also gently re-sync the running clock when live tempo drifts > 12% from its
+        // current value — keeps phase anchor fixed, only updates the BPM interval.
+        const liveBpmVal = update.suggestedBpm;
+        if (typeof liveBpmVal === "number" && liveBpmVal > 0) {
+          if (beatClockRef.current === null && scene.preset.useBeatGrid) {
+            const ctx = audioContextRef.current;
+            if (ctx) {
+              beatClockRef.current = { originTime: ctx.currentTime, bpm: liveBpmVal };
+              setBeatClockBpm(liveBpmVal);
+            }
+          } else if (beatClockRef.current !== null) {
+            const drift =
+              Math.abs(liveBpmVal - beatClockRef.current.bpm) / beatClockRef.current.bpm;
+            if (drift > 0.12) {
+              beatClockRef.current = { ...beatClockRef.current, bpm: liveBpmVal };
+              setBeatClockBpm(liveBpmVal);
+            }
+          }
+        }
+
         await playWithCurrentEngine(routedCues, update.suggestedBpm);
       }
     } catch (nextError) {
