@@ -1,4 +1,5 @@
 import type { BootstrapManifest } from "../contracts";
+import type { ActiveMonitorSession, MonitorMetrics } from "../features/monitor/MonitorContext";
 import type { AppScreen } from "../types/library";
 
 interface AppSidebarProps {
@@ -11,6 +12,10 @@ interface AppSidebarProps {
   selectedItemTitle: string | null;
   manifest: BootstrapManifest | null;
   analyzerLabel: string;
+  monitorSession: ActiveMonitorSession | null;
+  monitorMetrics: MonitorMetrics;
+  onStopMonitor: () => void;
+  onOpenMonitoredRepo: () => void;
 }
 
 const navigationItems: Array<{
@@ -40,7 +45,19 @@ export function AppSidebar({
   selectedItemTitle,
   manifest,
   analyzerLabel,
+  monitorSession,
+  monitorMetrics,
+  onStopMonitor,
+  onOpenMonitoredRepo,
 }: AppSidebarProps) {
+  const uptimeSeconds = monitorSession
+    ? Math.floor((Date.now() - monitorSession.startedAt) / 1000)
+    : 0;
+  const uptimeLabel =
+    uptimeSeconds < 60
+      ? `${uptimeSeconds}s`
+      : `${Math.floor(uptimeSeconds / 60)}m ${uptimeSeconds % 60}s`;
+
   return (
     <aside className="sidebar panel">
       <div className="sidebar-brand">
@@ -69,6 +86,44 @@ export function AppSidebar({
           );
         })}
       </nav>
+
+      {monitorSession ? (
+        <div className="monitor-status-card">
+          <div className="monitor-status-header">
+            <span className="monitor-pulse" aria-hidden="true" />
+            <span className="monitor-status-label">Live monitor</span>
+            <span className="monitor-mode-badge">
+              {monitorSession.adapterKind === "process" ? "process" : "file tail"}
+            </span>
+          </div>
+          <p className="monitor-repo-title" title={monitorSession.repoTitle}>
+            {monitorSession.repoTitle}
+          </p>
+          <div className="monitor-metrics">
+            <span>{monitorMetrics.windowCount} windows</span>
+            <span>·</span>
+            <span>{monitorMetrics.totalAnomalies} anomalies</span>
+            <span>·</span>
+            <span>{uptimeLabel}</span>
+          </div>
+          <div className="monitor-actions">
+            <button
+              type="button"
+              className="compact-action"
+              onClick={onOpenMonitoredRepo}
+            >
+              Open
+            </button>
+            <button
+              type="button"
+              className="compact-action danger"
+              onClick={onStopMonitor}
+            >
+              Stop
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="sidebar-meta">
         <div className="sidebar-stat">

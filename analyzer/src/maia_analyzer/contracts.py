@@ -4,7 +4,7 @@ from typing import Any
 
 
 CONTRACT_VERSION = "1.0"
-SUPPORTED_ACTIONS = {"health", "analyze"}
+SUPPORTED_ACTIONS = {"health", "analyze", "session_start", "session_stop", "session_list", "session_poll"}
 SUPPORTED_ASSET_TYPES = {
     "track_analysis",
     "repo_analysis",

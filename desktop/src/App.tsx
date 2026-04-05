@@ -4,6 +4,7 @@ import { loadBootstrapManifest, runAnalyzerRequest } from "./api/analyzer";
 import { AppSidebar } from "./components/AppSidebar";
 import { AnalyzerScreen } from "./features/analyzer/AnalyzerScreen";
 import { LibraryScreen } from "./features/library/LibraryScreen";
+import { useMonitor } from "./features/monitor/MonitorContext";
 import { useBaseAssets } from "./hooks/useBaseAssets";
 import { useCompositionResults } from "./hooks/useCompositionResults";
 import { useLibrary } from "./hooks/useLibrary";
@@ -43,6 +44,7 @@ export default function App() {
   const repositories = useRepositories();
   const baseAssets = useBaseAssets();
   const compositions = useCompositionResults();
+  const monitor = useMonitor();
 
   useEffect(() => {
     let active = true;
@@ -113,6 +115,14 @@ export default function App() {
     return false;
   }
 
+  function handleOpenMonitoredRepo() {
+    const { session } = monitor;
+    if (!session) return;
+    repositories.setSelectedRepositoryId(session.repoId);
+    setAnalysisMode("repo");
+    setScreen("analyzer");
+  }
+
   const analyzerLabel = isHealthResponse(health)
     ? `${health.payload.analyzerVersion} on ${health.payload.runtime}`
     : booting
@@ -155,6 +165,10 @@ export default function App() {
         selectedItemTitle={selectedItemTitle}
         manifest={manifest}
         analyzerLabel={analyzerLabel}
+        monitorSession={monitor.session}
+        monitorMetrics={monitor.metrics}
+        onStopMonitor={() => void monitor.stopSession()}
+        onOpenMonitoredRepo={handleOpenMonitoredRepo}
       />
 
       <section className="app-main">

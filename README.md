@@ -54,6 +54,23 @@ python -m analyzer.cli analyze-repo --path /path/to/repo
 python -m analyzer.cli list-assets
 ```
 
+### Deploy landing (`/site`) to Cloudflare Pages
+
+The landing uses Vite 5. If you run `wrangler deploy`, Wrangler may try framework auto-detection and fail asking for Vite 6+.
+Use Pages deployment instead:
+
+```bash
+cd site
+npm install
+npm run build
+CLOUDFLARE_PAGES_PROJECT=maia npm run deploy:pages
+```
+
+For Cloudflare build settings, use:
+- Build command: `npm run build`
+- Build output directory: `dist`
+- Deploy command: leave empty (Pages handles publish) or use `npm run deploy:pages` in CI.
+
 ### Tests
 
 ```bash

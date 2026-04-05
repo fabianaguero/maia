@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy:pages": "wrangler pages deploy dist --project-name ${CLOUDFLARE_PAGES_PROJECT:-maia}",
+    "deploy:worker-static": "wrangler deploy --assets dist"
   },
   "dependencies": {
     "framer-motion": "^11.3.19",
@@ -19,6 +21,7 @@
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14",
-    "vite": "^5.4.8"
+    "vite": "^5.4.8",
+    "wrangler": "^4.80.0"
   }
 }

@@ -1,5 +1,6 @@
 # Tauri build artifacts
 src-tauri/target/
+desktop/src-tauri/target/
 src-tauri/gen/
 dist/
 

@@ -179,28 +179,15 @@ def _handle_session_poll(request_id: str, payload: dict[str, Any]) -> dict[str, 
 
     chunk = "\n".join(ring)
     source = snapshot["source"]
-    try:
-        asset, warnings = analyze_repository(
-            "file",
-            source,
-            options={
-                "inferCodeSuggestedBpm": True,
-                "logTailChunk": chunk,
-                "logTailLiveMode": True,
-            },
-        )
-    except (FileNotFoundError, ValueError, OSError):
-        # If source file is gone (e.g. process adapter with synthetic source)
-        # fall back to a synthetic path that still lets _analyze_log_chunk work
-        asset, warnings = analyze_repository(
-            "file",
-            source,
-            options={
-                "inferCodeSuggestedBpm": True,
-                "logTailChunk": chunk,
-                "logTailLiveMode": True,
-            },
-        )
+    asset, warnings = analyze_repository(
+        "file",
+        source,
+        options={
+            "inferCodeSuggestedBpm": True,
+            "logTailChunk": chunk,
+            "logTailLiveMode": True,
+        },
+    )
 
     return ok_response(
         request_id,

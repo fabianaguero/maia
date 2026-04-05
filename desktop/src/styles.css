@@ -204,6 +204,85 @@ dt,
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* ── Sidebar live-monitor status card ─────────────────────────────── */
+.monitor-status-card {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 200, 80, 0.07);
+  border: 1px solid rgba(255, 200, 80, 0.2);
+  display: grid;
+  gap: 8px;
+}
+
+.monitor-status-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.monitor-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f5a623;
+  flex-shrink: 0;
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.45; transform: scale(0.75); }
+}
+
+.monitor-status-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #f5a623;
+}
+
+.monitor-mode-badge {
+  margin-left: auto;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(255, 200, 80, 0.15);
+  color: rgba(255, 200, 80, 0.9);
+}
+
+.monitor-repo-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.monitor-metrics {
+  font-size: 0.73rem;
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.monitor-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.compact-action.danger {
+  color: #ff7272;
+  border-color: rgba(255, 114, 114, 0.35);
+}
+
+.compact-action.danger:hover {
+  background: rgba(255, 114, 114, 0.12);
+}
+
 .sidebar-footer strong,
 .sidebar-stat strong,
 .summary-pill strong {
@@ -1014,6 +1093,26 @@ dd {
 .compact-action:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+.compact-input {
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  font-size: 0.86rem;
+  min-width: 0;
+  transition: border-color 120ms ease;
+}
+
+.compact-input:focus-visible {
+  border-color: rgba(33, 180, 184, 0.4);
+  outline: none;
+}
+
+.compact-input--url {
+  width: 22ch;
 }
 
 /* ─── Removable playlist pill ───────────────────────────────────────────── */
