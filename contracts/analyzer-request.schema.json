@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://maia.local/contracts/analyzer-request.schema.json",
+  "title": "Maia Analyzer Request",
+  "type": "object",
+  "required": [
+    "contractVersion",
+    "requestId",
+    "action",
+    "payload"
+  ],
+  "properties": {
+    "contractVersion": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "requestId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "health",
+        "analyze"
+      ]
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "action": {
+            "const": "health"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "action": {
+            "const": "analyze"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "assetType",
+              "source"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "assetType": {
+                "$ref": "#/$defs/musicalAssetType"
+              },
+              "source": {
+                "$ref": "#/$defs/sourceRef"
+              },
+              "options": {
+                "$ref": "#/$defs/analysisOptions"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "musicalAssetType": {
+      "type": "string",
+      "enum": [
+        "track_analysis",
+        "repo_analysis",
+        "base_asset",
+        "composition_result"
+      ]
+    },
+    "sourceRef": {
+      "type": "object",
+      "required": [
+        "kind",
+        "path"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "file",
+            "directory",
+            "url"
+          ]
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string"
+        }
+      }
+    },
+    "analysisOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "waveformBins": {
+          "type": "integer",
+          "minimum": 8,
+          "maximum": 4096
+        },
+        "beatGridResolution": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        },
+        "captureBpmCurve": {
+          "type": "boolean"
+        },
+        "inferCodeSuggestedBpm": {
+          "type": "boolean"
+        },
+        "logTailChunk": {
+          "type": "string"
+        },
+        "logTailFromOffset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "logTailToOffset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "logTailLiveMode": {
+          "type": "boolean"
+        },
+        "baseAssetCategory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "baseAssetReusable": {
+          "type": "boolean"
+        },
+        "compositionBaseAssetEntryCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "compositionReferenceType": {
+          "type": "string",
+          "enum": [
+            "track",
+            "repo",
+            "manual"
+          ]
+        },
+        "compositionReferenceLabel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "compositionReferenceBpm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "compositionPreviewOutputPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parseLanguages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "parseExtensions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

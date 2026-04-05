@@ -1,0 +1,61 @@
+{
+  "defaultTrackMusicStyleId": "house",
+  "musicStyles": [
+    {
+      "id": "house",
+      "label": "House",
+      "description": "Warm 4x4 instrumental groove — steady tri-wave pulse, moderate dynamics.",
+      "minBpm": 118,
+      "maxBpm": 128
+    },
+    {
+      "id": "melodic-house",
+      "label": "Melodic House",
+      "description": "Broader melodic instrumental phrasing with restrained peak energy.",
+      "minBpm": 120,
+      "maxBpm": 126
+    },
+    {
+      "id": "progressive-house",
+      "label": "Progressive House",
+      "description": "Long-build instrumental arrangements with spacious transitions.",
+      "minBpm": 122,
+      "maxBpm": 130
+    },
+    {
+      "id": "edm",
+      "label": "EDM",
+      "description": "Festival-oriented instrumental prior — punchy square waves, wide stereo impact.",
+      "minBpm": 126,
+      "maxBpm": 132
+    },
+    {
+      "id": "techno",
+      "label": "Techno",
+      "description": "Driving instrumental warehouse prior — dense percussive transients, high gain.",
+      "minBpm": 128,
+      "maxBpm": 136
+    },
+    {
+      "id": "trance",
+      "label": "Trance",
+      "description": "Euphoric instrumental prior — sine-swept pads, fast momentum.",
+      "minBpm": 132,
+      "maxBpm": 140
+    },
+    {
+      "id": "classic",
+      "label": "Classical",
+      "description": "Orchestral instrumental palette — long sine phrases, gentle dynamics, wide harmonic spacing.",
+      "minBpm": 60,
+      "maxBpm": 120
+    },
+    {
+      "id": "jazz",
+      "label": "Jazz",
+      "description": "Instrumental jazz palette — variable swing feel, subtle dynamics, tritone accents.",
+      "minBpm": 80,
+      "maxBpm": 200
+    }
+  ]
+}

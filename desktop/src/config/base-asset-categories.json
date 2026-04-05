@@ -1,0 +1,40 @@
+{
+  "defaultBaseAssetCategoryId": "collection",
+  "baseAssetCategories": [
+    {
+      "id": "collection",
+      "label": "Collection",
+      "description": "Folder-level reusable pack that groups related source material."
+    },
+    {
+      "id": "drum-kit",
+      "label": "Drum Kit",
+      "description": "One-shots, loops, and percussion building blocks for rhythm layers."
+    },
+    {
+      "id": "bass-motif",
+      "label": "Bass Motif",
+      "description": "Reusable low-end phrases, riffs, and groove anchors."
+    },
+    {
+      "id": "pad-texture",
+      "label": "Pad Texture",
+      "description": "Atmospheres, beds, and sustained harmonic material."
+    },
+    {
+      "id": "fx-palette",
+      "label": "FX Palette",
+      "description": "Transitions, rises, impacts, and utility sonic accents."
+    },
+    {
+      "id": "vocal-hook",
+      "label": "Vocal Hook",
+      "description": "Chops, phrases, and topline fragments intended for reuse."
+    },
+    {
+      "id": "code-pattern",
+      "label": "Code Pattern",
+      "description": "Reusable repo/log-derived rhythm motif or structural pattern."
+    }
+  ]
+}

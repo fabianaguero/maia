@@ -1,0 +1,2 @@
+[console_scripts]
+maia-analyzer = maia_analyzer.cli:main
