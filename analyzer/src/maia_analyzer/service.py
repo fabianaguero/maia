@@ -7,6 +7,7 @@ from . import __version__
 from .assets import analyze_base_asset
 from .composition import analyze_composition
 from .audio import analyze_track, get_supported_track_formats
+from .dsp import dsp_available
 from .contracts import ContractError, error_response, ok_response, parse_request
 from .repository import analyze_repository
 
@@ -31,6 +32,7 @@ def handle_request(raw: Any) -> dict[str, Any]:
                         "log-file-heuristics",
                         "log-live-tail",
                         "track-embedded-heuristic",
+                        "track-librosa-dsp" if dsp_available() else "track-dsp-unavailable",
                         "base-assets",
                         "composition-planner",
                     ],

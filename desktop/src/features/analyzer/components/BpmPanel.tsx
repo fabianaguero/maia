@@ -16,11 +16,32 @@ function formatDuration(durationSeconds: number | null): string {
 }
 
 function formatAnalysisMode(analysisMode: string): string {
-  return analysisMode
+  const labels: Record<string, string> = {
+    "librosa-dsp": "Librosa DSP",
+    "embedded-heuristic": "Embedded Heuristic",
+    "hash-stub": "Hash Stub",
+  };
+  return labels[analysisMode] ?? analysisMode
     .split("-")
     .filter(Boolean)
     .map((segment) => segment[0]?.toUpperCase() + segment.slice(1))
     .join(" ");
+}
+
+function describeStorage(track: LibraryTrack): string {
+  if (!track.storagePath) {
+    return "Original/demo path";
+  }
+
+  if (track.storagePath.startsWith("browser-fallback://")) {
+    return "Simulated snapshot";
+  }
+
+  if (track.storagePath === track.sourcePath) {
+    return "Legacy/original path";
+  }
+
+  return "Managed snapshot";
 }
 
 export function BpmPanel({ track }: BpmPanelProps) {
@@ -59,6 +80,10 @@ export function BpmPanel({ track }: BpmPanelProps) {
         <div>
           <span>Analysis mode</span>
           <strong>{formatAnalysisMode(track.analysisMode)}</strong>
+        </div>
+        <div>
+          <span>Storage</span>
+          <strong>{describeStorage(track)}</strong>
         </div>
       </div>
     </section>

@@ -12,6 +12,7 @@ dependencies = [
 	"tree-sitter>=0.22,<1",
 	"tree-sitter-java>=0.23,<1",
 	"tree-sitter-kotlin>=1.0,<2",
+	"librosa>=0.10,<1",
 ]
 
 [project.scripts]

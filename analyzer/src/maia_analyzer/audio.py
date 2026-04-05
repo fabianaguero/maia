@@ -15,6 +15,8 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - protected by project dependency, kept for resilience
     miniaudio = None
 
+from .dsp import analyze_dsp, dsp_available
+
 
 MAX_ANALYSIS_SECONDS = 180
 FRAME_SIZE = 1024
@@ -61,10 +63,21 @@ def _build_embedded_track_asset(
     analysis_seconds = decoded["analysisSeconds"]
     format_name = decoded["formatName"]
     decoder = decoded["decoder"]
-    waveform = _build_waveform_bins(samples, waveform_bins)
-    suggested_bpm, confidence = _estimate_bpm(samples, sample_rate_hz)
-    beat_grid = _build_beat_grid(samples, sample_rate_hz, suggested_bpm, duration_seconds)
-    bpm_curve = _build_bpm_curve(suggested_bpm, duration_seconds)
+
+    dsp_result = analyze_dsp(samples, sample_rate_hz, waveform_bins)
+    if dsp_result is not None:
+        waveform = dsp_result["waveformBins"]
+        suggested_bpm = dsp_result["suggestedBpm"]
+        confidence = dsp_result["confidence"]
+        beat_grid = dsp_result["beatGrid"]
+        bpm_curve = dsp_result["bpmCurve"]
+        analysis_mode = dsp_result["analysisMode"]
+    else:
+        waveform = _build_waveform_bins(samples, waveform_bins)
+        suggested_bpm, confidence = _estimate_bpm(samples, sample_rate_hz)
+        beat_grid = _build_beat_grid(samples, sample_rate_hz, suggested_bpm, duration_seconds)
+        bpm_curve = _build_bpm_curve(suggested_bpm, duration_seconds)
+        analysis_mode = "embedded-heuristic"
 
     asset = {
         "id": str(uuid4()),
@@ -76,7 +89,7 @@ def _build_embedded_track_asset(
         "tags": [
             "track-analysis",
             track_path.suffix.lower().lstrip(".") or "unknown",
-            "embedded-heuristic",
+            analysis_mode,
             decoder.replace("_", "-"),
         ],
         "metrics": {
@@ -87,8 +100,9 @@ def _build_embedded_track_asset(
             "analysisWindowSeconds": analysis_seconds,
             "sampleRateHz": sample_rate_hz,
             "channels": channels,
-            "analysisMode": "embedded-heuristic",
+            "analysisMode": analysis_mode,
             "decoder": decoder,
+            "dspAvailable": dsp_available(),
         },
         "artifacts": {
             "waveformBins": waveform,
@@ -99,7 +113,8 @@ def _build_embedded_track_asset(
     }
 
     warnings = [
-        f"Track analysis runs inside the Maia analyzer using the embedded {decoder} decoder. Higher-fidelity DSP can later replace this path with librosa or Essentia without depending on system tools.",
+        f"Track analysis runs inside the Maia analyzer using the embedded {decoder} decoder."
+        + (" librosa DSP active." if analysis_mode == "librosa-dsp" else " Higher-fidelity DSP can later replace this path with librosa or Essentia without depending on system tools."),
     ]
     if duration_seconds and analysis_seconds and analysis_seconds < duration_seconds:
         warnings.append(
