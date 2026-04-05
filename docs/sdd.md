@@ -73,7 +73,7 @@ Maia is a local-first desktop app that turns repositories, logs, and reusable so
 
 ## Still missing / future work
 - Support for additional audio formats (e.g. m4a) beyond current decoders.
-- Generalized stream adapters beyond local file tail and spawned process (sockets, HTTP, external services).
+- Generalized stream adapters beyond local file tail and spawned process. Over time this can expand from local files to managed log platforms and event-stream sources such as Amazon CloudWatch Logs, Elastic/ELK, Grafana Loki, Splunk, Datadog Log Management, Google Cloud Logging, Azure Monitor Logs, and other comparable systems.
 - Always-on background monitoring outside the active analyzer screen.
 - Richer sonification engine (dense sequencing, component-level event mapping, multi-track arrangement).
 - Export/bounce pipeline: `plan.json` and `preview.wav` exist; full offline render + stems + export UI do not.
@@ -91,7 +91,7 @@ Maia is a local-first desktop app that turns repositories, logs, and reusable so
 - Extend supported formats.
 
 4) Stream adapters + session monitoring ✅ (shipped: file + process adapters, ring buffer, SessionRegistry)
-- Broader adapters (sockets, HTTP) and always-on background monitoring still pending.
+- Broader adapters (sockets, HTTP) and always-on background monitoring still pending. Long-term targets include managed log platforms such as Amazon CloudWatch Logs, Elastic/ELK, Grafana Loki, Splunk, Datadog Log Management, Google Cloud Logging, and Azure Monitor Logs.
 
 5) Sonification engine upgrades (in progress: genre palette shipped; dense sequencing and component routing pending)
 - Scene presets, routing by component/pattern, sequencing.
