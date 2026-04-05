@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MusicalAsset",
+  "description": "Core musical asset domain contract for Maia",
+  "definitions": {
+    "AssetType": {
+      "type": "string",
+      "enum": ["track_analysis", "repo_analysis", "base_asset", "composition_result"]
+    },
+    "BeatInfo": {
+      "type": "object",
+      "properties": {
+        "time": { "type": "number" },
+        "strength": { "type": "number", "minimum": 0, "maximum": 1 },
+        "beat_number": { "type": "integer" }
+      },
+      "required": ["time", "strength", "beat_number"]
+    },
+    "BpmPoint": {
+      "type": "object",
+      "properties": {
+        "time": { "type": "number" },
+        "bpm": { "type": "number" }
+      },
+      "required": ["time", "bpm"]
+    },
+    "WaveformData": {
+      "type": "object",
+      "properties": {
+        "samples": { "type": "array", "items": { "type": "number" } },
+        "sample_rate": { "type": "integer" },
+        "duration": { "type": "number" },
+        "peaks": { "type": "array", "items": { "type": "number" } }
+      },
+      "required": ["samples", "sample_rate", "duration", "peaks"]
+    },
+    "BeatGrid": {
+      "type": "object",
+      "properties": {
+        "first_beat": { "type": "number" },
+        "beat_interval": { "type": "number" },
+        "beats": { "type": "array", "items": { "type": "number" } },
+        "time_signature": { "type": "integer" }
+      },
+      "required": ["first_beat", "beat_interval", "beats", "time_signature"]
+    },
+    "MusicPattern": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["loop", "break", "drop", "intro", "outro"] },
+        "start": { "type": "number" },
+        "end": { "type": "number" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "label": { "type": "string" }
+      },
+      "required": ["type", "start", "end", "confidence", "label"]
+    },
+    "TrackAnalysis": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "type": { "$ref": "#/definitions/AssetType" },
+        "name": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" },
+        "metadata": { "type": "object" },
+        "file_path": { "type": "string" },
+        "duration": { "type": "number" },
+        "bpm": { "type": "number", "minimum": 0 },
+        "bpm_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "bpm_curve": { "type": "array", "items": { "$ref": "#/definitions/BpmPoint" } },
+        "key": { "type": "string" },
+        "scale": { "type": "string", "enum": ["major", "minor"] },
+        "beats": { "type": "array", "items": { "$ref": "#/definitions/BeatInfo" } },
+        "beat_grid": { "$ref": "#/definitions/BeatGrid" },
+        "waveform": { "$ref": "#/definitions/WaveformData" },
+        "energy": { "type": "number", "minimum": 0, "maximum": 1 },
+        "danceability": { "type": "number", "minimum": 0, "maximum": 1 },
+        "suggested_bpm": { "type": ["number", "null"] },
+        "patterns": { "type": "array", "items": { "$ref": "#/definitions/MusicPattern" } }
+      },
+      "required": ["id", "type", "name", "bpm", "duration", "waveform", "beat_grid"]
+    },
+    "RepoAnalysis": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "type": { "$ref": "#/definitions/AssetType" },
+        "name": { "type": "string" },
+        "repo_path": { "type": "string" },
+        "language_stats": { "type": "object", "additionalProperties": { "type": "integer" } },
+        "musical_references": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "file": { "type": "string" },
+              "line": { "type": "integer" },
+              "type": { "type": "string" },
+              "value": { "type": "string" },
+              "context": { "type": "string" }
+            }
+          }
+        },
+        "inferred_bpm": { "type": ["number", "null"] },
+        "patterns": { "type": "array" },
+        "bases": { "type": "array" }
+      },
+      "required": ["id", "type", "name", "repo_path"]
+    }
+  },
+  "oneOf": [
+    { "$ref": "#/definitions/TrackAnalysis" },
+    { "$ref": "#/definitions/RepoAnalysis" }
+  ]
+}

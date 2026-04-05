@@ -1,12 +1,30 @@
-.DS_Store
-.pytest_cache/
-.venv/
+# Tauri build artifacts
+src-tauri/target/
+src-tauri/gen/
+dist/
+
+# Node
+node_modules/
+*.local
+
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+*.db
 
-desktop/node_modules/
-desktop/dist/
-desktop/src-tauri/target/
+# OS
+.DS_Store
+*.swp
 
-analyzer/.venv/
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
 
+# IDE
+.vscode/
+.idea/
