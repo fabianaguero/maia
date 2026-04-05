@@ -26,6 +26,7 @@ import type {
 import { musicStyleCatalog } from "../../../config/musicStyles";
 import { LiveSonificationScenePanel } from "./LiveSonificationScenePanel";
 import {
+  blendAnchors,
   deriveReferenceAnchor,
   resolveLiveSonificationScene,
   routeCueThroughScene,
@@ -284,7 +285,8 @@ export function LiveLogMonitorPanel({
     () => musicStyleCatalog.defaultTrackMusicStyleId,
   );
   const [selectedPresetId, setSelectedPresetId] = useState("balanced");
-  const [selectedReferenceTrackId, setSelectedReferenceTrackId] = useState("");
+  const [referencePlaylistIds, setReferencePlaylistIds] = useState<string[]>([]);
+  const [pendingAddTrackId, setPendingAddTrackId] = useState("");
   const beatClockRef = useRef<BeatClock | null>(null);
   const [beatClockBpm, setBeatClockBpm] = useState<number | null>(null);
   const knownComponentsRef = useRef<string[]>([]);
@@ -312,11 +314,12 @@ export function LiveLogMonitorPanel({
     availableBaseAssets.find((entry) => entry.id === sceneBaseAssetId) ?? null;
   const selectedSceneComposition =
     availableCompositions.find((entry) => entry.id === sceneCompositionId) ?? null;
-  const selectedReferenceTrack =
-    availableTracks.find((t) => t.id === selectedReferenceTrackId) ?? null;
-  const referenceAnchor = selectedReferenceTrack
-    ? deriveReferenceAnchor(selectedReferenceTrack)
-    : null;
+  const playlistAnchors = referencePlaylistIds
+    .map((id) => availableTracks.find((t) => t.id === id))
+    .filter((t): t is LibraryTrack => t !== undefined)
+    .map(deriveReferenceAnchor);
+  const referenceAnchor =
+    playlistAnchors.length > 0 ? blendAnchors(playlistAnchors) : null;
   const scene = resolveLiveSonificationScene(
     selectedSceneBaseAsset,
     selectedSceneComposition,
@@ -472,7 +475,8 @@ export function LiveLogMonitorPanel({
     setSceneCompositionId(
       preferredCompositionId(availableCompositions, preferredCompositionIdProp),
     );
-    setSelectedReferenceTrackId("");
+    setReferencePlaylistIds([]);
+    setPendingAddTrackId("");
     beatClockRef.current = null;
     setBeatClockBpm(null);
   }, [repository.id]);
@@ -817,18 +821,42 @@ export function LiveLogMonitorPanel({
                 <option value="cascade">Cascade</option>
                 <option value="beat-locked">Beat-locked</option>
               </select>
-              <select
-                className="compact-select"
-                value={selectedReferenceTrackId}
-                onChange={(e) => setSelectedReferenceTrackId(e.target.value)}
-                title="Reference anchor — aligns live cue energy, BPM suggestion, and genre to a favourite track"
-              >
-                <option value="">No reference anchor</option>
-                {availableTracks.map((track) => (
-                  <option key={track.id} value={track.id}>
-                    {track.title}{track.bpm !== null ? ` · ${track.bpm.toFixed(0)} BPM` : ""}
-                  </option>
-                ))}
+              {availableTracks.length > 0 ? (
+                <>
+                  <select
+                    className="compact-select"
+                    value={pendingAddTrackId}
+                    onChange={(e) => setPendingAddTrackId(e.target.value)}
+                    title="Pick a track to add to the reference playlist"
+                  >
+                    <option value="">Add reference track…</option>
+                    {availableTracks
+                      .filter((t) => !referencePlaylistIds.includes(t.id))
+                      .map((track) => (
+                        <option key={track.id} value={track.id}>
+                          {track.title}
+                          {track.bpm !== null ? ` · ${track.bpm.toFixed(0)} BPM` : ""}
+                        </option>
+                      ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="compact-action"
+                    disabled={!pendingAddTrackId}
+                    onClick={() => {
+                      if (!pendingAddTrackId) {
+                        return;
+                      }
+                      setReferencePlaylistIds((ids) =>
+                        ids.includes(pendingAddTrackId) ? ids : [...ids, pendingAddTrackId],
+                      );
+                      setPendingAddTrackId("");
+                    }}
+                  >
+                    + Add
+                  </button>
+                </>
+              ) : null}
               </select>
               <select
                 className="compact-select"
@@ -851,6 +879,32 @@ export function LiveLogMonitorPanel({
           )}
         </div>
       </div>
+
+      {referencePlaylistIds.length > 0 ? (
+        <div className="pill-strip top-spaced">
+          {referencePlaylistIds.map((id) => {
+            const track = availableTracks.find((t) => t.id === id);
+            if (!track) {
+              return null;
+            }
+            return (
+              <span key={id} className="pill-removable">
+                {track.title}
+                {track.bpm !== null ? ` · ${track.bpm.toFixed(0)} BPM` : ""}
+                <button
+                  type="button"
+                  aria-label={`Remove ${track.title} from reference playlist`}
+                  onClick={() =>
+                    setReferencePlaylistIds((ids) => ids.filter((i) => i !== id))
+                  }
+                >
+                  ×
+                </button>
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
 
       {!liveEnabled && adapterKind === "process" ? (
         <div className="audio-path-card top-spaced">

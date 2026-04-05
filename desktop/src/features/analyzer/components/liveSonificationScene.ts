@@ -60,6 +60,78 @@ export function deriveReferenceAnchor(track: LibraryTrack): ReferenceAnchor {
   };
 }
 
+/**
+ * Blend multiple anchors into one composite anchor used when a reference
+ * playlist contains more than one track.
+ *
+ * - BPM: median of non-null values (robust to tempo outliers)
+ * - Energy: arithmetic mean of all energy levels
+ * - musicStyleId: most frequent id among anchors, null on tie / all-null
+ */
+export function blendAnchors(anchors: readonly ReferenceAnchor[]): ReferenceAnchor {
+  if (anchors.length === 0) {
+    throw new Error("blendAnchors requires at least one anchor");
+  }
+  if (anchors.length === 1) {
+    return {
+      ...anchors[0],
+      trackId: "playlist-blend",
+      trackTitle: anchors[0].trackTitle,
+    };
+  }
+
+  // BPM — median of non-null values
+  const bpms = anchors.map((a) => a.bpm).filter((b): b is number => b !== null);
+  let blendedBpm: number | null = null;
+  if (bpms.length > 0) {
+    const sorted = [...bpms].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    blendedBpm =
+      sorted.length % 2 === 0
+        ? (sorted[mid - 1] + sorted[mid]) / 2
+        : sorted[mid];
+  }
+
+  // Energy — mean
+  const blendedEnergy =
+    anchors.reduce((sum, a) => sum + a.energyLevel, 0) / anchors.length;
+
+  // musicStyleId — mode (most frequent), null if no winner
+  const styleCounts = new Map<string, number>();
+  for (const a of anchors) {
+    if (a.musicStyleId) {
+      styleCounts.set(a.musicStyleId, (styleCounts.get(a.musicStyleId) ?? 0) + 1);
+    }
+  }
+  let blendedStyleId: string | null = null;
+  let topCount = 0;
+  let tied = false;
+  for (const [id, count] of styleCounts) {
+    if (count > topCount) {
+      topCount = count;
+      blendedStyleId = id;
+      tied = false;
+    } else if (count === topCount) {
+      tied = true;
+    }
+  }
+  if (tied) {
+    blendedStyleId = null;
+  }
+
+  const blendedPreset = suggestPresetFromBpm(blendedBpm);
+  const title = `Playlist blend · ${anchors.length} tracks`;
+
+  return {
+    trackId: "playlist-blend",
+    trackTitle: title,
+    musicStyleId: blendedStyleId,
+    bpm: blendedBpm !== null ? Number(blendedBpm.toFixed(1)) : null,
+    energyLevel: Number(blendedEnergy.toFixed(3)),
+    suggestedPresetId: blendedPreset,
+  };
+}
+
 type SceneRouteKey = "info" | "warn" | "error" | "anomaly";
 
 export interface SequencerPreset {
