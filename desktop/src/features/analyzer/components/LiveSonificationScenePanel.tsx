@@ -80,6 +80,10 @@ export function LiveSonificationScenePanel({
           <strong>{scene.genreLabel}</strong>
         </div>
         <div>
+          <span>Preset</span>
+          <strong>{scene.presetLabel}</strong>
+        </div>
+        <div>
           <span>Category</span>
           <strong>{scene.categoryLabel}</strong>
         </div>
@@ -117,6 +121,11 @@ export function LiveSonificationScenePanel({
           <span>Sample count</span>
           <strong>{scene.sampleSourceCount}</strong>
         </div>
+      </div>
+
+      <div className="audio-path-card top-spaced">
+        <span>Preset</span>
+        <strong>{scene.preset.descriptor}</strong>
       </div>
 
       <div className="render-master-card top-spaced">

@@ -11,6 +11,25 @@ import {
 
 type SceneRouteKey = "info" | "warn" | "error" | "anomaly";
 
+export interface SequencerPreset {
+  label: string;
+  descriptor: string;
+  maxCuesPerWindow: number;
+  scheduleGapMs: number;
+  infoGainMultiplier: number;
+  warnGainMultiplier: number;
+  errorGainMultiplier: number;
+  anomalyGainMultiplier: number;
+  useBeatGrid: boolean;
+  rhythmDivision: number;
+}
+
+export interface ComponentRoute {
+  component: string;
+  pan: number;
+  noteMultiplier: number;
+}
+
 interface CategoryProfile {
   baseWaveform: OscillatorType;
   warnWaveform: OscillatorType;
@@ -64,6 +83,9 @@ export interface ResolvedLiveSonificationScene {
   sampleSourceCount: number;
   sampleSourceDetail: string;
   routes: LiveSonificationRoute[];
+  presetId: string;
+  presetLabel: string;
+  preset: SequencerPreset;
 }
 
 export interface RoutedLiveCue extends LiveLogCue {
@@ -359,6 +381,101 @@ const GENRE_PROFILES: Record<string, GenreProfile> = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// Sequencer presets — control cue density, gain spread, and scheduling mode
+// ---------------------------------------------------------------------------
+
+const SEQUENCER_PRESETS: Record<string, SequencerPreset> = {
+  sparse: {
+    label: "Sparse",
+    descriptor: "Quiet baseline; only warnings, errors, and anomalies stand out",
+    maxCuesPerWindow: 4,
+    scheduleGapMs: 180,
+    infoGainMultiplier: 0.42,
+    warnGainMultiplier: 0.72,
+    errorGainMultiplier: 1.14,
+    anomalyGainMultiplier: 1.28,
+    useBeatGrid: false,
+    rhythmDivision: 4,
+  },
+  balanced: {
+    label: "Balanced",
+    descriptor: "All severity levels at natural gain spread with even spacing",
+    maxCuesPerWindow: 8,
+    scheduleGapMs: 80,
+    infoGainMultiplier: 1.0,
+    warnGainMultiplier: 1.0,
+    errorGainMultiplier: 1.0,
+    anomalyGainMultiplier: 1.0,
+    useBeatGrid: false,
+    rhythmDivision: 8,
+  },
+  cascade: {
+    label: "Cascade",
+    descriptor: "Dense rapid-fire — every cue plays in quick succession at high gain",
+    maxCuesPerWindow: 14,
+    scheduleGapMs: 36,
+    infoGainMultiplier: 1.04,
+    warnGainMultiplier: 1.08,
+    errorGainMultiplier: 1.18,
+    anomalyGainMultiplier: 1.32,
+    useBeatGrid: false,
+    rhythmDivision: 16,
+  },
+  "beat-locked": {
+    label: "Beat-locked",
+    descriptor: "Snaps cue spacing to the live BPM rhythm grid at eighth-note resolution",
+    maxCuesPerWindow: 8,
+    scheduleGapMs: 80,
+    infoGainMultiplier: 0.9,
+    warnGainMultiplier: 1.0,
+    errorGainMultiplier: 1.12,
+    anomalyGainMultiplier: 1.22,
+    useBeatGrid: true,
+    rhythmDivision: 8,
+  },
+};
+
+const BALANCED_PRESET: SequencerPreset = {
+  label: "Balanced",
+  descriptor: "All severity levels at natural gain spread with even spacing",
+  maxCuesPerWindow: 8,
+  scheduleGapMs: 80,
+  infoGainMultiplier: 1.0,
+  warnGainMultiplier: 1.0,
+  errorGainMultiplier: 1.0,
+  anomalyGainMultiplier: 1.0,
+  useBeatGrid: false,
+  rhythmDivision: 8,
+};
+
+function fallbackSequencerPreset(presetId: string | null | undefined): SequencerPreset {
+  return SEQUENCER_PRESETS[presetId ?? ""] ?? SEQUENCER_PRESETS["balanced"] ?? BALANCED_PRESET;
+}
+
+// ---------------------------------------------------------------------------
+// Component routing — distributes known active components across stereo field
+// ---------------------------------------------------------------------------
+
+const COMPONENT_PAN_SPREAD = [-0.72, -0.36, -0.12, 0.12, 0.42, 0.74];
+const COMPONENT_NOTE_SPREAD = [0.92, 0.96, 1.0, 1.04, 1.08, 1.12];
+
+export function resolveComponentRoute(
+  component: string,
+  knownComponents: readonly string[],
+): ComponentRoute {
+  const index = knownComponents.indexOf(component);
+  if (index < 0) {
+    return { component, pan: 0, noteMultiplier: 1.0 };
+  }
+  const slot = index % COMPONENT_PAN_SPREAD.length;
+  return {
+    component,
+    pan: COMPONENT_PAN_SPREAD[slot] ?? 0,
+    noteMultiplier: COMPONENT_NOTE_SPREAD[slot] ?? 1.0,
+  };
+}
+
 function fallbackGenreProfile(genreId: string | null | undefined): GenreProfile {
   return GENRE_PROFILES[genreId ?? ""] ?? GENRE_PROFILES.house;
 }
@@ -542,7 +659,10 @@ export function resolveLiveSonificationScene(
   baseAsset: BaseAssetRecord | null,
   composition: CompositionResultRecord | null,
   genreId?: string | null,
+  presetId?: string | null,
 ): ResolvedLiveSonificationScene {
+  const resolvedPresetId = presetId?.trim() || "balanced";
+  const preset = fallbackSequencerPreset(resolvedPresetId);
   const resolvedGenreId = genreId?.trim() || "house";
   const genreProfile = fallbackGenreProfile(resolvedGenreId);
   const categoryId =
@@ -658,8 +778,8 @@ export function resolveLiveSonificationScene(
   }));
 
   const summary = composition
-    ? `${genreProfile.label} instrumental — ${categoryProfile.descriptor} with ${strategyProfile.descriptor}, using ${composition.title} as structure overlay.`
-    : `${genreProfile.label} instrumental — ${genreProfile.descriptor} · ${baseAsset?.title ?? categoryLabel}.`;
+    ? `${genreProfile.label} · ${preset.label} — ${categoryProfile.descriptor} with ${strategyProfile.descriptor}, using ${composition.title} as structure overlay.`
+    : `${genreProfile.label} · ${preset.label} — ${genreProfile.descriptor} · ${baseAsset?.title ?? categoryLabel}.`;
 
   return {
     baseAsset,
@@ -678,6 +798,9 @@ export function resolveLiveSonificationScene(
     sampleSourceCount: sampleSource.sources.length,
     sampleSourceDetail: sampleSource.detail,
     routes,
+    presetId: resolvedPresetId,
+    presetLabel: preset.label,
+    preset,
   };
 }
 
@@ -685,16 +808,51 @@ export function routeCueThroughScene(
   cue: LiveLogCue,
   scene: ResolvedLiveSonificationScene,
   index: number,
+  knownComponents?: readonly string[],
 ): RoutedLiveCue {
   const routeKey = routeKeyForCue(cue);
   const route = scene.routes.find((candidate) => candidate.key === routeKey) ?? scene.routes[0];
   const categoryProfile = fallbackCategoryProfile(scene.categoryId);
   const strategyProfile = fallbackStrategyProfile(scene.strategy);
   const genreProfile = fallbackGenreProfile(scene.genreId);
+  const presetGainMultiplier =
+    routeKey === "info"
+      ? scene.preset.infoGainMultiplier
+      : routeKey === "warn"
+        ? scene.preset.warnGainMultiplier
+        : routeKey === "error"
+          ? scene.preset.errorGainMultiplier
+          : scene.preset.anomalyGainMultiplier;
+  const componentRoute =
+    knownComponents && knownComponents.length > 0
+      ? resolveComponentRoute(cue.component, knownComponents)
+      : null;
   const indexOffsetMultiplier = 1 + ((index % 3) - 1) * 0.015;
-  const noteHz = cue.noteHz * categoryProfile.noteMultiplier * strategyProfile.noteMultiplier * genreProfile.noteMultiplier * route.noteMultiplier * indexOffsetMultiplier;
-  const durationMs = cue.durationMs * categoryProfile.durationScale * strategyProfile.durationScale * genreProfile.durationScale * route.durationScale;
-  const gain = cue.gain * categoryProfile.gainScale * strategyProfile.gainScale * genreProfile.gainScale * route.gainScale;
+  const noteHz =
+    cue.noteHz *
+    categoryProfile.noteMultiplier *
+    strategyProfile.noteMultiplier *
+    genreProfile.noteMultiplier *
+    route.noteMultiplier *
+    indexOffsetMultiplier *
+    (componentRoute?.noteMultiplier ?? 1.0);
+  const durationMs =
+    cue.durationMs *
+    categoryProfile.durationScale *
+    strategyProfile.durationScale *
+    genreProfile.durationScale *
+    route.durationScale;
+  const gain =
+    cue.gain *
+    categoryProfile.gainScale *
+    strategyProfile.gainScale *
+    genreProfile.gainScale *
+    route.gainScale *
+    presetGainMultiplier;
+  const pan =
+    componentRoute && knownComponents && knownComponents.length > 1
+      ? clampPan(route.pan * 0.4 + componentRoute.pan * 0.6)
+      : route.pan;
 
   return {
     ...cue,
@@ -702,7 +860,7 @@ export function routeCueThroughScene(
     durationMs: Math.max(90, Math.round(durationMs)),
     gain: Number(Math.min(0.34, Math.max(0.05, gain)).toFixed(3)),
     waveform: route.waveform,
-    pan: route.pan,
+    pan,
     routeKey,
     routeLabel: route.label,
     stemLabel: route.stemLabel,

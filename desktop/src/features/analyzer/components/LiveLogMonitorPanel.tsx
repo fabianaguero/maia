@@ -251,6 +251,8 @@ export function LiveLogMonitorPanel({
   const [selectedGenreId, setSelectedGenreId] = useState(
     () => musicStyleCatalog.defaultTrackMusicStyleId,
   );
+  const [selectedPresetId, setSelectedPresetId] = useState("balanced");
+  const knownComponentsRef = useRef<string[]>([]);
   const [sceneBaseAssetId, setSceneBaseAssetId] = useState(() =>
     preferredBaseAssetId(availableBaseAssets, preferredBaseAssetIdProp),
   );
@@ -279,6 +281,7 @@ export function LiveLogMonitorPanel({
     selectedSceneBaseAsset,
     selectedSceneComposition,
     selectedGenreId,
+    selectedPresetId,
   );
 
   useEffect(() => {
@@ -423,6 +426,7 @@ export function LiveLogMonitorPanel({
     setRecentMarkers([]);
     setRecentWarnings([]);
     setError(null);
+    knownComponentsRef.current = [];
     setSceneBaseAssetId(preferredBaseAssetId(availableBaseAssets, preferredBaseAssetIdProp));
     setSceneCompositionId(
       preferredCompositionId(availableCompositions, preferredCompositionIdProp),
@@ -455,7 +459,7 @@ export function LiveLogMonitorPanel({
     }
   });
 
-  const playWithCurrentEngine = useEffectEvent(async (cues: RoutedLiveCue[]) => {
+  const playWithCurrentEngine = useEffectEvent(async (cues: RoutedLiveCue[], liveBpm?: number | null) => {
     if (cues.length === 0) {
       return;
     }
@@ -466,9 +470,15 @@ export function LiveLogMonitorPanel({
     }
 
     const startAt = context.currentTime + 0.04;
+    const preset = scene.preset;
+    const cappedCues = cues.slice(0, preset.maxCuesPerWindow);
+    const gapSeconds =
+      preset.useBeatGrid && typeof liveBpm === "number" && liveBpm > 0
+        ? (60 / liveBpm) / (preset.rhythmDivision / 4)
+        : preset.scheduleGapMs / 1000;
 
-    for (const [index, cue] of cues.slice(0, 12).entries()) {
-      const cueStartAt = startAt + index * 0.08;
+    for (const [index, cue] of cappedCues.entries()) {
+      const cueStartAt = startAt + index * gapSeconds;
       const sampleBuffer =
         sampleStatus === "ready" && cue.samplePath
           ? sampleBuffersRef.current.get(cue.samplePath) ?? null
@@ -521,8 +531,17 @@ export function LiveLogMonitorPanel({
         setCursor(update.toOffset);
       }
 
+      // Accumulate known components for per-component stereo routing
+      const updatedComponents = [...knownComponentsRef.current];
+      for (const cmp of update.topComponents.map((c) => c.component)) {
+        if (!updatedComponents.includes(cmp)) {
+          updatedComponents.push(cmp);
+        }
+      }
+      knownComponentsRef.current = updatedComponents.slice(0, 12);
+
       const routedCues = update.sonificationCues.map((cue, index) =>
-        routeCueThroughScene(cue, scene, index),
+        routeCueThroughScene(cue, scene, index, knownComponentsRef.current),
       );
 
       startTransition(() => {
@@ -549,7 +568,7 @@ export function LiveLogMonitorPanel({
       });
 
       if (update.hasData) {
-        await playWithCurrentEngine(routedCues);
+        await playWithCurrentEngine(routedCues, update.suggestedBpm);
       }
     } catch (nextError) {
       if (liveEnabledRef.current) {
@@ -690,6 +709,17 @@ export function LiveLogMonitorPanel({
                     {style.label}
                   </option>
                 ))}
+              </select>
+              <select
+                className="compact-select"
+                value={selectedPresetId}
+                onChange={(e) => setSelectedPresetId(e.target.value)}
+                title="Sequencer preset — controls cue density, gain spread, and scheduling mode"
+              >
+                <option value="sparse">Sparse</option>
+                <option value="balanced">Balanced</option>
+                <option value="cascade">Cascade</option>
+                <option value="beat-locked">Beat-locked</option>
               </select>
               <select
                 className="compact-select"
