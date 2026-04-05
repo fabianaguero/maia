@@ -5,6 +5,7 @@ from typing import Any
 
 from . import __version__
 from .assets import analyze_base_asset
+from .composition import analyze_composition
 from .audio import analyze_track, get_supported_track_formats
 from .contracts import ContractError, error_response, ok_response, parse_request
 from .repository import analyze_repository
@@ -24,7 +25,15 @@ def handle_request(raw: Any) -> dict[str, Any]:
                     "analyzerVersion": __version__,
                     "runtime": platform.python_version(),
                     "supportedActions": ["health", "analyze"],
-                    "modes": ["repo-heuristics", "track-embedded-heuristic", "base-assets"],
+                    "modes": [
+                        "repo-heuristics",
+                        "repo-tree-sitter",
+                        "log-file-heuristics",
+                        "log-live-tail",
+                        "track-embedded-heuristic",
+                        "base-assets",
+                        "composition-planner",
+                    ],
                     "supportedTrackFormats": get_supported_track_formats(),
                 },
             )
@@ -36,6 +45,7 @@ def handle_request(raw: Any) -> dict[str, Any]:
             asset, warnings = analyze_repository(
                 payload["source"]["kind"],
                 payload["source"]["path"],
+                options=options,
             )
         elif payload["assetType"] == "track_analysis":
             asset, warnings = analyze_track(
@@ -47,6 +57,18 @@ def handle_request(raw: Any) -> dict[str, Any]:
                 payload["source"]["path"],
                 category=options.get("baseAssetCategory"),
                 reusable=bool(options.get("baseAssetReusable", True)),
+            )
+        elif payload["assetType"] == "composition_result":
+            asset, warnings = analyze_composition(
+                payload["source"]["kind"],
+                payload["source"]["path"],
+                base_asset_category=options.get("baseAssetCategory"),
+                reusable=bool(options.get("baseAssetReusable", True)),
+                entry_count=options.get("compositionBaseAssetEntryCount"),
+                reference_type=options.get("compositionReferenceType"),
+                reference_label=options.get("compositionReferenceLabel"),
+                reference_bpm=options.get("compositionReferenceBpm"),
+                preview_output_path=options.get("compositionPreviewOutputPath"),
             )
         else:
             return error_response(
@@ -78,8 +100,16 @@ def _build_summary(asset: dict[str, Any]) -> str:
     asset_type = asset["assetType"]
     title = asset["title"]
     suggested_bpm = asset["suggestedBpm"]
+    metrics = asset.get("metrics", {})
 
     if asset_type == "repo_analysis":
+        if metrics.get("importMode") in {"log-file", "log-tail-window"}:
+            anomaly_count = metrics.get("anomalyCount", 0)
+            source_label = "Live log window" if metrics.get("importMode") == "log-tail-window" else "Log signal"
+            return (
+                f"{source_label} analysis completed for {title} with suggested BPM {suggested_bpm:.0f} "
+                f"and {anomaly_count} anomaly markers."
+            )
         return f"Repository analysis completed for {title} with suggested BPM {suggested_bpm:.0f}."
     if asset_type == "track_analysis":
         if suggested_bpm is not None:
@@ -87,4 +117,8 @@ def _build_summary(asset: dict[str, Any]) -> str:
         return f"Track intake completed for {title} with waveform heuristics only."
     if asset_type == "base_asset":
         return f"Base asset {title} registered for local reuse."
+    if asset_type == "composition_result":
+        if suggested_bpm is not None:
+            return f"Composition plan completed for {title} at target BPM {suggested_bpm:.0f}."
+        return f"Composition plan completed for {title}."
     return f"Analysis completed for {title}."

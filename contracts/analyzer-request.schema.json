@@ -135,12 +135,62 @@
         "inferCodeSuggestedBpm": {
           "type": "boolean"
         },
+        "logTailChunk": {
+          "type": "string"
+        },
+        "logTailFromOffset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "logTailToOffset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "logTailLiveMode": {
+          "type": "boolean"
+        },
         "baseAssetCategory": {
           "type": "string",
           "minLength": 1
         },
         "baseAssetReusable": {
           "type": "boolean"
+        },
+        "compositionBaseAssetEntryCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "compositionReferenceType": {
+          "type": "string",
+          "enum": [
+            "track",
+            "repo",
+            "manual"
+          ]
+        },
+        "compositionReferenceLabel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "compositionReferenceBpm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "compositionPreviewOutputPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parseLanguages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "parseExtensions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     }
