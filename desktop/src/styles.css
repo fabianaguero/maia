@@ -968,6 +968,88 @@ dd {
   display: block;
 }
 
+/* ─── Compact toolbar controls ─────────────────────────────────────────── */
+
+.compact-select {
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  font-size: 0.86rem;
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+
+.compact-select:hover,
+.compact-select:focus-visible {
+  border-color: rgba(33, 180, 184, 0.4);
+  outline: none;
+}
+
+.compact-select:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.compact-action {
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(33, 180, 184, 0.28);
+  background: rgba(33, 180, 184, 0.12);
+  color: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.compact-action:hover:not(:disabled) {
+  background: rgba(33, 180, 184, 0.22);
+  border-color: rgba(33, 180, 184, 0.45);
+}
+
+.compact-action:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ─── Removable playlist pill ───────────────────────────────────────────── */
+
+.pill-removable {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 6px 12px;
+  border-radius: 999px;
+  background: rgba(33, 180, 184, 0.12);
+  border: 1px solid rgba(33, 180, 184, 0.22);
+  font-size: 0.86rem;
+}
+
+.pill-removable button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: inherit;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.pill-removable button:hover {
+  background: rgba(239, 127, 69, 0.32);
+}
+
 .live-log-warning-list li small {
   margin-top: 4px;
 }
