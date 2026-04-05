@@ -81,7 +81,7 @@ Maia is a local-first desktop app that turns repositories, logs, and reusable so
 The most realistic implementation order from this point: (1) always-on background monitoring so sonification keeps running when the user navigates away from the analyzer screen; (2) broader stream adapters beyond local files and spawned processes; (3) consolidation and test coverage for the shipped workflow; (4) a richer sonification engine with denser sequencing and component-level mapping; (5) a full export and bounce pipeline beyond `plan.json` and `preview.wav`; and (6) additional format support and broader curated palette coverage.
 
 - **Always-on background monitoring** ✅ (shipped: `MonitorContext` lifts poll loop to root, sidebar live badge, session survives navigation) — resolved.
-- **Broader stream adapters** — only local file tail and process adapters exist today. Long-term targets: WebSocket/HTTP push, Amazon CloudWatch Logs, Elastic/ELK, Grafana Loki, Splunk, Datadog, Google Cloud Logging, Azure Monitor Logs.
+- **Broader stream adapters** ✅ (shipped: WebSocket adapter manages JS `WebSocket` + ring buffer ingest; HTTP-poll adapter fetches URL on each interval; `ingest_stream_chunk` Rust command; panel URL inputs).
 - **Test coverage** — zero test files exist in the project; no contract fixtures, no golden analysis tests, no native-vs-mock gate.
 - **Dense multi-track arrangement** — current live scene still does one cue per event; no pad/kit sequencer, no per-component routing beyond generic log levels.
 - **Export/bounce pipeline** — `plan.json` and `preview.wav` exist; export dialog, full offline render, stems, and format options are not built.
@@ -92,8 +92,9 @@ The most realistic implementation order from this point: (1) always-on backgroun
 1) Always-on background monitoring ✅
 - `MonitorContext` at app root holds the poll loop; `AppSidebar` shows live status badge; `LiveLogMonitorPanel` is now a pure subscriber.
 
-2) Broader stream adapters
-- WebSocket + HTTP push adapters; later connect to managed log platforms.
+2) Broader stream adapters ✅
+- WebSocket adapter: JS `WebSocket`, line buffer, `ingest_stream_chunk` Rust cmd, Python ring buffer.
+- HTTP-poll adapter: fetch on each interval, same ingest path.
 
 3) Consolidation and test coverage
 - Contract fixtures, analysis golden tests, mock vs native gates. Pipeline hardening.
