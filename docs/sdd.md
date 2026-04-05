@@ -65,34 +65,38 @@ Maia is a local-first desktop app that turns repositories, logs, and reusable so
 - Request/response schemas in contracts/.
 - All analysis uses JSON IPC with deterministic responses.
 
-## Missing features (from current state)
-- Tree-sitter based repository parsing.
-- Full DSP stack (librosa + Essentia) and richer audio analysis.
+## Shipped since initial draft
+- Tree-sitter based repository parsing (Java/Kotlin, structural metrics, deterministic BPM mapping). ✅
+- DSP integration via librosa (tempo/onset/beat tracking replacing pure heuristics). ✅
+- Session-based stream polling: ring buffer + process adapter in `stream.py`; `SessionRegistry` + 4 Tauri commands in `main.rs`; adapter selector in `LiveLogMonitorPanel`. ✅
+- Genre-configured instrumental palette: 8 curated genres in `music-styles.json`, per-severity waveform/pitch/gain profiles in `liveSonificationScene.ts`, genre selector in pre-start toolbar. ✅
+
+## Still missing / future work
 - Support for additional audio formats (e.g. m4a) beyond current decoders.
-- Generalized stream adapters beyond local tail (files/sockets/http).
-- Background monitoring and long-running stream sessions.
-- Richer sonification engine (sequencing, component-level mapping).
-- Export/bounce pipeline for composition results.
+- Generalized stream adapters beyond local file tail and spawned process (sockets, HTTP, external services).
+- Always-on background monitoring outside the active analyzer screen.
+- Richer sonification engine (dense sequencing, component-level event mapping, multi-track arrangement).
+- Export/bounce pipeline: `plan.json` and `preview.wav` exist; full offline render + stems + export UI do not.
 - Stronger test coverage for contracts and analysis artifacts.
 
 ## Implementation plan (summary)
 1) Consolidation and test coverage
 - Contract fixtures, analysis golden tests, mock vs native gates.
 
-2) Repo parsing with tree-sitter
+2) Repo parsing with tree-sitter ✅ (shipped: Java/Kotlin)
 - Java/Jakarta first, structural metrics, deterministic mapping.
 
-3) DSP integration
+3) DSP integration ✅ (shipped: librosa tempo/onset; Essentia and additional formats still pending)
 - Replace heuristics with real tempo/onset/beat tracking.
 - Extend supported formats.
 
-4) Stream adapters + background monitoring
-- Unified stream envelope, adapters, and persistent sessions.
+4) Stream adapters + session monitoring ✅ (shipped: file + process adapters, ring buffer, SessionRegistry)
+- Broader adapters (sockets, HTTP) and always-on background monitoring still pending.
 
-5) Sonification engine upgrades
+5) Sonification engine upgrades (in progress: genre palette shipped; dense sequencing and component routing pending)
 - Scene presets, routing by component/pattern, sequencing.
 
-6) Composition export
+6) Composition export (pending: preview.wav exists; full offline render + stems + export UI not started)
 - Offline render + stems + export UI.
 
 ## Risks and mitigations

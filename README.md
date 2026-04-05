@@ -16,14 +16,23 @@ Local-first desktop app for code/log sonification and music analysis. Maia combi
 
 ## Product premise
 
-Maia is not just a DJ-style analyzer. The product goal is to turn patterns in codebases and logs into audible structure:
+MAIA is a local-first desktop app that turns repositories, logs, and reusable sonic assets into audible operational signals and musical response plans. Code and logs — not imported tracks — are the primary signal sources.
 
-- teams should be able to hear system or repository behavior as music
-- anomalous events in logs or code should produce distinct sonic changes
-- reusable sonic assets should become the vocabulary used to mark events, tension, drift, and structure
-- imported tracks are a support lane for reference, calibration, and comparison, not the core business output
+The core product loop:
 
-Current MVP already supports repository intake, reusable base assets, composition previews derived from local assets, and a first live log-tail runtime flow inside the analyzer screen. The current live stream implementation is local-file polling, not a generalized multi-source observability ingest layer yet.
+- ingest codebases and live log streams; make system and repository behavior listenable
+- extract structural patterns, tension, rhythm, and anomalous events
+- map those events to reusable sonic assets and genre-configured musical responses
+- let teams hear their systems as an evolving operational signal surface
+
+Current MVP ships: repository intake with Java/Kotlin code parsing, local log-file analysis, reusable base assets, composition previews with in-app playback, a live log-tail sonification loop with runtime scenes, session-based stream polling for growing files and spawned process output, and a genre-configured instrumental palette.
+
+**Scope and expectations for this release:**
+
+- Genre/style selection shapes the instrumental palette and sonification feel (waveform profile, tempo range, pitch register per log severity). It is a guided musical direction for all-instrumental output — not a full composition engine.
+- Saved output is previews and composition artifacts (`plan.json`, `preview.wav`) stored locally under Maia-managed storage. A full audio export/bounce pipeline is future work.
+- Stream sessions are tied to the active analyzer screen (session-based polling). Always-on background monitoring outside an open session is future work.
+- Track intake is a reference/calibration lane. Broader integrations (external services, network streams) are long-term product direction.
 
 ## Repository layout
 
@@ -112,4 +121,6 @@ printf '%s\n' '{"contractVersion":"1.0","requestId":"demo-url","action":"analyze
 - Live log stream sonification is now implemented for local growing files through an internal `tail -f` style polling loop in the analyzer screen; generalized multi-source streaming ingestion and always-on background monitoring still remain future product work
 - The current live scene layer can already trigger multiple managed samples from a base-asset folder pack, but it still does not perform dense pad/kit sequencing or full arrangement playback from the live stream
 - The analyzer is intentionally lightweight in v1: repository heuristics and embedded track heuristics work now, while higher-fidelity audio DSP is still deferred to `librosa` and `Essentia`
+- Genre/style selection (configured in `desktop/src/config/music-styles.json`) shapes a guided instrumental palette for live sonification: waveform type, tempo range, pitch register, and gain/duration multipliers per log severity level. All output is instrumental and deterministic; this is not a full genre composition engine and does not produce genre-specific musical arrangements.
+- Stream sessions (ring buffer + process adapter, backed by `SessionRegistry` in Rust + four Tauri commands) extend live monitoring to spawned-process sources in addition to local growing log files. Sessions are scoped to the active analyzer screen; ring buffers are transient and do not persist across screen navigations.
 - Current product and architecture decisions live in `docs/decisions.md`

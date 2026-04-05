@@ -1,16 +1,16 @@
 # Architecture
 
 ## Product intent
-Maia is a local-first desktop app that creates music and audible cues from software behavior.
+Maia is a local-first desktop app that turns repositories, logs, and reusable sonic assets into audible operational signals and musical response plans.
 
-The business goal is not only to inspect tracks or BPM. The core loop is:
+Code and logs — not imported tracks — are the primary signal sources. The business goal is to make software behavior listenable:
 
 - ingest codebases and live log streams, starting with local growing log files
 - extract structural patterns, tension, rhythm, and anomalous events
-- map those events to reusable sonic assets and musical changes
+- map those events to reusable sonic assets and genre-configured musical changes
 - let teams listen to systems and repositories as an operational signal surface
 
-Current MVP already supports local repository intake, reusable base assets, composition previews, and a first local live log-tail sonification loop. Generalized stream ingestion is still product direction, but local growing files are now shipped functionality.
+Current MVP ships: local repository intake (Java/Kotlin tree-sitter parsing), local log-file analysis, reusable base assets, composition previews with in-app playback, a live log-tail sonification loop with runtime scenes, session-based stream polling for growing files and spawned process output, and a genre-configured instrumental palette shaping live cues. Generalized multi-source stream ingestion and always-on background monitoring are still product direction.
 
 ## Main modules
 - `desktop/`: Tauri + React + TypeScript desktop shell
@@ -78,6 +78,9 @@ Tracks are currently a reference/control lane. Repositories and, later, logs are
 - Native composition import can now ask the analyzer to synthesize a deterministic managed `preview.wav`, and that preview path/format metadata also travels inside composition metrics.
 - Tauri now exposes both managed track snapshots and managed composition previews back into the webview through the scoped asset protocol, so playback stays inside Maia without opening generic filesystem access.
 - Tauri now also materializes each `composition_result` as a managed `plan.json` snapshot inside Maia storage, while SQLite keeps the indexed metadata and preview artifacts.
+- Genre/style profiles are defined in `desktop/src/config/music-styles.json` with explicit BPM ranges, per-severity waveform types, and gain/duration/pitch multipliers. `liveSonificationScene.ts` resolves those profiles at runtime into a `ResolvedLiveSonificationScene` for the live monitor. Genre selection is a guided instrumental palette — all output is instrumental and deterministic, not a full composition engine that generates genre-specific arrangements.
+- Stream sessions now extend live monitoring beyond local growing log files: `stream.py` defines a session ring buffer and a process adapter; `main.rs` exposes four Tauri commands (`start_stream_session`, `stop_stream_session`, `list_stream_sessions`, `poll_stream_session`) backed by `SessionRegistry` in `Arc<Mutex>` state. Sessions are scoped to the active analyzer screen; ring buffers are transient. Always-on background monitoring outside an open session is future work.
+- Saved output for composition results is previews and arrangement artifacts (`plan.json`, `preview.wav`) under Maia-managed local storage. A full audio export/bounce pipeline has not been built yet.
 - Browser fallback and Tauri/SQLite paths now also emit the same `composition_result` shape so composition UX does not fork by runtime.
 - Missing or unresolved track sources still fall back to deterministic mock analysis so demo flows keep working without blocking the library.
 - Live log-stream sonification now exists for local growing files in the analyzer UI, but broader stream adapters and background monitoring outside the active screen are not part of the current MVP.

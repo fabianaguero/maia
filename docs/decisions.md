@@ -30,6 +30,7 @@
 - Once managed preview audio exists, Maia should also let the user audition it directly inside the analyzer screen instead of forcing an external player hop.
 - Live log-stream sonification should land in MVP at least for the local `tail -f` case, because hearing newly appended log events is core to Maia's product identity rather than optional polish.
 - Live monitoring should not stay generic once reusable bases and composition plans exist; the operator needs to hear the stream through Maia's own sonic vocabulary.
+- Genre/style selection in the live monitor shapes a guided instrumental palette (waveform profile per log severity, tempo range, pitch register) rather than acting as a full composition engine. All output is instrumental and deterministic. The genre catalog is intentionally curated and locally editable so the desktop flow keeps deterministic priors without an AI inference step.
 
 ### Technical decisions
 - Current persisted entities (`track_analysis`, `repo_analysis`, `base_asset`, `composition_result`) are enough for the present MVP; live log monitoring is implemented as transient runtime state on top of `repo_analysis` instead of a new persisted asset type.
@@ -65,6 +66,9 @@
 - Base assets now influence both routing metadata and cue playback: if the selected managed base asset resolves to a playable file, Maia triggers that sample directly for live cues; otherwise it falls back to internal synthesis.
 - Folder-pack base assets now expose multiple playable audio entries, and the live monitor can assign different route types (`info`, `warn`, `error`, `anomaly`) to different managed samples from the same pack.
 - Multi-sample mapping is still lightweight: Maia currently chooses one sample per route, not per-component or per-pattern sequencing.
+- Source of truth for base asset categories: `desktop/src/config/base-asset-categories.json`.
+- Genre profiles are defined in `desktop/src/config/music-styles.json` with BPM ranges, per-severity waveform types, and gain/duration/pitch multipliers; `liveSonificationScene.ts` resolves those profiles at runtime into a `ResolvedLiveSonificationScene`, keeping genre logic in desktop config rather than in the Python analyzer. Genre selection changes the sonification feel (instrumental palette), not the composition pipeline or the entity model.
+- Stream sessions now cover sources beyond local growing log files: `stream.py` defines a session ring buffer and a process adapter; `main.rs` exposes four Tauri commands (`start_stream_session`, `stop_stream_session`, `list_stream_sessions`, `poll_stream_session`) backed by a `SessionRegistry` in `Arc<Mutex>` state; the `LiveLogMonitorPanel` adapter selector lets the operator switch between the local-file tail and a spawned-process adapter inside the same session UI. Session ring buffers are transient and scoped to the active screen; they do not survive app navigation. Always-on background monitoring outside an open session is intentionally deferred.
 - Source of truth for base asset categories: `desktop/src/config/base-asset-categories.json`.
 - Base asset imports now accept both files and directories, with the selected category and reusable flag flowing through the analyzer JSON contract.
 - Base asset analyzer intake returns checksum, entry count, extension breakdown, and preview entries so the desktop shell can render a meaningful reusable-asset inspector without another analysis pass.
