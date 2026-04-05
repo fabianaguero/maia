@@ -37,6 +37,7 @@ interface AnalyzerScreenProps {
   composition: CompositionResultRecord | null;
   availableBaseAssets: BaseAssetRecord[];
   availableCompositions: CompositionResultRecord[];
+  availableTracks: LibraryTrack[];
   mode: AnalyzerViewMode;
   analyzerLabel: string;
   onGoLibrary: () => void;
@@ -49,6 +50,7 @@ export function AnalyzerScreen({
   composition,
   availableBaseAssets,
   availableCompositions,
+  availableTracks,
   mode,
   analyzerLabel,
   onGoLibrary,
@@ -331,6 +333,7 @@ export function AnalyzerScreen({
                   availableCompositions={availableCompositions}
                   preferredBaseAssetId={baseAsset?.id}
                   preferredCompositionId={composition?.id}
+                  availableTracks={availableTracks}
                 />
               </>
             ) : null}

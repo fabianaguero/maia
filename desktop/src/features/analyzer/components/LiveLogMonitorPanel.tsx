@@ -16,6 +16,7 @@ import {
 import type {
   BaseAssetRecord,
   CompositionResultRecord,
+  LibraryTrack,
   LiveLogCue,
   LiveLogMarker,
   LiveLogStreamUpdate,
@@ -25,6 +26,7 @@ import type {
 import { musicStyleCatalog } from "../../../config/musicStyles";
 import { LiveSonificationScenePanel } from "./LiveSonificationScenePanel";
 import {
+  deriveReferenceAnchor,
   resolveLiveSonificationScene,
   routeCueThroughScene,
   type RoutedLiveCue,
@@ -44,6 +46,7 @@ interface LiveLogMonitorPanelProps {
   availableCompositions: CompositionResultRecord[];
   preferredBaseAssetId?: string | null;
   preferredCompositionId?: string | null;
+  availableTracks: LibraryTrack[];
 }
 
 function toMessage(error: unknown): string {
@@ -238,6 +241,7 @@ export function LiveLogMonitorPanel({
   availableCompositions,
   preferredBaseAssetId: preferredBaseAssetIdProp,
   preferredCompositionId: preferredCompositionIdProp,
+  availableTracks,
 }: LiveLogMonitorPanelProps) {
   const audioContextRef = useRef<AudioContext | null>(null);
   const sampleBuffersRef = useRef(new Map<string, AudioBuffer>());
@@ -252,6 +256,7 @@ export function LiveLogMonitorPanel({
     () => musicStyleCatalog.defaultTrackMusicStyleId,
   );
   const [selectedPresetId, setSelectedPresetId] = useState("balanced");
+  const [selectedReferenceTrackId, setSelectedReferenceTrackId] = useState("");
   const knownComponentsRef = useRef<string[]>([]);
   const [sceneBaseAssetId, setSceneBaseAssetId] = useState(() =>
     preferredBaseAssetId(availableBaseAssets, preferredBaseAssetIdProp),
@@ -277,11 +282,17 @@ export function LiveLogMonitorPanel({
     availableBaseAssets.find((entry) => entry.id === sceneBaseAssetId) ?? null;
   const selectedSceneComposition =
     availableCompositions.find((entry) => entry.id === sceneCompositionId) ?? null;
+  const selectedReferenceTrack =
+    availableTracks.find((t) => t.id === selectedReferenceTrackId) ?? null;
+  const referenceAnchor = selectedReferenceTrack
+    ? deriveReferenceAnchor(selectedReferenceTrack)
+    : null;
   const scene = resolveLiveSonificationScene(
     selectedSceneBaseAsset,
     selectedSceneComposition,
     selectedGenreId,
     selectedPresetId,
+    referenceAnchor,
   );
 
   useEffect(() => {
@@ -431,6 +442,7 @@ export function LiveLogMonitorPanel({
     setSceneCompositionId(
       preferredCompositionId(availableCompositions, preferredCompositionIdProp),
     );
+    setSelectedReferenceTrackId("");
   }, [repository.id]);
 
   useEffect(() => {
@@ -720,6 +732,19 @@ export function LiveLogMonitorPanel({
                 <option value="balanced">Balanced</option>
                 <option value="cascade">Cascade</option>
                 <option value="beat-locked">Beat-locked</option>
+              </select>
+              <select
+                className="compact-select"
+                value={selectedReferenceTrackId}
+                onChange={(e) => setSelectedReferenceTrackId(e.target.value)}
+                title="Reference anchor — aligns live cue energy, BPM suggestion, and genre to a favourite track"
+              >
+                <option value="">No reference anchor</option>
+                {availableTracks.map((track) => (
+                  <option key={track.id} value={track.id}>
+                    {track.title}{track.bpm !== null ? ` · ${track.bpm.toFixed(0)} BPM` : ""}
+                  </option>
+                ))}
               </select>
               <select
                 className="compact-select"

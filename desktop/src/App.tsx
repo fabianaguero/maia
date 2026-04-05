@@ -270,6 +270,7 @@ export default function App() {
             composition={compositions.selectedComposition}
             availableBaseAssets={baseAssets.baseAssets}
             availableCompositions={compositions.compositions}
+            availableTracks={library.tracks}
             mode={analysisMode}
             analyzerLabel={analyzerLabel}
             onGoLibrary={() => setScreen("library")}

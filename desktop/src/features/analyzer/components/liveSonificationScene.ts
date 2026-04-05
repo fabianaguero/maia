@@ -1,6 +1,7 @@
 import type {
   BaseAssetRecord,
   CompositionResultRecord,
+  LibraryTrack,
   LiveLogCue,
 } from "../../../types/library";
 import {
@@ -8,6 +9,56 @@ import {
   resolveCuePoints,
   resolveRenderPreview,
 } from "./compositionPreview";
+
+// ---------------------------------------------------------------------------
+// Reference anchor — derives creative parameters from an imported track
+// ---------------------------------------------------------------------------
+
+export interface ReferenceAnchor {
+  trackId: string;
+  trackTitle: string;
+  musicStyleId: string | null;
+  bpm: number | null;
+  /** 0–1 normalised energy level derived from waveform bin average */
+  energyLevel: number;
+  /** suggested sequencer preset based on track tempo */
+  suggestedPresetId: string;
+}
+
+function waveformEnergy(bins: number[]): number {
+  if (bins.length === 0) {
+    return 0.5;
+  }
+  const avg = bins.reduce((a, b) => a + b, 0) / bins.length;
+  return Math.max(0, Math.min(1, avg));
+}
+
+function suggestPresetFromBpm(bpm: number | null): string {
+  if (!bpm) {
+    return "balanced";
+  }
+  if (bpm < 80) {
+    return "sparse";
+  }
+  if (bpm < 120) {
+    return "balanced";
+  }
+  if (bpm < 160) {
+    return "beat-locked";
+  }
+  return "cascade";
+}
+
+export function deriveReferenceAnchor(track: LibraryTrack): ReferenceAnchor {
+  return {
+    trackId: track.id,
+    trackTitle: track.title,
+    musicStyleId: track.musicStyleId || null,
+    bpm: track.bpm ?? null,
+    energyLevel: waveformEnergy(track.waveformBins),
+    suggestedPresetId: suggestPresetFromBpm(track.bpm ?? null),
+  };
+}
 
 type SceneRouteKey = "info" | "warn" | "error" | "anomaly";
 
@@ -86,6 +137,7 @@ export interface ResolvedLiveSonificationScene {
   presetId: string;
   presetLabel: string;
   preset: SequencerPreset;
+  referenceAnchor: ReferenceAnchor | null;
 }
 
 export interface RoutedLiveCue extends LiveLogCue {
@@ -660,10 +712,24 @@ export function resolveLiveSonificationScene(
   composition: CompositionResultRecord | null,
   genreId?: string | null,
   presetId?: string | null,
+  referenceAnchor?: ReferenceAnchor | null,
 ): ResolvedLiveSonificationScene {
-  const resolvedPresetId = presetId?.trim() || "balanced";
+  // If an anchor track is set, its music style overrides the genre selector
+  // when the style IDs match a known genre profile; otherwise fall back to
+  // whatever the user selected.
+  const resolvedGenreId =
+    (referenceAnchor?.musicStyleId?.trim() && GENRE_PROFILES[referenceAnchor.musicStyleId])
+      ? referenceAnchor.musicStyleId
+      : (genreId?.trim() || "house");
+
+  // Preset: anchor suggestion wins if user left it on "balanced" (default),
+  // otherwise the explicit user choice stays.
+  const resolvedPresetId =
+    referenceAnchor && (presetId === "balanced" || !presetId)
+      ? referenceAnchor.suggestedPresetId
+      : (presetId?.trim() || "balanced");
+
   const preset = fallbackSequencerPreset(resolvedPresetId);
-  const resolvedGenreId = genreId?.trim() || "house";
   const genreProfile = fallbackGenreProfile(resolvedGenreId);
   const categoryId =
     baseAsset?.categoryId ??
@@ -777,9 +843,12 @@ export function resolveLiveSonificationScene(
     ...routeSampleAssignment(sampleSource.sources, route.key),
   }));
 
+  const anchorSuffix = referenceAnchor
+    ? ` · anchored to ${referenceAnchor.trackTitle}${referenceAnchor.bpm ? ` @ ${referenceAnchor.bpm.toFixed(0)} BPM` : ""}`
+    : "";
   const summary = composition
-    ? `${genreProfile.label} · ${preset.label} — ${categoryProfile.descriptor} with ${strategyProfile.descriptor}, using ${composition.title} as structure overlay.`
-    : `${genreProfile.label} · ${preset.label} — ${genreProfile.descriptor} · ${baseAsset?.title ?? categoryLabel}.`;
+    ? `${genreProfile.label} · ${preset.label} — ${categoryProfile.descriptor} with ${strategyProfile.descriptor}, using ${composition.title} as structure overlay.${anchorSuffix}`
+    : `${genreProfile.label} · ${preset.label} — ${genreProfile.descriptor} · ${baseAsset?.title ?? categoryLabel}.${anchorSuffix}`;
 
   return {
     baseAsset,
@@ -801,6 +870,7 @@ export function resolveLiveSonificationScene(
     presetId: resolvedPresetId,
     presetLabel: preset.label,
     preset,
+    referenceAnchor: referenceAnchor ?? null,
   };
 }
 
@@ -842,13 +912,17 @@ export function routeCueThroughScene(
     strategyProfile.durationScale *
     genreProfile.durationScale *
     route.durationScale;
+  const anchorEnergyGain = scene.referenceAnchor
+    ? 0.7 + scene.referenceAnchor.energyLevel * 0.6
+    : 1.0;
   const gain =
     cue.gain *
     categoryProfile.gainScale *
     strategyProfile.gainScale *
     genreProfile.gainScale *
     route.gainScale *
-    presetGainMultiplier;
+    presetGainMultiplier *
+    anchorEnergyGain;
   const pan =
     componentRoute && knownComponents && knownComponents.length > 1
       ? clampPan(route.pan * 0.4 + componentRoute.pan * 0.6)

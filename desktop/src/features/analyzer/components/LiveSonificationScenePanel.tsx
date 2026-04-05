@@ -121,6 +121,26 @@ export function LiveSonificationScenePanel({
           <span>Sample count</span>
           <strong>{scene.sampleSourceCount}</strong>
         </div>
+        {scene.referenceAnchor ? (
+          <>
+            <div>
+              <span>Anchor track</span>
+              <strong>{scene.referenceAnchor.trackTitle}</strong>
+            </div>
+            <div>
+              <span>Anchor BPM</span>
+              <strong>
+                {scene.referenceAnchor.bpm !== null
+                  ? `${scene.referenceAnchor.bpm.toFixed(0)} BPM`
+                  : "—"}
+              </strong>
+            </div>
+            <div>
+              <span>Anchor energy</span>
+              <strong>{(scene.referenceAnchor.energyLevel * 100).toFixed(0)} %</strong>
+            </div>
+          </>
+        ) : null}
       </div>
 
       <div className="audio-path-card top-spaced">
