@@ -22,6 +22,7 @@ import type {
   RepositoryAnalysis,
   StreamAdapterKind,
 } from "../../../types/library";
+import { musicStyleCatalog } from "../../../config/musicStyles";
 import { LiveSonificationScenePanel } from "./LiveSonificationScenePanel";
 import {
   resolveLiveSonificationScene,
@@ -247,6 +248,9 @@ export function LiveLogMonitorPanel({
   const [adapterKind, setAdapterKind] = useState<StreamAdapterKind>("file");
   const [processCommand, setProcessCommand] = useState("");
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [selectedGenreId, setSelectedGenreId] = useState(
+    () => musicStyleCatalog.defaultTrackMusicStyleId,
+  );
   const [sceneBaseAssetId, setSceneBaseAssetId] = useState(() =>
     preferredBaseAssetId(availableBaseAssets, preferredBaseAssetIdProp),
   );
@@ -274,6 +278,7 @@ export function LiveLogMonitorPanel({
   const scene = resolveLiveSonificationScene(
     selectedSceneBaseAsset,
     selectedSceneComposition,
+    selectedGenreId,
   );
 
   useEffect(() => {
@@ -673,14 +678,28 @@ export function LiveLogMonitorPanel({
             {statusLabel(liveEnabled, polling)}
           </span>
           {!liveEnabled ? (
-            <select
-              className="compact-select"
-              value={adapterKind}
-              onChange={(e) => setAdapterKind(e.target.value as StreamAdapterKind)}
-            >
-              <option value="file">File tail</option>
-              <option value="process">Process stdout</option>
-            </select>
+            <>
+              <select
+                className="compact-select"
+                value={selectedGenreId}
+                onChange={(e) => setSelectedGenreId(e.target.value)}
+                title="Instrumental genre — shapes oscillator palette, pitch register, and dynamics"
+              >
+                {musicStyleCatalog.musicStyles.map((style) => (
+                  <option key={style.id} value={style.id}>
+                    {style.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="compact-select"
+                value={adapterKind}
+                onChange={(e) => setAdapterKind(e.target.value as StreamAdapterKind)}
+              >
+                <option value="file">File tail</option>
+                <option value="process">Process stdout</option>
+              </select>
+            </>
           ) : null}
           {liveEnabled ? (
             <button type="button" className="secondary-action" onClick={handleStop}>

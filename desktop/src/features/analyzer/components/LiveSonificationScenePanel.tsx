@@ -76,6 +76,10 @@ export function LiveSonificationScenePanel({
 
       <div className="metric-grid top-spaced">
         <div>
+          <span>Genre</span>
+          <strong>{scene.genreLabel}</strong>
+        </div>
+        <div>
           <span>Category</span>
           <strong>{scene.categoryLabel}</strong>
         </div>

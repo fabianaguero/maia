@@ -50,6 +50,8 @@ export interface LiveSonificationRoute {
 export interface ResolvedLiveSonificationScene {
   baseAsset: BaseAssetRecord | null;
   composition: CompositionResultRecord | null;
+  genreId: string;
+  genreLabel: string;
   categoryId: string;
   categoryLabel: string;
   strategy: string;
@@ -213,6 +215,153 @@ const STRATEGY_PROFILES: Record<string, StrategyProfile> = {
     descriptor: "layered reusable routing",
   },
 };
+
+// ---------------------------------------------------------------------------
+// Genre profiles — user-selectable before parsing; all instrumental
+// ---------------------------------------------------------------------------
+
+interface GenreProfile {
+  label: string;
+  infoWaveform: OscillatorType;
+  warnWaveform: OscillatorType;
+  errorWaveform: OscillatorType;
+  anomalyWaveform: OscillatorType;
+  noteMultiplier: number;   // shifts the overall pitch register
+  durationScale: number;    // longer = classical, shorter = techno
+  gainScale: number;        // jazz is subtle, EDM is loud
+  infoLabel: string;
+  warnLabel: string;
+  errorLabel: string;
+  anomalyLabel: string;
+  descriptor: string;
+}
+
+const GENRE_PROFILES: Record<string, GenreProfile> = {
+  house: {
+    label: "House",
+    infoWaveform: "triangle",
+    warnWaveform: "triangle",
+    errorWaveform: "sawtooth",
+    anomalyWaveform: "sawtooth",
+    noteMultiplier: 1.0,
+    durationScale: 0.9,
+    gainScale: 1.08,
+    infoLabel: "Steady groove",
+    warnLabel: "Filter lift",
+    errorLabel: "Peak surge",
+    anomalyLabel: "Off-beat accent",
+    descriptor: "warm 4x4 instrumental groove",
+  },
+  "melodic-house": {
+    label: "Melodic House",
+    infoWaveform: "sine",
+    warnWaveform: "triangle",
+    errorWaveform: "sawtooth",
+    anomalyWaveform: "sawtooth",
+    noteMultiplier: 1.04,
+    durationScale: 1.06,
+    gainScale: 0.96,
+    infoLabel: "Melodic pulse",
+    warnLabel: "Harmonic rise",
+    errorLabel: "Melodic peak",
+    anomalyLabel: "Detuned accent",
+    descriptor: "melodic instrumental flow",
+  },
+  "progressive-house": {
+    label: "Progressive House",
+    infoWaveform: "sine",
+    warnWaveform: "triangle",
+    errorWaveform: "sawtooth",
+    anomalyWaveform: "sawtooth",
+    noteMultiplier: 1.02,
+    durationScale: 1.18,
+    gainScale: 0.98,
+    infoLabel: "Baseline phrase",
+    warnLabel: "Build phrase",
+    errorLabel: "Break surge",
+    anomalyLabel: "Lift accent",
+    descriptor: "long-build instrumental arrangement",
+  },
+  edm: {
+    label: "EDM",
+    infoWaveform: "square",
+    warnWaveform: "square",
+    errorWaveform: "sawtooth",
+    anomalyWaveform: "sawtooth",
+    noteMultiplier: 1.05,
+    durationScale: 0.72,
+    gainScale: 1.18,
+    infoLabel: "Synth lead pulse",
+    warnLabel: "Stab rise",
+    errorLabel: "Drop surge",
+    anomalyLabel: "Sidechain accent",
+    descriptor: "punchy festival instrumental",
+  },
+  techno: {
+    label: "Techno",
+    infoWaveform: "square",
+    warnWaveform: "square",
+    errorWaveform: "square",
+    anomalyWaveform: "sawtooth",
+    noteMultiplier: 0.92,
+    durationScale: 0.68,
+    gainScale: 1.22,
+    infoLabel: "Kick pulse",
+    warnLabel: "Clap hit",
+    errorLabel: "Distortion burst",
+    anomalyLabel: "Glitch accent",
+    descriptor: "dense percussive instrumental",
+  },
+  trance: {
+    label: "Trance",
+    infoWaveform: "sine",
+    warnWaveform: "triangle",
+    errorWaveform: "sawtooth",
+    anomalyWaveform: "sawtooth",
+    noteMultiplier: 1.08,
+    durationScale: 1.18,
+    gainScale: 1.0,
+    infoLabel: "Pad sweep",
+    warnLabel: "Filter tension",
+    errorLabel: "Supersaw burst",
+    anomalyLabel: "Arpeggio accent",
+    descriptor: "euphoric instrumental sweep",
+  },
+  classic: {
+    label: "Classical",
+    infoWaveform: "sine",
+    warnWaveform: "sine",
+    errorWaveform: "triangle",
+    anomalyWaveform: "sawtooth",
+    noteMultiplier: 1.12,
+    durationScale: 1.6,
+    gainScale: 0.78,
+    infoLabel: "String bed",
+    warnLabel: "Tension phrase",
+    errorLabel: "Dramatic swell",
+    anomalyLabel: "Dissonance accent",
+    descriptor: "orchestral instrumental palette",
+  },
+  jazz: {
+    label: "Jazz",
+    infoWaveform: "sine",
+    warnWaveform: "triangle",
+    errorWaveform: "triangle",
+    anomalyWaveform: "triangle",
+    noteMultiplier: 0.88,
+    durationScale: 1.22,
+    gainScale: 0.82,
+    infoLabel: "Walking tone",
+    warnLabel: "Chord tension",
+    errorLabel: "Sharp comp",
+    anomalyLabel: "Tritone accent",
+    descriptor: "instrumental jazz palette",
+  },
+};
+
+function fallbackGenreProfile(genreId: string | null | undefined): GenreProfile {
+  return GENRE_PROFILES[genreId ?? ""] ?? GENRE_PROFILES.house;
+}
 
 const PLAYABLE_AUDIO_EXTENSIONS = new Set([
   ".wav",
@@ -392,7 +541,10 @@ function routeKeyForCue(cue: LiveLogCue): SceneRouteKey {
 export function resolveLiveSonificationScene(
   baseAsset: BaseAssetRecord | null,
   composition: CompositionResultRecord | null,
+  genreId?: string | null,
 ): ResolvedLiveSonificationScene {
+  const resolvedGenreId = genreId?.trim() || "house";
+  const genreProfile = fallbackGenreProfile(resolvedGenreId);
   const categoryId =
     baseAsset?.categoryId ??
     composition?.baseAssetCategoryId ??
@@ -433,14 +585,14 @@ export function resolveLiveSonificationScene(
   const routes: LiveSonificationRoute[] = ([
     {
       key: "info",
-      label: "Steady pulse",
+      label: genreProfile.infoLabel,
       stemLabel: foundationStem?.label ?? `${categoryLabel} foundation`,
       sectionLabel: introSection?.label ?? "Baseline window",
       cueLabel: introCue?.label ?? "Baseline cue",
       focus:
         foundationStem?.focus ??
         "Keep a continuous representation of nominal system activity in the background.",
-      waveform: categoryProfile.baseWaveform,
+      waveform: genreProfile.infoWaveform,
       noteMultiplier: 0.96,
       durationScale: 1,
       gainScale: 0.92,
@@ -450,14 +602,14 @@ export function resolveLiveSonificationScene(
     },
     {
       key: "warn",
-      label: "Tension rise",
+      label: genreProfile.warnLabel,
       stemLabel: supportStem?.label ?? `${categoryLabel} motion`,
       sectionLabel: buildSection?.label ?? "Build window",
       cueLabel: buildCue?.label ?? "Build cue",
       focus:
         supportStem?.focus ??
         "Push warning pressure forward before the system crosses into a harder anomaly state.",
-      waveform: categoryProfile.warnWaveform,
+      waveform: genreProfile.warnWaveform,
       noteMultiplier: 1.08,
       durationScale: 1.06,
       gainScale: 1.08,
@@ -467,14 +619,14 @@ export function resolveLiveSonificationScene(
     },
     {
       key: "error",
-      label: "Critical surge",
+      label: genreProfile.errorLabel,
       stemLabel: spotlightStem?.label ?? `${categoryLabel} impact`,
       sectionLabel: mainSection?.label ?? "Impact window",
       cueLabel: mainCue?.label ?? "Impact cue",
       focus:
         spotlightStem?.focus ??
         "Make clear when the live stream shifts from pressure into a real failure state.",
-      waveform: categoryProfile.errorWaveform,
+      waveform: genreProfile.errorWaveform,
       noteMultiplier: 1.22,
       durationScale: 0.96,
       gainScale: 1.16,
@@ -484,14 +636,14 @@ export function resolveLiveSonificationScene(
     },
     {
       key: "anomaly",
-      label: "Anomaly accent",
+      label: genreProfile.anomalyLabel,
       stemLabel: glueStem?.label ?? `${categoryLabel} anomaly accent`,
       sectionLabel: outroSection?.label ?? "Accent window",
       cueLabel: outroCue?.label ?? "Accent cue",
       focus:
         glueStem?.focus ??
         "Mark bursts, exceptions, or drift spikes with a clearly distinct accent.",
-      waveform: categoryProfile.anomalyWaveform,
+      waveform: genreProfile.anomalyWaveform,
       noteMultiplier: 1.38,
       durationScale: 0.84,
       gainScale: 1.24,
@@ -506,12 +658,14 @@ export function resolveLiveSonificationScene(
   }));
 
   const summary = composition
-    ? `Live log windows route through ${categoryProfile.descriptor} with ${strategyProfile.descriptor}, using ${composition.title} as the structure overlay.`
-    : `Live log windows route through ${categoryProfile.descriptor} using ${baseAsset?.title ?? categoryLabel} as the reusable timbral vocabulary.`;
+    ? `${genreProfile.label} instrumental — ${categoryProfile.descriptor} with ${strategyProfile.descriptor}, using ${composition.title} as structure overlay.`
+    : `${genreProfile.label} instrumental — ${genreProfile.descriptor} · ${baseAsset?.title ?? categoryLabel}.`;
 
   return {
     baseAsset,
     composition,
+    genreId: resolvedGenreId,
+    genreLabel: genreProfile.label,
     categoryId,
     categoryLabel,
     strategy,
@@ -536,10 +690,11 @@ export function routeCueThroughScene(
   const route = scene.routes.find((candidate) => candidate.key === routeKey) ?? scene.routes[0];
   const categoryProfile = fallbackCategoryProfile(scene.categoryId);
   const strategyProfile = fallbackStrategyProfile(scene.strategy);
+  const genreProfile = fallbackGenreProfile(scene.genreId);
   const indexOffsetMultiplier = 1 + ((index % 3) - 1) * 0.015;
-  const noteHz = cue.noteHz * categoryProfile.noteMultiplier * strategyProfile.noteMultiplier * route.noteMultiplier * indexOffsetMultiplier;
-  const durationMs = cue.durationMs * categoryProfile.durationScale * strategyProfile.durationScale * route.durationScale;
-  const gain = cue.gain * categoryProfile.gainScale * strategyProfile.gainScale * route.gainScale;
+  const noteHz = cue.noteHz * categoryProfile.noteMultiplier * strategyProfile.noteMultiplier * genreProfile.noteMultiplier * route.noteMultiplier * indexOffsetMultiplier;
+  const durationMs = cue.durationMs * categoryProfile.durationScale * strategyProfile.durationScale * genreProfile.durationScale * route.durationScale;
+  const gain = cue.gain * categoryProfile.gainScale * strategyProfile.gainScale * genreProfile.gainScale * route.gainScale;
 
   return {
     ...cue,
