@@ -2,7 +2,7 @@
 
 ## Product
 Desktop app tipo Rekordbox para Linux, Windows y macOS.
-Analiza canciones, grafica waveform/beat grid/BPM curve y parsea repos/logs
+Analiza reppositorios , logs y genera canciones, grafica waveform/beat grid/BPM curve
 para inferir BPM sugerido, patrones musicales y bases reutilizables.
 
 ## Fixed architecture

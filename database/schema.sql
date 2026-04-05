@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS musical_assets (
 
 CREATE TABLE IF NOT EXISTS track_analyses (
   asset_id TEXT PRIMARY KEY REFERENCES musical_assets(id) ON DELETE CASCADE,
+  storage_path TEXT,
   duration_seconds REAL,
   sample_rate_hz INTEGER,
   channels INTEGER,
@@ -28,6 +29,7 @@ CREATE TABLE IF NOT EXISTS track_analyses (
 CREATE TABLE IF NOT EXISTS repo_analyses (
   asset_id TEXT PRIMARY KEY REFERENCES musical_assets(id) ON DELETE CASCADE,
   repo_path TEXT NOT NULL,
+  storage_path TEXT,
   build_system TEXT,
   primary_language TEXT,
   java_file_count INTEGER NOT NULL DEFAULT 0,
@@ -42,6 +44,20 @@ CREATE TABLE IF NOT EXISTS base_assets (
   category TEXT NOT NULL,
   checksum TEXT,
   reusable INTEGER NOT NULL DEFAULT 1 CHECK (reusable IN (0, 1))
+);
+
+CREATE TABLE IF NOT EXISTS composition_results (
+  asset_id TEXT PRIMARY KEY REFERENCES musical_assets(id) ON DELETE CASCADE,
+  base_asset_id TEXT NOT NULL REFERENCES musical_assets(id) ON DELETE CASCADE,
+  reference_type TEXT NOT NULL CHECK (reference_type IN ('track', 'repo', 'manual')),
+  reference_asset_id TEXT REFERENCES musical_assets(id) ON DELETE SET NULL,
+  target_bpm REAL NOT NULL,
+  strategy TEXT NOT NULL,
+  arrangement_summary TEXT NOT NULL DEFAULT '',
+  export_path TEXT,
+  waveform_bins_json TEXT NOT NULL DEFAULT '[]',
+  beat_grid_json TEXT NOT NULL DEFAULT '[]',
+  bpm_curve_json TEXT NOT NULL DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS analysis_jobs (

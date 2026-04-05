@@ -58,6 +58,32 @@ function deriveTitle(sourcePath: string): string {
   return tail || "base-asset";
 }
 
+function playableEntriesForCategory(
+  categoryId: string,
+  sourceKind: ImportBaseAssetInput["sourceKind"],
+): string[] {
+  if (sourceKind === "file") {
+    return [];
+  }
+
+  switch (categoryId) {
+    case "drum-kit":
+      return ["kick.wav", "hat.wav", "snare.wav", "perc-loop.wav"];
+    case "bass-motif":
+      return ["bass-root.wav", "bass-octave.wav", "bass-accent.wav"];
+    case "pad-texture":
+      return ["pad-bed.wav", "pad-rise.wav", "pad-shimmer.wav"];
+    case "fx-palette":
+      return ["rise.wav", "impact.wav", "glitch.wav", "reverse.wav"];
+    case "vocal-hook":
+      return ["hook-main.wav", "hook-adlib.wav", "hook-stab.wav"];
+    case "code-pattern":
+      return ["pattern-low.wav", "pattern-mid.wav", "pattern-high.wav"];
+    default:
+      return ["layer-a.wav", "layer-b.wav", "layer-c.wav"];
+  }
+}
+
 function createBaseAsset(input: ImportBaseAssetInput): BaseAssetRecord {
   const sourcePath = input.sourcePath.trim();
   const category = resolveBaseAssetCategory(input.categoryId);
@@ -70,6 +96,16 @@ function createBaseAsset(input: ImportBaseAssetInput): BaseAssetRecord {
   const entryCount = input.sourceKind === "directory" ? 6 + (seed % 24) : 1;
   const totalSizeBytes =
     input.sourceKind === "directory" ? 100_000 + (seed % 700_000) : 10_000 + (seed % 90_000);
+  const storagePath = `browser-fallback://base-assets/${seed.toString(16)}/${title}`;
+  const playableAudioEntries =
+    input.sourceKind === "file" &&
+    /\.(wav|mp3|flac|ogg|oga|aif|aiff)$/i.test(sourcePath)
+      ? [title]
+      : playableEntriesForCategory(categoryId, input.sourceKind);
+  const previewEntries =
+    input.sourceKind === "directory"
+      ? [...playableAudioEntries, "notes.txt", "pattern.json"].slice(0, 6)
+      : [title];
 
   return {
     id:
@@ -78,7 +114,7 @@ function createBaseAsset(input: ImportBaseAssetInput): BaseAssetRecord {
         : `base-${Date.now()}-${seed}`,
     title,
     sourcePath,
-    storagePath: sourcePath,
+    storagePath,
     sourceKind: input.sourceKind,
     importedAt: new Date().toISOString(),
     categoryId,
@@ -101,7 +137,7 @@ function createBaseAsset(input: ImportBaseAssetInput): BaseAssetRecord {
       input.reusable
         ? "Marked as reusable for future composition workflows."
         : "Marked as reference-only for cataloging without reuse.",
-      "MVP stores base assets by source-path reference instead of copying files into managed storage.",
+      "The browser fallback preserves the same base-asset shape, but it cannot create a native managed snapshot on disk.",
     ],
     tags: [
       "base-asset",
@@ -117,6 +153,16 @@ function createBaseAsset(input: ImportBaseAssetInput): BaseAssetRecord {
       checksum: toChecksum(seed),
       totalSizeBytes,
       reusable: input.reusable,
+      extensionBreakdown:
+        input.sourceKind === "directory"
+          ? { wav: playableAudioEntries.length, txt: 1, json: 1 }
+          : { [sourcePath.split(".").pop()?.toLowerCase() || "file"]: 1 },
+      previewEntries,
+      audioEntryCount: playableAudioEntries.length,
+      playableAudioEntries,
+      storageMode: "browser-fallback",
+      originalSourcePath: sourcePath,
+      storagePath,
     },
   };
 }

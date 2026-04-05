@@ -14,15 +14,25 @@ export function RepositoriesTable({
   onSelectRepository,
   onInspectRepository,
 }: RepositoriesTableProps) {
+  function sourceKindLabel(sourceKind: RepositoryAnalysis["sourceKind"]): string {
+    if (sourceKind === "directory") {
+      return "Filesystem";
+    }
+    if (sourceKind === "file") {
+      return "Log file";
+    }
+    return "GitHub URL";
+  }
+
   return (
     <div className="table-shell">
       <table className="tracks-table">
         <thead>
           <tr>
-            <th>Project</th>
+            <th>Name</th>
             <th>Source</th>
-            <th>Code BPM</th>
-            <th>Build</th>
+            <th>Signal BPM</th>
+            <th>Mode</th>
             <th>Language</th>
             <th>Status</th>
             <th>Imported</th>
@@ -41,9 +51,7 @@ export function RepositoriesTable({
               >
                 <td>
                   <strong>{repository.title}</strong>
-                  <small>
-                    {repository.sourceKind === "directory" ? "Filesystem" : "GitHub URL"}
-                  </small>
+                  <small>{sourceKindLabel(repository.sourceKind)}</small>
                 </td>
                 <td title={repository.sourcePath}>{repository.sourcePath}</td>
                 <td>

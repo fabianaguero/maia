@@ -13,8 +13,8 @@ export function BaseAssetOverviewPanel({
         <div>
           <h2>Base asset overview</h2>
           <p className="support-copy">
-            Reusable source material registered in the local catalog for future
-            composition and pattern workflows.
+            Reusable source material snapshotted into the local Maia catalog for
+            future composition and pattern workflows.
           </p>
         </div>
       </div>

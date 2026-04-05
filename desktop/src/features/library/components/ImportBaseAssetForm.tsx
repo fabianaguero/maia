@@ -194,8 +194,8 @@ export function ImportBaseAssetForm({
       </label>
 
       <p className="field-hint">
-        MVP stores base assets by reference to the current local path instead of
-        copying them into managed Maia storage.
+        Tauri imports snapshot the selected file or folder into managed Maia
+        storage. Browser fallback keeps the same shape but cannot create the native copy.
       </p>
 
       {error ? <p className="inline-error">{error}</p> : null}

@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 from uuid import uuid4
 
 from .treesitter import analyze_java_sources, analyze_kotlin_sources, build_repo_waveform_bins
+from .stream import ingest_lines
 
 MAX_LOG_LINES = 4000
 LOG_BUCKET_COUNT = 24
@@ -66,6 +67,10 @@ def analyze_repository(
     resolved_path = Path(source_path).expanduser().resolve()
     if source_kind == "file" or resolved_path.is_file():
         if isinstance(options, dict) and isinstance(options.get("logTailChunk"), str):
+            session_id = options.get("logTailSessionId")
+            chunk = options["logTailChunk"]
+            if session_id:
+                ingest_lines(str(session_id), chunk.splitlines())
             return _analyze_log_chunk(
                 source_path,
                 options["logTailChunk"],

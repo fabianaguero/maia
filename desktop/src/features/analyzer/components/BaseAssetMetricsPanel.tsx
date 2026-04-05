@@ -31,7 +31,7 @@ export function BaseAssetMetricsPanel({
         <div>
           <h2>Base asset status</h2>
           <p className="support-copy">
-            Metadata snapshot for the reusable asset reference stored locally in Maia.
+            Metadata snapshot for the managed reusable asset copy stored locally in Maia.
           </p>
         </div>
       </div>
@@ -56,6 +56,14 @@ export function BaseAssetMetricsPanel({
         <div>
           <span>Confidence</span>
           <strong>{Math.round(baseAsset.confidence * 100)}%</strong>
+        </div>
+        <div>
+          <span>Audio entries</span>
+          <strong>
+            {typeof baseAsset.metrics.audioEntryCount === "number"
+              ? baseAsset.metrics.audioEntryCount
+              : 0}
+          </strong>
         </div>
         <div>
           <span>Size</span>

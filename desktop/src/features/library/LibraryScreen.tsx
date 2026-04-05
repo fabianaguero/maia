@@ -3,6 +3,8 @@ import type { BaseAssetCategoryOption } from "../../types/baseAsset";
 import type { MusicStyleOption } from "../../types/music";
 import type {
   BaseAssetRecord,
+  CompositionResultRecord,
+  ImportCompositionInput,
   ImportBaseAssetInput,
   ImportRepositoryInput,
   ImportTrackInput,
@@ -10,7 +12,9 @@ import type {
   RepositoryAnalysis,
 } from "../../types/library";
 import { BaseAssetsTable } from "./components/BaseAssetsTable";
+import { CompositionResultsTable } from "./components/CompositionResultsTable";
 import { ImportBaseAssetForm } from "./components/ImportBaseAssetForm";
+import { ImportCompositionForm } from "./components/ImportCompositionForm";
 import { ImportRepositoryForm } from "./components/ImportRepositoryForm";
 import { ImportTrackForm } from "./components/ImportTrackForm";
 import { RepositoriesTable } from "./components/RepositoriesTable";
@@ -20,9 +24,11 @@ interface LibraryScreenProps {
   tracks: LibraryTrack[];
   repositories: RepositoryAnalysis[];
   baseAssets: BaseAssetRecord[];
+  compositions: CompositionResultRecord[];
   selectedTrackId: string | null;
   selectedRepositoryId: string | null;
   selectedBaseAssetId: string | null;
+  selectedCompositionId: string | null;
   manifest: BootstrapManifest | null;
   musicStyles: MusicStyleOption[];
   baseAssetCategories: BaseAssetCategoryOption[];
@@ -31,31 +37,39 @@ interface LibraryScreenProps {
   trackLoading: boolean;
   repositoryLoading: boolean;
   baseAssetLoading: boolean;
+  compositionLoading: boolean;
   trackBusy: boolean;
   repositoryBusy: boolean;
   baseAssetBusy: boolean;
+  compositionBusy: boolean;
   trackError: string | null;
   repositoryError: string | null;
   baseAssetError: string | null;
+  compositionError: string | null;
   onImportTrack: (input: ImportTrackInput) => Promise<boolean>;
   onImportRepository: (input: ImportRepositoryInput) => Promise<boolean>;
   onImportBaseAsset: (input: ImportBaseAssetInput) => Promise<boolean>;
+  onImportComposition: (input: ImportCompositionInput) => Promise<boolean>;
   onSeedDemo: () => Promise<void>;
   onSelectTrack: (trackId: string) => void;
   onSelectRepository: (repositoryId: string) => void;
   onSelectBaseAsset: (baseAssetId: string) => void;
+  onSelectComposition: (compositionId: string) => void;
   onInspectTrack: (trackId: string) => void;
   onInspectRepository: (repositoryId: string) => void;
   onInspectBaseAsset: (baseAssetId: string) => void;
+  onInspectComposition: (compositionId: string) => void;
 }
 
 export function LibraryScreen({
   tracks,
   repositories,
   baseAssets,
+  compositions,
   selectedTrackId,
   selectedRepositoryId,
   selectedBaseAssetId,
+  selectedCompositionId,
   manifest,
   musicStyles,
   baseAssetCategories,
@@ -64,22 +78,28 @@ export function LibraryScreen({
   trackLoading,
   repositoryLoading,
   baseAssetLoading,
+  compositionLoading,
   trackBusy,
   repositoryBusy,
   baseAssetBusy,
+  compositionBusy,
   trackError,
   repositoryError,
   baseAssetError,
+  compositionError,
   onImportTrack,
   onImportRepository,
   onImportBaseAsset,
+  onImportComposition,
   onSeedDemo,
   onSelectTrack,
   onSelectRepository,
   onSelectBaseAsset,
+  onSelectComposition,
   onInspectTrack,
   onInspectRepository,
   onInspectBaseAsset,
+  onInspectComposition,
 }: LibraryScreenProps) {
   return (
     <section className="screen">
@@ -88,16 +108,15 @@ export function LibraryScreen({
           <p className="eyebrow">Library screen</p>
           <h2>Imported assets</h2>
           <p className="support-copy">
-            Tracks, local code projects, GitHub repository references, and
-            reusable base assets stay local-first. Each import persists a
-            lightweight analysis record that the analyzer screen can inspect
-            immediately.
+            Tracks, local code projects, log files, GitHub repository references, and reusable
+            base assets stay local-first. Each import persists a lightweight analysis record that
+            the analyzer screen can inspect immediately.
           </p>
         </div>
         <div className="screen-summary">
           <div className="summary-pill">
-            <span>Tracks / Repos / Bases</span>
-            <strong>{tracks.length} / {repositories.length} / {baseAssets.length}</strong>
+            <span>Tracks / Code-logs / Bases / Comps</span>
+            <strong>{tracks.length} / {repositories.length} / {baseAssets.length} / {compositions.length}</strong>
           </div>
           <div className="summary-pill">
             <span>Storage mode</span>
@@ -173,6 +192,16 @@ export function LibraryScreen({
             </div>
           </dl>
         </section>
+
+        <section className="panel">
+          <ImportCompositionForm
+            busy={compositionBusy}
+            baseAssets={baseAssets}
+            tracks={tracks}
+            repositories={repositories}
+            onImportComposition={onImportComposition}
+          />
+        </section>
       </div>
 
       <div className="asset-tables">
@@ -208,9 +237,10 @@ export function LibraryScreen({
         <section className="panel library-table-panel">
           <div className="panel-header">
             <div>
-              <h2>Repository table</h2>
+              <h2>Code and log table</h2>
               <p className="support-copy">
-                Import a filesystem project or GitHub URL and inspect its BPM heuristic state.
+                Import a filesystem project, a local log file, or a GitHub URL and inspect its
+                signal state.
               </p>
             </div>
           </div>
@@ -219,8 +249,8 @@ export function LibraryScreen({
             <p className="placeholder">Loading repository intake...</p>
           ) : repositories.length === 0 ? (
             <div className="empty-state">
-              <p>No code projects imported yet.</p>
-              <p>Use a local directory path or a GitHub URL to create the first analysis item.</p>
+              <p>No code or log sources imported yet.</p>
+              <p>Use a local directory, a local log file, or a GitHub URL to create the first analysis item.</p>
             </div>
           ) : (
             <RepositoriesTable
@@ -261,6 +291,35 @@ export function LibraryScreen({
           )}
 
           {baseAssetError ? <div className="notice">{baseAssetError}</div> : null}
+        </section>
+
+        <section className="panel library-table-panel">
+          <div className="panel-header">
+            <div>
+              <h2>Composition table</h2>
+              <p className="support-copy">
+                Local arrangement plans derived from reusable bases and reference BPM sources.
+              </p>
+            </div>
+          </div>
+
+          {compositionLoading ? (
+            <p className="placeholder">Loading compositions...</p>
+          ) : compositions.length === 0 ? (
+            <div className="empty-state">
+              <p>No composition plans created yet.</p>
+              <p>Choose a base asset and a track, repo, or manual BPM to generate the first plan.</p>
+            </div>
+          ) : (
+            <CompositionResultsTable
+              compositions={compositions}
+              selectedCompositionId={selectedCompositionId}
+              onSelectComposition={onSelectComposition}
+              onInspectComposition={onInspectComposition}
+            />
+          )}
+
+          {compositionError ? <div className="notice">{compositionError}</div> : null}
         </section>
       </div>
     </section>

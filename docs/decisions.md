@@ -3,17 +3,38 @@
 ## 2026-04-04
 
 ### Business decisions
+- Maia's primary product value is software sonification: code and logs should become listenable musical/aural signals, not just visual metrics.
+- Teams should eventually be able to monitor a live log stream and hear anomalous events as distinct sounds or musical changes without staring at a dashboard.
+- Before true live streaming exists, Maia should already support importing a real local log file and deriving audible/visual signal structure from it.
+- Imported tracks are supporting reference material for calibration, comparison, and UX familiarity; they are not the core business output.
+- Reusable base assets are the sonic vocabulary Maia will use to express code/log events, tension, drift, and anomalies.
 - Track intake now requires an explicit music-style choice before import.
 - The style list is curated for MVP instead of user free-text so the library stays consistent for DJs and future reusable-base workflows.
 - The initial catalog prioritizes common electronic families such as House, Melodic House, Progressive House, Techno, Trance, and EDM.
 - Track and repository intake should prefer browse-first desktop interactions over manual typing when a native picker is available.
 - Importing a real local track file should immediately improve the stored waveform preview, even before full BPM DSP is implemented.
+- Real local track imports should also be snapshotted into Maia-managed storage in the native runtime so analysis and later workflows do not depend on the original file staying in place.
+- Real local repository imports should be snapshotted into Maia-managed storage in the native runtime for the same reason: analyzer heuristics and later flows should not depend on the original checkout staying untouched.
 - Native OS dialogs are acceptable for choosing files and folders, but parsing and media/code processing should stay inside the app stack after selection.
 - Persisted beat-grid and BPM-curve artifacts should be visible in the analyzer screen as soon as they exist, even if the underlying heuristics are still coarse in MVP.
 - Base assets need explicit category assignment at import time so the reusable catalog stays navigable instead of becoming an untyped file dump.
-- MVP base assets should be registered by source-path reference first, before investing in managed copy/snapshot storage semantics.
+- Base assets should be snapshotted into Maia-managed storage in the native desktop runtime so later composition flows do not depend on the original filesystem path staying untouched.
+- `composition_result` should be created inside Maia from existing local assets instead of importing another external file type.
+- MVP composition results are planning artifacts: they need to express timing, strategy, reusable-asset intent, and eventually event-to-sound intent, but they do not need to render final audio yet.
+- Users should be able to derive a composition from either a track BPM, a repository BPM, or a manual tempo so the workflow remains useful before full composition engines exist.
+- Native composition results should also become first-class internal files so a derived arrangement plan exists on disk under Maia storage, not only as rows in SQLite.
+- Before audio rendering exists, composition results should still expose phrase sections and cue points so DJs can inspect usable structure inside Maia.
+- Before real bounce/export exists, Maia should also expose an internal render preview with stems and automation so users can reason about mix structure inside the desktop app.
+- Before full bounce/export exists, Maia should still generate a deterministic managed preview audio file so the composition flow produces something audible inside the local-first runtime.
+- Once native track snapshots exist, Maia should also let users audition imported tracks inside the analyzer screen instead of forcing an external player.
+- Once managed preview audio exists, Maia should also let the user audition it directly inside the analyzer screen instead of forcing an external player hop.
+- Live log-stream sonification should land in MVP at least for the local `tail -f` case, because hearing newly appended log events is core to Maia's product identity rather than optional polish.
+- Live monitoring should not stay generic once reusable bases and composition plans exist; the operator needs to hear the stream through Maia's own sonic vocabulary.
 
 ### Technical decisions
+- Current persisted entities (`track_analysis`, `repo_analysis`, `base_asset`, `composition_result`) are enough for the present MVP; live log monitoring is implemented as transient runtime state on top of `repo_analysis` instead of a new persisted asset type.
+- With local live tail now in-product, `repo_analysis` plus `composition_result` remain the main path for code-driven music generation and preview, while the monitor adds the first continuous runtime cue layer.
+- `track_analysis` is currently a support lane for reference audio, playback, and tempo comparison; it should not be mistaken for the main business domain.
 - Source of truth for the style catalog: `desktop/src/config/music-styles.json`.
 - The desktop bootstrap manifest exposes the catalog and the config path so the UI can render the selector without a second config call.
 - The selected style is persisted on each track inside `musical_assets.metadata_json` and mirrored in asset tags as `music-style:<id>`.
@@ -28,8 +49,36 @@
 - Beat grid and BPM curve are currently coarse heuristic artifacts; they are stored now so later UI iterations can consume them without another DB migration.
 - The analyzer screen now consumes beat-grid and BPM-curve artifacts directly from the same `LibraryTrack` payload returned by Tauri and by the browser fallback, avoiding a separate per-panel artifact query.
 - Mock/demo track generation now emits waveform, beat-grid, and BPM-curve preview data so the UI stays representative even when the Python bridge is unavailable.
+- Native track import now copies the selected file into managed local storage and persists that snapshot path in `track_analyses.storage_path`.
+- The original track path remains in `musical_assets.source_path`, while Tauri analyzer requests prefer the managed snapshot when it exists.
+- Browser fallback cannot create the native snapshot, so it preserves the same `LibraryTrack` shape with a simulated managed path and explicit notes.
+- The track analyzer screen now resolves only managed track snapshots, not legacy/original paths, through Tauri `convertFileSrc`, so in-app playback stays local-first and does not silently fall back to external filesystem paths.
+- Native repository import now copies the selected local directory into managed local storage and persists that snapshot path in `repo_analyses.storage_path`.
+- The original repository path remains in `musical_assets.source_path`, while Tauri analyzer requests prefer the managed snapshot for local directory imports.
+- `repo_analysis` now also accepts `source_kind = "file"` for local log files, using the same managed-storage snapshot approach as local directories.
+- GitHub URL imports remain metadata-only and do not create a managed repository snapshot.
+- Local log-file analysis now extracts severity counts, cadence bins, top components, and anomaly markers, then maps them to a deterministic BPM suggestion and signal summary without introducing a fifth core entity.
+- The first shipped live-stream implementation is local-file tailing: Maia keeps a baseline snapshot for the imported log, but the live monitor polls the original file path for newly appended bytes.
+- Live monitoring updates should remain transient and should travel through the existing analyzer JSON contract as log-window options (`logTailChunk`, offsets, live-mode flag) instead of becoming another persisted asset type.
+- Audible live cues should be synthesized inside the app with Web Audio, not delegated to OS media tools, so the feature remains local-first and app-contained after file selection.
+- The first scene implementation is also transient: the live monitor can select an existing base asset plus an optional composition overlay, then remap live cues onto stems/sections/waveforms without persisting another runtime object.
+- Base assets now influence both routing metadata and cue playback: if the selected managed base asset resolves to a playable file, Maia triggers that sample directly for live cues; otherwise it falls back to internal synthesis.
+- Folder-pack base assets now expose multiple playable audio entries, and the live monitor can assign different route types (`info`, `warn`, `error`, `anomaly`) to different managed samples from the same pack.
+- Multi-sample mapping is still lightweight: Maia currently chooses one sample per route, not per-component or per-pattern sequencing.
 - Source of truth for base asset categories: `desktop/src/config/base-asset-categories.json`.
 - Base asset imports now accept both files and directories, with the selected category and reusable flag flowing through the analyzer JSON contract.
 - Base asset analyzer intake returns checksum, entry count, extension breakdown, and preview entries so the desktop shell can render a meaningful reusable-asset inspector without another analysis pass.
-- Base assets are persisted by reference in `base_assets.storage_path`, equal to the selected local source path in MVP.
+- Native base asset import now copies the selected file or directory into managed local storage and persists that snapshot path in `base_assets.storage_path`.
+- The original filesystem path remains in `musical_assets.source_path` for traceability, while analysis and later composition flows can rely on the managed snapshot.
+- Browser fallback cannot perform the native copy, so it preserves the same frontend record shape with simulated managed-storage metadata.
 - Tauri and browser fallback now share the same `BaseAssetRecord` shape, and the analyzer screen has a dedicated base-asset mode instead of overloading the track/repo views.
+- Composition planner input reuses the existing analyzer `composition_result` asset type and extends `options` with reference type, reference label, reference BPM, and base-asset entry count.
+- SQLite now persists derived compositions in a dedicated `composition_results` table while keeping planner notes, tags, and metrics in `musical_assets.metadata_json`.
+- Composition preview artifacts are stored with the result, not recomputed on every open, so the analyzer screen stays fast and deterministic.
+- Tauri now writes a managed `plan.json` snapshot for each composition result and persists that path in `composition_results.export_path`.
+- The composition planner now emits deterministic `arrangementSections` and `cuePoints` inside metrics; the analyzer screen renders them directly and can derive fallback sections for older records.
+- The composition planner now also emits a deterministic `renderPreview` object inside metrics, and the analyzer screen renders it directly while deriving a fallback for older records.
+- Composition analysis can now optionally synthesize a deterministic stereo `preview.wav` using only the Python stdlib, and the resulting `previewAudioPath`/format metadata stays in composition metrics plus the frontend record shape.
+- Track and composition playback now share the same frontend-managed audio transport, resolving managed local files with Tauri `convertFileSrc` through a scoped `$APPDATA/assets/**` asset protocol instead of delegating audition to the operating system.
+- Tauri and browser fallback now share the same `CompositionResultRecord` shape, including waveform bins, beat grid, BPM curve, strategy, and reference metadata.
+- Composition planning currently depends on existing stored base assets and track/repository BPM records; the new live log-tail monitor is a runtime cue layer, not yet a full continuous composition engine or generalized stream adapter layer.

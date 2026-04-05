@@ -69,6 +69,8 @@ function normalizeTrack(track: unknown): LibraryTrack | null {
     id: typeof raw.id === "string" ? raw.id : `track-${Date.now()}`,
     title: typeof raw.title === "string" ? raw.title : "Imported Track",
     sourcePath: typeof raw.sourcePath === "string" ? raw.sourcePath : "",
+    storagePath:
+      typeof raw.storagePath === "string" ? raw.storagePath : null,
     importedAt:
       typeof raw.importedAt === "string"
         ? raw.importedAt
@@ -224,6 +226,7 @@ function createTrack(input: ImportTrackInput): LibraryTrack {
   const fileExtension = sourcePath.includes(".")
     ? `.${sourcePath.split(".").pop()?.toLowerCase() ?? "audio"}`
     : ".audio";
+  const storagePath = `browser-fallback://tracks/${seed.toString(16)}/${title}${fileExtension}`;
   const bpmSpan = Math.max(1, musicStyle.maxBpm - musicStyle.minBpm + 1);
   const bpm = musicStyle.minBpm + (seed % bpmSpan);
   const durationSeconds = 150 + (seed % 210);
@@ -237,6 +240,7 @@ function createTrack(input: ImportTrackInput): LibraryTrack {
         : `track-${Date.now()}-${seed}`,
     title,
     sourcePath,
+    storagePath,
     importedAt: new Date().toISOString(),
     bpm,
     bpmConfidence: Number((0.56 + (seed % 28) / 100).toFixed(2)),
@@ -251,6 +255,7 @@ function createTrack(input: ImportTrackInput): LibraryTrack {
     notes: [
       "Browser fallback is active because Tauri is unavailable.",
       `Imported with ${musicStyle.label} prior (${musicStyle.minBpm}-${musicStyle.maxBpm} BPM).`,
+      "The browser fallback preserves the track shape with a simulated managed storage path, but it cannot create a native on-disk snapshot.",
       "Beat grid and BPM curve are generated as lightweight local preview artifacts.",
     ],
     fileExtension,

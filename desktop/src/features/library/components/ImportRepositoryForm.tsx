@@ -1,7 +1,10 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 
-import { pickRepositoryDirectory } from "../../../api/repositories";
+import {
+  pickRepositoryDirectory,
+  pickRepositoryFile,
+} from "../../../api/repositories";
 import type {
   ImportRepositoryInput,
   RepositorySourceKind,
@@ -20,8 +23,13 @@ const importModes: Array<{
 }> = [
   {
     id: "directory",
-    label: "Filesystem",
-    help: "Import a local project directory for direct heuristics.",
+    label: "Code project",
+    help: "Import a local project directory into a managed Maia snapshot.",
+  },
+  {
+    id: "file",
+    label: "Log file",
+    help: "Import a local log file and derive a musical/operational signal profile.",
   },
   {
     id: "url",
@@ -46,7 +54,7 @@ export function ImportRepositoryForm({
 
     const normalizedPath = sourcePath.trim();
     if (!normalizedPath) {
-      setError("A local directory or GitHub URL is required.");
+      setError("A local code/log path or GitHub URL is required.");
       return;
     }
 
@@ -88,13 +96,37 @@ export function ImportRepositoryForm({
     }
   }
 
+  async function handleBrowseFile(): Promise<void> {
+    setPickerBusy(true);
+    setError(null);
+
+    try {
+      const pickedPath = await pickRepositoryFile(sourcePath);
+      if (!pickedPath) {
+        return;
+      }
+
+      setSourceKind("file");
+      setSourcePath(pickedPath);
+    } catch (nextError) {
+      setError(
+        nextError instanceof Error
+          ? nextError.message
+          : "Native file picker failed. Enter the path manually.",
+      );
+    } finally {
+      setPickerBusy(false);
+    }
+  }
+
   return (
     <form className="import-form" onSubmit={(event) => void handleSubmit(event)}>
       <div className="panel-header compact">
         <div>
-          <h2>Import code project</h2>
+          <h2>Import code or logs</h2>
           <p className="support-copy">
-            Accept either a local project directory or a GitHub URL to start repo BPM intake.
+            Accept a local project directory, a local log file, or a GitHub URL to start code/log
+            signal intake.
           </p>
         </div>
       </div>
@@ -114,13 +146,21 @@ export function ImportRepositoryForm({
       </div>
 
       <label className="field">
-        <span>{sourceKind === "directory" ? "Project path" : "GitHub URL"}</span>
+        <span>
+          {sourceKind === "directory"
+            ? "Project path"
+            : sourceKind === "file"
+              ? "Log file path"
+              : "GitHub URL"}
+        </span>
         <input
           value={sourcePath}
           onChange={(event) => setSourcePath(event.target.value)}
           placeholder={
             sourceKind === "directory"
               ? "/home/faguero/dev/maia"
+              : sourceKind === "file"
+                ? "~/logs/app.log"
               : "https://github.com/fabianaguero/maia"
           }
         />
@@ -129,7 +169,15 @@ export function ImportRepositoryForm({
       {sourceKind === "directory" ? (
         <p className="field-hint">
           Browse uses the native Linux folder picker when the desktop shell is
-          available.
+          available. In Tauri, Maia snapshots the selected directory before analysis.
+        </p>
+      ) : null}
+
+      {sourceKind === "file" ? (
+        <p className="field-hint">
+          Browse uses the native file picker when the desktop shell is available. In Tauri, Maia
+          snapshots the selected log file for baseline analysis, then the analyzer screen can also
+          run a live internal tail against the original file as it grows.
         </p>
       ) : null}
 
@@ -155,8 +203,18 @@ export function ImportRepositoryForm({
             {pickerBusy ? "Browsing..." : "Browse folder"}
           </button>
         ) : null}
+        {sourceKind === "file" ? (
+          <button
+            type="button"
+            className="secondary-action"
+            disabled={busy || pickerBusy}
+            onClick={() => void handleBrowseFile()}
+          >
+            {pickerBusy ? "Browsing..." : "Browse log file"}
+          </button>
+        ) : null}
         <button type="submit" className="action" disabled={busy}>
-          {busy ? "Analyzing..." : "Import repository"}
+          {busy ? "Analyzing..." : "Import source"}
         </button>
         {defaultDirectoryPath ? (
           <button

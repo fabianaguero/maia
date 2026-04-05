@@ -23,8 +23,17 @@ export interface AnalyzeOptions {
   beatGridResolution?: number;
   captureBpmCurve?: boolean;
   inferCodeSuggestedBpm?: boolean;
+  logTailChunk?: string;
+  logTailFromOffset?: number;
+  logTailToOffset?: number;
+  logTailLiveMode?: boolean;
   baseAssetCategory?: string;
   baseAssetReusable?: boolean;
+  compositionBaseAssetEntryCount?: number;
+  compositionReferenceType?: "track" | "repo" | "manual";
+  compositionReferenceLabel?: string;
+  compositionReferenceBpm?: number;
+  compositionPreviewOutputPath?: string;
 }
 
 export interface HealthRequest {

@@ -1,20 +1,23 @@
 use rusqlite::{params, Connection};
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::hash::{Hash, Hasher};
-use std::io::{ErrorKind, Write};
+use std::io::{ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, State};
 
 const CONTRACT_VERSION: &str = "1.0";
+const INITIAL_LOG_TAIL_BYTES: u64 = 32 * 1024;
+const MAX_LOG_TAIL_READ_BYTES: u64 = 128 * 1024;
 const SCHEMA_SQL: &str = include_str!("../../../database/schema.sql");
-const DEFAULT_MUSIC_STYLE_CATALOG_JSON: &str =
-    include_str!("../../src/config/music-styles.json");
+const DEFAULT_MUSIC_STYLE_CATALOG_JSON: &str = include_str!("../../src/config/music-styles.json");
 const DEFAULT_BASE_ASSET_CATEGORY_CATALOG_JSON: &str =
     include_str!("../../src/config/base-asset-categories.json");
 
@@ -91,6 +94,7 @@ struct LibraryTrack {
     id: String,
     title: String,
     source_path: String,
+    storage_path: Option<String>,
     imported_at: String,
     bpm: Option<f64>,
     bpm_confidence: f64,
@@ -132,10 +136,42 @@ struct BaseAssetRecord {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+struct CompositionResultRecord {
+    id: String,
+    title: String,
+    source_path: String,
+    export_path: Option<String>,
+    preview_audio_path: Option<String>,
+    source_kind: String,
+    imported_at: String,
+    base_asset_id: String,
+    base_asset_title: String,
+    base_asset_category_id: String,
+    base_asset_category_label: String,
+    reference_type: String,
+    reference_asset_id: Option<String>,
+    reference_title: String,
+    reference_source_path: Option<String>,
+    target_bpm: f64,
+    confidence: f64,
+    strategy: String,
+    summary: String,
+    analyzer_status: String,
+    notes: Vec<String>,
+    tags: Vec<String>,
+    metrics: Value,
+    waveform_bins: Vec<f64>,
+    beat_grid: Vec<BeatGridPoint>,
+    bpm_curve: Vec<BpmCurvePoint>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 struct RepositoryAnalysis {
     id: String,
     title: String,
     source_path: String,
+    storage_path: Option<String>,
     source_kind: String,
     imported_at: String,
     suggested_bpm: Option<f64>,
@@ -149,6 +185,109 @@ struct RepositoryAnalysis {
     notes: Vec<String>,
     tags: Vec<String>,
     metrics: Value,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct LiveLogCue {
+    id: String,
+    event_index: u32,
+    level: String,
+    component: String,
+    excerpt: String,
+    note_hz: f64,
+    duration_ms: u32,
+    gain: f64,
+    waveform: String,
+    accent: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct LiveLogMarker {
+    event_index: u32,
+    level: String,
+    component: String,
+    excerpt: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct LiveLogComponentCount {
+    component: String,
+    count: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct LiveLogStreamUpdate {
+    source_path: String,
+    from_offset: u64,
+    to_offset: u64,
+    has_data: bool,
+    summary: String,
+    suggested_bpm: Option<f64>,
+    confidence: f64,
+    dominant_level: String,
+    line_count: i64,
+    anomaly_count: i64,
+    level_counts: Value,
+    anomaly_markers: Vec<LiveLogMarker>,
+    top_components: Vec<LiveLogComponentCount>,
+    sonification_cues: Vec<LiveLogCue>,
+    warnings: Vec<String>,
+}
+
+// ---------------------------------------------------------------------------
+// Stream session registry — persists session metadata across poll cycles
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StreamSessionRecord {
+    pub session_id: String,
+    pub adapter_kind: String,  // "file" | "process"
+    pub source: String,
+    pub label: Option<String>,
+    pub created_at: String,
+    pub last_polled_at: Option<String>,
+    pub total_polls: u64,
+    pub file_cursor: Option<u64>,
+}
+
+#[derive(Debug, Default)]
+pub struct SessionRegistry {
+    pub sessions: HashMap<String, StreamSessionRecord>,
+}
+
+pub type SessionRegistryState = Mutex<SessionRegistry>;
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct StartSessionInput {
+    session_id: String,
+    adapter_kind: String,
+    source: String,
+    label: Option<String>,
+    command: Option<Vec<String>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StreamSessionPollResult {
+    session: StreamSessionRecord,
+    has_data: bool,
+    summary: String,
+    suggested_bpm: Option<f64>,
+    confidence: f64,
+    dominant_level: String,
+    line_count: i64,
+    anomaly_count: i64,
+    level_counts: Value,
+    anomaly_markers: Vec<LiveLogMarker>,
+    top_components: Vec<LiveLogComponentCount>,
+    sonification_cues: Vec<LiveLogCue>,
+    warnings: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -175,6 +314,16 @@ struct ImportBaseAssetInput {
     label: Option<String>,
     category_id: String,
     reusable: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct ImportCompositionInput {
+    base_asset_id: String,
+    reference_type: String,
+    reference_asset_id: Option<String>,
+    manual_bpm: Option<f64>,
+    label: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
@@ -212,9 +361,29 @@ struct BaseAssetMetadata {
     metrics: Value,
 }
 
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+struct CompositionMetadata {
+    base_asset_id: String,
+    base_asset_title: String,
+    base_asset_category_id: String,
+    base_asset_category_label: String,
+    reference_type: String,
+    reference_asset_id: Option<String>,
+    reference_title: String,
+    reference_source_path: Option<String>,
+    analyzer_status: String,
+    strategy: String,
+    summary: String,
+    notes: Vec<String>,
+    tags: Vec<String>,
+    metrics: Value,
+}
+
 struct TrackImportAnalysis {
     title: String,
     source_path: String,
+    storage_path: Option<String>,
     bpm: f64,
     confidence: f64,
     duration_seconds: Option<f64>,
@@ -243,6 +412,41 @@ struct BaseAssetImportAnalysis {
     summary: String,
     metrics: Value,
     metadata: BaseAssetMetadata,
+}
+
+struct CompositionImportAnalysis {
+    title: String,
+    source_path: String,
+    preview_audio_path: Option<String>,
+    source_kind: String,
+    base_asset_id: String,
+    base_asset_title: String,
+    base_asset_category_id: String,
+    base_asset_category_label: String,
+    reference_type: String,
+    reference_asset_id: Option<String>,
+    reference_title: String,
+    reference_source_path: Option<String>,
+    target_bpm: f64,
+    confidence: f64,
+    strategy: String,
+    summary: String,
+    waveform_bins: Vec<f64>,
+    beat_grid: Vec<BeatGridPoint>,
+    bpm_curve: Vec<BpmCurvePoint>,
+    waveform_bins_json: String,
+    beat_grid_json: String,
+    bpm_curve_json: String,
+    metrics: Value,
+    metadata: CompositionMetadata,
+}
+
+struct CompositionReferenceDraft {
+    reference_type: String,
+    reference_asset_id: Option<String>,
+    reference_title: String,
+    reference_source_path: Option<String>,
+    target_bpm: f64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -350,6 +554,324 @@ fn pick_repository_directory(initial_path: Option<String>) -> Result<Option<Stri
 }
 
 #[tauri::command]
+fn pick_repository_file(initial_path: Option<String>) -> Result<Option<String>, String> {
+    pick_native_path(
+        NativePickerKind::File,
+        initial_path,
+        "Select log file",
+        Some("Log files (*.log *.txt *.out *.err *.jsonl *.ndjson)"),
+    )
+}
+
+#[tauri::command]
+fn poll_log_stream(
+    source_path: String,
+    cursor: Option<u64>,
+) -> Result<LiveLogStreamUpdate, String> {
+    let (resolved_path, from_offset, to_offset, chunk, local_warnings) =
+        read_log_stream_chunk(&source_path, cursor)?;
+
+    let has_data = !chunk.trim().is_empty();
+    let mut warnings = local_warnings;
+
+    if !has_data {
+        return Ok(LiveLogStreamUpdate {
+            source_path: resolved_path,
+            from_offset,
+            to_offset,
+            has_data: false,
+            summary: "Waiting for new log lines.".to_string(),
+            suggested_bpm: None,
+            confidence: 0.0,
+            dominant_level: "unknown".to_string(),
+            line_count: 0,
+            anomaly_count: 0,
+            level_counts: Value::Object(serde_json::Map::new()),
+            anomaly_markers: Vec::new(),
+            top_components: Vec::new(),
+            sonification_cues: Vec::new(),
+            warnings,
+        });
+    }
+
+    let now = now_millis().to_string();
+    let request = json!({
+        "contractVersion": CONTRACT_VERSION,
+        "requestId": format!("log-tail-{now}"),
+        "action": "analyze",
+        "payload": {
+            "assetType": "repo_analysis",
+            "source": {
+                "kind": "file",
+                "path": resolved_path
+            },
+            "options": {
+                "inferCodeSuggestedBpm": true,
+                "logTailChunk": chunk,
+                "logTailFromOffset": from_offset,
+                "logTailToOffset": to_offset,
+                "logTailLiveMode": true
+            }
+        }
+    });
+    let response = execute_analyzer_request(&request)?;
+    let parsed: AnalyzerResponseEnvelope = serde_json::from_value(response)
+        .map_err(|error| format!("Failed to decode log tail analyzer response: {error}"))?;
+
+    if parsed.status == "error" {
+        let message = parsed
+            .error
+            .map(|error| error.message)
+            .unwrap_or_else(|| "Analyzer returned an unknown log-tail error.".to_string());
+        return Err(message);
+    }
+
+    let payload = parsed
+        .payload
+        .ok_or_else(|| "Analyzer did not return a log-tail payload.".to_string())?;
+    warnings.extend(parsed.warnings.clone());
+
+    let metrics = &payload.musical_asset.metrics;
+    Ok(LiveLogStreamUpdate {
+        source_path: resolved_path,
+        from_offset,
+        to_offset,
+        has_data: true,
+        summary: payload.summary,
+        suggested_bpm: payload.musical_asset.suggested_bpm,
+        confidence: payload.musical_asset.confidence,
+        dominant_level: metric_string(metrics, "dominantLevel"),
+        line_count: metric_i64(metrics, "lineCount"),
+        anomaly_count: metric_i64(metrics, "anomalyCount"),
+        level_counts: metrics
+            .get("levelCounts")
+            .cloned()
+            .unwrap_or_else(|| Value::Object(serde_json::Map::new())),
+        anomaly_markers: decode_json_metric(metrics, "anomalyMarkers")?,
+        top_components: decode_json_metric(metrics, "topComponents")?,
+        sonification_cues: decode_json_metric(metrics, "sonificationCues")?,
+        warnings,
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Stream session commands
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+fn start_stream_session(
+    input: StartSessionInput,
+    registry: State<'_, SessionRegistryState>,
+) -> Result<StreamSessionRecord, String> {
+    let session_id = input.session_id.trim().to_string();
+    if session_id.is_empty() {
+        return Err("sessionId must not be empty".to_string());
+    }
+    if input.source.trim().is_empty() {
+        return Err("source must not be empty".to_string());
+    }
+
+    // If adapter is process, start it via the Python analyzer session_start action
+    if input.adapter_kind == "process" {
+        let command = input.command.clone().unwrap_or_default();
+        if command.is_empty() {
+            return Err("command list required for process adapter".to_string());
+        }
+        let request = json!({
+            "contractVersion": CONTRACT_VERSION,
+            "requestId": format!("sess-start-{session_id}"),
+            "action": "session_start",
+            "payload": {
+                "sessionId": session_id,
+                "adapterKind": "process",
+                "source": input.source,
+                "command": command
+            }
+        });
+        let response = execute_analyzer_request(&request)?;
+        let parsed: Value = serde_json::from_value(response)
+            .map_err(|e| format!("Failed to parse session_start response: {e}"))?;
+        if parsed.get("status").and_then(Value::as_str) == Some("error") {
+            let msg = parsed
+                .pointer("/error/message")
+                .and_then(Value::as_str)
+                .unwrap_or("Analyzer returned session_start error")
+                .to_string();
+            return Err(msg);
+        }
+    } else {
+        // File adapter — just register in Python so the ring buffer exists
+        let request = json!({
+            "contractVersion": CONTRACT_VERSION,
+            "requestId": format!("sess-start-{session_id}"),
+            "action": "session_start",
+            "payload": {
+                "sessionId": session_id,
+                "adapterKind": "file",
+                "source": input.source
+            }
+        });
+        execute_analyzer_request(&request)?;
+    }
+
+    let record = StreamSessionRecord {
+        session_id: session_id.clone(),
+        adapter_kind: input.adapter_kind.clone(),
+        source: input.source.clone(),
+        label: input.label.clone(),
+        created_at: now_iso(),
+        last_polled_at: None,
+        total_polls: 0,
+        file_cursor: None,
+    };
+
+    {
+        let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+        reg.sessions.insert(session_id, record.clone());
+    }
+
+    Ok(record)
+}
+
+#[tauri::command]
+fn stop_stream_session(
+    session_id: String,
+    registry: State<'_, SessionRegistryState>,
+) -> Result<bool, String> {
+    let request = json!({
+        "contractVersion": CONTRACT_VERSION,
+        "requestId": format!("sess-stop-{session_id}"),
+        "action": "session_stop",
+        "payload": { "sessionId": session_id }
+    });
+    execute_analyzer_request(&request)?;
+
+    let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+    Ok(reg.sessions.remove(&session_id).is_some())
+}
+
+#[tauri::command]
+fn list_stream_sessions(
+    registry: State<'_, SessionRegistryState>,
+) -> Result<Vec<StreamSessionRecord>, String> {
+    let reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+    let mut sessions: Vec<StreamSessionRecord> = reg.sessions.values().cloned().collect();
+    sessions.sort_by(|a, b| a.created_at.cmp(&b.created_at));
+    Ok(sessions)
+}
+
+#[tauri::command]
+fn poll_stream_session(
+    session_id: String,
+    registry: State<'_, SessionRegistryState>,
+) -> Result<StreamSessionPollResult, String> {
+    // For file adapter: read new bytes, feed them into the session ring buffer
+    // via the normal poll_log_stream path with logTailSessionId included,
+    // then call session_poll to get the accumulated analysis.
+    let (adapter_kind, source, cursor) = {
+        let reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+        let session = reg.sessions.get(&session_id)
+            .ok_or_else(|| format!("Session not found: {session_id}"))?;
+        (session.adapter_kind.clone(), session.source.clone(), session.file_cursor)
+    };
+
+    let mut warnings: Vec<String> = Vec::new();
+
+    if adapter_kind == "file" {
+        // Read a new chunk and feed it into the Python session ring buffer
+        let (_resolved, _from, to_offset, chunk, read_warnings) =
+            read_log_stream_chunk(&source, cursor)?;
+        warnings.extend(read_warnings);
+
+        if !chunk.trim().is_empty() {
+            let feed_request = json!({
+                "contractVersion": CONTRACT_VERSION,
+                "requestId": format!("sess-feed-{session_id}"),
+                "action": "analyze",
+                "payload": {
+                    "assetType": "repo_analysis",
+                    "source": { "kind": "file", "path": source },
+                    "options": {
+                        "logTailChunk": chunk,
+                        "logTailSessionId": session_id,
+                        "logTailFromOffset": cursor.unwrap_or(0),
+                        "logTailToOffset": to_offset,
+                        "logTailLiveMode": true
+                    }
+                }
+            });
+            // fire-and-forget — we only care about updating the ring buffer
+            let _ = execute_analyzer_request(&feed_request);
+        }
+
+        // Update cursor in registry
+        {
+            let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+            if let Some(session) = reg.sessions.get_mut(&session_id) {
+                session.file_cursor = Some(to_offset);
+                session.last_polled_at = Some(now_iso());
+                session.total_polls += 1;
+            }
+        }
+    } else {
+        // Process adapter: lines arrive via the Python reader thread, just bump poll count
+        let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+        if let Some(session) = reg.sessions.get_mut(&session_id) {
+            session.last_polled_at = Some(now_iso());
+            session.total_polls += 1;
+        }
+    }
+
+    // Ask Python to analyze the accumulated ring buffer
+    let poll_request = json!({
+        "contractVersion": CONTRACT_VERSION,
+        "requestId": format!("sess-poll-{session_id}"),
+        "action": "session_poll",
+        "payload": { "sessionId": session_id }
+    });
+    let response = execute_analyzer_request(&poll_request)?;
+    let parsed: AnalyzerResponseEnvelope = serde_json::from_value(response)
+        .map_err(|e| format!("Failed to decode session_poll response: {e}"))?;
+
+    if parsed.status == "error" {
+        let message = parsed.error
+            .map(|e| e.message)
+            .unwrap_or_else(|| "Analyzer returned unknown session_poll error.".to_string());
+        return Err(message);
+    }
+
+    let resp_payload = parsed.payload
+        .ok_or_else(|| "Analyzer did not return session_poll payload.".to_string())?;
+    warnings.extend(parsed.warnings);
+
+    let has_data: bool = resp_payload.summary != "Session buffer empty — waiting for data.";
+    let metrics = &resp_payload.musical_asset.metrics;
+
+    let session_record = {
+        let reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+        reg.sessions.get(&session_id).cloned()
+            .ok_or_else(|| format!("Session disappeared during poll: {session_id}"))?
+    };
+
+    Ok(StreamSessionPollResult {
+        session: session_record,
+        has_data,
+        summary: resp_payload.summary,
+        suggested_bpm: resp_payload.musical_asset.suggested_bpm,
+        confidence: resp_payload.musical_asset.confidence,
+        dominant_level: metric_string(metrics, "dominantLevel"),
+        line_count: metric_i64(metrics, "lineCount"),
+        anomaly_count: metric_i64(metrics, "anomalyCount"),
+        level_counts: metrics.get("levelCounts").cloned()
+            .unwrap_or_else(|| Value::Object(serde_json::Map::new())),
+        anomaly_markers: decode_json_metric(metrics, "anomalyMarkers")?,
+        top_components: decode_json_metric(metrics, "topComponents")?,
+        sonification_cues: decode_json_metric(metrics, "sonificationCues")?,
+        warnings,
+    })
+}
+
+#[tauri::command]
 fn pick_base_asset_path(
     source_kind: String,
     initial_path: Option<String>,
@@ -377,7 +899,8 @@ fn list_tracks(app_handle: AppHandle) -> Result<Vec<LibraryTrack>, String> {
 fn import_track(app_handle: AppHandle, input: ImportTrackInput) -> Result<LibraryTrack, String> {
     let conn = open_database(&app_handle)?;
     let music_style_catalog = load_music_style_catalog(&repo_root());
-    insert_track(&conn, input, &music_style_catalog)
+    let managed_root = managed_tracks_root(&app_handle)?;
+    insert_track(&conn, input, &music_style_catalog, &managed_root)
 }
 
 #[tauri::command]
@@ -393,13 +916,31 @@ fn import_base_asset(
 ) -> Result<BaseAssetRecord, String> {
     let conn = open_database(&app_handle)?;
     let category_catalog = load_base_asset_category_catalog(&repo_root());
-    insert_base_asset(&conn, input, &category_catalog)
+    let managed_root = managed_base_assets_root(&app_handle)?;
+    insert_base_asset(&conn, input, &category_catalog, &managed_root)
+}
+
+#[tauri::command]
+fn list_compositions(app_handle: AppHandle) -> Result<Vec<CompositionResultRecord>, String> {
+    let conn = open_database(&app_handle)?;
+    read_compositions(&conn)
+}
+
+#[tauri::command]
+fn import_composition(
+    app_handle: AppHandle,
+    input: ImportCompositionInput,
+) -> Result<CompositionResultRecord, String> {
+    let conn = open_database(&app_handle)?;
+    let managed_root = managed_compositions_root(&app_handle)?;
+    insert_composition(&conn, input, &managed_root)
 }
 
 #[tauri::command]
 fn seed_demo_tracks(app_handle: AppHandle) -> Result<Vec<LibraryTrack>, String> {
     let conn = open_database(&app_handle)?;
     let music_style_catalog = load_music_style_catalog(&repo_root());
+    let managed_root = managed_tracks_root(&app_handle)?;
 
     if count_tracks(&conn)? > 0 {
         return read_tracks(&conn);
@@ -422,7 +963,7 @@ fn seed_demo_tracks(app_handle: AppHandle) -> Result<Vec<LibraryTrack>, String> 
             music_style_id: preferred_music_style_id(&music_style_catalog, "trance"),
         },
     ] {
-        insert_track(&conn, draft, &music_style_catalog)?;
+        insert_track(&conn, draft, &music_style_catalog, &managed_root)?;
     }
 
     read_tracks(&conn)
@@ -440,7 +981,8 @@ fn import_repository(
     input: ImportRepositoryInput,
 ) -> Result<RepositoryAnalysis, String> {
     let conn = open_database(&app_handle)?;
-    insert_repository(&conn, input)
+    let managed_root = managed_repositories_root(&app_handle)?;
+    insert_repository(&conn, input, &managed_root)
 }
 
 fn execute_analyzer_request(request: &Value) -> Result<Value, String> {
@@ -509,6 +1051,368 @@ fn database_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
     Ok(app_data_dir.join("maia.sqlite3"))
 }
 
+fn managed_assets_root(app_handle: &AppHandle) -> Result<PathBuf, String> {
+    let app_data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("Failed to resolve app data directory: {error}"))?;
+
+    Ok(app_data_dir.join("assets"))
+}
+
+fn managed_base_assets_root(app_handle: &AppHandle) -> Result<PathBuf, String> {
+    Ok(managed_assets_root(app_handle)?.join("base-assets"))
+}
+
+fn managed_tracks_root(app_handle: &AppHandle) -> Result<PathBuf, String> {
+    Ok(managed_assets_root(app_handle)?.join("tracks"))
+}
+
+fn managed_repositories_root(app_handle: &AppHandle) -> Result<PathBuf, String> {
+    Ok(managed_assets_root(app_handle)?.join("repositories"))
+}
+
+fn managed_compositions_root(app_handle: &AppHandle) -> Result<PathBuf, String> {
+    Ok(managed_assets_root(app_handle)?.join("compositions"))
+}
+
+fn expanded_input_path(raw_path: &str) -> Result<PathBuf, String> {
+    let trimmed = raw_path.trim();
+    if trimmed.is_empty() {
+        return Err("Path is required.".to_string());
+    }
+
+    Ok(if trimmed == "~" {
+        home_dir().ok_or_else(|| "Failed to resolve the home directory for `~`.".to_string())?
+    } else if let Some(stripped) = trimmed.strip_prefix("~/") {
+        home_dir()
+            .ok_or_else(|| "Failed to resolve the home directory for `~`.".to_string())?
+            .join(stripped)
+    } else {
+        PathBuf::from(trimmed)
+    })
+}
+
+fn resolve_existing_input_path(raw_path: &str) -> Result<PathBuf, String> {
+    let expanded = expanded_input_path(raw_path)?;
+
+    expanded.canonicalize().map_err(|error| {
+        format!(
+            "Failed to resolve base asset path {}: {error}",
+            expanded.display()
+        )
+    })
+}
+
+fn home_dir() -> Option<PathBuf> {
+    env::var_os("HOME")
+        .or_else(|| env::var_os("USERPROFILE"))
+        .map(PathBuf::from)
+}
+
+fn copy_track_to_managed_storage(
+    source_path: &str,
+    managed_root: &Path,
+    asset_id: &str,
+) -> Result<Option<(PathBuf, PathBuf)>, String> {
+    let expanded = expanded_input_path(source_path)?;
+    if !expanded.exists() {
+        return Ok(None);
+    }
+
+    let resolved_source = expanded.canonicalize().map_err(|error| {
+        format!(
+            "Failed to resolve track source path {}: {error}",
+            expanded.display()
+        )
+    })?;
+    if !resolved_source.is_file() {
+        return Err(format!(
+            "Selected track source is not a file: {}",
+            resolved_source.display()
+        ));
+    }
+
+    let asset_name = resolved_source
+        .file_name()
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("track.audio"));
+    let snapshot_parent = managed_root.join(asset_id);
+    let managed_path = snapshot_parent.join(asset_name);
+
+    if let Some(parent) = managed_path.parent() {
+        fs::create_dir_all(parent).map_err(|error| {
+            format!(
+                "Failed to create managed track directory {}: {error}",
+                parent.display()
+            )
+        })?;
+    }
+
+    fs::copy(&resolved_source, &managed_path).map_err(|error| {
+        format!(
+            "Failed to copy track into managed storage {}: {error}",
+            managed_path.display()
+        )
+    })?;
+
+    Ok(Some((resolved_source, managed_path)))
+}
+
+fn copy_repository_source_to_managed_storage(
+    source_kind: &str,
+    source_path: &str,
+    managed_root: &Path,
+    asset_id: &str,
+) -> Result<Option<(PathBuf, PathBuf)>, String> {
+    let expanded = expanded_input_path(source_path)?;
+    if !expanded.exists() {
+        return Ok(None);
+    }
+
+    let resolved_source = expanded.canonicalize().map_err(|error| {
+        format!(
+            "Failed to resolve repository path {}: {error}",
+            expanded.display()
+        )
+    })?;
+
+    let asset_name = resolved_source
+        .file_name()
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            if source_kind == "file" {
+                PathBuf::from("log-source")
+            } else {
+                PathBuf::from("repository")
+            }
+        });
+    let snapshot_parent = managed_root.join(asset_id);
+    let managed_path = snapshot_parent.join(asset_name);
+
+    if source_kind == "directory" {
+        if !resolved_source.is_dir() {
+            return Err(format!(
+                "Selected repository source is not a directory: {}",
+                resolved_source.display()
+            ));
+        }
+        copy_directory_recursively(&resolved_source, &managed_path)?;
+    } else {
+        if !resolved_source.is_file() {
+            return Err(format!(
+                "Selected repository log source is not a file: {}",
+                resolved_source.display()
+            ));
+        }
+
+        if let Some(parent) = managed_path.parent() {
+            fs::create_dir_all(parent).map_err(|error| {
+                format!(
+                    "Failed to create managed log snapshot directory {}: {error}",
+                    parent.display()
+                )
+            })?;
+        }
+
+        fs::copy(&resolved_source, &managed_path).map_err(|error| {
+            format!(
+                "Failed to copy repository log source into managed storage {}: {error}",
+                managed_path.display()
+            )
+        })?;
+    }
+
+    Ok(Some((resolved_source, managed_path)))
+}
+
+fn copy_base_asset_to_managed_storage(
+    source_kind: &str,
+    source_path: &str,
+    managed_root: &Path,
+    asset_id: &str,
+) -> Result<(PathBuf, PathBuf), String> {
+    let resolved_source = resolve_existing_input_path(source_path)?;
+    let asset_name = resolved_source
+        .file_name()
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            if source_kind == "directory" {
+                PathBuf::from("base-collection")
+            } else {
+                PathBuf::from("base-asset")
+            }
+        });
+    let snapshot_parent = managed_root.join(asset_id);
+    let managed_path = snapshot_parent.join(asset_name);
+
+    if let Some(parent) = managed_path.parent() {
+        fs::create_dir_all(parent).map_err(|error| {
+            format!(
+                "Failed to create managed base asset directory {}: {error}",
+                parent.display()
+            )
+        })?;
+    }
+
+    if source_kind == "directory" {
+        if !resolved_source.is_dir() {
+            return Err(format!(
+                "Selected base asset is not a directory: {}",
+                resolved_source.display()
+            ));
+        }
+        copy_directory_recursively(&resolved_source, &managed_path)?;
+    } else {
+        if !resolved_source.is_file() {
+            return Err(format!(
+                "Selected base asset is not a file: {}",
+                resolved_source.display()
+            ));
+        }
+        fs::copy(&resolved_source, &managed_path).map_err(|error| {
+            format!(
+                "Failed to copy base asset file into managed storage {}: {error}",
+                managed_path.display()
+            )
+        })?;
+    }
+
+    Ok((resolved_source, managed_path))
+}
+
+fn copy_directory_recursively(source: &Path, destination: &Path) -> Result<(), String> {
+    fs::create_dir_all(destination).map_err(|error| {
+        format!(
+            "Failed to create managed directory snapshot {}: {error}",
+            destination.display()
+        )
+    })?;
+
+    for entry in fs::read_dir(source).map_err(|error| {
+        format!(
+            "Failed to enumerate base asset directory {}: {error}",
+            source.display()
+        )
+    })? {
+        let entry = entry.map_err(|error| {
+            format!(
+                "Failed to read a base asset directory entry inside {}: {error}",
+                source.display()
+            )
+        })?;
+        let source_path = entry.path();
+        let destination_path = destination.join(entry.file_name());
+
+        if source_path.is_dir() {
+            copy_directory_recursively(&source_path, &destination_path)?;
+        } else if source_path.is_file() {
+            if let Some(parent) = destination_path.parent() {
+                fs::create_dir_all(parent).map_err(|error| {
+                    format!(
+                        "Failed to prepare managed file directory {}: {error}",
+                        parent.display()
+                    )
+                })?;
+            }
+            fs::copy(&source_path, &destination_path).map_err(|error| {
+                format!(
+                    "Failed to copy {} into managed storage {}: {error}",
+                    source_path.display(),
+                    destination_path.display()
+                )
+            })?;
+        }
+    }
+
+    Ok(())
+}
+
+fn read_log_stream_chunk(
+    source_path: &str,
+    cursor: Option<u64>,
+) -> Result<(String, u64, u64, String, Vec<String>), String> {
+    let resolved_source = resolve_existing_input_path(source_path)?;
+    if !resolved_source.is_file() {
+        return Err(format!(
+            "Selected log source is not a file: {}",
+            resolved_source.display()
+        ));
+    }
+
+    let file_size = resolved_source
+        .metadata()
+        .map_err(|error| format!("Failed to stat log source {}: {error}", resolved_source.display()))?
+        .len();
+    let mut warnings = Vec::new();
+    let start_offset = match cursor {
+        Some(previous) if previous <= file_size => previous,
+        Some(_) => {
+            warnings.push(
+                "Log file was truncated or rotated. Maia restarted live tail from the beginning."
+                    .to_string(),
+            );
+            0
+        }
+        None => file_size.saturating_sub(INITIAL_LOG_TAIL_BYTES),
+    };
+
+    let remaining = file_size.saturating_sub(start_offset);
+    let bytes_to_read = remaining.min(MAX_LOG_TAIL_READ_BYTES);
+    if remaining > MAX_LOG_TAIL_READ_BYTES {
+        warnings.push(
+            "Large log burst detected. Maia streamed only the next 128 KB in this polling window."
+                .to_string(),
+        );
+    }
+
+    let mut file = fs::File::open(&resolved_source).map_err(|error| {
+        format!(
+            "Failed to open log source {} for live tailing: {error}",
+            resolved_source.display()
+        )
+    })?;
+    file.seek(SeekFrom::Start(start_offset)).map_err(|error| {
+        format!(
+            "Failed to seek log source {}: {error}",
+            resolved_source.display()
+        )
+    })?;
+
+    let mut buffer = vec![0_u8; bytes_to_read as usize];
+    let bytes_read = file.read(&mut buffer).map_err(|error| {
+        format!(
+            "Failed to read log source {}: {error}",
+            resolved_source.display()
+        )
+    })?;
+    buffer.truncate(bytes_read);
+    let mut chunk = String::from_utf8_lossy(&buffer).to_string();
+
+    if cursor.is_none() && start_offset > 0 {
+        if let Some(newline_index) = chunk.find('\n') {
+            chunk = chunk[(newline_index + 1)..].to_string();
+        }
+    }
+
+    if start_offset == 0 && chunk.starts_with('\u{feff}') {
+        chunk = chunk.trim_start_matches('\u{feff}').to_string();
+    }
+
+    let end_offset = start_offset + bytes_read as u64;
+
+    Ok((
+        resolved_source.to_string_lossy().to_string(),
+        start_offset,
+        end_offset,
+        chunk,
+        warnings,
+    ))
+}
+
 fn open_database(app_handle: &AppHandle) -> Result<Connection, String> {
     let path = database_path(app_handle)?;
 
@@ -525,6 +1429,11 @@ fn open_database(app_handle: &AppHandle) -> Result<Connection, String> {
     migrate_database(&conn)?;
     conn.execute_batch(SCHEMA_SQL)
         .map_err(|error| format!("Failed to refresh SQLite schema after migration: {error}"))?;
+    ensure_track_storage_path_column(&conn)?;
+    ensure_repository_storage_path_column(&conn)?;
+    ensure_composition_export_path_column(&conn)?;
+    let managed_compositions_root = managed_compositions_root(app_handle)?;
+    backfill_composition_export_paths(&conn, &managed_compositions_root)?;
 
     Ok(conn)
 }
@@ -595,6 +1504,291 @@ fn migrate_database(conn: &Connection) -> Result<(), String> {
         ",
     )
     .map_err(|error| format!("Failed to migrate SQLite schema for repository URLs: {error}"))?;
+
+    Ok(())
+}
+
+fn ensure_track_storage_path_column(conn: &Connection) -> Result<(), String> {
+    let mut statement = conn
+        .prepare("PRAGMA table_info(track_analyses)")
+        .map_err(|error| format!("Failed to inspect track_analyses columns: {error}"))?;
+    let mut rows = statement
+        .query([])
+        .map_err(|error| format!("Failed to query track_analyses columns: {error}"))?;
+    let mut has_storage_path = false;
+
+    while let Some(row) = rows
+        .next()
+        .map_err(|error| format!("Failed to iterate track_analyses columns: {error}"))?
+    {
+        let name: String = row
+            .get(1)
+            .map_err(|error| format!("Failed to read track_analyses column name: {error}"))?;
+        if name == "storage_path" {
+            has_storage_path = true;
+            break;
+        }
+    }
+
+    if has_storage_path {
+        return Ok(());
+    }
+
+    conn.execute_batch(
+        "
+        ALTER TABLE track_analyses ADD COLUMN storage_path TEXT;
+        UPDATE track_analyses
+        SET storage_path = (
+            SELECT source_path FROM musical_assets
+            WHERE musical_assets.id = track_analyses.asset_id
+        )
+        WHERE storage_path IS NULL OR storage_path = '';
+        ",
+    )
+    .map_err(|error| format!("Failed to add track storage_path column: {error}"))?;
+
+    Ok(())
+}
+
+fn ensure_repository_storage_path_column(conn: &Connection) -> Result<(), String> {
+    let mut statement = conn
+        .prepare("PRAGMA table_info(repo_analyses)")
+        .map_err(|error| format!("Failed to inspect repo_analyses columns: {error}"))?;
+    let mut rows = statement
+        .query([])
+        .map_err(|error| format!("Failed to query repo_analyses columns: {error}"))?;
+    let mut has_storage_path = false;
+
+    while let Some(row) = rows
+        .next()
+        .map_err(|error| format!("Failed to iterate repo_analyses columns: {error}"))?
+    {
+        let name: String = row
+            .get(1)
+            .map_err(|error| format!("Failed to read repo_analyses column name: {error}"))?;
+        if name == "storage_path" {
+            has_storage_path = true;
+            break;
+        }
+    }
+
+    if has_storage_path {
+        return Ok(());
+    }
+
+    conn.execute_batch(
+        "
+        ALTER TABLE repo_analyses ADD COLUMN storage_path TEXT;
+        UPDATE repo_analyses
+        SET storage_path = repo_path
+        WHERE (storage_path IS NULL OR storage_path = '')
+          AND asset_id IN (
+            SELECT id FROM musical_assets
+            WHERE asset_type = 'repo_analysis' AND source_kind = 'directory'
+          );
+        ",
+    )
+    .map_err(|error| format!("Failed to add repository storage_path column: {error}"))?;
+
+    Ok(())
+}
+
+fn ensure_composition_export_path_column(conn: &Connection) -> Result<(), String> {
+    let mut statement = conn
+        .prepare("PRAGMA table_info(composition_results)")
+        .map_err(|error| format!("Failed to inspect composition_results columns: {error}"))?;
+    let mut rows = statement
+        .query([])
+        .map_err(|error| format!("Failed to query composition_results columns: {error}"))?;
+    let mut has_export_path = false;
+
+    while let Some(row) = rows
+        .next()
+        .map_err(|error| format!("Failed to iterate composition_results columns: {error}"))?
+    {
+        let name: String = row
+            .get(1)
+            .map_err(|error| format!("Failed to read composition_results column name: {error}"))?;
+        if name == "export_path" {
+            has_export_path = true;
+            break;
+        }
+    }
+
+    if has_export_path {
+        return Ok(());
+    }
+
+    conn.execute_batch("ALTER TABLE composition_results ADD COLUMN export_path TEXT;")
+        .map_err(|error| format!("Failed to add composition export_path column: {error}"))?;
+
+    Ok(())
+}
+
+fn composition_export_note(export_path: &str) -> String {
+    format!("Managed composition plan snapshot written to {export_path}.")
+}
+
+fn composition_preview_audio_note(preview_audio_path: &str) -> String {
+    format!("Managed preview audio rendered to {preview_audio_path}.")
+}
+
+fn composition_metadata_from_record(composition: &CompositionResultRecord) -> CompositionMetadata {
+    CompositionMetadata {
+        base_asset_id: composition.base_asset_id.clone(),
+        base_asset_title: composition.base_asset_title.clone(),
+        base_asset_category_id: composition.base_asset_category_id.clone(),
+        base_asset_category_label: composition.base_asset_category_label.clone(),
+        reference_type: composition.reference_type.clone(),
+        reference_asset_id: composition.reference_asset_id.clone(),
+        reference_title: composition.reference_title.clone(),
+        reference_source_path: composition.reference_source_path.clone(),
+        analyzer_status: composition.analyzer_status.clone(),
+        strategy: composition.strategy.clone(),
+        summary: composition.summary.clone(),
+        notes: composition.notes.clone(),
+        tags: composition.tags.clone(),
+        metrics: composition.metrics.clone(),
+    }
+}
+
+fn apply_composition_export_metadata(
+    composition: &mut CompositionResultRecord,
+    export_path: String,
+) {
+    let export_note = composition_export_note(&export_path);
+    composition.export_path = Some(export_path.clone());
+
+    if !composition.notes.iter().any(|note| note == &export_note) {
+        composition.notes.push(export_note);
+    }
+
+    if !composition.metrics.is_object() {
+        composition.metrics = json!({});
+    }
+
+    if let Some(metrics) = composition.metrics.as_object_mut() {
+        metrics.insert("managedPlanPath".to_string(), Value::String(export_path));
+        metrics.insert(
+            "storageMode".to_string(),
+            Value::String("managed-plan".to_string()),
+        );
+    }
+}
+
+fn apply_composition_preview_audio_metadata(
+    composition: &mut CompositionResultRecord,
+    preview_audio_path: &str,
+) {
+    let preview_note = composition_preview_audio_note(preview_audio_path);
+    composition.preview_audio_path = Some(preview_audio_path.to_string());
+
+    if !composition.notes.iter().any(|note| note == &preview_note) {
+        composition.notes.push(preview_note);
+    }
+}
+
+fn write_composition_snapshot(
+    composition: &CompositionResultRecord,
+    managed_root: &Path,
+) -> Result<String, String> {
+    let snapshot_dir = managed_root.join(&composition.id);
+    fs::create_dir_all(&snapshot_dir).map_err(|error| {
+        format!(
+            "Failed to create managed composition directory {}: {error}",
+            snapshot_dir.display()
+        )
+    })?;
+
+    let snapshot_path = snapshot_dir.join("plan.json");
+    let snapshot_path_string = snapshot_path.display().to_string();
+    let payload = json!({
+        "contractVersion": CONTRACT_VERSION,
+        "compositionId": &composition.id,
+        "snapshotPath": &snapshot_path_string,
+        "title": &composition.title,
+        "createdAt": &composition.imported_at,
+        "source": {
+            "path": &composition.source_path,
+            "kind": &composition.source_kind
+        },
+        "baseAsset": {
+            "id": &composition.base_asset_id,
+            "title": &composition.base_asset_title,
+            "categoryId": &composition.base_asset_category_id,
+            "categoryLabel": &composition.base_asset_category_label
+        },
+        "reference": {
+            "type": &composition.reference_type,
+            "assetId": &composition.reference_asset_id,
+            "title": &composition.reference_title,
+            "sourcePath": &composition.reference_source_path
+        },
+        "plan": {
+            "targetBpm": composition.target_bpm,
+            "confidence": composition.confidence,
+            "strategy": &composition.strategy,
+            "summary": &composition.summary,
+            "analyzerStatus": &composition.analyzer_status,
+            "notes": &composition.notes,
+            "tags": &composition.tags,
+            "metrics": &composition.metrics,
+            "waveformBins": &composition.waveform_bins,
+            "beatGrid": &composition.beat_grid,
+            "bpmCurve": &composition.bpm_curve
+        }
+    });
+    let serialized = serde_json::to_string_pretty(&payload)
+        .map_err(|error| format!("Failed to encode composition snapshot JSON: {error}"))?;
+    fs::write(&snapshot_path, serialized).map_err(|error| {
+        format!(
+            "Failed to write managed composition snapshot {}: {error}",
+            snapshot_path.display()
+        )
+    })?;
+
+    Ok(snapshot_path_string)
+}
+
+fn backfill_composition_export_paths(conn: &Connection, managed_root: &Path) -> Result<(), String> {
+    let compositions = read_compositions(conn)?;
+
+    for mut composition in compositions.into_iter().filter(|entry| {
+        entry
+            .export_path
+            .as_deref()
+            .map(str::trim)
+            .unwrap_or_default()
+            .is_empty()
+    }) {
+        let export_path = write_composition_snapshot(&composition, managed_root)?;
+        apply_composition_export_metadata(&mut composition, export_path.clone());
+        let metadata_json = serde_json::to_string(&composition_metadata_from_record(&composition))
+            .map_err(|error| {
+                format!("Failed to encode composition metadata for backfill: {error}")
+            })?;
+        let updated_at = now_millis().to_string();
+
+        conn.execute(
+            "
+            UPDATE composition_results
+            SET export_path = ?2
+            WHERE asset_id = ?1
+            ",
+            params![&composition.id, export_path],
+        )
+        .map_err(|error| format!("Failed to backfill composition export path: {error}"))?;
+
+        conn.execute(
+            "
+            UPDATE musical_assets
+            SET metadata_json = ?2, updated_at = ?3
+            WHERE id = ?1
+            ",
+            params![&composition.id, metadata_json, updated_at],
+        )
+        .map_err(|error| format!("Failed to backfill composition metadata: {error}"))?;
+    }
 
     Ok(())
 }
@@ -712,7 +1906,13 @@ fn pick_with_zenity(
     title: &str,
     filter: Option<&str>,
 ) -> Result<Option<String>, String> {
-    let mut args = vec!["--file-selection", "--title", title, "--filename", default_path];
+    let mut args = vec![
+        "--file-selection",
+        "--title",
+        title,
+        "--filename",
+        default_path,
+    ];
 
     if matches!(kind, NativePickerKind::Directory) {
         args.push("--directory");
@@ -827,9 +2027,10 @@ fn load_base_asset_category_catalog(repo_root: &Path) -> BaseAssetCategoryCatalo
         .ok()
         .filter(|catalog: &BaseAssetCategoryCatalog| {
             !catalog.base_asset_categories.is_empty()
-                && catalog.base_asset_categories.iter().any(|category| {
-                    category.id == catalog.default_base_asset_category_id
-                })
+                && catalog
+                    .base_asset_categories
+                    .iter()
+                    .any(|category| category.id == catalog.default_base_asset_category_id)
         })
         .unwrap_or_else(fallback_base_asset_category_catalog)
 }
@@ -922,6 +2123,7 @@ fn read_tracks(conn: &Connection) -> Result<Vec<LibraryTrack>, String> {
                 m.confidence,
                 m.created_at,
                 m.metadata_json,
+                t.storage_path,
                 t.duration_seconds,
                 t.waveform_bins_json,
                 t.beat_grid_json,
@@ -947,13 +2149,13 @@ fn read_tracks(conn: &Connection) -> Result<Vec<LibraryTrack>, String> {
             .get(6)
             .map_err(|error| format!("Failed to read track metadata: {error}"))?;
         let waveform_json: String = row
-            .get(8)
+            .get(9)
             .map_err(|error| format!("Failed to read waveform bins: {error}"))?;
         let beat_grid_json: String = row
-            .get(9)
+            .get(10)
             .map_err(|error| format!("Failed to read beat grid: {error}"))?;
         let bpm_curve_json: String = row
-            .get(10)
+            .get(11)
             .map_err(|error| format!("Failed to read BPM curve: {error}"))?;
         let metadata: TrackMetadata = serde_json::from_str(&metadata_json)
             .map_err(|error| format!("Failed to decode track metadata JSON: {error}"))?;
@@ -977,6 +2179,9 @@ fn read_tracks(conn: &Connection) -> Result<Vec<LibraryTrack>, String> {
             source_path: row
                 .get(2)
                 .map_err(|error| format!("Failed to read track source path: {error}"))?,
+            storage_path: row
+                .get(7)
+                .map_err(|error| format!("Failed to read track storage path: {error}"))?,
             bpm: row
                 .get(3)
                 .map_err(|error| format!("Failed to read track BPM: {error}"))?,
@@ -987,7 +2192,7 @@ fn read_tracks(conn: &Connection) -> Result<Vec<LibraryTrack>, String> {
                 .get(5)
                 .map_err(|error| format!("Failed to read import timestamp: {error}"))?,
             duration_seconds: row
-                .get(7)
+                .get(8)
                 .map_err(|error| format!("Failed to read duration: {error}"))?,
             waveform_bins,
             beat_grid,
@@ -1095,6 +2300,126 @@ fn read_base_assets(conn: &Connection) -> Result<Vec<BaseAssetRecord>, String> {
     Ok(base_assets)
 }
 
+fn read_compositions(conn: &Connection) -> Result<Vec<CompositionResultRecord>, String> {
+    let mut statement = conn
+        .prepare(
+            "
+            SELECT
+                m.id,
+                m.title,
+                m.source_path,
+                m.source_kind,
+                m.suggested_bpm,
+                m.confidence,
+                m.created_at,
+                m.metadata_json,
+                c.base_asset_id,
+                c.reference_type,
+                c.reference_asset_id,
+                c.strategy,
+                c.arrangement_summary,
+                c.export_path,
+                c.waveform_bins_json,
+                c.beat_grid_json,
+                c.bpm_curve_json
+            FROM musical_assets m
+            INNER JOIN composition_results c ON c.asset_id = m.id
+            WHERE m.asset_type = 'composition_result'
+            ORDER BY m.created_at DESC
+            ",
+        )
+        .map_err(|error| format!("Failed to prepare composition query: {error}"))?;
+
+    let mut rows = statement
+        .query([])
+        .map_err(|error| format!("Failed to query compositions: {error}"))?;
+    let mut compositions = Vec::new();
+
+    while let Some(row) = rows
+        .next()
+        .map_err(|error| format!("Failed to iterate composition rows: {error}"))?
+    {
+        let metadata_json: String = row
+            .get(7)
+            .map_err(|error| format!("Failed to read composition metadata: {error}"))?;
+        let waveform_json: String = row
+            .get(14)
+            .map_err(|error| format!("Failed to read composition waveform JSON: {error}"))?;
+        let beat_grid_json: String = row
+            .get(15)
+            .map_err(|error| format!("Failed to read composition beat grid JSON: {error}"))?;
+        let bpm_curve_json: String = row
+            .get(16)
+            .map_err(|error| format!("Failed to read composition BPM curve JSON: {error}"))?;
+        let metadata: CompositionMetadata = serde_json::from_str(&metadata_json)
+            .map_err(|error| format!("Failed to decode composition metadata JSON: {error}"))?;
+        let waveform_bins: Vec<f64> = serde_json::from_str(&waveform_json)
+            .map_err(|error| format!("Failed to decode composition waveform JSON: {error}"))?;
+        let beat_grid: Vec<BeatGridPoint> = serde_json::from_str(&beat_grid_json)
+            .map_err(|error| format!("Failed to decode composition beat grid JSON: {error}"))?;
+        let bpm_curve: Vec<BpmCurvePoint> = serde_json::from_str(&bpm_curve_json)
+            .map_err(|error| format!("Failed to decode composition BPM curve JSON: {error}"))?;
+
+        compositions.push(CompositionResultRecord {
+            id: row
+                .get(0)
+                .map_err(|error| format!("Failed to read composition id: {error}"))?,
+            title: row
+                .get(1)
+                .map_err(|error| format!("Failed to read composition title: {error}"))?,
+            source_path: row
+                .get(2)
+                .map_err(|error| format!("Failed to read composition source path: {error}"))?,
+            export_path: row
+                .get(13)
+                .map_err(|error| format!("Failed to read composition export path: {error}"))?,
+            preview_audio_path: metric_string_opt(&metadata.metrics, "previewAudioPath"),
+            source_kind: row
+                .get(3)
+                .map_err(|error| format!("Failed to read composition source kind: {error}"))?,
+            target_bpm: row
+                .get::<_, Option<f64>>(4)
+                .map_err(|error| format!("Failed to read composition BPM: {error}"))?
+                .unwrap_or(0.0),
+            confidence: row
+                .get(5)
+                .map_err(|error| format!("Failed to read composition confidence: {error}"))?,
+            imported_at: row
+                .get(6)
+                .map_err(|error| format!("Failed to read composition timestamp: {error}"))?,
+            base_asset_id: row
+                .get(8)
+                .map_err(|error| format!("Failed to read composition base asset id: {error}"))?,
+            base_asset_title: metadata.base_asset_title,
+            base_asset_category_id: metadata.base_asset_category_id,
+            base_asset_category_label: metadata.base_asset_category_label,
+            reference_type: row
+                .get(9)
+                .map_err(|error| format!("Failed to read composition reference type: {error}"))?,
+            reference_asset_id: row
+                .get(10)
+                .map_err(|error| format!("Failed to read composition reference id: {error}"))?,
+            reference_title: metadata.reference_title,
+            reference_source_path: metadata.reference_source_path,
+            strategy: row
+                .get(11)
+                .map_err(|error| format!("Failed to read composition strategy: {error}"))?,
+            summary: row
+                .get(12)
+                .map_err(|error| format!("Failed to read composition summary: {error}"))?,
+            analyzer_status: metadata.analyzer_status,
+            notes: metadata.notes,
+            tags: metadata.tags,
+            metrics: metadata.metrics,
+            waveform_bins,
+            beat_grid,
+            bpm_curve,
+        });
+    }
+
+    Ok(compositions)
+}
+
 fn read_repositories(conn: &Connection) -> Result<Vec<RepositoryAnalysis>, String> {
     let mut statement = conn
         .prepare(
@@ -1107,6 +2432,7 @@ fn read_repositories(conn: &Connection) -> Result<Vec<RepositoryAnalysis>, Strin
                 m.confidence,
                 m.created_at,
                 m.metadata_json,
+                r.storage_path,
                 r.build_system,
                 r.primary_language,
                 r.java_file_count,
@@ -1134,7 +2460,7 @@ fn read_repositories(conn: &Connection) -> Result<Vec<RepositoryAnalysis>, Strin
             .get(6)
             .map_err(|error| format!("Failed to read repository metadata: {error}"))?;
         let metrics_json: String = row
-            .get(12)
+            .get(13)
             .map_err(|error| format!("Failed to read repository metrics: {error}"))?;
         let metadata: RepositoryMetadata = serde_json::from_str(&metadata_json)
             .map_err(|error| format!("Failed to decode repository metadata JSON: {error}"))?;
@@ -1151,6 +2477,9 @@ fn read_repositories(conn: &Connection) -> Result<Vec<RepositoryAnalysis>, Strin
             source_path: row
                 .get(2)
                 .map_err(|error| format!("Failed to read repository source path: {error}"))?,
+            storage_path: row
+                .get(7)
+                .map_err(|error| format!("Failed to read repository storage path: {error}"))?,
             suggested_bpm: row
                 .get(3)
                 .map_err(|error| format!("Failed to read repository BPM: {error}"))?,
@@ -1162,22 +2491,22 @@ fn read_repositories(conn: &Connection) -> Result<Vec<RepositoryAnalysis>, Strin
                 .map_err(|error| format!("Failed to read repository timestamp: {error}"))?,
             source_kind: metadata.source_kind,
             summary: row
-                .get(11)
+                .get(12)
                 .map_err(|error| format!("Failed to read repository summary: {error}"))?,
             analyzer_status: metadata.analyzer_status,
             build_system: row
-                .get::<_, Option<String>>(7)
+                .get::<_, Option<String>>(8)
                 .map_err(|error| format!("Failed to read build system: {error}"))?
                 .unwrap_or_else(|| "unknown".to_string()),
             primary_language: row
-                .get::<_, Option<String>>(8)
+                .get::<_, Option<String>>(9)
                 .map_err(|error| format!("Failed to read primary language: {error}"))?
                 .unwrap_or_else(|| "unknown".to_string()),
             java_file_count: row
-                .get(9)
+                .get(10)
                 .map_err(|error| format!("Failed to read Java file count: {error}"))?,
             test_file_count: row
-                .get(10)
+                .get(11)
                 .map_err(|error| format!("Failed to read test file count: {error}"))?,
             notes: metadata.notes,
             tags: metadata.tags,
@@ -1192,6 +2521,7 @@ fn insert_track(
     conn: &Connection,
     input: ImportTrackInput,
     music_style_catalog: &MusicStyleCatalog,
+    managed_root: &Path,
 ) -> Result<LibraryTrack, String> {
     let title = input.title.trim();
     let source_path = input.source_path.trim();
@@ -1216,7 +2546,21 @@ fn insert_track(
         .ok_or_else(|| format!("Unknown track music style: {music_style_id}"))?;
 
     let now = now_millis().to_string();
-    let analysis = analyze_track_import(title, source_path, music_style)?;
+    let id = format!(
+        "trk-{}-{:x}",
+        now,
+        stable_hash(&format!("{title}:{source_path}:{music_style_id}:{now}"))
+    );
+    let managed_snapshot = copy_track_to_managed_storage(source_path, managed_root, &id)?;
+    let analysis = analyze_track_import(
+        title,
+        source_path,
+        managed_snapshot
+            .as_ref()
+            .map(|(_, managed_path)| managed_path.to_string_lossy().to_string())
+            .as_deref(),
+        music_style,
+    )?;
     let metadata_json = serde_json::to_string(&analysis.metadata)
         .map_err(|error| format!("Failed to encode track metadata: {error}"))?;
     let waveform_json = serde_json::to_string(&analysis.waveform_bins)
@@ -1236,11 +2580,6 @@ fn insert_track(
         format!("music-style:{}", music_style.id)
     ])
     .to_string();
-    let id = format!(
-        "trk-{}-{:x}",
-        now,
-        stable_hash(&format!("{title}:{source_path}:{music_style_id}:{now}"))
-    );
 
     conn.execute(
         "
@@ -1275,6 +2614,7 @@ fn insert_track(
         "
         INSERT INTO track_analyses (
             asset_id,
+            storage_path,
             duration_seconds,
             sample_rate_hz,
             channels,
@@ -1282,10 +2622,11 @@ fn insert_track(
             beat_grid_json,
             bpm_curve_json,
             analyzer_notes
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
         ",
         params![
             &id,
+            &analysis.storage_path,
             analysis.duration_seconds,
             analysis.sample_rate_hz,
             analysis.channels,
@@ -1301,6 +2642,7 @@ fn insert_track(
         id,
         title: analysis.title,
         source_path: analysis.source_path,
+        storage_path: analysis.storage_path,
         imported_at: now,
         bpm: Some(analysis.bpm),
         bpm_confidence: analysis.confidence,
@@ -1323,6 +2665,7 @@ fn insert_base_asset(
     conn: &Connection,
     input: ImportBaseAssetInput,
     category_catalog: &BaseAssetCategoryCatalog,
+    managed_root: &Path,
 ) -> Result<BaseAssetRecord, String> {
     let source_kind = input.source_kind.trim();
     let source_path = input.source_path.trim();
@@ -1353,17 +2696,6 @@ fn insert_base_asset(
         .ok_or_else(|| format!("Unknown base asset category: {category_id}"))?;
 
     let now = now_millis().to_string();
-    let analysis = analyze_base_asset_import(
-        source_kind,
-        source_path,
-        label.as_deref(),
-        category,
-        input.reusable,
-    )?;
-    let metadata_json = serde_json::to_string(&analysis.metadata)
-        .map_err(|error| format!("Failed to encode base asset metadata: {error}"))?;
-    let tags_json = serde_json::to_string(&analysis.metadata.tags)
-        .map_err(|error| format!("Failed to encode base asset tags: {error}"))?;
     let id = format!(
         "bas-{}-{:x}",
         now,
@@ -1372,6 +2704,20 @@ fn insert_base_asset(
             source_kind, source_path, category.id, input.reusable, now
         ))
     );
+    let (resolved_source_path, managed_storage_path) =
+        copy_base_asset_to_managed_storage(source_kind, source_path, managed_root, &id)?;
+    let analysis = analyze_base_asset_import(
+        source_kind,
+        &resolved_source_path.display().to_string(),
+        &managed_storage_path.display().to_string(),
+        label.as_deref(),
+        category,
+        input.reusable,
+    )?;
+    let metadata_json = serde_json::to_string(&analysis.metadata)
+        .map_err(|error| format!("Failed to encode base asset metadata: {error}"))?;
+    let tags_json = serde_json::to_string(&analysis.metadata.tags)
+        .map_err(|error| format!("Failed to encode base asset tags: {error}"))?;
 
     conn.execute(
         "
@@ -1443,9 +2789,235 @@ fn insert_base_asset(
     })
 }
 
+fn insert_composition(
+    conn: &Connection,
+    input: ImportCompositionInput,
+    managed_root: &Path,
+) -> Result<CompositionResultRecord, String> {
+    let base_asset_id = input.base_asset_id.trim();
+    let reference_type = input.reference_type.trim();
+    let label = input
+        .label
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string);
+
+    if base_asset_id.is_empty() {
+        return Err("A base asset must be selected before composing.".to_string());
+    }
+
+    if !matches!(reference_type, "track" | "repo" | "manual") {
+        return Err("Composition reference type must be 'track', 'repo', or 'manual'.".to_string());
+    }
+
+    let base_asset = read_base_assets(conn)?
+        .into_iter()
+        .find(|entry| entry.id == base_asset_id)
+        .ok_or_else(|| format!("Base asset not found: {base_asset_id}"))?;
+    let reference = resolve_composition_reference(conn, &input)?;
+    let now = now_millis().to_string();
+    let id = format!(
+        "cmp-{}-{:x}",
+        now,
+        stable_hash(&format!(
+            "{}:{}:{}:{}",
+            base_asset.id, reference.reference_type, reference.reference_title, now
+        ))
+    );
+    let preview_audio_output_path = managed_root
+        .join(&id)
+        .join("preview.wav")
+        .display()
+        .to_string();
+    let analysis = analyze_composition_import(
+        &base_asset,
+        &reference,
+        label.as_deref(),
+        Some(preview_audio_output_path.as_str()),
+    )?;
+    let mut record = CompositionResultRecord {
+        id: id.clone(),
+        title: analysis.title,
+        source_path: analysis.source_path,
+        export_path: None,
+        preview_audio_path: analysis.preview_audio_path.clone(),
+        source_kind: analysis.source_kind,
+        imported_at: now.clone(),
+        base_asset_id: analysis.base_asset_id,
+        base_asset_title: analysis.base_asset_title,
+        base_asset_category_id: analysis.base_asset_category_id,
+        base_asset_category_label: analysis.base_asset_category_label,
+        reference_type: analysis.reference_type,
+        reference_asset_id: analysis.reference_asset_id,
+        reference_title: analysis.reference_title,
+        reference_source_path: analysis.reference_source_path,
+        target_bpm: analysis.target_bpm,
+        confidence: analysis.confidence,
+        strategy: analysis.strategy,
+        summary: analysis.summary,
+        analyzer_status: analysis.metadata.analyzer_status.clone(),
+        notes: analysis.metadata.notes.clone(),
+        tags: analysis.metadata.tags.clone(),
+        metrics: analysis.metrics,
+        waveform_bins: analysis.waveform_bins,
+        beat_grid: analysis.beat_grid,
+        bpm_curve: analysis.bpm_curve,
+    };
+    if let Some(preview_audio_path) = record.preview_audio_path.clone() {
+        apply_composition_preview_audio_metadata(&mut record, &preview_audio_path);
+    }
+    let export_path = write_composition_snapshot(&record, managed_root)?;
+    apply_composition_export_metadata(&mut record, export_path);
+    let metadata_json = serde_json::to_string(&composition_metadata_from_record(&record))
+        .map_err(|error| format!("Failed to encode composition metadata: {error}"))?;
+    let tags_json = serde_json::to_string(&record.tags)
+        .map_err(|error| format!("Failed to encode composition tags: {error}"))?;
+
+    conn.execute(
+        "
+        INSERT INTO musical_assets (
+            id,
+            asset_type,
+            title,
+            source_path,
+            source_kind,
+            suggested_bpm,
+            confidence,
+            tags_json,
+            metadata_json,
+            created_at,
+            updated_at
+        ) VALUES (?1, 'composition_result', ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9)
+        ",
+        params![
+            &id,
+            &record.title,
+            &record.source_path,
+            &record.source_kind,
+            record.target_bpm,
+            record.confidence,
+            tags_json,
+            metadata_json,
+            &now
+        ],
+    )
+    .map_err(|error| format!("Failed to insert composition asset: {error}"))?;
+
+    conn.execute(
+        "
+        INSERT INTO composition_results (
+            asset_id,
+            base_asset_id,
+            reference_type,
+            reference_asset_id,
+            target_bpm,
+            strategy,
+            arrangement_summary,
+            export_path,
+            waveform_bins_json,
+            beat_grid_json,
+            bpm_curve_json
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+        ",
+        params![
+            &id,
+            &record.base_asset_id,
+            &record.reference_type,
+            &record.reference_asset_id,
+            record.target_bpm,
+            &record.strategy,
+            &record.summary,
+            &record.export_path,
+            &analysis.waveform_bins_json,
+            &analysis.beat_grid_json,
+            &analysis.bpm_curve_json
+        ],
+    )
+    .map_err(|error| format!("Failed to insert composition details: {error}"))?;
+
+    Ok(record)
+}
+
+fn resolve_composition_reference(
+    conn: &Connection,
+    input: &ImportCompositionInput,
+) -> Result<CompositionReferenceDraft, String> {
+    match input.reference_type.trim() {
+        "track" => {
+            let reference_asset_id = input
+                .reference_asset_id
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .ok_or_else(|| {
+                    "Track composition reference requires a selected track.".to_string()
+                })?;
+            let track = read_tracks(conn)?
+                .into_iter()
+                .find(|entry| entry.id == reference_asset_id)
+                .ok_or_else(|| format!("Track reference not found: {reference_asset_id}"))?;
+            let target_bpm = track
+                .bpm
+                .ok_or_else(|| "The selected track does not have a stored BPM yet.".to_string())?;
+
+            Ok(CompositionReferenceDraft {
+                reference_type: "track".to_string(),
+                reference_asset_id: Some(track.id),
+                reference_title: track.title,
+                reference_source_path: Some(track.source_path),
+                target_bpm,
+            })
+        }
+        "repo" => {
+            let reference_asset_id = input
+                .reference_asset_id
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .ok_or_else(|| {
+                    "Repository composition reference requires a selected repository.".to_string()
+                })?;
+            let repository = read_repositories(conn)?
+                .into_iter()
+                .find(|entry| entry.id == reference_asset_id)
+                .ok_or_else(|| format!("Repository reference not found: {reference_asset_id}"))?;
+            let target_bpm = repository.suggested_bpm.ok_or_else(|| {
+                "The selected repository does not have a suggested BPM yet.".to_string()
+            })?;
+
+            Ok(CompositionReferenceDraft {
+                reference_type: "repo".to_string(),
+                reference_asset_id: Some(repository.id),
+                reference_title: repository.title,
+                reference_source_path: Some(repository.source_path),
+                target_bpm,
+            })
+        }
+        "manual" => {
+            let manual_bpm = input
+                .manual_bpm
+                .filter(|value| value.is_finite() && *value > 0.0)
+                .ok_or_else(|| {
+                    "Manual composition reference requires a positive BPM.".to_string()
+                })?;
+
+            Ok(CompositionReferenceDraft {
+                reference_type: "manual".to_string(),
+                reference_asset_id: None,
+                reference_title: format!("Manual {:.0} BPM", manual_bpm),
+                reference_source_path: None,
+                target_bpm: manual_bpm,
+            })
+        }
+        _ => Err("Unsupported composition reference type.".to_string()),
+    }
+}
+
 fn insert_repository(
     conn: &Connection,
     input: ImportRepositoryInput,
+    managed_root: &Path,
 ) -> Result<RepositoryAnalysis, String> {
     let source_kind = input.source_kind.trim();
     let source_path = input.source_path.trim();
@@ -1456,8 +3028,8 @@ fn insert_repository(
         .filter(|label| !label.is_empty())
         .map(str::to_string);
 
-    if !matches!(source_kind, "directory" | "url") {
-        return Err("Repository source kind must be 'directory' or 'url'.".to_string());
+    if !matches!(source_kind, "directory" | "file" | "url") {
+        return Err("Repository source kind must be 'directory', 'file', or 'url'.".to_string());
     }
 
     if source_path.is_empty() {
@@ -1465,9 +3037,27 @@ fn insert_repository(
     }
 
     let now = now_millis().to_string();
+    let id = format!(
+        "repo-{}-{:x}",
+        now,
+        stable_hash(&format!("{source_kind}:{source_path}:{now}"))
+    );
+    let managed_snapshot = if matches!(source_kind, "directory" | "file") {
+        copy_repository_source_to_managed_storage(source_kind, source_path, managed_root, &id)?
+    } else {
+        None
+    };
     let mut source = serde_json::Map::new();
     source.insert("kind".to_string(), Value::String(source_kind.to_string()));
-    source.insert("path".to_string(), Value::String(source_path.to_string()));
+    source.insert(
+        "path".to_string(),
+        Value::String(
+            managed_snapshot
+                .as_ref()
+                .map(|(_, managed_path)| managed_path.to_string_lossy().to_string())
+                .unwrap_or_else(|| source_path.to_string()),
+        ),
+    );
     if let Some(label) = import_label.clone() {
         source.insert("label".to_string(), Value::String(label));
     }
@@ -1503,33 +3093,70 @@ fn insert_repository(
     let primary_language = metric_string(&payload.musical_asset.metrics, "primaryLanguage");
     let java_file_count = metric_i64(&payload.musical_asset.metrics, "javaFileCount");
     let test_file_count = metric_i64(&payload.musical_asset.metrics, "testFileCount");
+    let analyzer_status = match source_kind {
+        "url" => "Remote repository reference analyzed".to_string(),
+        "file" => "Log file analyzed".to_string(),
+        _ => "Filesystem repository analyzed".to_string(),
+    };
     let metadata = RepositoryMetadata {
         source_kind: source_kind.to_string(),
-        analyzer_status: if source_kind == "url" {
-            "Remote repository reference analyzed".to_string()
-        } else {
-            "Filesystem repository analyzed".to_string()
+        analyzer_status: analyzer_status.clone(),
+        notes: {
+            let mut notes = parsed.warnings.clone();
+            if let Some((_, managed_path)) = &managed_snapshot {
+                notes.push(if source_kind == "file" {
+                    format!(
+                        "Maia imported and analyzed a managed local log snapshot at {}.",
+                        managed_path.display()
+                    )
+                } else {
+                    format!(
+                        "Maia imported and analyzed a managed local repository snapshot at {}.",
+                        managed_path.display()
+                    )
+                });
+            }
+            notes
         },
-        notes: parsed.warnings.clone(),
         tags: payload.musical_asset.tags.clone(),
         import_label: import_label.clone(),
     };
     let metadata_json = serde_json::to_string(&metadata)
         .map_err(|error| format!("Failed to encode repository metadata: {error}"))?;
     let asset_title = payload.musical_asset.title.clone();
-    let asset_source_path = payload.musical_asset.source_path.clone();
     let suggested_bpm = payload.musical_asset.suggested_bpm;
     let confidence = payload.musical_asset.confidence;
     let tags = payload.musical_asset.tags.clone();
-    let metrics = payload.musical_asset.metrics.clone();
+    let mut metrics = payload.musical_asset.metrics.clone();
+    if let Value::Object(record) = &mut metrics {
+        if source_kind != "url" {
+            record.insert(
+                "originalSourcePath".to_string(),
+                Value::String(source_path.to_string()),
+            );
+            record.insert(
+                "storagePath".to_string(),
+                Value::String(
+                    managed_snapshot
+                        .as_ref()
+                        .map(|(_, managed_path)| managed_path.to_string_lossy().to_string())
+                        .unwrap_or_else(|| source_path.to_string()),
+                ),
+            );
+            record.insert(
+                "storageMode".to_string(),
+                Value::String("managed-copy".to_string()),
+            );
+        } else {
+            record.insert(
+                "storageMode".to_string(),
+                Value::String("remote-url".to_string()),
+            );
+        }
+    }
     let metrics_json = metrics.to_string();
     let tags_json = serde_json::to_string(&tags)
         .map_err(|error| format!("Failed to encode repository tags: {error}"))?;
-    let id = format!(
-        "repo-{}-{:x}",
-        now,
-        stable_hash(&format!("{source_kind}:{source_path}:{now}"))
-    );
 
     conn.execute(
         "
@@ -1550,7 +3177,7 @@ fn insert_repository(
         params![
             &id,
             &asset_title,
-            &asset_source_path,
+            source_path,
             source_kind,
             suggested_bpm,
             confidence,
@@ -1566,17 +3193,21 @@ fn insert_repository(
         INSERT INTO repo_analyses (
             asset_id,
             repo_path,
+            storage_path,
             build_system,
             primary_language,
             java_file_count,
             test_file_count,
             heuristic_summary,
             metric_snapshot_json
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
         ",
         params![
             &id,
             source_path,
+            managed_snapshot
+                .as_ref()
+                .map(|(_, managed_path)| managed_path.to_string_lossy().to_string()),
             &build_system,
             &primary_language,
             java_file_count,
@@ -1590,7 +3221,10 @@ fn insert_repository(
     Ok(RepositoryAnalysis {
         id,
         title: asset_title,
-        source_path: asset_source_path,
+        source_path: source_path.to_string(),
+        storage_path: managed_snapshot
+            .as_ref()
+            .map(|(_, managed_path)| managed_path.to_string_lossy().to_string()),
         source_kind: source_kind.to_string(),
         imported_at: now,
         suggested_bpm,
@@ -1601,7 +3235,7 @@ fn insert_repository(
         primary_language,
         java_file_count,
         test_file_count,
-        notes: parsed.warnings,
+        notes: metadata.notes.clone(),
         tags,
         metrics,
     })
@@ -1610,9 +3244,11 @@ fn insert_repository(
 fn analyze_track_import(
     title: &str,
     source_path: &str,
+    storage_path: Option<&str>,
     music_style: &MusicStyleOption,
 ) -> Result<TrackImportAnalysis, String> {
-    let fallback = build_mock_track(title, source_path, music_style);
+    let fallback = build_mock_track(title, source_path, storage_path, music_style);
+    let analyzer_source_path = storage_path.unwrap_or(source_path);
     let now = now_millis().to_string();
     let request = json!({
         "contractVersion": CONTRACT_VERSION,
@@ -1622,7 +3258,7 @@ fn analyze_track_import(
             "assetType": "track_analysis",
             "source": {
                 "kind": "file",
-                "path": source_path
+                "path": analyzer_source_path
             },
             "options": {
                 "waveformBins": 32
@@ -1634,9 +3270,9 @@ fn analyze_track_import(
         .map_err(|error| format!("Failed to decode analyzer track response: {error}"))?;
 
     if parsed.status == "error" {
-        let error = parsed.error.ok_or_else(|| {
-            "Analyzer returned an unknown track error.".to_string()
-        })?;
+        let error = parsed
+            .error
+            .ok_or_else(|| "Analyzer returned an unknown track error.".to_string())?;
 
         if matches!(error.code.as_str(), "missing_source" | "invalid_source") {
             return Ok(fallback);
@@ -1664,12 +3300,7 @@ fn analyze_track_import(
     } else {
         payload.musical_asset.artifacts.bpm_curve.clone()
     };
-    let resolved_source_path = if payload.musical_asset.source_path.trim().is_empty() {
-        source_path.to_string()
-    } else {
-        payload.musical_asset.source_path.clone()
-    };
-    let file_extension = Path::new(&resolved_source_path)
+    let file_extension = Path::new(source_path)
         .extension()
         .and_then(|value| value.to_str())
         .map(|value| format!(".{}", value.to_lowercase()))
@@ -1680,8 +3311,8 @@ fn analyze_track_import(
     } else {
         fallback.confidence.min(0.44)
     };
-    let duration_seconds = metric_f64(&payload.musical_asset.metrics, "durationSeconds")
-        .or(fallback.duration_seconds);
+    let duration_seconds =
+        metric_f64(&payload.musical_asset.metrics, "durationSeconds").or(fallback.duration_seconds);
     let sample_rate_hz = metric_i64_opt(&payload.musical_asset.metrics, "sampleRateHz");
     let channels = metric_i64_opt(&payload.musical_asset.metrics, "channels");
     let beat_grid_json = serde_json::to_string(&beat_grid)
@@ -1693,23 +3324,32 @@ fn analyze_track_import(
         "hash-stub" => "Hash waveform stub + style BPM prior".to_string(),
         _ => "Track analysis imported".to_string(),
     };
-    let mut notes = vec![
-        format!(
-            "Imported with {} prior ({}-{} BPM).",
-            music_style.label, music_style.min_bpm, music_style.max_bpm
-        ),
-    ];
+    let mut notes = vec![format!(
+        "Imported with {} prior ({}-{} BPM).",
+        music_style.label, music_style.min_bpm, music_style.max_bpm
+    )];
     if payload.musical_asset.suggested_bpm.is_some() {
-        notes.push("Detected BPM came from embedded audio heuristics inside the analyzer.".to_string());
+        notes.push(
+            "Detected BPM came from embedded audio heuristics inside the analyzer.".to_string(),
+        );
     } else {
         notes.push("Detected BPM still uses the selected style prior because tempo heuristics were unavailable for this file.".to_string());
+    }
+    if let Some(storage_path) = storage_path {
+        notes.push(format!(
+            "Maia imported and analyzed a managed local snapshot at {}.",
+            storage_path
+        ));
+    } else {
+        notes.push("This track is currently using the original unresolved path or demo path because no managed snapshot was created.".to_string());
     }
     notes.push("Waveform, beat grid, and BPM curve are available in the analyzer screen as persisted local artifacts.".to_string());
     notes.extend(parsed.warnings.clone());
 
     Ok(TrackImportAnalysis {
         title: title.to_string(),
-        source_path: resolved_source_path,
+        source_path: source_path.to_string(),
+        storage_path: storage_path.map(str::to_string),
         bpm: detected_bpm,
         confidence: detected_confidence,
         duration_seconds,
@@ -1726,7 +3366,8 @@ fn analyze_track_import(
             analyzer_status,
             analysis_mode,
             repo_suggested_bpm: None,
-            repo_suggested_status: "Waiting for repository heuristics in a future analyzer pass".to_string(),
+            repo_suggested_status: "Waiting for repository heuristics in a future analyzer pass"
+                .to_string(),
             notes,
             music_style_id: music_style.id.clone(),
             music_style_label: music_style.label.clone(),
@@ -1737,6 +3378,7 @@ fn analyze_track_import(
 fn analyze_base_asset_import(
     source_kind: &str,
     source_path: &str,
+    storage_path: &str,
     label: Option<&str>,
     category: &BaseAssetCategoryOption,
     reusable: bool,
@@ -1750,7 +3392,7 @@ fn analyze_base_asset_import(
             "assetType": "base_asset",
             "source": {
                 "kind": source_kind,
-                "path": source_path
+                "path": storage_path
             },
             "options": {
                 "baseAssetCategory": category.id,
@@ -1772,15 +3414,24 @@ fn analyze_base_asset_import(
     let payload = parsed
         .payload
         .ok_or_else(|| "Analyzer did not return a base asset payload.".to_string())?;
-    let resolved_source_path = if payload.musical_asset.source_path.trim().is_empty() {
-        source_path.to_string()
-    } else {
-        payload.musical_asset.source_path.clone()
-    };
     let entry_count = metric_i64(&payload.musical_asset.metrics, "entryCount");
     let checksum = metric_string_opt(&payload.musical_asset.metrics, "checksum");
     let detected_source_kind = metric_string(&payload.musical_asset.metrics, "sourceKind");
-    let metrics = payload.musical_asset.metrics.clone();
+    let mut metrics = payload.musical_asset.metrics.clone();
+    if let Value::Object(record) = &mut metrics {
+        record.insert(
+            "storageMode".to_string(),
+            Value::String("managed-copy".to_string()),
+        );
+        record.insert(
+            "originalSourcePath".to_string(),
+            Value::String(source_path.to_string()),
+        );
+        record.insert(
+            "storagePath".to_string(),
+            Value::String(storage_path.to_string()),
+        );
+    }
     let summary = payload.summary.clone();
     let title = label
         .map(str::trim)
@@ -1794,19 +3445,22 @@ fn analyze_base_asset_import(
         } else {
             "Marked as reference-only for cataloging without reuse.".to_string()
         },
-        "Base assets are stored by reference in MVP; managed copies are deferred.".to_string(),
+        "Maia stored a managed local snapshot of this base asset during import.".to_string(),
     ];
     notes.extend(parsed.warnings.clone());
 
     let mut tags = payload.musical_asset.tags.clone();
-    if !tags.iter().any(|tag| tag == &format!("category:{}", category.id)) {
+    if !tags
+        .iter()
+        .any(|tag| tag == &format!("category:{}", category.id))
+    {
         tags.push(format!("category:{}", category.id));
     }
 
     Ok(BaseAssetImportAnalysis {
         title,
-        source_path: resolved_source_path.clone(),
-        storage_path: resolved_source_path,
+        source_path: source_path.to_string(),
+        storage_path: storage_path.to_string(),
         source_kind: if matches!(detected_source_kind.as_str(), "file" | "directory") {
             detected_source_kind
         } else {
@@ -1845,7 +3499,164 @@ fn analyze_base_asset_import(
     })
 }
 
-fn build_mock_track(title: &str, source_path: &str, music_style: &MusicStyleOption) -> TrackImportAnalysis {
+fn analyze_composition_import(
+    base_asset: &BaseAssetRecord,
+    reference: &CompositionReferenceDraft,
+    label: Option<&str>,
+    preview_audio_output_path: Option<&str>,
+) -> Result<CompositionImportAnalysis, String> {
+    let now = now_millis().to_string();
+    let request = json!({
+        "contractVersion": CONTRACT_VERSION,
+        "requestId": format!("composition-{now}"),
+        "action": "analyze",
+        "payload": {
+            "assetType": "composition_result",
+            "source": {
+                "kind": base_asset.source_kind,
+                "path": base_asset.storage_path
+            },
+            "options": {
+                "baseAssetCategory": base_asset.category_id,
+                "baseAssetReusable": base_asset.reusable,
+                "compositionBaseAssetEntryCount": base_asset.entry_count,
+                "compositionReferenceType": reference.reference_type,
+                "compositionReferenceLabel": reference.reference_title,
+                "compositionReferenceBpm": reference.target_bpm,
+                "compositionPreviewOutputPath": preview_audio_output_path
+            }
+        }
+    });
+    let response = execute_analyzer_request(&request)?;
+    let parsed: AnalyzerResponseEnvelope = serde_json::from_value(response)
+        .map_err(|error| format!("Failed to decode analyzer composition response: {error}"))?;
+
+    if parsed.status == "error" {
+        let error = parsed
+            .error
+            .ok_or_else(|| "Analyzer returned an unknown composition error.".to_string())?;
+        return Err(error.message);
+    }
+
+    let payload = parsed
+        .payload
+        .ok_or_else(|| "Analyzer did not return a composition payload.".to_string())?;
+    let strategy = metric_string(&payload.musical_asset.metrics, "strategy");
+    let resolved_source_path = if payload.musical_asset.source_path.trim().is_empty() {
+        base_asset.source_path.clone()
+    } else {
+        payload.musical_asset.source_path.clone()
+    };
+    let title = label
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(|| payload.musical_asset.title.clone());
+    let waveform_bins = payload.musical_asset.artifacts.waveform_bins.clone();
+    let beat_grid = payload.musical_asset.artifacts.beat_grid.clone();
+    let bpm_curve = payload.musical_asset.artifacts.bpm_curve.clone();
+    let waveform_bins_json = serde_json::to_string(&waveform_bins)
+        .map_err(|error| format!("Failed to encode composition waveform bins: {error}"))?;
+    let beat_grid_json = serde_json::to_string(&beat_grid)
+        .map_err(|error| format!("Failed to encode composition beat grid: {error}"))?;
+    let bpm_curve_json = serde_json::to_string(&bpm_curve)
+        .map_err(|error| format!("Failed to encode composition BPM curve: {error}"))?;
+    let preview_audio_path = metric_string_opt(&payload.musical_asset.metrics, "previewAudioPath");
+    let mut notes = vec![
+        format!(
+            "Built from base asset {} ({}) at {:.0} BPM.",
+            base_asset.title, base_asset.category_label, reference.target_bpm
+        ),
+        format!(
+            "Reference type is {} using {}.",
+            reference.reference_type, reference.reference_title
+        ),
+    ];
+    if !base_asset.reusable {
+        notes.push(
+            "The selected base asset is reference-only, so the composition remains a local sketch."
+                .to_string(),
+        );
+    }
+    if let Some(preview_audio_path) = preview_audio_path.as_deref() {
+        notes.push(format!(
+            "Managed preview audio rendered to {}.",
+            preview_audio_path
+        ));
+    } else if preview_audio_output_path.is_some() {
+        notes.push(
+            "Preview audio could not be rendered during import, so this composition remains metadata-only for now."
+                .to_string(),
+        );
+    }
+    notes.extend(parsed.warnings.clone());
+
+    let mut tags = payload.musical_asset.tags.clone();
+    if !tags
+        .iter()
+        .any(|tag| tag == &format!("base-asset:{}", base_asset.category_id))
+    {
+        tags.push(format!("base-asset:{}", base_asset.category_id));
+    }
+
+    let analyzer_status = match reference.reference_type.as_str() {
+        "track" => "Track-referenced composition plan".to_string(),
+        "repo" => "Repository-referenced composition plan".to_string(),
+        _ => "Manual-tempo composition plan".to_string(),
+    };
+
+    Ok(CompositionImportAnalysis {
+        title,
+        source_path: resolved_source_path,
+        preview_audio_path,
+        source_kind: base_asset.source_kind.clone(),
+        base_asset_id: base_asset.id.clone(),
+        base_asset_title: base_asset.title.clone(),
+        base_asset_category_id: base_asset.category_id.clone(),
+        base_asset_category_label: base_asset.category_label.clone(),
+        reference_type: reference.reference_type.clone(),
+        reference_asset_id: reference.reference_asset_id.clone(),
+        reference_title: reference.reference_title.clone(),
+        reference_source_path: reference.reference_source_path.clone(),
+        target_bpm: payload
+            .musical_asset
+            .suggested_bpm
+            .unwrap_or(reference.target_bpm),
+        confidence: payload.musical_asset.confidence,
+        strategy: strategy.clone(),
+        summary: payload.summary.clone(),
+        waveform_bins,
+        beat_grid,
+        bpm_curve,
+        waveform_bins_json,
+        beat_grid_json,
+        bpm_curve_json,
+        metrics: payload.musical_asset.metrics.clone(),
+        metadata: CompositionMetadata {
+            base_asset_id: base_asset.id.clone(),
+            base_asset_title: base_asset.title.clone(),
+            base_asset_category_id: base_asset.category_id.clone(),
+            base_asset_category_label: base_asset.category_label.clone(),
+            reference_type: reference.reference_type.clone(),
+            reference_asset_id: reference.reference_asset_id.clone(),
+            reference_title: reference.reference_title.clone(),
+            reference_source_path: reference.reference_source_path.clone(),
+            analyzer_status,
+            strategy,
+            summary: payload.summary,
+            notes,
+            tags,
+            metrics: payload.musical_asset.metrics,
+        },
+    })
+}
+
+fn build_mock_track(
+    title: &str,
+    source_path: &str,
+    storage_path: Option<&str>,
+    music_style: &MusicStyleOption,
+) -> TrackImportAnalysis {
     let seed = stable_hash(&format!("{title}:{source_path}:{}", music_style.id));
     let bpm_span = u64::from(music_style.max_bpm.saturating_sub(music_style.min_bpm)) + 1;
     let bpm = f64::from(music_style.min_bpm) + f64::from((seed % bpm_span) as u32);
@@ -1863,6 +3674,7 @@ fn build_mock_track(title: &str, source_path: &str, music_style: &MusicStyleOpti
     TrackImportAnalysis {
         title: title.to_string(),
         source_path: source_path.to_string(),
+        storage_path: storage_path.map(str::to_string),
         bpm,
         confidence: confidence.min(0.91),
         duration_seconds: Some(duration_seconds),
@@ -1882,6 +3694,13 @@ fn build_mock_track(title: &str, source_path: &str, music_style: &MusicStyleOpti
                     "Imported with {} prior ({}-{} BPM).",
                     music_style.label, music_style.min_bpm, music_style.max_bpm
                 ),
+                match storage_path {
+                    Some(path) => format!(
+                        "Maia captured a managed local snapshot for this track at {}.",
+                        path
+                    ),
+                    None => "No managed snapshot exists for this track yet because the source file was not available during import.".to_string(),
+                },
                 "Waveform, beat grid, and BPM curve are lightweight local preview artifacts.".to_string(),
                 "Browser and demo flows mirror the same analyzer-screen structure as Tauri.".to_string(),
             ],
@@ -1920,6 +3739,17 @@ fn metric_i64_opt(metrics: &Value, key: &str) -> Option<i64> {
 
 fn metric_f64(metrics: &Value, key: &str) -> Option<f64> {
     metrics.get(key).and_then(Value::as_f64)
+}
+
+fn decode_json_metric<T>(metrics: &Value, key: &str) -> Result<T, String>
+where
+    T: DeserializeOwned + Default,
+{
+    match metrics.get(key) {
+        Some(value) => serde_json::from_value(value.clone())
+            .map_err(|error| format!("Failed to decode metric {key}: {error}")),
+        None => Ok(T::default()),
+    }
 }
 
 fn mock_waveform_bins(seed: u64, length: usize) -> Vec<f64> {
@@ -2002,19 +3832,59 @@ fn now_millis() -> u128 {
         .unwrap_or(0)
 }
 
+fn now_iso() -> String {
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    // format as ISO 8601 UTC without external crate
+    let (y, mo, d, h, min, s) = epoch_secs_to_ymdhms(secs);
+    format!("{y:04}-{mo:02}-{d:02}T{h:02}:{min:02}:{s:02}Z")
+}
+
+fn epoch_secs_to_ymdhms(secs: u64) -> (u64, u64, u64, u64, u64, u64) {
+    let s = secs % 60;
+    let mins = secs / 60;
+    let min = mins % 60;
+    let hours = mins / 60;
+    let h = hours % 24;
+    let total_days = hours / 24;
+    // Compute Gregorian date from days since Unix epoch (simple algorithm)
+    let z = total_days + 719_468;
+    let era = z / 146_097;
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let mo = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if mo <= 2 { y + 1 } else { y };
+    (y, mo, d, h, min, s)
+}
+
 fn main() {
     tauri::Builder::default()
+        .manage(Mutex::new(SessionRegistry::default()))
         .invoke_handler(tauri::generate_handler![
             bootstrap_manifest,
             run_analyzer,
             pick_track_source_path,
             pick_repository_directory,
+            pick_repository_file,
+            poll_log_stream,
+            start_stream_session,
+            stop_stream_session,
+            list_stream_sessions,
+            poll_stream_session,
             pick_base_asset_path,
             list_tracks,
             import_track,
             seed_demo_tracks,
             list_base_assets,
             import_base_asset,
+            list_compositions,
+            import_composition,
             list_repositories,
             import_repository
         ])

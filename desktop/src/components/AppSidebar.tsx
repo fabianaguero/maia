@@ -7,6 +7,7 @@ interface AppSidebarProps {
   trackCount: number;
   repositoryCount: number;
   baseAssetCount: number;
+  compositionCount: number;
   selectedItemTitle: string | null;
   manifest: BootstrapManifest | null;
   analyzerLabel: string;
@@ -20,12 +21,12 @@ const navigationItems: Array<{
   {
     id: "library",
     label: "Library",
-    description: "Tracks, repos, and reusable bases",
+    description: "Tracks, code/log sources, bases, and compositions",
   },
   {
     id: "analyzer",
     label: "Analyzer",
-    description: "Waveform and BPM review",
+    description: "Signal, waveform, and BPM review",
   },
 ];
 
@@ -35,6 +36,7 @@ export function AppSidebar({
   trackCount,
   repositoryCount,
   baseAssetCount,
+  compositionCount,
   selectedItemTitle,
   manifest,
   analyzerLabel,
@@ -43,10 +45,10 @@ export function AppSidebar({
     <aside className="sidebar panel">
       <div className="sidebar-brand">
         <p className="eyebrow">Maia</p>
-        <h1>DJ analyzer shell</h1>
+        <h1>Software sonification shell</h1>
         <p>
-          Local-first desktop workflow for track intake, reusable base assets,
-          BPM review, and repository-aware rhythm tooling.
+          Local-first desktop workflow for code/log intake, reusable sonic assets, BPM review,
+          derived composition plans, and audible operational tooling.
         </p>
       </div>
 
@@ -71,11 +73,11 @@ export function AppSidebar({
       <div className="sidebar-meta">
         <div className="sidebar-stat">
           <span>Assets</span>
-          <strong>{trackCount + repositoryCount + baseAssetCount}</strong>
+          <strong>{trackCount + repositoryCount + baseAssetCount + compositionCount}</strong>
         </div>
         <div className="sidebar-stat">
-          <span>Tracks / Repos / Bases</span>
-          <strong>{trackCount} / {repositoryCount} / {baseAssetCount}</strong>
+          <span>Tracks / Code-logs / Bases / Comps</span>
+          <strong>{trackCount} / {repositoryCount} / {baseAssetCount} / {compositionCount}</strong>
         </div>
         <div className="sidebar-stat">
           <span>Persistence</span>

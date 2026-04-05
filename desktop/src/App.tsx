@@ -5,6 +5,7 @@ import { AppSidebar } from "./components/AppSidebar";
 import { AnalyzerScreen } from "./features/analyzer/AnalyzerScreen";
 import { LibraryScreen } from "./features/library/LibraryScreen";
 import { useBaseAssets } from "./hooks/useBaseAssets";
+import { useCompositionResults } from "./hooks/useCompositionResults";
 import { useLibrary } from "./hooks/useLibrary";
 import { useRepositories } from "./hooks/useRepositories";
 import {
@@ -16,6 +17,7 @@ import {
 import type {
   AnalyzerViewMode,
   AppScreen,
+  ImportCompositionInput,
   ImportBaseAssetInput,
   ImportRepositoryInput,
   ImportTrackInput,
@@ -40,6 +42,7 @@ export default function App() {
   const library = useLibrary();
   const repositories = useRepositories();
   const baseAssets = useBaseAssets();
+  const compositions = useCompositionResults();
 
   useEffect(() => {
     let active = true;
@@ -99,25 +102,45 @@ export default function App() {
     return false;
   }
 
+  async function handleImportComposition(input: ImportCompositionInput) {
+    const nextComposition = await compositions.importLibraryComposition(input);
+    if (nextComposition) {
+      setAnalysisMode("composition");
+      setScreen("analyzer");
+      return true;
+    }
+
+    return false;
+  }
+
   const analyzerLabel = isHealthResponse(health)
     ? `${health.payload.analyzerVersion} on ${health.payload.runtime}`
     : booting
       ? "Booting analyzer bridge"
       : "Analyzer unavailable";
   const selectedItemTitle =
-    analysisMode === "repo"
+    analysisMode === "composition"
+      ? compositions.selectedComposition?.title
+        ?? baseAssets.selectedBaseAsset?.title
+        ?? library.selectedTrack?.title
+        ?? repositories.selectedRepository?.title
+        ?? null
+      : analysisMode === "repo"
       ? repositories.selectedRepository?.title
         ?? library.selectedTrack?.title
         ?? baseAssets.selectedBaseAsset?.title
+        ?? compositions.selectedComposition?.title
         ?? null
       : analysisMode === "base"
         ? baseAssets.selectedBaseAsset?.title
           ?? library.selectedTrack?.title
           ?? repositories.selectedRepository?.title
+          ?? compositions.selectedComposition?.title
           ?? null
         : library.selectedTrack?.title
           ?? repositories.selectedRepository?.title
           ?? baseAssets.selectedBaseAsset?.title
+          ?? compositions.selectedComposition?.title
           ?? null;
 
   return (
@@ -128,6 +151,7 @@ export default function App() {
         trackCount={library.tracks.length}
         repositoryCount={repositories.repositories.length}
         baseAssetCount={baseAssets.baseAssets.length}
+        compositionCount={compositions.compositions.length}
         selectedItemTitle={selectedItemTitle}
         manifest={manifest}
         analyzerLabel={analyzerLabel}
@@ -139,9 +163,9 @@ export default function App() {
             <p className="eyebrow">Desktop runtime</p>
             <h2>Local analysis workspace</h2>
             <p className="support-copy">
-              Tracks, repositories, and reusable base assets persist locally,
-              mixing analyzer heuristics with deterministic fallbacks while the
-              MVP matures.
+              Tracks, code/log sources, reusable sonic assets, and composition plans persist
+              locally, mixing analyzer heuristics with deterministic fallbacks while the MVP
+              matures toward full software sonification.
             </p>
           </div>
 
@@ -174,9 +198,11 @@ export default function App() {
             tracks={library.tracks}
             repositories={repositories.repositories}
             baseAssets={baseAssets.baseAssets}
+            compositions={compositions.compositions}
             selectedTrackId={library.selectedTrackId}
             selectedRepositoryId={repositories.selectedRepositoryId}
             selectedBaseAssetId={baseAssets.selectedBaseAssetId}
+            selectedCompositionId={compositions.selectedCompositionId}
             manifest={manifest}
             musicStyles={manifest?.musicStyles ?? []}
             baseAssetCategories={manifest?.baseAssetCategories ?? []}
@@ -185,15 +211,19 @@ export default function App() {
             trackLoading={library.loading}
             repositoryLoading={repositories.loading}
             baseAssetLoading={baseAssets.loading}
+            compositionLoading={compositions.loading}
             trackBusy={library.mutating}
             repositoryBusy={repositories.mutating}
             baseAssetBusy={baseAssets.mutating}
+            compositionBusy={compositions.mutating}
             trackError={library.error}
             repositoryError={repositories.error}
             baseAssetError={baseAssets.error}
+            compositionError={compositions.error}
             onImportTrack={handleImportTrack}
             onImportRepository={handleImportRepository}
             onImportBaseAsset={handleImportBaseAsset}
+            onImportComposition={handleImportComposition}
             onSeedDemo={library.seedLibrary}
             onSelectTrack={(trackId) => {
               library.setSelectedTrackId(trackId);
@@ -206,6 +236,10 @@ export default function App() {
             onSelectBaseAsset={(baseAssetId) => {
               baseAssets.setSelectedBaseAssetId(baseAssetId);
               setAnalysisMode("base");
+            }}
+            onSelectComposition={(compositionId) => {
+              compositions.setSelectedCompositionId(compositionId);
+              setAnalysisMode("composition");
             }}
             onInspectTrack={(trackId) => {
               library.setSelectedTrackId(trackId);
@@ -222,12 +256,20 @@ export default function App() {
               setAnalysisMode("base");
               setScreen("analyzer");
             }}
+            onInspectComposition={(compositionId) => {
+              compositions.setSelectedCompositionId(compositionId);
+              setAnalysisMode("composition");
+              setScreen("analyzer");
+            }}
           />
         ) : (
           <AnalyzerScreen
             track={library.selectedTrack}
             repository={repositories.selectedRepository}
             baseAsset={baseAssets.selectedBaseAsset}
+            composition={compositions.selectedComposition}
+            availableBaseAssets={baseAssets.baseAssets}
+            availableCompositions={compositions.compositions}
             mode={analysisMode}
             analyzerLabel={analyzerLabel}
             onGoLibrary={() => setScreen("library")}

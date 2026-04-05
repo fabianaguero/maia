@@ -7,6 +7,16 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+PLAYABLE_AUDIO_EXTENSIONS = {
+    ".wav",
+    ".mp3",
+    ".flac",
+    ".ogg",
+    ".oga",
+    ".aif",
+    ".aiff",
+}
+
 
 def analyze_base_asset(
     source_path: str,
@@ -21,9 +31,13 @@ def analyze_base_asset(
 
     if asset_path.is_dir():
         source_kind = "directory"
-        entry_count, total_size_bytes, extension_breakdown, preview_entries = _inspect_directory(
-            asset_path
-        )
+        (
+            entry_count,
+            total_size_bytes,
+            extension_breakdown,
+            preview_entries,
+            playable_audio_entries,
+        ) = _inspect_directory(asset_path)
         detected_category = "collection"
         checksum = _digest_directory(asset_path)
         if entry_count == 0:
@@ -35,6 +49,9 @@ def analyze_base_asset(
         extension = asset_path.suffix.lower().lstrip(".") or "file"
         extension_breakdown = {extension: 1}
         preview_entries = [asset_path.name]
+        playable_audio_entries = (
+            [asset_path.name] if asset_path.suffix.lower() in PLAYABLE_AUDIO_EXTENSIONS else []
+        )
         detected_category = _infer_file_category(asset_path)
         checksum = _digest_file(asset_path)
 
@@ -52,6 +69,8 @@ def analyze_base_asset(
         "totalSizeBytes": total_size_bytes,
         "extensionBreakdown": extension_breakdown,
         "previewEntries": preview_entries,
+        "audioEntryCount": len(playable_audio_entries),
+        "playableAudioEntries": playable_audio_entries,
     }
 
     asset = {
@@ -71,19 +90,15 @@ def analyze_base_asset(
         "createdAt": datetime.now(UTC).isoformat(),
     }
 
-    if source_kind == "directory":
-        warnings.append(
-            "Base assets are referenced in place for MVP. Managed copies inside Maia storage are deferred."
-        )
-
     return asset, warnings
 
 
-def _inspect_directory(path: Path) -> tuple[int, int, dict[str, int], list[str]]:
+def _inspect_directory(path: Path) -> tuple[int, int, dict[str, int], list[str], list[str]]:
     entry_count = 0
     total_size_bytes = 0
     extension_breakdown: Counter[str] = Counter()
     preview_entries: list[str] = []
+    playable_audio_entries: list[str] = []
 
     for child in path.rglob("*"):
         if not child.is_file():
@@ -99,7 +114,19 @@ def _inspect_directory(path: Path) -> tuple[int, int, dict[str, int], list[str]]
             except ValueError:
                 preview_entries.append(child.name)
 
-    return entry_count, total_size_bytes, dict(extension_breakdown.most_common(8)), preview_entries
+        if child.suffix.lower() in PLAYABLE_AUDIO_EXTENSIONS and len(playable_audio_entries) < 12:
+            try:
+                playable_audio_entries.append(str(child.relative_to(path)))
+            except ValueError:
+                playable_audio_entries.append(child.name)
+
+    return (
+        entry_count,
+        total_size_bytes,
+        dict(extension_breakdown.most_common(8)),
+        preview_entries,
+        playable_audio_entries,
+    )
 
 
 def _infer_file_category(path: Path) -> str:
