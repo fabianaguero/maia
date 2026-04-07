@@ -16,6 +16,7 @@ import { LogSignalPanel } from "../analyzer/components/LogSignalPanel";
 import { RepositoryMetricsPanel } from "../analyzer/components/RepositoryMetricsPanel";
 import { RepositoryOverviewPanel } from "../analyzer/components/RepositoryOverviewPanel";
 import { RepoStatusPanel } from "../analyzer/components/RepoStatusPanel";
+import { SongMetadataPanel } from "../analyzer/components/SongMetadataPanel";
 import { TrackPlaybackPanel } from "../analyzer/components/TrackPlaybackPanel";
 import { WaveformPlaceholder } from "../analyzer/components/WaveformPlaceholder";
 import { useT } from "../../i18n/I18nContext";
@@ -228,6 +229,7 @@ export function InspectScreen({
           <div className="analyzer-sidebar">
             <BpmPanel track={track} />
             <RepoStatusPanel track={track} analyzerLabel={analyzerLabel} />
+            <SongMetadataPanel track={track} />
             <section className="panel metric-panel">
               <details className="panel-collapsible">
                 <summary className="panel-collapsible-summary">Notes &amp; metadata</summary>

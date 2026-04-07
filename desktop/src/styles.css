@@ -3734,3 +3734,110 @@ html.light-mode .field-input {
   margin-top: 6px;
   padding-top: 16px;
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+   SONG METADATA PANEL
+   ──────────────────────────────────────────────────────────────────────────── */
+
+.song-metadata-panel {
+  min-height: auto;
+}
+
+.metadata-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  color: var(--text-muted);
+}
+
+.metadata-loading .spin-ring {
+  animation: spin 1s linear infinite;
+}
+
+.metadata-error {
+  padding: 16px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 12px;
+  color: #ef4444;
+  font-size: 0.9rem;
+  margin: 12px;
+}
+
+.metadata-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.metadata-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.metadata-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.metadata-item label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.metadata-item p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #e2e8f0;
+}
+
+.metadata-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.metadata-tag {
+  display: inline-block;
+  padding: 4px 10px;
+  background: rgba(88, 230, 255, 0.1);
+  border: 1px solid rgba(88, 230, 255, 0.2);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--accent-warm);
+}
+
+.metadata-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent-warm);
+  text-decoration: none;
+  font-size: 0.9rem;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(88, 230, 255, 0.2);
+  transition: all 0.15s ease;
+}
+
+.metadata-link:hover {
+  background: rgba(88, 230, 255, 0.1);
+  border-color: rgba(88, 230, 255, 0.4);
+}
+
+.metadata-source {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
