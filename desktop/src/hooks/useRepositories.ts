@@ -3,6 +3,7 @@ import { startTransition, useEffect, useState } from "react";
 import {
   importRepository,
   listRepositories,
+  deleteRepository,
 } from "../api/repositories";
 import { runAnalyzerRequest } from "../api/analyzer";
 import { createAnalyzeRepositoryRequest } from "../contracts";
@@ -180,6 +181,27 @@ export function useRepositories() {
     }
   }
 
+  async function deleteLibraryRepository(repositoryId: string): Promise<boolean> {
+    try {
+      await deleteRepository(repositoryId);
+
+      startTransition(() => {
+        setRepositories((current) => current.filter((r) => r.id !== repositoryId));
+        if (selectedRepositoryId === repositoryId) {
+          setSelectedRepositoryId(null);
+        }
+        setError(null);
+      });
+
+      return true;
+    } catch (nextError) {
+      startTransition(() => {
+        setError(toMessage(nextError));
+      });
+      return false;
+    }
+  }
+
   const selectedRepository =
     repositories.find((repository) => repository.id === selectedRepositoryId) ?? null;
 
@@ -193,5 +215,6 @@ export function useRepositories() {
     error,
     importRepositorySource,
     reanalyzeRepository,
+    deleteLibraryRepository,
   };
 }

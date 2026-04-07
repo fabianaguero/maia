@@ -1,4 +1,4 @@
-import { AudioWaveform, FolderOpen, Music, PackagePlus, Plus, X } from "lucide-react";
+import { AudioWaveform, FolderOpen, Music, PackagePlus, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { useT } from "../../i18n/I18nContext";
 import type { BootstrapManifest } from "../../contracts";
@@ -54,6 +54,8 @@ interface LibraryScreenProps {
   onImportComposition: (input: ImportCompositionInput) => Promise<boolean>;
   onReanalyzeTrack: (trackId: string) => Promise<boolean>;
   onReanalyzeRepository: (repositoryId: string) => Promise<boolean>;
+  onDeleteTrack: (trackId: string) => Promise<boolean>;
+  onDeleteRepository: (repositoryId: string) => Promise<boolean>;
   onSeedDemo: () => Promise<void>;
   onSelectTrack: (trackId: string) => void;
   onSelectRepository: (repositoryId: string) => void;
@@ -98,6 +100,8 @@ export function LibraryScreen({
   onImportBaseAsset,
   onReanalyzeTrack,
   onReanalyzeRepository,
+  onDeleteTrack,
+  onDeleteRepository,
   onSeedDemo,
   onSelectTrack,
   onSelectRepository,
@@ -313,6 +317,14 @@ export function LibraryScreen({
                       >
                         {!track.bpm ? "Analyze" : "View"}
                       </button>
+                      <button
+                        type="button"
+                        className="card-action-delete"
+                        title="Delete track"
+                        onClick={(e) => { e.stopPropagation(); onDeleteTrack(track.id); }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </li>
                 ))}
@@ -360,6 +372,14 @@ export function LibraryScreen({
                         onClick={(e) => { e.stopPropagation(); !repo.suggestedBpm ? void onReanalyzeRepository(repo.id) : onInspectRepository(repo.id); }}
                       >
                         {!repo.suggestedBpm ? "Analyze" : "View"}
+                      </button>
+                      <button
+                        type="button"
+                        className="card-action-delete"
+                        title="Delete repository"
+                        onClick={(e) => { e.stopPropagation(); onDeleteRepository(repo.id); }}
+                      >
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </li>

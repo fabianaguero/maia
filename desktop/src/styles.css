@@ -3736,6 +3736,26 @@ html.light-mode .field-input {
   transform: translateY(-1px);
 }
 
+.card-action-delete {
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  background: transparent;
+  color: rgba(239, 68, 68, 0.7);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-action-delete:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.4);
+  transform: translateY(-1px);
+}
+
 /* ────────────────────────────────────────────────────────────────────────────
    SIDEBAR ENHANCEMENTS
    ──────────────────────────────────────────────────────────────────────────── */

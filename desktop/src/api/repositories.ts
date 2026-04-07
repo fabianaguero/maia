@@ -212,3 +212,17 @@ export async function ingestStreamChunk(
 export async function readAudioBytes(path: string): Promise<string> {
   return invoke<string>("read_audio_bytes", { path });
 }
+
+export async function deleteRepository(repositoryId: string): Promise<void> {
+  try {
+    await invoke<void>("delete_repository", { repositoryId });
+  } catch (error) {
+    if (isNativeBridgeUnavailable(error)) {
+      // Mock: just log it
+      console.log("Mock delete repository:", repositoryId);
+      return;
+    }
+
+    throw error;
+  }
+}

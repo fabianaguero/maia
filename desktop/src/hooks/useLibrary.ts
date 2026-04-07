@@ -1,6 +1,6 @@
 import { startTransition, useEffect, useState } from "react";
 
-import { importTrack, listTracks, seedDemoTracks } from "../api/library";
+import { importTrack, listTracks, seedDemoTracks, deleteTrack } from "../api/library";
 import { runAnalyzerRequest } from "../api/analyzer";
 import { createAnalyzeTrackRequest } from "../contracts";
 import type { ImportTrackInput, LibraryTrack } from "../types/library";
@@ -193,6 +193,27 @@ export function useLibrary() {
     }
   }
 
+  async function deleteLibraryTrack(trackId: string): Promise<boolean> {
+    try {
+      await deleteTrack(trackId);
+
+      startTransition(() => {
+        setTracks((current) => current.filter((t) => t.id !== trackId));
+        if (selectedTrackId === trackId) {
+          setSelectedTrackId(null);
+        }
+        setError(null);
+      });
+
+      return true;
+    } catch (nextError) {
+      startTransition(() => {
+        setError(toMessage(nextError));
+      });
+      return false;
+    }
+  }
+
   const selectedTrack =
     tracks.find((track) => track.id === selectedTrackId) ?? null;
 
@@ -206,6 +227,7 @@ export function useLibrary() {
     error,
     importLibraryTrack,
     reanalyzeTrack,
+    deleteLibraryTrack,
     seedLibrary,
   };
 }

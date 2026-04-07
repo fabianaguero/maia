@@ -211,6 +211,32 @@ function AppContent() {
     return false;
   }
 
+  async function handleDeleteTrack(trackId: string) {
+    try {
+      const success = await library.deleteLibraryTrack(trackId);
+      if (success) {
+        notify("success", "Track deleted", "Track removed from library.");
+        return true;
+      }
+    } catch (err) {
+      notify("error", "Delete failed", String(err));
+    }
+    return false;
+  }
+
+  async function handleDeleteRepository(repositoryId: string) {
+    try {
+      const success = await repositories.deleteLibraryRepository(repositoryId);
+      if (success) {
+        notify("success", "Repository deleted", "Repository removed from library.");
+        return true;
+      }
+    } catch (err) {
+      notify("error", "Delete failed", String(err));
+    }
+    return false;
+  }
+
   function handleOpenMonitoredRepo() {
     const { session } = monitor;
     if (!session) return;
@@ -343,6 +369,8 @@ function AppContent() {
             onImportComposition={handleImportComposition}
             onReanalyzeTrack={handleReanalyzeTrack}
             onReanalyzeRepository={handleReanalyzeRepository}
+            onDeleteTrack={handleDeleteTrack}
+            onDeleteRepository={handleDeleteRepository}
             onSeedDemo={library.seedLibrary}
             onSelectTrack={(trackId) => { library.setSelectedTrackId(trackId); setAnalysisMode("track"); }}
             onSelectRepository={(repositoryId) => { repositories.setSelectedRepositoryId(repositoryId); setAnalysisMode("repo"); }}

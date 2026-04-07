@@ -64,3 +64,17 @@ export async function pickTrackSourcePath(
     throw error;
   }
 }
+
+export async function deleteTrack(trackId: string): Promise<void> {
+  try {
+    await invoke<void>("delete_track", { trackId });
+  } catch (error) {
+    if (isNativeBridgeUnavailable(error)) {
+      // Mock: just log it
+      console.log("Mock delete track:", trackId);
+      return;
+    }
+
+    throw error;
+  }
+}
