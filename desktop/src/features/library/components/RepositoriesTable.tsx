@@ -63,7 +63,7 @@ export function RepositoriesTable({
                 <td>{repository.buildSystem}</td>
                 <td>{repository.primaryLanguage}</td>
                 <td>
-                  {repository.analyzerStatus === "pending" && onReanalyze ? (
+                  {onReanalyze ? (
                     <button
                       type="button"
                       className="table-action"

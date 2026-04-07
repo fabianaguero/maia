@@ -305,15 +305,13 @@ export function LibraryScreen({
                       <span className="asset-card-date">{formatShortDate(track.importedAt)}</span>
                     </div>
                     <div className="asset-card-actions">
-                      {track.analyzerStatus === "pending" && (
-                        <button
-                          type="button"
-                          className="card-action-btn"
-                          onClick={(e) => { e.stopPropagation(); void onReanalyzeTrack(track.id); }}
-                        >
-                          Re-analyze
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        className="card-action-btn"
+                        onClick={(e) => { e.stopPropagation(); void onReanalyzeTrack(track.id); }}
+                      >
+                        Re-analyze
+                      </button>
                       <button
                         type="button"
                         className="card-action-btn"
@@ -370,15 +368,13 @@ export function LibraryScreen({
                       <span className="asset-card-date">{formatShortDate(repo.importedAt)}</span>
                     </div>
                     <div className="asset-card-actions">
-                      {repo.analyzerStatus === "pending" && (
-                        <button
-                          type="button"
-                          className="card-action-btn"
-                          onClick={(e) => { e.stopPropagation(); void onReanalyzeRepository(repo.id); }}
-                        >
-                          Re-analyze
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        className="card-action-btn"
+                        onClick={(e) => { e.stopPropagation(); void onReanalyzeRepository(repo.id); }}
+                      >
+                        Re-analyze
+                      </button>
                       <button
                         type="button"
                         className="card-action-btn"
