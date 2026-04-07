@@ -305,20 +305,24 @@ export function LibraryScreen({
                       <span className="asset-card-date">{formatShortDate(track.importedAt)}</span>
                     </div>
                     <div className="asset-card-actions">
-                      <button
-                        type="button"
-                        className="card-action-btn"
-                        onClick={(e) => { e.stopPropagation(); void onReanalyzeTrack(track.id); }}
-                      >
-                        Re-analyze
-                      </button>
-                      <button
-                        type="button"
-                        className="card-action-btn"
-                        onClick={(e) => { e.stopPropagation(); onInspectTrack(track.id); }}
-                      >
-                        {t.library.analyze}
-                      </button>
+                      {track.analyzerStatus === "pending" && (
+                        <button
+                          type="button"
+                          className="card-action-btn"
+                          onClick={(e) => { e.stopPropagation(); void onReanalyzeTrack(track.id); }}
+                        >
+                          Re-analyze
+                        </button>
+                      )}
+                      {track.analyzerStatus !== "pending" && (
+                        <button
+                          type="button"
+                          className="card-action-btn"
+                          onClick={(e) => { e.stopPropagation(); onInspectTrack(track.id); }}
+                        >
+                          {t.library.analyze}
+                        </button>
+                      )}
                       {track.analyzerStatus === "ready" && (
                         <button
                           type="button"
@@ -368,20 +372,24 @@ export function LibraryScreen({
                       <span className="asset-card-date">{formatShortDate(repo.importedAt)}</span>
                     </div>
                     <div className="asset-card-actions">
-                      <button
-                        type="button"
-                        className="card-action-btn"
-                        onClick={(e) => { e.stopPropagation(); void onReanalyzeRepository(repo.id); }}
-                      >
-                        Re-analyze
-                      </button>
-                      <button
-                        type="button"
-                        className="card-action-btn"
-                        onClick={(e) => { e.stopPropagation(); onInspectRepository(repo.id); }}
-                      >
-                        {t.library.analyze}
-                      </button>
+                      {repo.analyzerStatus === "pending" && (
+                        <button
+                          type="button"
+                          className="card-action-btn"
+                          onClick={(e) => { e.stopPropagation(); void onReanalyzeRepository(repo.id); }}
+                        >
+                          Re-analyze
+                        </button>
+                      )}
+                      {repo.analyzerStatus !== "pending" && (
+                        <button
+                          type="button"
+                          className="card-action-btn"
+                          onClick={(e) => { e.stopPropagation(); onInspectRepository(repo.id); }}
+                        >
+                          {t.library.analyze}
+                        </button>
+                      )}
                       {repo.analyzerStatus === "ready" && (
                         <button
                           type="button"

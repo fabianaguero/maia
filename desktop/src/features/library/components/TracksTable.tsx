@@ -53,7 +53,7 @@ export function TracksTable({
                 </td>
                 <td>{track.repoSuggestedBpm ?? "Pending"}</td>
                 <td>
-                  {onReanalyze ? (
+                  {track.analyzerStatus === "pending" && onReanalyze ? (
                     <button
                       type="button"
                       className="table-action"
