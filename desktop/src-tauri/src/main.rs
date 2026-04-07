@@ -3864,7 +3864,7 @@ fn analyze_track_import(
                 "path": analyzer_source_path
             },
             "options": {
-                "waveformBins": 32
+                "waveformBins": 256
             }
         }
     });

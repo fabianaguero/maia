@@ -16,6 +16,7 @@ except ModuleNotFoundError:  # pragma: no cover - protected by project dependenc
     miniaudio = None
 
 from .dsp import analyze_dsp, dsp_available
+from .separator import separate_track
 
 
 MAX_ANALYSIS_SECONDS = 180
@@ -29,14 +30,32 @@ MINIAUDIO_EXTENSIONS = WAVE_EXTENSIONS | {".mp3", ".flac", ".ogg", ".oga"}
 LIBROSA_EXTENDED_EXTENSIONS = {".m4a", ".mp4", ".aac", ".aif", ".aiff", ".wma"}
 
 
-def analyze_track(source_path: str, waveform_bins: int = 24) -> tuple[dict[str, Any], list[str]]:
+def analyze_track(
+    source_path: str,
+    waveform_bins: int = 256,
+    options: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], list[str]]:
     track_path = Path(source_path).expanduser().resolve()
     if not track_path.is_file():
         raise FileNotFoundError(f"Track path does not exist or is not a file: {track_path}")
 
-    decoded = _decode_track_audio(track_path)
+    decoded = decode_track_audio(track_path)
     if decoded is not None:
-        return _build_embedded_track_asset(track_path, decoded, waveform_bins)
+        asset, warnings = _build_embedded_track_asset(track_path, decoded, waveform_bins)
+
+        # Handle Source Separation (Demucs) if requested
+        if options and options.get("separateSource"):
+            try:
+                # Use a standard subdirectory for stems in the managed storage if possible,
+                # otherwise use a temporary folder inside the same directory as the track.
+                output_dir = track_path.parent / "stems" / asset["id"]
+                stems = separate_track(str(track_path), str(output_dir))
+                asset["metrics"]["stems"] = stems
+                asset["tags"].append("stems-extracted")
+            except Exception as e:
+                warnings.append(f"Source separation failed: {e}")
+
+        return asset, warnings
 
     return _build_hash_stub_asset(track_path, waveform_bins)
 
@@ -177,7 +196,7 @@ def _build_hash_stub_asset(
     return asset, warnings
 
 
-def _decode_track_audio(track_path: Path) -> dict[str, Any] | None:
+def decode_track_audio(track_path: Path) -> dict[str, Any] | None:
     extension = track_path.suffix.lower()
 
     if miniaudio is not None and extension in MINIAUDIO_EXTENSIONS:
@@ -418,7 +437,7 @@ def _downmix_interleaved_f32_to_mono(
 
 
 def _build_waveform_bins(samples: array[float], waveform_bins: int) -> list[float]:
-    target_bins = max(8, min(waveform_bins, 256))
+    target_bins = max(8, min(waveform_bins, 512))
     chunk_size = max(1, len(samples) // target_bins)
     raw_bins = []
 
@@ -426,7 +445,12 @@ def _build_waveform_bins(samples: array[float], waveform_bins: int) -> list[floa
         frame = samples[start : start + chunk_size]
         if not frame:
             continue
-        energy = math.sqrt(sum(sample * sample for sample in frame) / len(frame))
+        # RMS for better perceptual representation
+        rms = math.sqrt(sum(sample * sample for sample in frame) / len(frame))
+        # Peak absolute value for transient capture
+        peak_val = max(abs(s) for s in frame) if frame else 0.0
+        # Blend: 70% RMS (smooth), 30% peak (transients)
+        energy = (0.7 * rms) + (0.3 * peak_val)
         raw_bins.append(energy)
         if len(raw_bins) >= target_bins:
             break

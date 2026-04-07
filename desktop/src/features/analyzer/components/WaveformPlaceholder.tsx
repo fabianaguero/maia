@@ -5,6 +5,14 @@ interface WaveformPlaceholderProps {
   bins: number[];
   beatGrid: BeatGridPoint[];
   durationSeconds: number | null;
+  hotCues?: Array<{
+    second: number;
+    label: string;
+    type: string;
+    excerpt?: string;
+  }>;
+  currentTime?: number;
+  hero?: boolean;
 }
 
 function formatDuration(durationSeconds: number | null): string {
@@ -22,20 +30,33 @@ export function WaveformPlaceholder({
   bins,
   beatGrid,
   durationSeconds,
+  hotCues = [],
+  currentTime = 0,
+  hero = false,
 }: WaveformPlaceholderProps) {
+  // Use bins as-is; if empty, create a fallback with more detail
   const normalizedBins =
     bins.length > 0
       ? bins
-      : Array.from({ length: 56 }, (_, index) =>
-          Number((0.25 + ((index % 9) + 1) / 18).toFixed(3)),
-        );
+      : Array.from({ length: 128 }, (_, index) => {
+          const cycle = (index % 16) / 16;
+          return Number((0.3 + Math.sin(cycle * Math.PI) * 0.6).toFixed(3));
+        });
+
+  // Ensure we have enough bins for hi-res display (at least 128, up to 512)
+  const displayBins = normalizedBins.length < 128
+    ? Array.from({ length: 128 }, (_, i) =>
+        normalizedBins[Math.floor((i / 128) * normalizedBins.length)] || 0.3
+      )
+    : normalizedBins;
+
   const visibleBeats =
     durationSeconds && durationSeconds > 0
       ? beatGrid.filter((beat) => beat.second >= 0 && beat.second <= durationSeconds)
       : [];
 
   return (
-    <section className="panel waveform-panel">
+    <section className={`panel waveform-panel${hero ? " waveform-panel--hero" : ""}`}>
       <div className="panel-header">
         <div>
           <h2>Waveform + beat grid</h2>
@@ -51,10 +72,10 @@ export function WaveformPlaceholder({
           className="waveform-bars"
           aria-label="Waveform overview"
           style={{
-            gridTemplateColumns: `repeat(${normalizedBins.length}, minmax(0, 1fr))`,
+            gridTemplateColumns: `repeat(${displayBins.length}, minmax(0, 1fr))`,
           } as CSSProperties}
         >
-          {normalizedBins.map((bin, index) => (
+          {displayBins.map((bin, index) => (
             <span
               key={`${index}-${bin}`}
               className="waveform-bar"
@@ -80,6 +101,45 @@ export function WaveformPlaceholder({
             );
           })}
         </div>
+
+        <div className="hot-cue-overlay" aria-label="Anomaly markers">
+          {hotCues.map((cue, index) => {
+            const position =
+              durationSeconds && durationSeconds > 0
+                ? Math.min(100, (cue.second / durationSeconds) * 100)
+                : 0;
+
+            return (
+              <span
+                key={`${index}-${cue.second}`}
+                className={`hot-cue-marker ${cue.label.toLowerCase()}`}
+                style={{ "--cue-position": `${position}%` } as CSSProperties}
+                title={`${cue.label}: ${cue.excerpt}`}
+              >
+                <span className="hot-cue-label">{cue.label}</span>
+              </span>
+            );
+          })}
+        </div>
+
+        <div className="waveform-playhead-overlay" aria-hidden="true">
+          {durationSeconds && durationSeconds > 0 ? (
+            <div
+              className="waveform-progress-mask"
+              style={{
+                width: `${Math.min(100, (currentTime / durationSeconds) * 100)}%`,
+              } as CSSProperties}
+            />
+          ) : null}
+          {durationSeconds && durationSeconds > 0 ? (
+            <div
+              className="waveform-playhead"
+              style={{
+                left: `${Math.min(100, (currentTime / durationSeconds) * 100)}%`,
+              } as CSSProperties}
+            />
+          ) : null}
+        </div>
       </div>
 
       <div className="waveform-summary">
@@ -88,8 +148,8 @@ export function WaveformPlaceholder({
           <strong>{visibleBeats.length}</strong>
         </div>
         <div className="waveform-meta-pill">
-          <span>Bins</span>
-          <strong>{normalizedBins.length}</strong>
+          <span>Resolution</span>
+          <strong>{displayBins.length} bins</strong>
         </div>
         <div className="waveform-meta-pill">
           <span>Grid state</span>

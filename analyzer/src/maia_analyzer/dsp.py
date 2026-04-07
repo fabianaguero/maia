@@ -26,7 +26,7 @@ def dsp_available() -> bool:
 def analyze_dsp(
     samples: "array[float]",
     sample_rate_hz: int,
-    waveform_bins: int = 24,
+    waveform_bins: int = 256,
 ) -> dict[str, Any] | None:
     """Run librosa-based tempo, beat, and waveform analysis.
 
