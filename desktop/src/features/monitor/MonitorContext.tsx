@@ -136,16 +136,28 @@ function sliceGuideTrackBar(
   const barDur = Math.min(1.5, Math.max(beatSec, POLL_INTERVAL_MS / 1000));
   const barSamples = Math.ceil(pcm.sampleRate * barDur);
 
-  // Read segment from cursor, looping
+  // Read segment from cursor — stop at end, don't loop
   let cursor = cursorRef.current;
-  if (cursor >= pcm.samples.length) cursor = 0;
+
+  // If we've reached the end, return null to signal playback complete
+  if (cursor >= pcm.samples.length) {
+    return null;
+  }
+
+  // Read remaining samples (may be less than barSamples if near end)
+  const remainingSamples = pcm.samples.length - cursor;
+  const samplesToRead = Math.min(barSamples, remainingSamples);
 
   const segment = new Float32Array(barSamples);
-  for (let i = 0; i < barSamples; i++) {
-    const idx = (cursor + i) % pcm.samples.length;
-    segment[i] = pcm.samples[idx];
+  for (let i = 0; i < samplesToRead; i++) {
+    segment[i] = pcm.samples[cursor + i];
   }
-  cursorRef.current = (cursor + barSamples) % pcm.samples.length;
+  // Pad with silence if we're at the end
+  for (let i = samplesToRead; i < barSamples; i++) {
+    segment[i] = 0;
+  }
+
+  cursorRef.current = cursor + samplesToRead;
 
   // ----- Log-driven modulation -----
   const avgGain = cues.length > 0
@@ -428,6 +440,8 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
   const guideTrackRef = useRef<GuideTrackPCM | null>(null);
   /** Playback cursor into the guide track (sample offset) */
   const guideTrackCursorRef = useRef<{ current: number }>({ current: 0 });
+  /** Flag to prevent playback loops after track reaches end */
+  const guideTrackFinishedRef = useRef(false);
   /** Direct-mode cursor (browser fallback path only). */
   const directCursorRef = useRef<number | undefined>(undefined);
   /** Consecutive empty-window count for direct mode — reset cursor after N to loop static files. */
@@ -451,6 +465,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
     if (!guideTrackRef.current) return;
     const targetSample = Math.max(0, Math.floor(second * guideTrackRef.current.sampleRate));
     guideTrackCursorRef.current.current = Math.min(targetSample, guideTrackRef.current.samples.length - 1);
+    guideTrackFinishedRef.current = false;  // Allow playback to resume after seek
     log.info(`guide track seek to ${second.toFixed(2)}s (sample ${guideTrackCursorRef.current.current})`);
   }, []);
 
@@ -465,6 +480,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       log.info("guide track cleared → synth fallback");
       guideTrackRef.current = null;
       guideTrackCursorRef.current.current = 0;
+      guideTrackFinishedRef.current = false;
       setGuideTrackReady(false);
       setGuideTrackPathState(null);
       return;
@@ -472,6 +488,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
     log.info(`loading guide track: ${path}`);
     setGuideTrackPathState(path);
     setGuideTrackReady(false);
+    guideTrackFinishedRef.current = false;  // Reset finished flag for new track
     decodeAudioFile(path)
       .then((pcm) => {
         guideTrackRef.current = pcm;
@@ -528,7 +545,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
         log.info("rendering %d cues → first: hz=%d waveform=%s gain=%s dur=%dms", update.sonificationCues.length, update.sonificationCues[0]?.noteHz ?? 0, update.sonificationCues[0]?.waveform ?? "-", update.sonificationCues[0]?.gain ?? 0, update.sonificationCues[0]?.durationMs ?? 0);
 
         let wav: Blob | null = null;
-        if (guideTrackRef.current) {
+        if (guideTrackRef.current && !guideTrackFinishedRef.current) {
           // Real audio path: slice bar from guide track, modulated by log data
           wav = sliceGuideTrackBar(
             guideTrackRef.current,
@@ -537,8 +554,15 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
             0.8,
             update.suggestedBpm,
           );
-          log.info("guide track slice → WAV size=%d bytes", wav?.size ?? 0);
-        } else {
+          if (wav === null) {
+            // Track reached end — stop playback
+            guideTrackFinishedRef.current = true;
+            log.info("guide track reached end — playback finished");
+            stopPolling();
+          } else {
+            log.info("guide track slice → WAV size=%d bytes", wav.size);
+          }
+        } else if (!guideTrackFinishedRef.current) {
           // Synth fallback
           wav = renderSynthFallback(update.sonificationCues, 0.8, update.suggestedBpm);
         }
@@ -546,7 +570,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
         if (wav) {
           log.info("WAV blob ready size=%d bytes — playing", wav.size);
           playWavBlobCtx(wav);
-        } else {
+        } else if (!guideTrackFinishedRef.current) {
           log.warn("WAV render returned null — no audio");
         }
       } else {
