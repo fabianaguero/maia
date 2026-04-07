@@ -61,6 +61,7 @@ function AppContent() {
   const [analysisMode, setAnalysisMode] = useState<AnalyzerViewMode>("track");
   const [isDark, setIsDark] = useState(true);
   const [lang, setLang] = useState<"en" | "es">("en");
+  const [newlyImportedId, setNewlyImportedId] = useState<string | null>(null);
   const t = lang === "es" ? es : en;
   const library = useLibrary();
   const repositories = useRepositories();
@@ -125,6 +126,8 @@ function AppContent() {
       const nextTrack = await library.importLibraryTrack(input);
       if (nextTrack) {
         notify("success", "Track imported", `${nextTrack.title} is now in your library.`);
+        setNewlyImportedId(nextTrack.id);
+        setTimeout(() => setNewlyImportedId(null), 3000);
         setAnalysisMode("track");
         setScreen("inspect");
         return true;
@@ -140,6 +143,8 @@ function AppContent() {
       const nextRepository = await repositories.importRepositorySource(input);
       if (nextRepository) {
         notify("success", "Repository connected", `${nextRepository.title} analysis is ready.`);
+        setNewlyImportedId(nextRepository.id);
+        setTimeout(() => setNewlyImportedId(null), 3000);
         setAnalysisMode("repo");
         setScreen("inspect");
         return true;
@@ -155,6 +160,8 @@ function AppContent() {
       const nextBaseAsset = await baseAssets.importLibraryBaseAsset(input);
       if (nextBaseAsset) {
         notify("success", "Asset imported", `${nextBaseAsset.title} added to pool.`);
+        setNewlyImportedId(nextBaseAsset.id);
+        setTimeout(() => setNewlyImportedId(null), 3000);
         setAnalysisMode("base");
         setScreen("inspect");
         return true;
@@ -282,6 +289,7 @@ function AppContent() {
             repositories={repositories.repositories}
             baseAssets={baseAssets.baseAssets}
             compositions={compositions.compositions}
+            newlyImportedId={newlyImportedId}
             selectedTrackId={library.selectedTrackId}
             selectedRepositoryId={repositories.selectedRepositoryId}
             selectedBaseAssetId={baseAssets.selectedBaseAssetId}

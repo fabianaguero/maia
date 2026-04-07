@@ -1,30 +1,32 @@
+import { AudioWaveform, FolderOpen, Music, PackagePlus, Plus, X } from "lucide-react";
+import { useState } from "react";
+import { useT } from "../../i18n/I18nContext";
 import type { BootstrapManifest } from "../../contracts";
 import type { BaseAssetCategoryOption } from "../../types/baseAsset";
 import type { MusicStyleOption } from "../../types/music";
 import type {
   BaseAssetRecord,
   CompositionResultRecord,
-  ImportCompositionInput,
   ImportBaseAssetInput,
+  ImportCompositionInput,
   ImportRepositoryInput,
   ImportTrackInput,
   LibraryTrack,
   RepositoryAnalysis,
 } from "../../types/library";
-import { BaseAssetsTable } from "./components/BaseAssetsTable";
-import { CompositionResultsTable } from "./components/CompositionResultsTable";
+import { formatShortDate } from "../../utils/date";
 import { ImportBaseAssetForm } from "./components/ImportBaseAssetForm";
-import { ImportCompositionForm } from "./components/ImportCompositionForm";
 import { ImportRepositoryForm } from "./components/ImportRepositoryForm";
 import { ImportTrackForm } from "./components/ImportTrackForm";
-import { RepositoriesTable } from "./components/RepositoriesTable";
-import { TracksTable } from "./components/TracksTable";
+
+type LibraryTab = "tracks" | "sources" | "bases";
 
 interface LibraryScreenProps {
   tracks: LibraryTrack[];
   repositories: RepositoryAnalysis[];
   baseAssets: BaseAssetRecord[];
   compositions: CompositionResultRecord[];
+  newlyImportedId?: string | null;
   selectedTrackId: string | null;
   selectedRepositoryId: string | null;
   selectedBaseAssetId: string | null;
@@ -61,15 +63,20 @@ interface LibraryScreenProps {
   onInspectComposition: (compositionId: string) => void;
 }
 
+const SOURCE_KIND_LABEL: Record<string, string> = {
+  directory: "Directory",
+  file: "Log file",
+  url: "GitHub URL",
+};
+
 export function LibraryScreen({
   tracks,
   repositories,
   baseAssets,
-  compositions,
+  newlyImportedId,
   selectedTrackId,
   selectedRepositoryId,
   selectedBaseAssetId,
-  selectedCompositionId,
   manifest,
   musicStyles,
   baseAssetCategories,
@@ -78,250 +85,379 @@ export function LibraryScreen({
   trackLoading,
   repositoryLoading,
   baseAssetLoading,
-  compositionLoading,
   trackBusy,
   repositoryBusy,
   baseAssetBusy,
-  compositionBusy,
   trackError,
   repositoryError,
   baseAssetError,
-  compositionError,
   onImportTrack,
   onImportRepository,
   onImportBaseAsset,
-  onImportComposition,
   onSeedDemo,
   onSelectTrack,
   onSelectRepository,
   onSelectBaseAsset,
-  onSelectComposition,
   onInspectTrack,
   onInspectRepository,
   onInspectBaseAsset,
-  onInspectComposition,
 }: LibraryScreenProps) {
+  const t = useT();
+  const [tab, setTab] = useState<LibraryTab>("tracks");
+  const [showForm, setShowForm] = useState(false);
+
+  const tabs: Array<{ id: LibraryTab; label: string; count: number; icon: React.ReactNode }> = [
+    { id: "tracks", label: "Tracks", count: tracks.length, icon: <Music size={14} /> },
+    { id: "sources", label: "Sources", count: repositories.length, icon: <FolderOpen size={14} /> },
+    { id: "bases", label: "Bases", count: baseAssets.length, icon: <PackagePlus size={14} /> },
+  ];
+
+  function handleTabChange(next: LibraryTab) {
+    setTab(next);
+    setShowForm(false);
+  }
+
+  function getStatusBadgeClass(status: string | null | undefined): string {
+    if (status === "pending") return "status-badge--pending";
+    if (status === "analyzed") return "status-badge--analyzed";
+    if (status === "ready") return "status-badge--ready";
+    return "status-badge--pending";
+  }
+
+  function getStatusLabel(status: string | null | undefined): string {
+    if (status === "pending") return t.library.statusPending;
+    if (status === "analyzed") return t.library.statusAnalyzed;
+    if (status === "ready") return t.library.statusReady;
+    return t.library.statusPending;
+  }
+
+  function handleQuickImportClick(targetTab: LibraryTab) {
+    setTab(targetTab);
+    setShowForm(true);
+  }
+
+  async function handleImportTrack(input: ImportTrackInput) {
+    const ok = await onImportTrack(input);
+    if (ok) setShowForm(false);
+    return ok;
+  }
+
+  async function handleImportRepository(input: ImportRepositoryInput) {
+    const ok = await onImportRepository(input);
+    if (ok) setShowForm(false);
+    return ok;
+  }
+
+  async function handleImportBaseAsset(input: ImportBaseAssetInput) {
+    const ok = await onImportBaseAsset(input);
+    if (ok) setShowForm(false);
+    return ok;
+  }
+
+  const loading =
+    (tab === "tracks" && trackLoading) ||
+    (tab === "sources" && repositoryLoading) ||
+    (tab === "bases" && baseAssetLoading);
+
+  const error =
+    tab === "tracks" ? trackError :
+    tab === "sources" ? repositoryError :
+    baseAssetError;
+
   return (
     <section className="screen">
-      <header className="screen-header">
+      {/* Header */}
+      <header className="library-header">
         <div>
-          <p className="eyebrow">Library screen</p>
-          <h2>Imported assets</h2>
-          <p className="support-copy">
-            Tracks, local code projects, log files, GitHub repository references, and reusable
-            base assets stay local-first. Each import persists a lightweight analysis record that
-            the analyzer screen can inspect immediately.
-          </p>
+          <h2>Library</h2>
+          <p className="support-copy">Everything you've added lives here. Pick an item to work with it.</p>
         </div>
-        <div className="screen-summary">
-          <div className="summary-pill">
-            <span>Tracks / Code-logs / Bases / Comps</span>
-            <strong>{tracks.length} / {repositories.length} / {baseAssets.length} / {compositions.length}</strong>
-          </div>
-          <div className="summary-pill">
-            <span>Storage mode</span>
-            <strong>{manifest?.persistenceMode ?? "fallback"}</strong>
-          </div>
-        </div>
+        <button
+          type="button"
+          className={showForm ? "action active" : "action"}
+          onClick={() => setShowForm((v) => !v)}
+        >
+          {showForm ? <><X size={14} /> Cancel</> : <><Plus size={14} /> Add {tab === "tracks" ? "track" : tab === "sources" ? "source" : "base"}</>}
+        </button>
       </header>
 
-      <div className="library-layout">
-        <section className="panel">
-          <ImportTrackForm
-            busy={trackBusy}
-            musicStyles={musicStyles}
-            defaultMusicStyleId={defaultTrackMusicStyleId}
-            onImportTrack={onImportTrack}
-            onSeedDemo={onSeedDemo}
-          />
-        </section>
-
-        <section className="panel">
-          <ImportRepositoryForm
-            busy={repositoryBusy}
-            defaultDirectoryPath={manifest?.repoRoot}
-            onImportRepository={onImportRepository}
-          />
-        </section>
-
-        <section className="panel">
-          <ImportBaseAssetForm
-            busy={baseAssetBusy}
-            baseAssetCategories={baseAssetCategories}
-            defaultCategoryId={defaultBaseAssetCategoryId}
-            onImportBaseAsset={onImportBaseAsset}
-          />
-        </section>
-
-        <section className="panel storage-panel">
-          <div className="panel-header compact">
-            <div>
-              <h2>Local persistence</h2>
-              <p className="support-copy">
-                SQLite is the primary store in Tauri. Browser-only fallback uses
-                local mock storage so the UI still boots in plain Vite.
-              </p>
-            </div>
-          </div>
-          <dl className="meta-list">
-            <div>
-              <dt>Database path</dt>
-              <dd>{manifest?.databasePath ?? "Unavailable outside Tauri"}</dd>
-            </div>
-            <div>
-              <dt>Schema</dt>
-              <dd>{manifest?.databaseSchema ?? "../database/schema.sql"}</dd>
-            </div>
-            <div>
-              <dt>Analyzer bridge</dt>
-              <dd>{manifest?.analyzerEntrypoint ?? "Mock only"}</dd>
-            </div>
-            <div>
-              <dt>Music style config</dt>
-              <dd>
-                {manifest?.musicStyleConfigPath ??
-                  "../desktop/src/config/music-styles.json"}
-              </dd>
-            </div>
-            <div>
-              <dt>Base asset config</dt>
-              <dd>
-                {manifest?.baseAssetCategoryConfigPath ??
-                  "../desktop/src/config/base-asset-categories.json"}
-              </dd>
-            </div>
-          </dl>
-        </section>
-
-        <section className="panel">
-          <ImportCompositionForm
-            busy={compositionBusy}
-            baseAssets={baseAssets}
-            tracks={tracks}
-            repositories={repositories}
-            onImportComposition={onImportComposition}
-          />
-        </section>
+      {/* Quick Import Bar */}
+      <div className="library-quick-import-bar">
+        <button
+          type="button"
+          className="library-quick-import-btn"
+          onClick={() => handleQuickImportClick("tracks")}
+        >
+          <Music size={16} />
+          {t.library.importTrack}
+        </button>
+        <button
+          type="button"
+          className="library-quick-import-btn"
+          onClick={() => handleQuickImportClick("sources")}
+        >
+          <FolderOpen size={16} />
+          {t.library.importRepository}
+        </button>
+        <button
+          type="button"
+          className="library-quick-import-btn"
+          onClick={() => handleQuickImportClick("bases")}
+        >
+          <PackagePlus size={16} />
+          {t.library.importBaseAsset}
+        </button>
       </div>
 
-      <div className="asset-tables">
-        <section className="panel library-table-panel">
-          <div className="panel-header">
-            <div>
-              <h2>Track table</h2>
-              <p className="support-copy">
-                Select a track to inspect the analyzer screen.
-              </p>
-            </div>
-          </div>
-
-          {trackLoading ? (
-            <p className="placeholder">Loading local track library...</p>
-          ) : tracks.length === 0 ? (
-            <div className="empty-state">
-              <p>No tracks imported yet.</p>
-              <p>Import one manually or load the demo library to populate the table.</p>
-            </div>
-          ) : (
-            <TracksTable
-              tracks={tracks}
-              selectedTrackId={selectedTrackId}
-              onSelectTrack={onSelectTrack}
-              onInspectTrack={onInspectTrack}
-            />
-          )}
-
-          {trackError ? <div className="notice">{trackError}</div> : null}
-        </section>
-
-        <section className="panel library-table-panel">
-          <div className="panel-header">
-            <div>
-              <h2>Code and log table</h2>
-              <p className="support-copy">
-                Import a filesystem project, a local log file, or a GitHub URL and inspect its
-                signal state.
-              </p>
-            </div>
-          </div>
-
-          {repositoryLoading ? (
-            <p className="placeholder">Loading repository intake...</p>
-          ) : repositories.length === 0 ? (
-            <div className="empty-state">
-              <p>No code or log sources imported yet.</p>
-              <p>Use a local directory, a local log file, or a GitHub URL to create the first analysis item.</p>
-            </div>
-          ) : (
-            <RepositoriesTable
-              repositories={repositories}
-              selectedRepositoryId={selectedRepositoryId}
-              onSelectRepository={onSelectRepository}
-              onInspectRepository={onInspectRepository}
-            />
-          )}
-
-          {repositoryError ? <div className="notice">{repositoryError}</div> : null}
-        </section>
-
-        <section className="panel library-table-panel">
-          <div className="panel-header">
-            <div>
-              <h2>Base asset table</h2>
-              <p className="support-copy">
-                Register reusable files and folder packs for future composition flows.
-              </p>
-            </div>
-          </div>
-
-          {baseAssetLoading ? (
-            <p className="placeholder">Loading base asset library...</p>
-          ) : baseAssets.length === 0 ? (
-            <div className="empty-state">
-              <p>No base assets registered yet.</p>
-              <p>Register a file or folder pack to start the reusable local catalog.</p>
-            </div>
-          ) : (
-            <BaseAssetsTable
-              baseAssets={baseAssets}
-              selectedBaseAssetId={selectedBaseAssetId}
-              onSelectBaseAsset={onSelectBaseAsset}
-              onInspectBaseAsset={onInspectBaseAsset}
-            />
-          )}
-
-          {baseAssetError ? <div className="notice">{baseAssetError}</div> : null}
-        </section>
-
-        <section className="panel library-table-panel">
-          <div className="panel-header">
-            <div>
-              <h2>Composition table</h2>
-              <p className="support-copy">
-                Local arrangement plans derived from reusable bases and reference BPM sources.
-              </p>
-            </div>
-          </div>
-
-          {compositionLoading ? (
-            <p className="placeholder">Loading compositions...</p>
-          ) : compositions.length === 0 ? (
-            <div className="empty-state">
-              <p>No composition plans created yet.</p>
-              <p>Choose a base asset and a track, repo, or manual BPM to generate the first plan.</p>
-            </div>
-          ) : (
-            <CompositionResultsTable
-              compositions={compositions}
-              selectedCompositionId={selectedCompositionId}
-              onSelectComposition={onSelectComposition}
-              onInspectComposition={onInspectComposition}
-            />
-          )}
-
-          {compositionError ? <div className="notice">{compositionError}</div> : null}
-        </section>
+      {/* Tab strip */}
+      <div className="library-tabs" role="tablist">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            className={`library-tab${tab === t.id ? " active" : ""}`}
+            onClick={() => handleTabChange(t.id)}
+          >
+            {t.icon}
+            {t.label}
+            <span className="library-tab-count">{t.count}</span>
+          </button>
+        ))}
       </div>
+
+      {/* Inline form (collapsed by default) */}
+      {showForm && (
+        <div className="library-form-drawer">
+          {tab === "tracks" && (
+            <ImportTrackForm
+              busy={trackBusy}
+              musicStyles={musicStyles}
+              defaultMusicStyleId={defaultTrackMusicStyleId}
+              onImportTrack={handleImportTrack}
+              onSeedDemo={async () => { await onSeedDemo(); setShowForm(false); }}
+            />
+          )}
+          {tab === "sources" && (
+            <ImportRepositoryForm
+              busy={repositoryBusy}
+              defaultDirectoryPath={manifest?.repoRoot}
+              onImportRepository={handleImportRepository}
+            />
+          )}
+          {tab === "bases" && (
+            <ImportBaseAssetForm
+              busy={baseAssetBusy}
+              baseAssetCategories={baseAssetCategories}
+              defaultCategoryId={defaultBaseAssetCategoryId}
+              onImportBaseAsset={handleImportBaseAsset}
+            />
+          )}
+        </div>
+      )}
+
+      {error && <p className="inline-error">{error}</p>}
+
+      {/* Content */}
+      {loading ? (
+        <div className="placeholder-loading">
+          <span className="spin-ring" aria-hidden="true" />
+          Loading…
+        </div>
+      ) : (
+        <>
+          {/* TRACKS */}
+          {tab === "tracks" && (
+            tracks.length === 0 ? (
+              <EmptyState
+                icon={<Music size={32} />}
+                title="No tracks yet"
+                body="Add an audio file (WAV, MP3, FLAC…) to get started."
+                action={<button type="button" className="action" onClick={() => setShowForm(true)}><Plus size={14} /> Add track</button>}
+              />
+            ) : (
+              <ul className="asset-card-list">
+                {tracks.map((track) => (
+                  <li
+                    key={track.id}
+                    className={`asset-card${track.id === selectedTrackId ? " selected" : ""}${track.id === newlyImportedId ? " just-imported" : ""}`}
+                    onClick={() => onSelectTrack(track.id)}
+                  >
+                    <div className="asset-card-icon track-icon">
+                      <AudioWaveform size={18} />
+                    </div>
+                    <div className="asset-card-body">
+                      <strong className="asset-card-title">{track.title}</strong>
+                      <div className="asset-card-meta">
+                        <span className={`status-badge ${getStatusBadgeClass(track.analyzerStatus)}`}>
+                          {getStatusLabel(track.analyzerStatus)}
+                        </span>
+                        {track.bpm ? `${Math.round(track.bpm)} BPM` : "No BPM yet"}
+                        {track.durationSeconds ? ` · ${Math.round(track.durationSeconds / 60)}m${Math.round(track.durationSeconds % 60)}s` : ""}
+                        {" · "}{track.musicStyleLabel}
+                        {" · "}{track.fileExtension}
+                      </div>
+                      <span className="asset-card-date">{formatShortDate(track.importedAt)}</span>
+                    </div>
+                    <div className="asset-card-actions">
+                      <button
+                        type="button"
+                        className="card-action-btn"
+                        onClick={(e) => { e.stopPropagation(); onInspectTrack(track.id); }}
+                      >
+                        {t.library.analyze}
+                      </button>
+                      {track.analyzerStatus === "ready" && (
+                        <button
+                          type="button"
+                          className="card-action-compose"
+                          onClick={(e) => { e.stopPropagation(); onInspectTrack(track.id); }}
+                        >
+                          {t.library.compose} →
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )
+          )}
+
+          {/* SOURCES */}
+          {tab === "sources" && (
+            repositories.length === 0 ? (
+              <EmptyState
+                icon={<FolderOpen size={32} />}
+                title="No sources yet"
+                body="Add a log file, code directory, or GitHub URL to use as a signal source."
+                action={<button type="button" className="action" onClick={() => setShowForm(true)}><Plus size={14} /> Add source</button>}
+              />
+            ) : (
+              <ul className="asset-card-list">
+                {repositories.map((repo) => (
+                  <li
+                    key={repo.id}
+                    className={`asset-card${repo.id === selectedRepositoryId ? " selected" : ""}${repo.id === newlyImportedId ? " just-imported" : ""}`}
+                    onClick={() => onSelectRepository(repo.id)}
+                  >
+                    <div className="asset-card-icon source-icon">
+                      <FolderOpen size={18} />
+                    </div>
+                    <div className="asset-card-body">
+                      <strong className="asset-card-title">{repo.title}</strong>
+                      <div className="asset-card-meta">
+                        <span className="type-badge">{SOURCE_KIND_LABEL[repo.sourceKind] ?? repo.sourceKind}</span>
+                        <span className={`status-badge ${getStatusBadgeClass(repo.analyzerStatus)}`}>
+                          {getStatusLabel(repo.analyzerStatus)}
+                        </span>
+                        {repo.suggestedBpm ? `${Math.round(repo.suggestedBpm)} BPM` : ""}
+                        {repo.primaryLanguage ? ` · ${repo.primaryLanguage}` : ""}
+                      </div>
+                      <span className="asset-card-date">{formatShortDate(repo.importedAt)}</span>
+                    </div>
+                    <div className="asset-card-actions">
+                      <button
+                        type="button"
+                        className="card-action-btn"
+                        onClick={(e) => { e.stopPropagation(); onInspectRepository(repo.id); }}
+                      >
+                        {t.library.analyze}
+                      </button>
+                      {repo.analyzerStatus === "ready" && (
+                        <button
+                          type="button"
+                          className="card-action-compose"
+                          onClick={(e) => { e.stopPropagation(); onInspectRepository(repo.id); }}
+                        >
+                          {t.library.compose} →
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )
+          )}
+
+          {/* BASES */}
+          {tab === "bases" && (
+            baseAssets.length === 0 ? (
+              <EmptyState
+                icon={<PackagePlus size={32} />}
+                title="No base packs yet"
+                body="Add a sample pack or folder to use as raw material in compositions."
+                action={<button type="button" className="action" onClick={() => setShowForm(true)}><Plus size={14} /> Add base</button>}
+              />
+            ) : (
+              <ul className="asset-card-list">
+                {baseAssets.map((asset) => (
+                  <li
+                    key={asset.id}
+                    className={`asset-card${asset.id === selectedBaseAssetId ? " selected" : ""}${asset.id === newlyImportedId ? " just-imported" : ""}`}
+                    onClick={() => onSelectBaseAsset(asset.id)}
+                  >
+                    <div className="asset-card-icon base-icon">
+                      <PackagePlus size={18} />
+                    </div>
+                    <div className="asset-card-body">
+                      <strong className="asset-card-title">{asset.title}</strong>
+                      <div className="asset-card-meta">
+                        <span className="type-badge">{asset.categoryLabel}</span>
+                        <span className={`status-badge ${getStatusBadgeClass(asset.analyzerStatus)}`}>
+                          {getStatusLabel(asset.analyzerStatus)}
+                        </span>
+                        {` · ${asset.entryCount} entries`}
+                        {asset.reusable ? " · Reusable" : ""}
+                      </div>
+                      <span className="asset-card-date">{formatShortDate(asset.importedAt)}</span>
+                    </div>
+                    <div className="asset-card-actions">
+                      <button
+                        type="button"
+                        className="card-action-btn"
+                        onClick={(e) => { e.stopPropagation(); onInspectBaseAsset(asset.id); }}
+                      >
+                        {t.library.analyze}
+                      </button>
+                      {asset.analyzerStatus === "ready" && (
+                        <button
+                          type="button"
+                          className="card-action-compose"
+                          onClick={(e) => { e.stopPropagation(); onInspectBaseAsset(asset.id); }}
+                        >
+                          {t.library.compose} →
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )
+          )}
+        </>
+      )}
     </section>
+  );
+}
+
+function EmptyState({
+  icon,
+  title,
+  body,
+  action,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  action: React.ReactNode;
+}) {
+  return (
+    <div className="library-empty">
+      <div className="library-empty-icon">{icon}</div>
+      <h3>{title}</h3>
+      <p>{body}</p>
+      {action}
+    </div>
   );
 }

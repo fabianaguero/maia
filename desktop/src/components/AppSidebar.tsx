@@ -1,6 +1,15 @@
-import type { BootstrapManifest } from "../contracts";
+import { Activity, AudioWaveform, Radio, Library } from "lucide-react";
+import type React from "react";
 import type { ActiveMonitorSession, MonitorMetrics } from "../features/monitor/MonitorContext";
+import { useT } from "../i18n/I18nContext";
 import type { AppScreen } from "../types/library";
+
+const SCREEN_ICONS: Record<AppScreen, React.ReactNode> = {
+  library: <Library size={15} />,
+  session: <Radio size={15} />,
+  inspect: <Activity size={15} />,
+  compose: <AudioWaveform size={15} />,
+};
 
 interface AppSidebarProps {
   currentScreen: AppScreen;
@@ -10,30 +19,11 @@ interface AppSidebarProps {
   baseAssetCount: number;
   compositionCount: number;
   selectedItemTitle: string | null;
-  manifest: BootstrapManifest | null;
-  analyzerLabel: string;
   monitorSession: ActiveMonitorSession | null;
   monitorMetrics: MonitorMetrics;
   onStopMonitor: () => void;
   onOpenMonitoredRepo: () => void;
 }
-
-const navigationItems: Array<{
-  id: AppScreen;
-  label: string;
-  description: string;
-}> = [
-  {
-    id: "library",
-    label: "Library",
-    description: "Tracks, code/log sources, bases, and compositions",
-  },
-  {
-    id: "analyzer",
-    label: "Analyzer",
-    description: "Signal, waveform, and BPM review",
-  },
-];
 
 export function AppSidebar({
   currentScreen,
@@ -43,13 +33,18 @@ export function AppSidebar({
   baseAssetCount,
   compositionCount,
   selectedItemTitle,
-  manifest,
-  analyzerLabel,
   monitorSession,
   monitorMetrics,
   onStopMonitor,
   onOpenMonitoredRepo,
 }: AppSidebarProps) {
+  const t = useT();
+  const navigationItems = [
+    { id: "library" as AppScreen, label: t.nav.library.label, description: t.nav.library.description },
+    { id: "session" as AppScreen, label: t.nav.session.label, description: t.nav.session.description },
+    { id: "inspect" as AppScreen, label: t.nav.inspect.label, description: t.nav.inspect.description },
+    { id: "compose" as AppScreen, label: t.nav.compose.label, description: t.nav.compose.description },
+  ];
   const uptimeSeconds = monitorSession
     ? Math.floor((Date.now() - monitorSession.startedAt) / 1000)
     : 0;
@@ -61,28 +56,32 @@ export function AppSidebar({
   return (
     <aside className="sidebar panel">
       <div className="sidebar-brand">
-        <p className="eyebrow">Maia</p>
-        <h1>Software sonification shell</h1>
-        <p>
-          Local-first desktop workflow for code/log intake, reusable sonic assets, BPM review,
-          derived composition plans, and audible operational tooling.
-        </p>
+        <img
+          src="/assets/branding/maia-wordmark-site.png"
+          alt="MAIA"
+          className="sidebar-wordmark"
+        />
+        <p>{t.tagline}</p>
       </div>
 
       <nav className="nav-stack" aria-label="Main screens">
-        {navigationItems.map((item) => {
+        {navigationItems.map((item, index) => {
           const active = item.id === currentScreen;
+          const isMonitor = item.id === "session";
 
           return (
-            <button
-              key={item.id}
-              type="button"
-              className={`nav-button${active ? " active" : ""}`}
-              onClick={() => onScreenChange(item.id)}
-            >
-              <span>{item.label}</span>
-              <small>{item.description}</small>
-            </button>
+            <div key={item.id}>
+              {isMonitor && index > 0 && <div className="nav-separator" />}
+              <button
+                type="button"
+                className={`nav-button${active ? " active" : ""}${isMonitor ? " nav-button--monitor" : ""}`}
+                onClick={() => onScreenChange(item.id)}
+              >
+                {SCREEN_ICONS[item.id]}
+                <span>{item.label}</span>
+                <small>{item.description}</small>
+              </button>
+            </div>
           );
         })}
       </nav>
@@ -127,26 +126,26 @@ export function AppSidebar({
 
       <div className="sidebar-meta">
         <div className="sidebar-stat">
-          <span>Assets</span>
-          <strong>{trackCount + repositoryCount + baseAssetCount + compositionCount}</strong>
+          <span>{t.sidebar.tracks}</span>
+          <strong>{trackCount}</strong>
         </div>
         <div className="sidebar-stat">
-          <span>Tracks / Code-logs / Bases / Comps</span>
-          <strong>{trackCount} / {repositoryCount} / {baseAssetCount} / {compositionCount}</strong>
+          <span>{t.sidebar.codeLogs}</span>
+          <strong>{repositoryCount}</strong>
         </div>
         <div className="sidebar-stat">
-          <span>Persistence</span>
-          <strong>{manifest?.persistenceMode ?? "fallback"}</strong>
+          <span>{t.sidebar.bases}</span>
+          <strong>{baseAssetCount}</strong>
         </div>
         <div className="sidebar-stat">
-          <span>Analyzer</span>
-          <strong>{analyzerLabel}</strong>
+          <span>{t.sidebar.comps}</span>
+          <strong>{compositionCount}</strong>
         </div>
       </div>
 
       <div className="sidebar-footer">
-        <span>Selected</span>
-        <strong>{selectedItemTitle ?? "No asset selected"}</strong>
+        <span>{t.sidebar.selected}</span>
+        <strong>{selectedItemTitle ?? t.sidebar.noAsset}</strong>
       </div>
     </aside>
   );
