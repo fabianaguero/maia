@@ -92,9 +92,11 @@ export function useRepositories() {
         setError(null);
       });
 
-      // Start background analysis
+      // Start background analysis without blocking or error handling
       if (nextRepository.analyzerStatus === "pending") {
-        void analyzeRepositoryBackground(nextRepository);
+        analyzeRepositoryBackground(nextRepository).catch((err) => {
+          console.debug("Background analysis error (non-blocking):", err);
+        });
       }
 
       return nextRepository;
@@ -135,8 +137,9 @@ export function useRepositories() {
           );
         });
       }
-    } catch {
+    } catch (err) {
       // Silent fail — analysis in background doesn't block user
+      console.debug("Background analysis failed:", err);
     }
   }
 

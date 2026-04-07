@@ -84,9 +84,11 @@ export function useLibrary() {
         setError(null);
       });
 
-      // Start background analysis
+      // Start background analysis without blocking or error handling
       if (nextTrack.analyzerStatus === "pending") {
-        void analyzeTrackBackground(nextTrack);
+        analyzeTrackBackground(nextTrack).catch((err) => {
+          console.debug("Background analysis error (non-blocking):", err);
+        });
       }
 
       return nextTrack;
@@ -127,8 +129,9 @@ export function useLibrary() {
           );
         });
       }
-    } catch {
+    } catch (err) {
       // Silent fail — analysis in background doesn't block user
+      console.debug("Background analysis failed:", err);
     }
   }
 
