@@ -82,7 +82,7 @@ function AppContent() {
     const track = library.selectedTrack;
     const path = track?.storagePath ?? track?.sourcePath ?? null;
     monitor.setGuideTrack(path);
-  }, [library.selectedTrack, monitor]);
+  }, [library.selectedTrackId, library.selectedTrack?.storagePath, library.selectedTrack?.sourcePath, monitor.setGuideTrack]);
 
   useEffect(() => {
     let active = true;

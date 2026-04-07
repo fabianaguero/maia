@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -440,7 +441,15 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
   // Internal helpers
   // -------------------------------------------------------------------------
 
+  const guideTrackPathRef = useRef<string | null>(null);
+
   const setGuideTrack = useCallback((path: string | null) => {
+    // Skip if path hasn't changed
+    if (guideTrackPathRef.current === path) {
+      return;
+    }
+    guideTrackPathRef.current = path;
+
     if (!path) {
       log.info("guide track cleared → synth fallback");
       guideTrackRef.current = null;
@@ -880,8 +889,35 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const value = useMemo(
+    () => ({
+      session,
+      metrics,
+      isPlayback,
+      guideTrackReady,
+      guideTrackPath,
+      setGuideTrack,
+      startSession,
+      stopSession,
+      playbackSession,
+      subscribe,
+    }),
+    [
+      session,
+      metrics,
+      isPlayback,
+      guideTrackReady,
+      guideTrackPath,
+      setGuideTrack,
+      startSession,
+      stopSession,
+      playbackSession,
+      subscribe,
+    ],
+  );
+
   return (
-    <MonitorCtx.Provider value={{ session, metrics, isPlayback, guideTrackReady, guideTrackPath, setGuideTrack, startSession, stopSession, playbackSession, subscribe }}>
+    <MonitorCtx.Provider value={value}>
       {children}
     </MonitorCtx.Provider>
   );
