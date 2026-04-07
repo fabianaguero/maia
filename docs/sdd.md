@@ -50,7 +50,10 @@ Maia is a local-first desktop app that turns repositories, logs, and reusable so
 - Base assets can be file or directory packs.
 
 5) Composition results
-- Derived from a base asset and a BPM reference (track/repo/manual).
+- **Track (instrumental base, required)**: selected track provides the rhythmic foundation and beat anchor.
+- **Structure (optional)**: repo/log with anomalies drives harmonic/textural variations.
+- **Base asset**: reusable sonic vocabulary applied as the foundation.
+- Process: track BPM anchors composition; if repo/log also selected, its anomalies (errors, warnings) modulate arrangement (darker tones on high error density, textural shifts on warnings, etc.).
 - Produces plan metadata, preview artifacts, and optional preview audio.
 
 ## Data model (SQLite)
@@ -82,9 +85,9 @@ The most realistic implementation order from this point: (1) always-on backgroun
 
 - **Always-on background monitoring** ✅ (shipped: `MonitorContext` lifts poll loop to root, sidebar live badge, session survives navigation) — resolved.
 - **Broader stream adapters** ✅ (shipped: WebSocket adapter manages JS `WebSocket` + ring buffer ingest; HTTP-poll adapter fetches URL on each interval; `ingest_stream_chunk` Rust command; panel URL inputs).
-- **Test coverage** — zero test files exist in the project; no contract fixtures, no golden analysis tests, no native-vs-mock gate.
-- **Dense multi-track arrangement** ✅ (shipped: per-component gain/mute routing panel, `ComponentRoutingPanel`, arrangement-lane display with foundation/motion/accent tracks; pad/kit sequencer surface still pending)
-- **Export/bounce pipeline** — `plan.json` and `preview.wav` exist; export dialog, full offline render, stems, and format options are not built.
+- **Test coverage** ✅ (shipped: `test_schema_validation.py` — 11 tests validating request/response JSON schemas with `jsonschema`; `test_golden_analysis.py` — 18 tests pinning stable metric values, mock vs native gate for health/analyze/error shapes; `jsonschema[format-nongpl]` added to requirements-dev.txt; contract schema synced: `healthPayload.supportedTrackFormats` added)
+- **Dense multi-track arrangement** ✅ (shipped: per-component gain/mute routing panel, `ComponentRoutingPanel`, arrangement-lane display with foundation/motion/accent tracks; `PadSequencerPanel` — 16-step × 3-track authoring grid with BPM playhead, Fill-from-scene seed, clear, per-track colour coding)
+- **Export/bounce pipeline** ✅ (shipped: `write_stem_wavs()` renders one WAV per stem; `export-stems` CLI; Rust `export_composition_stems` + `pick_stems_export_directory`; stems button in `ExportCompositionPanel`; 10 dedicated tests passing)
 - **Additional audio formats** ✅ (shipped: `_decode_librosa_audio` fallback covers m4a/aac/aiff/mp4 via audioread/FFmpeg; `get_supported_track_formats` now returns dynamic format list)
 - **Tree-sitter beyond Java/Kotlin** ✅ (shipped: Python, TypeScript/TSX, Go, Rust fully wired + 32 passing tests)
 
@@ -96,8 +99,10 @@ The most realistic implementation order from this point: (1) always-on backgroun
 - WebSocket adapter: JS `WebSocket`, line buffer, `ingest_stream_chunk` Rust cmd, Python ring buffer.
 - HTTP-poll adapter: fetch on each interval, same ingest path.
 
-3) Consolidation and test coverage
-- Contract fixtures, analysis golden tests, mock vs native gates. Pipeline hardening.
+3) Consolidation and test coverage ✅
+- `test_schema_validation.py`: 11 tests validate request/response JSON schemas via jsonschema Draft 2020-12.
+- `test_golden_analysis.py`: 18 tests pin BPM, level counts, anomaly ratio, top components, mock vs native gate.
+- Contract schema (`analyzer-response.schema.json`) synced: `healthPayload.supportedTrackFormats` added, `supportedActions` enum relaxed.
 
 4) Repo parsing with tree-sitter ✅ (shipped: Java/Kotlin/Python/TypeScript/Go/Rust — 32 dedicated tests passing)
 - All major languages covered. `build_repo_waveform_bins` uses all 6 parsers.
@@ -110,15 +115,13 @@ The most realistic implementation order from this point: (1) always-on backgroun
 - Always-on background monitoring ✅ shipped. Broader platform adapters still pending.
 
 7) Sonification engine ✅ (shipped: genre palette ✅, sequencer presets ✅, reference anchor ✅, reference playlist ✅, beat-phase scheduling ✅, persistence ✅, per-component routing panel ✅, arrangement-lane display ✅)
-- Next: pad/kit sequencer UI surface for dense arrangement authoring.
+- `PadSequencerPanel` ✅: 16-step × 3-track grid (foundation/motion/accent), BPM-driven playhead, Fill-from-scene seed, manual toggle, colour-coded per track. Rendered in `LiveLogMonitorPanel`.
 
 8) Reference anchor + playlist ✅ (fully shipped: single anchor, playlist blend, beat clock, persistence, reorder, blend details)
 
-9) Composition export (pending: preview.wav exists; full offline render + stems + export UI not started)
-- Offline render + stems + export UI.
-- Heavy DSP dependencies -> keep deterministic fallback and gate by capability.
-- Long-running monitoring -> isolate in background tasks with explicit stop.
-- Cross-platform file access -> keep managed snapshots as source of truth.
+9) Composition export ✅ (shipped: `write_stem_wavs()` per-stem WAV render, `export-stems` CLI subcommand, Rust `export_composition_stems` + `pick_stems_export_directory`, TypeScript API, stems export button in `ExportCompositionPanel`; 10 passing tests)
+- Heavy DSP dependencies: deterministic fallback in place.
+- Cross-platform file access: managed via native file picker + Tauri asset protocol.
 
 ## Open questions
 - Priority between tree-sitter parsing vs DSP upgrades.

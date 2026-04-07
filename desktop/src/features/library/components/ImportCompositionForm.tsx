@@ -51,10 +51,9 @@ export function ImportCompositionForm({
   onImportComposition,
 }: ImportCompositionFormProps) {
   const [baseAssetId, setBaseAssetId] = useState(deriveDefaultBaseAssetId(baseAssets));
+  const [trackId, setTrackId] = useState<string>(tracks[0]?.id ?? "");
+  const [structureId, setStructureId] = useState<string>("");
   const [referenceType, setReferenceType] = useState<CompositionReferenceType>("track");
-  const [referenceAssetId, setReferenceAssetId] = useState<string>(
-    tracks[0]?.id ?? "",
-  );
   const [manualBpm, setManualBpm] = useState("124");
   const [label, setLabel] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -66,28 +65,25 @@ export function ImportCompositionForm({
   }, [baseAssets, baseAssetId]);
 
   useEffect(() => {
-    if (referenceType === "track") {
-      if (!tracks.some((entry) => entry.id === referenceAssetId)) {
-        setReferenceAssetId(tracks[0]?.id ?? "");
-      }
-      return;
+    // Keep track ID in sync with available tracks
+    if (!tracks.some((entry) => entry.id === trackId)) {
+      setTrackId(tracks[0]?.id ?? "");
     }
+  }, [trackId, tracks]);
 
-    if (referenceType === "repo") {
-      if (!repositories.some((entry) => entry.id === referenceAssetId)) {
-        setReferenceAssetId(repositories[0]?.id ?? "");
-      }
-      return;
+  useEffect(() => {
+    // Keep structure ID valid if set
+    if (structureId && !repositories.some((entry) => entry.id === structureId)) {
+      setStructureId("");
     }
-
-    setReferenceAssetId("");
-  }, [referenceAssetId, referenceType, repositories, tracks]);
+  }, [structureId, repositories]);
 
   const selectedBaseAsset =
     baseAssets.find((entry) => entry.id === baseAssetId) ?? null;
-  const selectedTrack = tracks.find((entry) => entry.id === referenceAssetId) ?? null;
-  const selectedRepository =
-    repositories.find((entry) => entry.id === referenceAssetId) ?? null;
+  const selectedTrack = tracks.find((entry) => entry.id === trackId) ?? null;
+  const selectedStructure = structureId
+    ? repositories.find((entry) => entry.id === structureId) ?? null
+    : null;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -97,25 +93,29 @@ export function ImportCompositionForm({
       return;
     }
 
-    if (referenceType !== "manual" && !referenceAssetId.trim()) {
-      setError("Select a reference asset before composing.");
-      return;
-    }
-
-    if (
-      referenceType === "manual" &&
-      (!manualBpm.trim() || Number.isNaN(Number(manualBpm)) || Number(manualBpm) <= 0)
-    ) {
-      setError("Manual BPM must be a positive number.");
+    if (!trackId.trim()) {
+      setError("Select a track as the instrumental base.");
       return;
     }
 
     setError(null);
+
+    // Determine reference type based on selections
+    let actualRefType: CompositionReferenceType = "track";
+    let actualRefAssetId: string | undefined = trackId;
+
+    // If user also selected a repo/log for structure, use that as reference for BPM
+    if (structureId) {
+      actualRefType = "repo";
+      actualRefAssetId = structureId;
+    }
+
     const imported = await onImportComposition({
       baseAssetId,
-      referenceType,
-      referenceAssetId: referenceType === "manual" ? undefined : referenceAssetId,
-      manualBpm: referenceType === "manual" ? Number(manualBpm) : undefined,
+      trackId,
+      structureId: structureId || undefined,
+      referenceType: actualRefType,
+      referenceAssetId: actualRefAssetId,
       label: label.trim() || undefined,
     });
 
@@ -130,8 +130,8 @@ export function ImportCompositionForm({
         <div>
           <h2>Create composition result</h2>
           <p className="support-copy">
-            Derive a local composition plan from one reusable base asset plus a
-            track, repository, or manual BPM reference.
+            Use a track as the instrumental base, optionally layered with code/log analysis for
+            structural variation based on anomalies.
           </p>
         </div>
       </div>
@@ -161,77 +161,55 @@ export function ImportCompositionForm({
         </div>
       ) : null}
 
-      <div className="mode-toggle" role="tablist" aria-label="Composition reference type">
-        {referenceModes.map((mode) => (
-          <button
-            key={mode.id}
-            type="button"
-            className={`toggle-chip${mode.id === referenceType ? " active" : ""}`}
-            onClick={() => setReferenceType(mode.id)}
-          >
-            <span>{mode.label}</span>
-            <small>{mode.help}</small>
-          </button>
-        ))}
-      </div>
-
-      {referenceType === "track" ? (
-        <label className="field">
-          <span>Track reference</span>
-          <select
-            value={referenceAssetId}
-            onChange={(event) => setReferenceAssetId(event.target.value)}
-            disabled={busy || tracks.length === 0}
-          >
-            {tracks.map((track) => (
-              <option key={track.id} value={track.id}>
-                {track.title} · {track.bpm?.toFixed(0) ?? "No BPM"} BPM
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : null}
-
-      {referenceType === "repo" ? (
-        <label className="field">
-          <span>Code/log reference</span>
-          <select
-            value={referenceAssetId}
-            onChange={(event) => setReferenceAssetId(event.target.value)}
-            disabled={busy || repositories.length === 0}
-          >
-            {repositories.map((repository) => (
-              <option key={repository.id} value={repository.id}>
-                {repository.title} · {repository.suggestedBpm?.toFixed(0) ?? "No BPM"} BPM
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : null}
-
-      {referenceType === "manual" ? (
-        <label className="field">
-          <span>Manual BPM</span>
-          <input
-            value={manualBpm}
-            onChange={(event) => setManualBpm(event.target.value)}
-            inputMode="decimal"
-            placeholder="124"
-          />
-        </label>
-      ) : null}
+      <label className="field">
+        <span>Track (instrumental base) *</span>
+        <select
+          value={trackId}
+          onChange={(event) => setTrackId(event.target.value)}
+          disabled={busy || tracks.length === 0}
+        >
+          <option value="">— Select a track —</option>
+          {tracks.map((track) => (
+            <option key={track.id} value={track.id}>
+              {track.title} · {track.bpm?.toFixed(0) ?? "No BPM"} BPM
+            </option>
+          ))}
+        </select>
+      </label>
 
       {selectedTrack ? (
-        <p className="field-hint">
-          Track reference: {selectedTrack.title} at {selectedTrack.bpm?.toFixed(0) ?? "?"} BPM.
-        </p>
+        <div className="style-preview">
+          <strong>{selectedTrack.title}</strong>
+          <p>
+            Instrumental base at {selectedTrack.bpm?.toFixed(0) ?? "?"} BPM
+          </p>
+        </div>
       ) : null}
 
-      {selectedRepository ? (
-        <p className="field-hint">
-          Code/log reference: {selectedRepository.title} at{" "}
-          {selectedRepository.suggestedBpm?.toFixed(0) ?? "?"} BPM.
-        </p>
+      <label className="field">
+        <span>Code/Log (structural variation) - optional</span>
+        <select
+          value={structureId}
+          onChange={(event) => setStructureId(event.target.value)}
+          disabled={busy || repositories.length === 0}
+        >
+          <option value="">— None (use track BPM only) —</option>
+          {repositories.map((repository) => (
+            <option key={repository.id} value={repository.id}>
+              {repository.title} · {repository.suggestedBpm?.toFixed(0) ?? "No BPM"} BPM
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {selectedStructure ? (
+        <div className="style-preview">
+          <strong>{selectedStructure.title}</strong>
+          <p>
+            Structural reference at {selectedStructure.suggestedBpm?.toFixed(0) ?? "?"} BPM
+            (anomalies will drive variations)
+          </p>
+        </div>
       ) : null}
 
       <label className="field">
@@ -239,20 +217,21 @@ export function ImportCompositionForm({
         <input
           value={label}
           onChange={(event) => setLabel(event.target.value)}
-          placeholder="Peak-hour club sketch"
+          placeholder="Peak-hour with error motifs"
         />
       </label>
 
       <p className="field-hint">
         Composition results are arrangement plans with preview artifacts, phrase sections, cue
-        points, and a managed internal `preview.wav`, not rendered final audio files.
+        points, and a managed internal `preview.wav`. The track provides the beat, and anomalies
+        from the code/log (errors, warnings) modulate the arrangement.
       </p>
 
       {error ? <p className="inline-error">{error}</p> : null}
 
       <div className="form-actions">
-        <button type="submit" className="action" disabled={busy || baseAssets.length === 0}>
-          {busy ? "Composing..." : "Create composition"}
+        <button type="submit" className="action" disabled={busy || baseAssets.length === 0 || !trackId}>
+          {busy ? <><span className="spin-ring" aria-hidden="true" /> Composing...</> : "Create composition"}
         </button>
       </div>
     </form>

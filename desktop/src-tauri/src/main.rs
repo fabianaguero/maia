@@ -272,6 +272,253 @@ struct StartSessionInput {
     command: Option<Vec<String>>,
 }
 
+// ---------------------------------------------------------------------------
+// Persisted sessions (SQLite-backed)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PersistedSession {
+    pub id: String,
+    pub label: Option<String>,
+    pub source_id: Option<String>,
+    pub source_title: Option<String>,
+    pub source_path: Option<String>,
+    pub source_kind: Option<String>,
+    pub track_id: Option<String>,
+    pub track_title: Option<String>,
+    pub adapter_kind: String,
+    pub mode: String,
+    pub status: String,
+    pub file_cursor: u64,
+    pub total_polls: u64,
+    pub total_lines: u64,
+    pub total_anomalies: u64,
+    pub last_bpm: Option<f64>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CreateSessionInput {
+    id: String,
+    label: Option<String>,
+    source_id: Option<String>,
+    track_id: Option<String>,
+    adapter_kind: String,
+    mode: String,
+}
+
+fn db_create_session(conn: &Connection, input: &CreateSessionInput) -> Result<PersistedSession, String> {
+    let now = now_iso();
+    conn.execute(
+        "INSERT OR REPLACE INTO sessions (id, label, source_id, track_id, adapter_kind, mode, status, file_cursor, total_polls, total_lines, total_anomalies, last_bpm, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'stopped', 0, 0, 0, 0, NULL, ?7, ?7)",
+        rusqlite::params![input.id, input.label, input.source_id, input.track_id, input.adapter_kind, input.mode, now],
+    ).map_err(|e| format!("Failed to create session: {e}"))?;
+
+    db_get_session(conn, &input.id)
+}
+
+fn db_get_session(conn: &Connection, id: &str) -> Result<PersistedSession, String> {
+    conn.query_row(
+        "SELECT s.id, s.label, s.source_id,
+                ma_src.title, ma_src.source_path, ma_src.source_kind,
+                s.track_id, ma_trk.title,
+                s.adapter_kind, s.mode, s.status,
+                s.file_cursor, s.total_polls, s.total_lines, s.total_anomalies, s.last_bpm,
+                s.created_at, s.updated_at
+         FROM sessions s
+         LEFT JOIN musical_assets ma_src ON ma_src.id = s.source_id
+         LEFT JOIN musical_assets ma_trk ON ma_trk.id = s.track_id
+         WHERE s.id = ?1",
+        rusqlite::params![id],
+        row_to_persisted_session,
+    ).map_err(|e| format!("Session not found: {e}"))
+}
+
+fn row_to_persisted_session(row: &rusqlite::Row<'_>) -> rusqlite::Result<PersistedSession> {
+    Ok(PersistedSession {
+        id: row.get(0)?,
+        label: row.get(1)?,
+        source_id: row.get(2)?,
+        source_title: row.get(3)?,
+        source_path: row.get(4)?,
+        source_kind: row.get(5)?,
+        track_id: row.get(6)?,
+        track_title: row.get(7)?,
+        adapter_kind: row.get(8)?,
+        mode: row.get(9)?,
+        status: row.get(10)?,
+        file_cursor: row.get::<_, i64>(11).map(|v| v as u64)?,
+        total_polls: row.get::<_, i64>(12).map(|v| v as u64)?,
+        total_lines: row.get::<_, i64>(13).map(|v| v as u64)?,
+        total_anomalies: row.get::<_, i64>(14).map(|v| v as u64)?,
+        last_bpm: row.get(15)?,
+        created_at: row.get(16)?,
+        updated_at: row.get(17)?,
+    })
+}
+
+fn db_list_sessions(conn: &Connection) -> Result<Vec<PersistedSession>, String> {
+    let mut stmt = conn.prepare(
+        "SELECT s.id, s.label, s.source_id,
+                ma_src.title, ma_src.source_path, ma_src.source_kind,
+                s.track_id, ma_trk.title,
+                s.adapter_kind, s.mode, s.status,
+                s.file_cursor, s.total_polls, s.total_lines, s.total_anomalies, s.last_bpm,
+                s.created_at, s.updated_at
+         FROM sessions s
+         LEFT JOIN musical_assets ma_src ON ma_src.id = s.source_id
+         LEFT JOIN musical_assets ma_trk ON ma_trk.id = s.track_id
+         ORDER BY s.updated_at DESC",
+    ).map_err(|e| format!("Failed to prepare session list: {e}"))?;
+
+    let rows = stmt.query_map([], row_to_persisted_session)
+        .map_err(|e| format!("Failed to query sessions: {e}"))?;
+
+    rows.map(|r| r.map_err(|e| format!("Row error: {e}")))
+        .collect()
+}
+
+fn db_update_session_status(conn: &Connection, id: &str, status: &str) -> Result<(), String> {
+    conn.execute(
+        "UPDATE sessions SET status = ?1, updated_at = ?2 WHERE id = ?3",
+        rusqlite::params![status, now_iso(), id],
+    ).map_err(|e| format!("Failed to update session status: {e}"))?;
+    Ok(())
+}
+
+fn db_update_session_cursor(
+    conn: &Connection,
+    id: &str,
+    cursor: u64,
+    lines_delta: u64,
+    anomalies_delta: u64,
+    last_bpm: Option<f64>,
+) -> Result<(), String> {
+    conn.execute(
+        "UPDATE sessions SET
+            file_cursor = ?1,
+            total_polls = total_polls + 1,
+            total_lines = total_lines + ?2,
+            total_anomalies = total_anomalies + ?3,
+            last_bpm = COALESCE(?4, last_bpm),
+            status = 'active',
+            updated_at = ?5
+         WHERE id = ?6",
+        rusqlite::params![cursor as i64, lines_delta as i64, anomalies_delta as i64, last_bpm, now_iso(), id],
+    ).map_err(|e| format!("Failed to update session cursor: {e}"))?;
+    Ok(())
+}
+
+fn db_delete_session(conn: &Connection, id: &str) -> Result<bool, String> {
+    let n = conn.execute("DELETE FROM sessions WHERE id = ?1", rusqlite::params![id])
+        .map_err(|e| format!("Failed to delete session: {e}"))?;
+    Ok(n > 0)
+}
+
+// ---------------------------------------------------------------------------
+// Session events (per-poll time-series data for playback)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionEvent {
+    pub id: i64,
+    pub session_id: String,
+    pub poll_index: u64,
+    pub captured_at: String,
+    pub from_offset: u64,
+    pub to_offset: u64,
+    pub summary: String,
+    pub suggested_bpm: Option<f64>,
+    pub confidence: f64,
+    pub dominant_level: String,
+    pub line_count: u64,
+    pub anomaly_count: u64,
+    pub level_counts_json: String,
+    pub anomaly_markers_json: String,
+    pub top_components_json: String,
+    pub sonification_cues_json: String,
+    pub warnings_json: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct InsertSessionEventInput {
+    session_id: String,
+    poll_index: u64,
+    from_offset: u64,
+    to_offset: u64,
+    summary: String,
+    suggested_bpm: Option<f64>,
+    confidence: f64,
+    dominant_level: String,
+    line_count: u64,
+    anomaly_count: u64,
+    level_counts_json: String,
+    anomaly_markers_json: String,
+    top_components_json: String,
+    sonification_cues_json: String,
+    warnings_json: String,
+}
+
+fn db_insert_session_event(conn: &Connection, input: &InsertSessionEventInput) -> Result<i64, String> {
+    conn.execute(
+        "INSERT INTO session_events (session_id, poll_index, captured_at, from_offset, to_offset,
+            summary, suggested_bpm, confidence, dominant_level, line_count, anomaly_count,
+            level_counts_json, anomaly_markers_json, top_components_json, sonification_cues_json, warnings_json)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+        rusqlite::params![
+            input.session_id, input.poll_index as i64, now_iso(),
+            input.from_offset as i64, input.to_offset as i64,
+            input.summary, input.suggested_bpm, input.confidence, input.dominant_level,
+            input.line_count as i64, input.anomaly_count as i64,
+            input.level_counts_json, input.anomaly_markers_json,
+            input.top_components_json, input.sonification_cues_json, input.warnings_json,
+        ],
+    ).map_err(|e| format!("Failed to insert session event: {e}"))?;
+    Ok(conn.last_insert_rowid())
+}
+
+fn db_list_session_events(conn: &Connection, session_id: &str) -> Result<Vec<SessionEvent>, String> {
+    let mut stmt = conn.prepare(
+        "SELECT id, session_id, poll_index, captured_at, from_offset, to_offset,
+                summary, suggested_bpm, confidence, dominant_level, line_count, anomaly_count,
+                level_counts_json, anomaly_markers_json, top_components_json,
+                sonification_cues_json, warnings_json
+         FROM session_events
+         WHERE session_id = ?1
+         ORDER BY poll_index ASC",
+    ).map_err(|e| format!("Failed to prepare session events query: {e}"))?;
+
+    let rows = stmt.query_map(rusqlite::params![session_id], |row| {
+        Ok(SessionEvent {
+            id: row.get(0)?,
+            session_id: row.get(1)?,
+            poll_index: row.get::<_, i64>(2).map(|v| v as u64)?,
+            captured_at: row.get(3)?,
+            from_offset: row.get::<_, i64>(4).map(|v| v as u64)?,
+            to_offset: row.get::<_, i64>(5).map(|v| v as u64)?,
+            summary: row.get(6)?,
+            suggested_bpm: row.get(7)?,
+            confidence: row.get(8)?,
+            dominant_level: row.get(9)?,
+            line_count: row.get::<_, i64>(10).map(|v| v as u64)?,
+            anomaly_count: row.get::<_, i64>(11).map(|v| v as u64)?,
+            level_counts_json: row.get(12)?,
+            anomaly_markers_json: row.get(13)?,
+            top_components_json: row.get(14)?,
+            sonification_cues_json: row.get(15)?,
+            warnings_json: row.get(16)?,
+        })
+    }).map_err(|e| format!("Failed to query session events: {e}"))?;
+
+    rows.map(|r| r.map_err(|e| format!("Row error: {e}"))).collect()
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct StreamSessionPollResult {
@@ -324,6 +571,8 @@ struct ImportCompositionInput {
     reference_asset_id: Option<String>,
     manual_bpm: Option<f64>,
     label: Option<String>,
+    track_id: Option<String>,
+    structure_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
@@ -569,10 +818,12 @@ fn poll_log_stream(
     source_path: String,
     cursor: Option<u64>,
 ) -> Result<LiveLogStreamUpdate, String> {
+    eprintln!("[MAIA:Rust] poll_log_stream path={} cursor={:?}", source_path, cursor);
     let (resolved_path, from_offset, to_offset, chunk, local_warnings) =
         read_log_stream_chunk(&source_path, cursor)?;
 
     let has_data = !chunk.trim().is_empty();
+    eprintln!("[MAIA:Rust] poll_log_stream has_data={} chunk_len={} from={} to={}", has_data, chunk.len(), from_offset, to_offset);
     let mut warnings = local_warnings;
 
     if !has_data {
@@ -633,6 +884,9 @@ fn poll_log_stream(
     warnings.extend(parsed.warnings.clone());
 
     let metrics = &payload.musical_asset.metrics;
+    let cues: Vec<LiveLogCue> = decode_json_metric(metrics, "sonificationCues")?;
+    eprintln!("[MAIA:Rust] poll_log_stream → lines={} anomalies={} cues={} bpm={:?}",
+        metric_i64(metrics, "lineCount"), metric_i64(metrics, "anomalyCount"), cues.len(), payload.musical_asset.suggested_bpm);
     Ok(LiveLogStreamUpdate {
         source_path: resolved_path,
         from_offset,
@@ -650,7 +904,7 @@ fn poll_log_stream(
             .unwrap_or_else(|| Value::Object(serde_json::Map::new())),
         anomaly_markers: decode_json_metric(metrics, "anomalyMarkers")?,
         top_components: decode_json_metric(metrics, "topComponents")?,
-        sonification_cues: decode_json_metric(metrics, "sonificationCues")?,
+        sonification_cues: cues,
         warnings,
     })
 }
@@ -664,6 +918,7 @@ fn start_stream_session(
     input: StartSessionInput,
     registry: State<'_, SessionRegistryState>,
 ) -> Result<StreamSessionRecord, String> {
+    eprintln!("[MAIA:Rust] start_stream_session id={} adapter={} source={}", input.session_id, input.adapter_kind, input.source);
     let session_id = input.session_id.trim().to_string();
     if session_id.is_empty() {
         return Err("sessionId must not be empty".to_string());
@@ -761,11 +1016,84 @@ fn list_stream_sessions(
     Ok(sessions)
 }
 
+// ---------------------------------------------------------------------------
+// Persisted session commands
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+fn create_persisted_session(
+    app_handle: AppHandle,
+    input: CreateSessionInput,
+) -> Result<PersistedSession, String> {
+    let conn = open_database(&app_handle)?;
+    db_create_session(&conn, &input)
+}
+
+#[tauri::command]
+fn list_persisted_sessions(app_handle: AppHandle) -> Result<Vec<PersistedSession>, String> {
+    let conn = open_database(&app_handle)?;
+    db_list_sessions(&conn)
+}
+
+#[tauri::command]
+fn get_persisted_session(app_handle: AppHandle, id: String) -> Result<PersistedSession, String> {
+    let conn = open_database(&app_handle)?;
+    db_get_session(&conn, &id)
+}
+
+#[tauri::command]
+fn update_persisted_session_status(
+    app_handle: AppHandle,
+    id: String,
+    status: String,
+) -> Result<(), String> {
+    let conn = open_database(&app_handle)?;
+    db_update_session_status(&conn, &id, &status)
+}
+
+#[tauri::command]
+fn update_persisted_session_cursor(
+    app_handle: AppHandle,
+    id: String,
+    cursor: u64,
+    lines_delta: u64,
+    anomalies_delta: u64,
+    last_bpm: Option<f64>,
+) -> Result<(), String> {
+    let conn = open_database(&app_handle)?;
+    db_update_session_cursor(&conn, &id, cursor, lines_delta, anomalies_delta, last_bpm)
+}
+
+#[tauri::command]
+fn delete_persisted_session(app_handle: AppHandle, id: String) -> Result<bool, String> {
+    let conn = open_database(&app_handle)?;
+    db_delete_session(&conn, &id)
+}
+
+#[tauri::command]
+fn insert_session_event(
+    app_handle: AppHandle,
+    input: InsertSessionEventInput,
+) -> Result<i64, String> {
+    let conn = open_database(&app_handle)?;
+    db_insert_session_event(&conn, &input)
+}
+
+#[tauri::command]
+fn list_session_events(
+    app_handle: AppHandle,
+    session_id: String,
+) -> Result<Vec<SessionEvent>, String> {
+    let conn = open_database(&app_handle)?;
+    db_list_session_events(&conn, &session_id)
+}
+
 #[tauri::command]
 fn poll_stream_session(
     session_id: String,
     registry: State<'_, SessionRegistryState>,
 ) -> Result<StreamSessionPollResult, String> {
+    eprintln!("[MAIA:Rust] poll_stream_session id={}", session_id);
     // For file adapter: read new bytes, feed them into the session ring buffer
     // via the normal poll_log_stream path with logTailSessionId included,
     // then call session_poll to get the accumulated analysis.
@@ -854,6 +1182,10 @@ fn poll_stream_session(
             .ok_or_else(|| format!("Session disappeared during poll: {session_id}"))?
     };
 
+    let cues_ss: Vec<LiveLogCue> = decode_json_metric(metrics, "sonificationCues")?;
+    eprintln!("[MAIA:Rust] poll_stream_session → has_data={} lines={} cues={} bpm={:?}",
+        has_data, metric_i64(metrics, "lineCount"), cues_ss.len(), resp_payload.musical_asset.suggested_bpm);
+
     Ok(StreamSessionPollResult {
         session: session_record,
         has_data,
@@ -867,7 +1199,7 @@ fn poll_stream_session(
             .unwrap_or_else(|| Value::Object(serde_json::Map::new())),
         anomaly_markers: decode_json_metric(metrics, "anomalyMarkers")?,
         top_components: decode_json_metric(metrics, "topComponents")?,
-        sonification_cues: decode_json_metric(metrics, "sonificationCues")?,
+        sonification_cues: cues_ss,
         warnings,
     })
 }
@@ -1099,6 +1431,92 @@ fn pick_export_save_path(default_name: String) -> Result<Option<String>, String>
         "Choose export destination",
         Some(&filter),
     )
+}
+
+#[tauri::command]
+fn pick_stems_export_directory() -> Result<Option<String>, String> {
+    pick_native_path(
+        NativePickerKind::Directory,
+        None,
+        "Choose stems output folder",
+        None,
+    )
+}
+
+#[tauri::command]
+fn export_composition_stems(
+    app_handle: AppHandle,
+    composition_id: String,
+    dest_dir: String,
+) -> Result<Value, String> {
+    // Load all compositions and find the matching one
+    let conn = open_database(&app_handle)?;
+    let compositions = read_compositions(&conn)?;
+    let composition = compositions
+        .into_iter()
+        .find(|c| c.id == composition_id)
+        .ok_or_else(|| format!("Composition not found: {composition_id}"))?;
+
+    let bpm = composition.target_bpm;
+    let duration_seconds = match composition.metrics.get("previewDurationSeconds") {
+        Some(Value::Number(n)) => n.as_f64().unwrap_or_else(|| 64.0 * 60.0 / bpm),
+        _ => 64.0 * 60.0 / bpm,
+    };
+
+    let sections_value = composition.metrics
+        .get("arrangementSections")
+        .cloned()
+        .unwrap_or_else(|| Value::Array(vec![]));
+
+    let render_preview_value = composition.metrics
+        .get("renderPreview")
+        .cloned()
+        .unwrap_or_else(|| Value::Object(serde_json::Map::new()));
+
+    let payload = json!({
+        "bpm": bpm,
+        "durationSeconds": duration_seconds,
+        "sections": sections_value,
+        "renderPreview": render_preview_value,
+    });
+    let payload_str = serde_json::to_string(&payload)
+        .map_err(|e| format!("Failed to serialize stems payload: {e}"))?;
+
+    let repo_root = repo_root();
+    let python_bin = analyzer_python(&repo_root);
+    let analyzer_src = repo_root.join("analyzer/src");
+
+    let mut child = Command::new(python_bin)
+        .arg("-m")
+        .arg("maia_analyzer.cli")
+        .arg("export-stems")
+        .arg("--dest-dir")
+        .arg(&dest_dir)
+        .env("PYTHONPATH", analyzer_src.to_string_lossy().as_ref())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to spawn analyzer for stems export: {e}"))?;
+
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(payload_str.as_bytes())
+            .map_err(|e| format!("Failed to write stems payload: {e}"))?;
+    }
+
+    let output = child.wait_with_output()
+        .map_err(|e| format!("Stems export process error: {e}"))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let response: Value = serde_json::from_str(stdout.trim())
+        .map_err(|e| format!("Invalid JSON from stems export: {e}\nOutput: {stdout}"))?;
+
+    if response.get("status").and_then(Value::as_str) == Some("ok") {
+        Ok(response)
+    } else {
+        let msg = response.get("error").and_then(Value::as_str).unwrap_or("Unknown error");
+        Err(format!("Stems export failed: {msg}"))
+    }
 }
 
 #[tauri::command]
@@ -1558,9 +1976,30 @@ fn open_database(app_handle: &AppHandle) -> Result<Connection, String> {
     let conn = Connection::open(&path)
         .map_err(|error| format!("Failed to open SQLite database {}: {error}", path.display()))?;
 
+    // Purge duplicate source_path rows before schema enforcement so the unique
+    // index can be created/re-created even on databases that were written before
+    // the dedup guard was in place.  Silently ignored on fresh databases where
+    // the table does not exist yet.
+    let _ = conn.execute_batch(
+        "DELETE FROM musical_assets \
+         WHERE rowid NOT IN (\
+           SELECT MAX(rowid) FROM musical_assets GROUP BY source_path\
+         );",
+    );
+
     conn.execute_batch(SCHEMA_SQL)
         .map_err(|error| format!("Failed to initialize SQLite schema: {error}"))?;
     migrate_database(&conn)?;
+
+    // Deduplicate again after migration because the migration rebuilds the table
+    // without a UNIQUE constraint, which may allow duplicate rows to survive.
+    let _ = conn.execute_batch(
+        "DELETE FROM musical_assets \
+         WHERE rowid NOT IN (\
+           SELECT MAX(rowid) FROM musical_assets GROUP BY source_path\
+         );",
+    );
+
     conn.execute_batch(SCHEMA_SQL)
         .map_err(|error| format!("Failed to refresh SQLite schema after migration: {error}"))?;
     ensure_track_storage_path_column(&conn)?;
@@ -1593,7 +2032,7 @@ fn migrate_database(conn: &Connection) -> Result<(), String> {
           id TEXT PRIMARY KEY,
           asset_type TEXT NOT NULL CHECK (asset_type IN ('track_analysis', 'repo_analysis', 'base_asset', 'composition_result')),
           title TEXT NOT NULL,
-          source_path TEXT NOT NULL,
+          source_path TEXT NOT NULL UNIQUE,
           source_kind TEXT NOT NULL CHECK (source_kind IN ('file', 'directory', 'url')),
           suggested_bpm REAL,
           confidence REAL NOT NULL DEFAULT 0,
@@ -1983,12 +2422,16 @@ fn pick_native_path(
     {
         let default_path = picker_default_path(initial_path);
 
-        if let Some(selected) = pick_with_kdialog(&kind, &default_path, title, filter)? {
-            return Ok(Some(selected));
+        match pick_with_kdialog(&kind, &default_path, title, filter)? {
+            PickerOutcome::Selected(path) => return Ok(Some(path)),
+            PickerOutcome::Cancelled => return Ok(None),
+            PickerOutcome::NotFound => {}
         }
 
-        if let Some(selected) = pick_with_zenity(&kind, &default_path, title, filter)? {
-            return Ok(Some(selected));
+        match pick_with_zenity(&kind, &default_path, title, filter)? {
+            PickerOutcome::Selected(path) => return Ok(Some(path)),
+            PickerOutcome::Cancelled => return Ok(None),
+            PickerOutcome::NotFound => {}
         }
 
         return Err(
@@ -2008,12 +2451,19 @@ fn pick_native_path(
 }
 
 #[cfg(target_os = "linux")]
+enum PickerOutcome {
+    Selected(String),
+    Cancelled,
+    NotFound,
+}
+
+#[cfg(target_os = "linux")]
 fn pick_with_kdialog(
     kind: &NativePickerKind,
     default_path: &str,
     title: &str,
     filter: Option<&str>,
-) -> Result<Option<String>, String> {
+) -> Result<PickerOutcome, String> {
     let mut args = vec!["--title", title];
 
     match kind {
@@ -2046,7 +2496,7 @@ fn pick_with_zenity(
     default_path: &str,
     title: &str,
     filter: Option<&str>,
-) -> Result<Option<String>, String> {
+) -> Result<PickerOutcome, String> {
     let mut args = vec![
         "--file-selection",
         "--title",
@@ -2072,10 +2522,10 @@ fn pick_with_zenity(
 }
 
 #[cfg(target_os = "linux")]
-fn run_native_picker_command(command: &str, args: &[&str]) -> Result<Option<String>, String> {
+fn run_native_picker_command(command: &str, args: &[&str]) -> Result<PickerOutcome, String> {
     let output = match Command::new(command).args(args).output() {
         Ok(output) => output,
-        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(None),
+        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(PickerOutcome::NotFound),
         Err(error) => return Err(format!("Failed to launch {command}: {error}")),
     };
 
@@ -2085,14 +2535,15 @@ fn run_native_picker_command(command: &str, args: &[&str]) -> Result<Option<Stri
 
     if output.status.success() {
         if selected.is_empty() {
-            return Ok(None);
+            return Ok(PickerOutcome::Cancelled);
         }
 
-        return Ok(Some(selected));
+        return Ok(PickerOutcome::Selected(selected));
     }
 
+    // Non-zero exit with empty stdout means user cancelled (e.g. kdialog cancel button).
     if selected.is_empty() {
-        return Ok(None);
+        return Ok(PickerOutcome::Cancelled);
     }
 
     let stderr = String::from_utf8(output.stderr)
@@ -2110,18 +2561,28 @@ fn run_native_picker_command(command: &str, args: &[&str]) -> Result<Option<Stri
 }
 
 fn picker_default_path(initial_path: Option<String>) -> String {
-    initial_path
-        .as_deref()
-        .map(str::trim)
-        .filter(|path| !path.is_empty())
-        .map(str::to_string)
-        .or_else(|| {
-            env::var("HOME")
-                .ok()
-                .map(|path| path.trim().to_string())
-                .filter(|path| !path.is_empty())
-        })
-        .unwrap_or_else(|| repo_root().display().to_string())
+    // If the caller provides an existing path, use its parent dir so the
+    // picker opens in the same folder as the previously selected file.
+    if let Some(p) = initial_path.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+        let pb = PathBuf::from(p);
+        let dir = if pb.is_dir() { pb } else { pb.parent().map(|p| p.to_path_buf()).unwrap_or_else(|| PathBuf::from(p)) };
+        if dir.exists() {
+            return dir.to_string_lossy().to_string();
+        }
+    }
+
+    // Prefer ~/Music then ~/Música then $HOME.
+    if let Some(home) = home_dir() {
+        for subdir in &["Music", "Música", "music", "musica"] {
+            let candidate = home.join(subdir);
+            if candidate.is_dir() {
+                return candidate.to_string_lossy().to_string();
+            }
+        }
+        return home.to_string_lossy().to_string();
+    }
+
+    repo_root().display().to_string()
 }
 
 fn music_style_config_path(repo_root: &Path) -> PathBuf {
@@ -2669,8 +3130,18 @@ fn insert_track(
     managed_root: &Path,
 ) -> Result<LibraryTrack, String> {
     let title = input.title.trim();
-    let source_path = input.source_path.trim();
+    let raw_source_path = input.source_path.trim();
+    // Canonicalize once — used for dedup check AND stored in the DB so
+    // future imports of the same file (via symlink, `~/…`, or absolute path)
+    // all resolve to the same key.
+    let source_path_owned = canonical_source_path(raw_source_path);
+    let source_path = source_path_owned.as_str();
     let music_style_id = input.music_style_id.trim();
+
+    // Prevent duplicates by canonical path
+    if check_duplicate_source_path(conn, source_path)? {
+        return Err(format!("A track with path '{}' already exists in your library.", source_path));
+    }
 
     if title.is_empty() {
         return Err("Track title is required.".to_string());
@@ -2815,6 +3286,10 @@ fn insert_base_asset(
     let source_kind = input.source_kind.trim();
     let source_path = input.source_path.trim();
     let category_id = input.category_id.trim();
+
+    if check_duplicate_source_path(conn, source_path)? {
+        return Err(format!("A base asset with path '{}' already exists in your library.", source_path));
+    }
     let label = input
         .label
         .as_deref()
@@ -3088,74 +3563,53 @@ fn resolve_composition_reference(
     conn: &Connection,
     input: &ImportCompositionInput,
 ) -> Result<CompositionReferenceDraft, String> {
-    match input.reference_type.trim() {
-        "track" => {
-            let reference_asset_id = input
-                .reference_asset_id
-                .as_deref()
-                .map(str::trim)
-                .filter(|value| !value.is_empty())
-                .ok_or_else(|| {
-                    "Track composition reference requires a selected track.".to_string()
-                })?;
-            let track = read_tracks(conn)?
-                .into_iter()
-                .find(|entry| entry.id == reference_asset_id)
-                .ok_or_else(|| format!("Track reference not found: {reference_asset_id}"))?;
-            let target_bpm = track
-                .bpm
-                .ok_or_else(|| "The selected track does not have a stored BPM yet.".to_string())?;
+    // Get the track (always required as instrumental base)
+    let track_id = input
+        .track_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            "Composition requires a track as the instrumental base.".to_string()
+        })?;
 
-            Ok(CompositionReferenceDraft {
-                reference_type: "track".to_string(),
-                reference_asset_id: Some(track.id),
-                reference_title: track.title,
-                reference_source_path: Some(track.source_path),
-                target_bpm,
-            })
-        }
-        "repo" => {
-            let reference_asset_id = input
-                .reference_asset_id
-                .as_deref()
-                .map(str::trim)
-                .filter(|value| !value.is_empty())
-                .ok_or_else(|| {
-                    "Repository composition reference requires a selected repository.".to_string()
-                })?;
-            let repository = read_repositories(conn)?
-                .into_iter()
-                .find(|entry| entry.id == reference_asset_id)
-                .ok_or_else(|| format!("Repository reference not found: {reference_asset_id}"))?;
-            let target_bpm = repository.suggested_bpm.ok_or_else(|| {
-                "The selected repository does not have a suggested BPM yet.".to_string()
-            })?;
+    let track = read_tracks(conn)?
+        .into_iter()
+        .find(|entry| entry.id == track_id)
+        .ok_or_else(|| format!("Track not found: {track_id}"))?;
 
-            Ok(CompositionReferenceDraft {
-                reference_type: "repo".to_string(),
-                reference_asset_id: Some(repository.id),
-                reference_title: repository.title,
-                reference_source_path: Some(repository.source_path),
-                target_bpm,
-            })
-        }
-        "manual" => {
-            let manual_bpm = input
-                .manual_bpm
-                .filter(|value| value.is_finite() && *value > 0.0)
-                .ok_or_else(|| {
-                    "Manual composition reference requires a positive BPM.".to_string()
-                })?;
+    let base_bpm = track
+        .bpm
+        .ok_or_else(|| "The selected track does not have a stored BPM yet.".to_string())?;
 
-            Ok(CompositionReferenceDraft {
-                reference_type: "manual".to_string(),
-                reference_asset_id: None,
-                reference_title: format!("Manual {:.0} BPM", manual_bpm),
-                reference_source_path: None,
-                target_bpm: manual_bpm,
-            })
-        }
-        _ => Err("Unsupported composition reference type.".to_string()),
+    // Check if a structural reference (repo/log) is also provided
+    if let Some(structure_id) = input.structure_id.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+        let repository = read_repositories(conn)?
+            .into_iter()
+            .find(|entry| entry.id == structure_id)
+            .ok_or_else(|| format!("Repository reference not found: {structure_id}"))?;
+
+        // Use repo's BPM if available, otherwise fall back to track BPM
+        let target_bpm = repository.suggested_bpm.unwrap_or(base_bpm);
+
+        // Store both track and structure in the reference for the analyzer
+        Ok(CompositionReferenceDraft {
+            reference_type: "repo".to_string(),
+            reference_asset_id: Some(repository.id),
+            reference_title: format!("{} (structured by {})", track.title, repository.title),
+            reference_source_path: Some(repository.source_path),
+            target_bpm,
+            // TODO: Store track_id in metadata for analyzer to use as instrumental base
+        })
+    } else {
+        // Use only the track as reference
+        Ok(CompositionReferenceDraft {
+            reference_type: "track".to_string(),
+            reference_asset_id: Some(track.id),
+            reference_title: track.title,
+            reference_source_path: Some(track.source_path),
+            target_bpm: base_bpm,
+        })
     }
 }
 
@@ -3166,6 +3620,10 @@ fn insert_repository(
 ) -> Result<RepositoryAnalysis, String> {
     let source_kind = input.source_kind.trim();
     let source_path = input.source_path.trim();
+
+    if check_duplicate_source_path(conn, source_path)? {
+        return Err(format!("A repository with path '{}' already exists in your library.", source_path));
+    }
     let import_label = input
         .label
         .as_deref()
@@ -4008,7 +4466,51 @@ fn epoch_secs_to_ymdhms(secs: u64) -> (u64, u64, u64, u64, u64, u64) {
     (y, mo, d, h, min, s)
 }
 
+/// Canonicalize a source path for deduplication: expand `~`, resolve symlinks
+/// if the file exists, otherwise just expand `~` to an absolute path.
+fn canonical_source_path(raw: &str) -> String {
+    let expanded = match expanded_input_path(raw) {
+        Ok(p) => p,
+        Err(_) => return raw.trim().to_string(),
+    };
+    // Resolve symlinks/relative segments when the file is reachable.
+    expanded
+        .canonicalize()
+        .unwrap_or(expanded)
+        .to_string_lossy()
+        .to_string()
+}
+
+fn check_duplicate_source_path(conn: &Connection, source_path: &str) -> Result<bool, String> {
+    let canonical = canonical_source_path(source_path);
+    let mut stmt = conn
+        .prepare("SELECT 1 FROM musical_assets WHERE source_path = ?1")
+        .map_err(|e| format!("Failed to prepare duplicate check: {e}"))?;
+    let mut rows = stmt.query(params![canonical])
+        .map_err(|e| format!("Failed to execute duplicate check: {e}"))?;
+    Ok(rows.next().map_err(|e| format!("Failed to read duplicate check row: {e}"))?.is_some())
+}
+
+#[tauri::command]
+fn read_audio_bytes(path: String) -> Result<String, String> {
+    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    let bytes = fs::read(&path).map_err(|e| format!("Cannot read audio file: {e}"))?;
+    Ok(STANDARD.encode(bytes))
+}
+
+// ---------------------------------------------------------------------------
+// Frontend logging — forwards JS console messages to the terminal
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+fn log_to_terminal(level: String, message: String) {
+    eprintln!("{level} {message}");
+}
+
 fn main() {
+    eprintln!("═══════════════════════════════════════════════════════");
+    eprintln!("[MAIA:Rust] Desktop app starting — eprintln! verified");
+    eprintln!("═══════════════════════════════════════════════════════");
     tauri::Builder::default()
         .manage(Mutex::new(SessionRegistry::default()))
         .invoke_handler(tauri::generate_handler![
@@ -4018,13 +4520,23 @@ fn main() {
             pick_repository_directory,
             pick_repository_file,
             pick_export_save_path,
+            pick_stems_export_directory,
             export_composition_file,
+            export_composition_stems,
             poll_log_stream,
             start_stream_session,
             stop_stream_session,
             list_stream_sessions,
             poll_stream_session,
             ingest_stream_chunk,
+            create_persisted_session,
+            list_persisted_sessions,
+            get_persisted_session,
+            update_persisted_session_status,
+            update_persisted_session_cursor,
+            delete_persisted_session,
+            insert_session_event,
+            list_session_events,
             pick_base_asset_path,
             list_tracks,
             import_track,
@@ -4034,7 +4546,9 @@ fn main() {
             list_compositions,
             import_composition,
             list_repositories,
-            import_repository
+            import_repository,
+            read_audio_bytes,
+            log_to_terminal
         ])
         .run(tauri::generate_context!())
         .expect("error while running Maia desktop");

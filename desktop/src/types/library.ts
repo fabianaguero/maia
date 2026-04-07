@@ -1,5 +1,5 @@
-export type AppScreen = "library" | "analyzer";
-export type AnalyzerViewMode = "track" | "repo" | "base" | "composition";
+export type AppScreen = "library" | "inspect" | "compose" | "session";
+export type AnalyzerViewMode = "track" | "repo" | "base";
 
 export interface BeatGridPoint {
   index: number;
@@ -31,6 +31,17 @@ export interface LibraryTrack {
   analysisMode: string;
   musicStyleId: string;
   musicStyleLabel: string;
+  visualization?: {
+    waveform: number[];
+    hotCues: Array<{
+      second: number;
+      label: string;
+      type: string;
+      excerpt?: string;
+    }>;
+    beatGrid: BeatGridPoint[];
+    complexityCurve?: number[];
+  };
 }
 
 export interface ImportTrackInput {
@@ -98,6 +109,17 @@ export interface CompositionResultRecord {
   waveformBins: number[];
   beatGrid: BeatGridPoint[];
   bpmCurve: BpmCurvePoint[];
+  visualization?: {
+    waveform: number[];
+    hotCues: Array<{
+      second: number;
+      label: string;
+      type: string;
+      excerpt?: string;
+    }>;
+    beatGrid: BeatGridPoint[];
+    complexityCurve?: number[];
+  };
 }
 
 export interface ImportCompositionInput {
@@ -106,6 +128,10 @@ export interface ImportCompositionInput {
   referenceAssetId?: string;
   manualBpm?: number;
   label?: string;
+  /** Track ID to use as instrumental/beat base (required) */
+  trackId?: string;
+  /** Repository/log ID for structural variation (optional) */
+  structureId?: string;
 }
 
 export type RepositorySourceKind = "directory" | "file" | "url";
