@@ -1,0 +1,332 @@
+2026-01-10 09:00:13 [WARN ] ingest             Retry 1/3 for upstream scheduler
+2026-01-10 09:01:44 [DEBUG] queue              Query executed in 301ms rows=474
+2026-01-10 09:02:19 [INFO ] queue              Health check passed
+2026-01-10 09:03:00 [WARN ] worker             Queue depth 209 above soft limit 100
+2026-01-10 09:03:55 [WARN ] auth               Response time 155ms exceeds P95 threshold
+2026-01-10 09:05:08 [INFO ] ingest             Cache hit ratio: 0.88
+2026-01-10 09:05:48 [INFO ] auth               BPM heuristic applied: detected=92 confidence=0.86
+2026-01-10 09:06:35 [INFO ] queue              Track 'track-9011' imported to library
+2026-01-10 09:07:46 [WARN ] api                Retry 1/3 for upstream auth
+2026-01-10 09:09:03 [INFO ] queue              Cache hit ratio: 0.82
+2026-01-10 09:09:48 [WARN ] ingest             Response time 410ms exceeds P95 threshold
+2026-01-10 09:10:34 [INFO ] auth               BPM heuristic applied: detected=77 confidence=0.90
+2026-01-10 09:11:44 [INFO ] auth               Waveform bins computed in 376ms
+2026-01-10 09:12:39 [WARN ] cache              Retry 1/3 for upstream ingest
+2026-01-10 09:13:08 [WARN ] scheduler          Retry 1/3 for upstream queue
+2026-01-10 09:13:46 [INFO ] ingest             Cache hit ratio: 0.70
+2026-01-10 09:15:19 [DEBUG] auth               Query executed in 32ms rows=113
+2026-01-10 09:16:24 [INFO ] cache              Track 'track-5056' imported to library
+2026-01-10 09:16:55 [DEBUG] scheduler          Query executed in 43ms rows=87
+2026-01-10 09:17:53 [DEBUG] scheduler          Session token refreshed for user_9
+2026-01-10 09:18:28 [DEBUG] scheduler          Session token refreshed for user_9
+2026-01-10 09:20:00 [INFO ] scheduler          Cache hit ratio: 0.84
+2026-01-10 09:20:24 [INFO ] worker             BPM heuristic applied: detected=71 confidence=0.69
+2026-01-10 09:21:19 [INFO ] db                 Waveform bins computed in 250ms
+2026-01-10 09:22:53 [INFO ] worker             Health check passed
+2026-01-10 09:23:13 [INFO ] api                Track 'track-7864' imported to library
+2026-01-10 09:24:24 [WARN ] queue              Response time 291ms exceeds P95 threshold
+2026-01-10 09:25:05 [WARN ] worker             Queue depth 229 above soft limit 100
+2026-01-10 09:26:12 [DEBUG] api                Query executed in 462ms rows=447
+2026-01-10 09:27:24 [INFO ] scheduler          Worker heartbeat OK
+2026-01-10 09:27:55 [INFO ] scheduler          BPM heuristic applied: detected=90 confidence=0.85
+2026-01-10 09:28:28 [INFO ] db                 BPM heuristic applied: detected=73 confidence=0.88
+2026-01-10 09:29:30 [INFO ] auth               Cache hit ratio: 0.98
+2026-01-10 09:30:18 [INFO ] auth               Waveform bins computed in 292ms
+2026-01-10 09:31:19 [INFO ] auth               Cache hit ratio: 0.99
+2026-01-10 09:32:06 [INFO ] auth               Repository snapshot created: 5130 files indexed
+2026-01-10 09:33:24 [WARN ] worker             Retry 1/3 for upstream cache
+2026-01-10 09:34:17 [DEBUG] queue              Query executed in 64ms rows=61
+2026-01-10 09:35:44 [DEBUG] ingest             Query executed in 247ms rows=249
+2026-01-10 09:36:04 [INFO ] auth               Track 'track-2674' imported to library
+2026-01-10 09:37:27 [WARN ] queue              Queue depth 77 above soft limit 100
+2026-01-10 09:38:05 [DEBUG] worker             Session token refreshed for user_1
+2026-01-10 09:38:43 [INFO ] queue              Track 'track-9899' imported to library
+2026-01-10 09:39:26 [WARN ] cache              Retry 1/3 for upstream auth
+2026-01-10 09:41:04 [DEBUG] cache              Session token refreshed for user_12
+2026-01-10 09:41:25 [INFO ] queue              Repository snapshot created: 4462 files indexed
+2026-01-10 09:42:44 [WARN ] queue              Retry 1/3 for upstream db
+2026-01-10 09:43:44 [INFO ] db                 Repository snapshot created: 6803 files indexed
+2026-01-10 09:44:25 [INFO ] db                 Repository snapshot created: 4340 files indexed
+2026-01-10 09:45:26 [WARN ] queue              Queue depth 17 above soft limit 100
+2026-01-10 09:45:51 [DEBUG] cache              Query executed in 134ms rows=101
+2026-01-10 09:47:29 [DEBUG] queue              Query executed in 415ms rows=481
+2026-01-10 09:48:26 [INFO ] queue              Cache hit ratio: 0.65
+2026-01-10 09:48:49 [INFO ] auth               Repository snapshot created: 3950 files indexed
+2026-01-10 09:49:42 [INFO ] queue              Repository snapshot created: 4053 files indexed
+2026-01-10 09:51:04 [DEBUG] api                Query executed in 467ms rows=336
+2026-01-10 09:51:42 [WARN ] auth               Retry 1/3 for upstream auth
+2026-01-10 09:52:39 [DEBUG] db                 Query executed in 457ms rows=93
+2026-01-10 09:53:37 [INFO ] queue              BPM heuristic applied: detected=85 confidence=0.89
+2026-01-10 09:54:30 [WARN ] auth               Queue depth 50 above soft limit 100
+2026-01-10 09:55:10 [INFO ] worker             Waveform bins computed in 79ms
+2026-01-10 09:56:32 [WARN ] ingest             Retry 1/3 for upstream worker
+2026-01-10 09:57:29 [WARN ] ingest             Retry 1/3 for upstream queue
+2026-01-10 09:57:54 [INFO ] worker             Waveform bins computed in 9ms
+2026-01-10 09:59:31 [DEBUG] auth               Session token refreshed for user_5
+2026-01-10 10:00:02 [INFO ] db                 Repository snapshot created: 329 files indexed
+2026-01-10 10:00:46 [INFO ] db                 Health check passed
+2026-01-10 10:01:57 [WARN ] db                 Response time 168ms exceeds P95 threshold
+2026-01-10 10:02:36 [INFO ] scheduler          Track 'track-1997' imported to library
+2026-01-10 10:04:02 [DEBUG] queue              Query executed in 341ms rows=300
+2026-01-10 10:05:02 [DEBUG] scheduler          Session token refreshed for user_5
+2026-01-10 10:05:39 [DEBUG] worker             Session token refreshed for user_17
+2026-01-10 10:06:01 [INFO ] ingest             Track 'track-1064' imported to library
+2026-01-10 10:07:44 [INFO ] worker             Track 'track-3319' imported to library
+2026-01-10 10:08:20 [DEBUG] auth               Session token refreshed for user_2
+2026-01-10 10:09:05 [INFO ] ingest             BPM heuristic applied: detected=95 confidence=0.63
+2026-01-10 10:09:55 [INFO ] db                 Health check passed
+2026-01-10 10:10:37 [DEBUG] auth               Session token refreshed for user_15
+2026-01-10 10:12:05 [INFO ] api                BPM heuristic applied: detected=88 confidence=0.80
+2026-01-10 10:13:04 [WARN ] db                 Queue depth 80 above soft limit 100
+2026-01-10 10:13:48 [DEBUG] ingest             Session token refreshed for user_8
+2026-01-10 10:14:59 [DEBUG] cache              Session token refreshed for user_7
+2026-01-10 10:16:03 [INFO ] ingest             Track 'track-7826' imported to library
+2026-01-10 10:16:12 [DEBUG] scheduler          Query executed in 163ms rows=39
+2026-01-10 10:17:42 [INFO ] db                 Worker heartbeat OK
+2026-01-10 10:17:59 [WARN ] db                 Retry 1/3 for upstream cache
+2026-01-10 10:19:40 [INFO ] auth               Track 'track-6999' imported to library
+2026-01-10 10:19:54 [INFO ] cache              Track 'track-8663' imported to library
+2026-01-10 10:20:54 [INFO ] auth               Worker heartbeat OK
+2026-01-10 10:22:06 [WARN ] worker             Retry 1/3 for upstream db
+2026-01-10 10:22:40 [DEBUG] scheduler          Session token refreshed for user_13
+2026-01-10 10:23:46 [INFO ] scheduler          Repository snapshot created: 3021 files indexed
+2026-01-10 10:24:40 [WARN ] auth               Queue depth 103 above soft limit 100
+2026-01-10 10:25:16 [DEBUG] queue              Session token refreshed for user_15
+2026-01-10 10:26:38 [INFO ] api                Worker heartbeat OK
+2026-01-10 10:27:26 [DEBUG] cache              Session token refreshed for user_3
+2026-01-10 10:28:07 [INFO ] db                 BPM heuristic applied: detected=65 confidence=0.76
+2026-01-10 10:29:12 [INFO ] api                Track 'track-5430' imported to library
+2026-01-10 10:30:38 [INFO ] worker             Worker heartbeat OK
+2026-01-10 10:31:39 [INFO ] cache              Worker heartbeat OK
+2026-01-10 10:31:49 [WARN ] ingest             Queue depth 93 above soft limit 100
+2026-01-10 10:32:40 [INFO ] cache              Waveform bins computed in 411ms
+2026-01-10 10:34:14 [INFO ] worker             Worker heartbeat OK
+2026-01-10 10:34:29 [INFO ] cache              Waveform bins computed in 326ms
+2026-01-10 10:35:25 [INFO ] cache              BPM heuristic applied: detected=98 confidence=0.74
+2026-01-10 10:36:19 [INFO ] cache              BPM heuristic applied: detected=89 confidence=0.60
+2026-01-10 10:37:31 [INFO ] scheduler          Health check passed
+2026-01-10 10:38:44 [INFO ] worker             Waveform bins computed in 271ms
+2026-01-10 10:39:45 [INFO ] db                 BPM heuristic applied: detected=70 confidence=0.76
+2026-01-10 10:39:58 [INFO ] worker             Repository snapshot created: 7736 files indexed
+2026-01-10 10:41:09 [DEBUG] cache              Session token refreshed for user_7
+2026-01-10 10:42:03 [DEBUG] ingest             Session token refreshed for user_6
+2026-01-10 10:42:57 [INFO ] queue              Waveform bins computed in 130ms
+2026-01-10 10:43:37 [INFO ] api                Waveform bins computed in 377ms
+2026-01-10 10:45:02 [DEBUG] db                 Session token refreshed for user_16
+2026-01-10 10:45:40 [INFO ] ingest             BPM heuristic applied: detected=87 confidence=0.91
+2026-01-10 10:46:54 [DEBUG] scheduler          Session token refreshed for user_10
+2026-01-10 10:47:59 [INFO ] db                 Repository snapshot created: 2907 files indexed
+2026-01-10 10:48:22 [INFO ] worker             Worker heartbeat OK
+2026-01-10 10:49:27 [INFO ] api                Track 'track-1233' imported to library
+2026-01-10 10:50:04 [INFO ] cache              Worker heartbeat OK
+2026-01-10 10:51:05 [INFO ] api                BPM heuristic applied: detected=84 confidence=0.92
+2026-01-10 10:52:32 [WARN ] cache              Response time 126ms exceeds P95 threshold
+2026-01-10 10:53:29 [INFO ] cache              Waveform bins computed in 237ms
+2026-01-10 10:53:51 [INFO ] worker             Health check passed
+2026-01-10 10:55:03 [INFO ] api                Health check passed
+2026-01-10 10:55:53 [DEBUG] queue              Session token refreshed for user_11
+2026-01-10 10:56:40 [INFO ] api                Health check passed
+2026-01-10 10:57:33 [INFO ] queue              Track 'track-1017' imported to library
+2026-01-10 10:58:36 [INFO ] scheduler          BPM heuristic applied: detected=90 confidence=0.77
+2026-01-10 10:59:42 [INFO ] db                 Repository snapshot created: 4234 files indexed
+2026-01-10 11:00:54 [INFO ] api                BPM heuristic applied: detected=76 confidence=0.65
+2026-01-10 11:01:09 [WARN ] scheduler          Response time 23ms exceeds P95 threshold
+2026-01-10 11:02:20 [INFO ] api                Health check passed
+2026-01-10 11:03:09 [INFO ] db                 BPM heuristic applied: detected=97 confidence=0.93
+2026-01-10 11:04:39 [WARN ] worker             Retry 1/3 for upstream scheduler
+2026-01-10 11:05:28 [WARN ] queue              Queue depth 136 above soft limit 100
+2026-01-10 11:05:44 [WARN ] cache              Queue depth 168 above soft limit 100
+2026-01-10 11:07:11 [INFO ] worker             Waveform bins computed in 424ms
+2026-01-10 11:08:18 [WARN ] scheduler          Queue depth 189 above soft limit 100
+2026-01-10 11:09:11 [DEBUG] worker             Session token refreshed for user_17
+2026-01-10 11:09:51 [WARN ] api                Retry 1/3 for upstream db
+2026-01-10 11:10:15 [INFO ] api                Waveform bins computed in 70ms
+2026-01-10 11:11:45 [INFO ] queue              BPM heuristic applied: detected=84 confidence=0.88
+2026-01-10 11:12:35 [WARN ] api                Retry 1/3 for upstream api
+2026-01-10 11:13:35 [DEBUG] db                 Query executed in 137ms rows=3
+2026-01-10 11:14:19 [WARN ] auth               Queue depth 248 above soft limit 100
+2026-01-10 11:15:17 [WARN ] auth               Retry 1/3 for upstream auth
+2026-01-10 11:16:27 [INFO ] ingest             Health check passed
+2026-01-10 11:17:26 [INFO ] auth               Health check passed
+2026-01-10 11:17:45 [INFO ] db                 Repository snapshot created: 6160 files indexed
+2026-01-10 11:19:06 [DEBUG] ingest             Query executed in 434ms rows=197
+2026-01-10 11:19:24 [WARN ] ingest             Retry 1/3 for upstream cache
+2026-01-10 11:21:04 [WARN ] api                Response time 325ms exceeds P95 threshold
+2026-01-10 11:21:51 [INFO ] db                 BPM heuristic applied: detected=98 confidence=0.69
+2026-01-10 11:22:26 [WARN ] cache              Retry 1/3 for upstream cache
+2026-01-10 11:23:39 [INFO ] worker             Waveform bins computed in 248ms
+2026-01-10 11:23:58 [INFO ] ingest             Health check passed
+2026-01-10 11:25:33 [WARN ] auth               Queue depth 65 above soft limit 100
+2026-01-10 11:26:28 [INFO ] ingest             Health check passed
+2026-01-10 11:27:25 [DEBUG] cache              Query executed in 240ms rows=240
+2026-01-10 11:28:24 [DEBUG] auth               Session token refreshed for user_7
+2026-01-10 11:28:49 [DEBUG] auth               Query executed in 10ms rows=150
+2026-01-10 11:29:54 [DEBUG] auth               Session token refreshed for user_15
+2026-01-10 11:30:37 [INFO ] scheduler          Repository snapshot created: 7608 files indexed
+2026-01-10 11:31:28 [WARN ] auth               Response time 48ms exceeds P95 threshold
+2026-01-10 11:32:19 [INFO ] cache              Cache hit ratio: 0.68
+2026-01-10 11:33:43 [INFO ] cache              BPM heuristic applied: detected=83 confidence=0.74
+2026-01-10 11:34:31 [INFO ] ingest             Worker heartbeat OK
+2026-01-10 11:34:56 [INFO ] worker             Waveform bins computed in 488ms
+2026-01-10 11:36:21 [INFO ] ingest             Worker heartbeat OK
+2026-01-10 11:37:04 [INFO ] worker             Worker heartbeat OK
+2026-01-10 11:38:02 [INFO ] scheduler          Cache hit ratio: 0.67
+2026-01-10 11:39:28 [INFO ] queue              Waveform bins computed in 168ms
+2026-01-10 11:40:18 [INFO ] queue              Worker heartbeat OK
+2026-01-10 11:40:32 [WARN ] db                 Queue depth 13 above soft limit 100
+2026-01-10 11:42:07 [INFO ] cache              Health check passed
+2026-01-10 11:42:38 [INFO ] auth               Worker heartbeat OK
+2026-01-10 11:43:34 [INFO ] auth               Cache hit ratio: 0.87
+2026-01-10 11:44:53 [INFO ] cache              Waveform bins computed in 145ms
+2026-01-10 11:45:06 [WARN ] api                Retry 1/3 for upstream cache
+2026-01-10 11:46:35 [INFO ] worker             Repository snapshot created: 2276 files indexed
+2026-01-10 11:47:17 [INFO ] queue              Repository snapshot created: 6433 files indexed
+2026-01-10 11:48:08 [INFO ] scheduler          Waveform bins computed in 417ms
+2026-01-10 11:49:28 [DEBUG] scheduler          Session token refreshed for user_18
+2026-01-10 11:49:48 [INFO ] auth               Waveform bins computed in 479ms
+2026-01-10 11:51:16 [DEBUG] scheduler          Query executed in 316ms rows=387
+2026-01-10 11:51:33 [DEBUG] cache              Query executed in 27ms rows=468
+2026-01-10 11:52:55 [INFO ] worker             Track 'track-8736' imported to library
+2026-01-10 11:53:41 [INFO ] queue              Health check passed
+2026-01-10 11:54:29 [WARN ] cache              Queue depth 199 above soft limit 100
+2026-01-10 11:55:46 [INFO ] cache              Worker heartbeat OK
+2026-01-10 11:56:41 [INFO ] db                 Health check passed
+2026-01-10 11:57:25 [INFO ] scheduler          BPM heuristic applied: detected=70 confidence=0.70
+2026-01-10 11:57:54 [DEBUG] db                 Session token refreshed for user_16
+2026-01-10 11:59:20 [DEBUG] db                 Query executed in 466ms rows=172
+2026-01-10 12:00:28 [INFO ] ingest             Worker heartbeat OK
+2026-01-10 12:00:43 [INFO ] db                 Repository snapshot created: 843 files indexed
+2026-01-10 12:01:41 [DEBUG] queue              Session token refreshed for user_3
+2026-01-10 12:02:45 [INFO ] db                 Cache hit ratio: 0.76
+2026-01-10 12:04:11 [INFO ] db                 Waveform bins computed in 385ms
+2026-01-10 12:04:41 [INFO ] scheduler          Worker heartbeat OK
+2026-01-10 12:05:57 [INFO ] db                 Worker heartbeat OK
+2026-01-10 12:06:22 [INFO ] queue              Waveform bins computed in 257ms
+2026-01-10 12:07:17 [INFO ] queue              Track 'track-9247' imported to library
+2026-01-10 12:08:28 [INFO ] db                 BPM heuristic applied: detected=77 confidence=0.75
+2026-01-10 12:09:14 [WARN ] scheduler          Retry 1/3 for upstream ingest
+2026-01-10 12:10:12 [INFO ] cache              Waveform bins computed in 67ms
+2026-01-10 12:10:42 [WARN ] scheduler          Queue depth 205 above soft limit 100
+2026-01-10 12:12:26 [WARN ] ingest             Response time 252ms exceeds P95 threshold
+2026-01-10 12:12:30 [INFO ] auth               Worker heartbeat OK
+2026-01-10 12:14:17 [DEBUG] ingest             Query executed in 129ms rows=402
+2026-01-10 12:14:26 [INFO ] db                 Track 'track-3491' imported to library
+2026-01-10 12:15:48 [WARN ] auth               Queue depth 189 above soft limit 100
+2026-01-10 12:16:51 [INFO ] ingest             BPM heuristic applied: detected=95 confidence=0.62
+2026-01-10 12:17:05 [INFO ] worker             Repository snapshot created: 4764 files indexed
+2026-01-10 12:18:02 [INFO ] cache              Track 'track-5125' imported to library
+2026-01-10 12:19:28 [WARN ] scheduler          Queue depth 205 above soft limit 100
+2026-01-10 12:19:57 [INFO ] auth               BPM heuristic applied: detected=79 confidence=0.93
+2026-01-10 12:21:22 [INFO ] db                 Worker heartbeat OK
+2026-01-10 12:21:56 [WARN ] db                 Response time 2ms exceeds P95 threshold
+2026-01-10 12:22:35 [DEBUG] cache              Query executed in 144ms rows=492
+2026-01-10 12:23:50 [DEBUG] db                 Query executed in 271ms rows=122
+2026-01-10 12:25:00 [INFO ] db                 Waveform bins computed in 493ms
+2026-01-10 12:25:46 [INFO ] cache              Waveform bins computed in 13ms
+2026-01-10 12:26:27 [WARN ] ingest             Retry 1/3 for upstream scheduler
+2026-01-10 12:27:15 [INFO ] cache              Repository snapshot created: 5566 files indexed
+2026-01-10 12:28:32 [INFO ] queue              Repository snapshot created: 4138 files indexed
+2026-01-10 12:29:02 [WARN ] queue              Queue depth 117 above soft limit 100
+2026-01-10 12:30:18 [INFO ] scheduler          Repository snapshot created: 155 files indexed
+2026-01-10 12:31:41 [WARN ] cache              Queue depth 226 above soft limit 100
+2026-01-10 12:32:17 [INFO ] auth               Repository snapshot created: 4160 files indexed
+2026-01-10 12:32:52 [INFO ] cache              Repository snapshot created: 1990 files indexed
+2026-01-10 12:34:04 [INFO ] db                 Health check passed
+2026-01-10 12:35:18 [INFO ] cache              BPM heuristic applied: detected=99 confidence=0.91
+2026-01-10 12:36:04 [INFO ] worker             Repository snapshot created: 4073 files indexed
+2026-01-10 12:36:46 [WARN ] api                Response time 76ms exceeds P95 threshold
+2026-01-10 12:37:40 [INFO ] api                Repository snapshot created: 293 files indexed
+2026-01-10 12:38:48 [INFO ] worker             Worker heartbeat OK
+2026-01-10 12:39:08 [INFO ] api                Track 'track-7444' imported to library
+2026-01-10 12:40:28 [WARN ] queue              Queue depth 38 above soft limit 100
+2026-01-10 12:41:00 [INFO ] worker             Cache hit ratio: 0.72
+2026-01-10 12:42:01 [INFO ] ingest             Waveform bins computed in 161ms
+2026-01-10 12:43:27 [INFO ] scheduler          Cache hit ratio: 0.81
+2026-01-10 12:44:08 [INFO ] worker             BPM heuristic applied: detected=60 confidence=0.65
+2026-01-10 12:44:52 [INFO ] auth               Cache hit ratio: 0.86
+2026-01-10 12:45:37 [INFO ] db                 Worker heartbeat OK
+2026-01-10 12:46:47 [INFO ] cache              Worker heartbeat OK
+2026-01-10 12:47:25 [WARN ] api                Queue depth 131 above soft limit 100
+2026-01-10 12:48:27 [DEBUG] queue              Session token refreshed for user_15
+2026-01-10 12:49:22 [INFO ] queue              Cache hit ratio: 0.90
+2026-01-10 12:50:06 [INFO ] scheduler          Repository snapshot created: 6750 files indexed
+2026-01-10 12:51:40 [INFO ] scheduler          Waveform bins computed in 194ms
+2026-01-10 12:51:57 [INFO ] ingest             BPM heuristic applied: detected=63 confidence=0.76
+2026-01-10 12:53:02 [WARN ] auth               Response time 175ms exceeds P95 threshold
+2026-01-10 12:54:08 [INFO ] cache              Cache hit ratio: 0.99
+2026-01-10 12:54:42 [WARN ] cache              Queue depth 193 above soft limit 100
+2026-01-10 12:56:19 [INFO ] queue              Health check passed
+2026-01-10 12:56:49 [WARN ] api                Queue depth 203 above soft limit 100
+2026-01-10 12:58:03 [INFO ] auth               Waveform bins computed in 424ms
+2026-01-10 12:58:34 [DEBUG] auth               Query executed in 368ms rows=491
+2026-01-10 12:59:44 [INFO ] scheduler          Health check passed
+2026-01-10 13:00:37 [INFO ] ingest             Track 'track-9135' imported to library
+2026-01-10 13:01:16 [WARN ] api                Queue depth 87 above soft limit 100
+2026-01-10 13:02:52 [WARN ] worker             Response time 122ms exceeds P95 threshold
+2026-01-10 13:03:15 [DEBUG] queue              Query executed in 187ms rows=403
+2026-01-10 13:04:40 [DEBUG] auth               Session token refreshed for user_7
+2026-01-10 13:05:10 [INFO ] worker             Repository snapshot created: 3440 files indexed
+2026-01-10 13:05:44 [DEBUG] api                Query executed in 284ms rows=280
+2026-01-10 13:06:55 [INFO ] worker             Worker heartbeat OK
+2026-01-10 13:07:36 [INFO ] auth               Health check passed
+2026-01-10 13:09:04 [INFO ] auth               Repository snapshot created: 889 files indexed
+2026-01-10 13:09:46 [WARN ] ingest             Queue depth 124 above soft limit 100
+2026-01-10 13:10:26 [INFO ] db                 Track 'track-7829' imported to library
+2026-01-10 13:11:39 [WARN ] db                 Queue depth 147 above soft limit 100
+2026-01-10 13:12:59 [INFO ] auth               Health check passed
+2026-01-10 13:13:18 [WARN ] cache              Response time 139ms exceeds P95 threshold
+2026-01-10 13:14:18 [WARN ] cache              Queue depth 76 above soft limit 100
+2026-01-10 13:15:02 [INFO ] ingest             Repository snapshot created: 1621 files indexed
+2026-01-10 13:16:00 [INFO ] db                 Track 'track-5609' imported to library
+2026-01-10 13:17:17 [INFO ] db                 Cache hit ratio: 0.64
+2026-01-10 13:18:00 [INFO ] cache              Repository snapshot created: 4256 files indexed
+2026-01-10 13:19:03 [WARN ] db                 Retry 1/3 for upstream auth
+2026-01-10 13:20:06 [INFO ] ingest             Waveform bins computed in 54ms
+2026-01-10 13:20:20 [INFO ] ingest             Repository snapshot created: 6985 files indexed
+2026-01-10 13:21:43 [INFO ] queue              Waveform bins computed in 450ms
+2026-01-10 13:22:28 [INFO ] db                 BPM heuristic applied: detected=63 confidence=0.72
+2026-01-10 13:23:43 [INFO ] db                 BPM heuristic applied: detected=83 confidence=0.92
+2026-01-10 13:24:11 [WARN ] ingest             Response time 135ms exceeds P95 threshold
+2026-01-10 13:25:44 [INFO ] api                BPM heuristic applied: detected=98 confidence=0.99
+2026-01-10 13:26:12 [INFO ] db                 Waveform bins computed in 190ms
+2026-01-10 13:27:06 [INFO ] worker             Waveform bins computed in 106ms
+2026-01-10 13:27:56 [WARN ] api                Response time 376ms exceeds P95 threshold
+2026-01-10 13:29:16 [INFO ] db                 Waveform bins computed in 421ms
+2026-01-10 13:29:50 [WARN ] scheduler          Retry 1/3 for upstream queue
+2026-01-10 13:30:36 [INFO ] cache              BPM heuristic applied: detected=73 confidence=0.62
+2026-01-10 13:32:10 [DEBUG] ingest             Session token refreshed for user_16
+2026-01-10 13:32:19 [INFO ] scheduler          BPM heuristic applied: detected=85 confidence=0.95
+2026-01-10 13:33:19 [WARN ] auth               Retry 1/3 for upstream worker
+2026-01-10 13:34:30 [INFO ] cache              Worker heartbeat OK
+2026-01-10 13:35:18 [INFO ] cache              Worker heartbeat OK
+2026-01-10 13:35:58 [WARN ] cache              Queue depth 155 above soft limit 100
+2026-01-10 13:37:12 [INFO ] scheduler          Worker heartbeat OK
+2026-01-10 13:37:46 [WARN ] queue              Retry 1/3 for upstream db
+2026-01-10 13:39:05 [INFO ] scheduler          Repository snapshot created: 7816 files indexed
+2026-01-10 13:39:35 [INFO ] scheduler          Track 'track-7942' imported to library
+2026-01-10 13:40:37 [INFO ] auth               Worker heartbeat OK
+2026-01-10 13:42:01 [DEBUG] queue              Query executed in 397ms rows=85
+2026-01-10 13:42:28 [INFO ] api                Waveform bins computed in 284ms
+2026-01-10 13:43:24 [INFO ] scheduler          BPM heuristic applied: detected=96 confidence=0.99
+2026-01-10 13:44:33 [INFO ] worker             Track 'track-6700' imported to library
+2026-01-10 13:45:23 [DEBUG] worker             Session token refreshed for user_6
+2026-01-10 13:46:04 [INFO ] auth               Worker heartbeat OK
+2026-01-10 13:47:26 [INFO ] db                 Health check passed
+2026-01-10 13:47:58 [DEBUG] api                Query executed in 163ms rows=29
+2026-01-10 13:49:23 [INFO ] scheduler          BPM heuristic applied: detected=99 confidence=0.70
+2026-01-10 13:50:20 [WARN ] db                 Response time 209ms exceeds P95 threshold
+2026-01-10 13:51:14 [DEBUG] db                 Query executed in 95ms rows=291
+2026-01-10 13:51:43 [INFO ] api                Worker heartbeat OK
+2026-01-10 13:52:58 [INFO ] worker             Worker heartbeat OK
+2026-01-10 14:00:00 [ERROR] queue              Upstream timeout after 5000ms
+2026-01-10 14:02:00 [ERROR] worker             DB constraint violation — rolling back
+2026-01-10 14:04:00 [ERROR] db                 Upstream timeout after 5000ms
+2026-01-10 14:06:00 [ERROR] api                Deserialization failed: unexpected token
+2026-01-10 14:08:00 [ERROR] auth               Permission denied for resource /api/v1/export
+2026-01-10 14:10:00 [ERROR] ingest             Deserialization failed: unexpected token
+2026-01-10 14:12:00 [ERROR] scheduler          Deserialization failed: unexpected token
+2026-01-10 14:14:00 [ERROR] db                 Permission denied for resource /api/v1/export
+2026-01-10 14:16:00 [ERROR] scheduler          Deserialization failed: unexpected token
+2026-01-10 14:18:00 [ERROR] ingest             Permission denied for resource /api/v1/export
+2026-01-10 14:20:00 [ERROR] worker             Upstream timeout after 5000ms
+2026-01-10 14:22:00 [ERROR] api                Permission denied for resource /api/v1/export

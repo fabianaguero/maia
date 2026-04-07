@@ -151,6 +151,9 @@ export interface RepositoryAnalysis {
   primaryLanguage: string;
   javaFileCount: number;
   testFileCount: number;
+  waveformBins: number[];
+  beatGrid: BeatGridPoint[];
+  bpmCurve: BpmCurvePoint[];
   notes: string[];
   tags: string[];
   metrics: Record<string, unknown>;

@@ -9,6 +9,7 @@ from .composition import analyze_composition
 from .audio import analyze_track, get_supported_track_formats
 from .dsp import dsp_available
 from .contracts import ContractError, error_response, ok_response, parse_request
+from .presets import list_presets
 from .repository import analyze_repository
 from .stream import (
     get_or_create_session,
@@ -45,8 +46,10 @@ def handle_request(raw: Any) -> dict[str, Any]:
                         "stream-session-registry",
                         "base-assets",
                         "composition-planner",
+                        "aesthetic-presets",
                     ],
                     "supportedTrackFormats": get_supported_track_formats(),
+                    "presets": list_presets(),
                 },
             )
 
@@ -186,6 +189,7 @@ def _handle_session_poll(request_id: str, payload: dict[str, Any]) -> dict[str, 
             "inferCodeSuggestedBpm": True,
             "logTailChunk": chunk,
             "logTailLiveMode": True,
+            "presetId": payload.get("presetId", "techno"),
         },
     )
 

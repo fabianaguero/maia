@@ -4,17 +4,21 @@
   "version": "0.1.0",
   "identifier": "com.fabianaguero.maia",
   "build": {
-    "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build",
-    "devUrl": "http://127.0.0.1:1420",
+    "beforeDevCommand": "npx vite --port 1421 --host 127.0.0.1",
+    "beforeBuildCommand": "npx vite build",
+    "devUrl": "http://127.0.0.1:1421",
     "frontendDist": "../dist"
   },
   "app": {
     "security": {
+      "csp": "default-src 'self' 'unsafe-inline' asset: http://127.0.0.1:1421; media-src asset: blob: http://127.0.0.1:1421; img-src 'self' asset: data: blob: http://127.0.0.1:1421 https:",
       "assetProtocol": {
         "enable": true,
         "scope": [
-          "$APPDATA/assets/**"
+          "$HOME/**",
+          "/media/**",
+          "/mnt/**",
+          "/tmp/**"
         ]
       }
     },

@@ -1,4 +1,4 @@
-import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 
 type PlaybackState = "idle" | "loading" | "ready" | "playing" | "error" | "unavailable";
@@ -15,6 +15,7 @@ interface ManagedAudioPlayerProps {
   desktopOnlyNote: string;
   availableNote: string;
   errorNote: string;
+  onTimeUpdate?: (seconds: number) => void;
 }
 
 function formatDuration(durationSeconds: number | null): string {
@@ -28,16 +29,23 @@ function formatDuration(durationSeconds: number | null): string {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
-function resolvePlayableSource(audioPath: string | null): string | null {
-  if (!audioPath || audioPath.startsWith("browser-fallback://") || !isTauri()) {
-    return null;
-  }
+function canAttemptPlayback(audioPath: string | null): boolean {
+  return Boolean(audioPath && isTauri() && !audioPath.startsWith("browser-fallback://"));
+}
 
-  try {
-    return convertFileSrc(audioPath);
-  } catch {
-    return null;
-  }
+function mimeTypeFromPath(audioPath: string): string {
+  const ext = audioPath.split(".").pop()?.toLowerCase() ?? "";
+  const map: Record<string, string> = {
+    mp3: "audio/mpeg",
+    wav: "audio/wav",
+    ogg: "audio/ogg",
+    flac: "audio/flac",
+    m4a: "audio/mp4",
+    aac: "audio/mp4",
+    opus: "audio/ogg",
+    webm: "audio/webm",
+  };
+  return map[ext] ?? "audio/mpeg";
 }
 
 function describeState(state: PlaybackState): string {
@@ -69,90 +77,139 @@ export function ManagedAudioPlayer({
   desktopOnlyNote,
   availableNote,
   errorNote,
+  onTimeUpdate,
 }: ManagedAudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const playableSource = resolvePlayableSource(audioPath);
+  const blobUrlRef = useRef<string | null>(null);
+  const [blobReady, setBlobReady] = useState(false);
   const [playbackState, setPlaybackState] = useState<PlaybackState>(
-    audioPath ? (playableSource ? "loading" : "unavailable") : "idle",
+    canAttemptPlayback(audioPath) ? "loading" : audioPath ? "unavailable" : "idle",
   );
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [currentTimeSeconds, setCurrentTimeSeconds] = useState(0);
   const [resolvedDurationSeconds, setResolvedDurationSeconds] = useState(durationSeconds ?? 0);
+  const [volume, setVolume] = useState(0.8);
+
+  // Keep the audio element volume in sync with the slider state
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.volume = volume;
+    }
+  }, [volume]);
 
   useEffect(() => {
     const audio = audioRef.current;
     setPlaybackError(null);
     setCurrentTimeSeconds(0);
+    setBlobReady(false);
     setResolvedDurationSeconds(durationSeconds ?? 0);
+
+    // Revoke any previous blob URL immediately.
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
 
     if (!audioPath) {
       setPlaybackState("idle");
       if (audio) {
         audio.pause();
-        audio.currentTime = 0;
+        audio.src = "";
       }
       return;
     }
 
-    if (!audio || !playableSource) {
+    if (!canAttemptPlayback(audioPath) || !audio) {
       setPlaybackState("unavailable");
       return;
     }
 
-    const handleLoadedMetadata = () => {
-      if (Number.isFinite(audio.duration) && audio.duration > 0) {
-        setResolvedDurationSeconds(audio.duration);
-      }
-    };
-    const handleCanPlay = () => {
-      setPlaybackState(audio.paused ? "ready" : "playing");
-    };
-    const handleTimeUpdate = () => {
-      setCurrentTimeSeconds(audio.currentTime);
-    };
-    const handlePlay = () => {
-      setPlaybackState("playing");
-    };
-    const handlePause = () => {
-      setPlaybackState("ready");
-    };
-    const handleEnded = () => {
-      setCurrentTimeSeconds(Number.isFinite(audio.duration) ? audio.duration : 0);
-      setPlaybackState("ready");
-    };
-    const handleError = () => {
-      setPlaybackState("error");
-      setPlaybackError(errorNote);
-    };
-
-    audio.pause();
-    audio.currentTime = 0;
-    audio.load();
     setPlaybackState("loading");
+    let cancelled = false;
+    let cleanupListeners: (() => void) | null = null;
 
-    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
-    audio.addEventListener("canplay", handleCanPlay);
-    audio.addEventListener("timeupdate", handleTimeUpdate);
-    audio.addEventListener("play", handlePlay);
-    audio.addEventListener("pause", handlePause);
-    audio.addEventListener("ended", handleEnded);
-    audio.addEventListener("error", handleError);
+    invoke<string>("read_audio_bytes", { path: audioPath })
+      .then((b64) => {
+        if (cancelled) return;
+
+        const binary = atob(b64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: mimeTypeFromPath(audioPath) });
+        const url = URL.createObjectURL(blob);
+        blobUrlRef.current = url;
+
+        const handleLoadedMetadata = () => {
+          if (Number.isFinite(audio.duration) && audio.duration > 0) {
+            setResolvedDurationSeconds(audio.duration);
+          }
+        };
+        const handleCanPlay = () => setPlaybackState(audio.paused ? "ready" : "playing");
+        const handleTimeUpdate = () => {
+          setCurrentTimeSeconds(audio.currentTime);
+          onTimeUpdate?.(audio.currentTime);
+        };
+        const handlePlay = () => setPlaybackState("playing");
+        const handlePause = () => setPlaybackState("ready");
+        const handleEnded = () => {
+          setCurrentTimeSeconds(Number.isFinite(audio.duration) ? audio.duration : 0);
+          setPlaybackState("ready");
+        };
+        const handleError = () => {
+          setPlaybackState("error");
+          setPlaybackError(errorNote);
+        };
+
+        cleanupListeners = () => {
+          audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+          audio.removeEventListener("canplay", handleCanPlay);
+          audio.removeEventListener("timeupdate", handleTimeUpdate);
+          audio.removeEventListener("play", handlePlay);
+          audio.removeEventListener("pause", handlePause);
+          audio.removeEventListener("ended", handleEnded);
+          audio.removeEventListener("error", handleError);
+        };
+
+        audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+        audio.addEventListener("canplay", handleCanPlay);
+        audio.addEventListener("timeupdate", handleTimeUpdate);
+        audio.addEventListener("play", handlePlay);
+        audio.addEventListener("pause", handlePause);
+        audio.addEventListener("ended", handleEnded);
+        audio.addEventListener("error", handleError);
+
+        audio.pause();
+        audio.currentTime = 0;
+        audio.src = url;
+        audio.load();
+        setBlobReady(true);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setPlaybackState("error");
+        setPlaybackError(`Cannot load audio: ${String(err)}`);
+      });
 
     return () => {
-      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
-      audio.removeEventListener("canplay", handleCanPlay);
-      audio.removeEventListener("timeupdate", handleTimeUpdate);
-      audio.removeEventListener("play", handlePlay);
-      audio.removeEventListener("pause", handlePause);
-      audio.removeEventListener("ended", handleEnded);
-      audio.removeEventListener("error", handleError);
-      audio.pause();
+      cancelled = true;
+      cleanupListeners?.();
+      if (audio) {
+        audio.pause();
+        audio.src = "";
+      }
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
     };
-  }, [audioPath, durationSeconds, errorNote, playableSource]);
+  }, [audioPath, durationSeconds, errorNote]);
 
   async function handleTogglePlayback() {
     const audio = audioRef.current;
-    if (!audio || !playableSource) {
+    if (!audio || !blobReady) {
       return;
     }
 
@@ -189,14 +246,19 @@ export function ManagedAudioPlayer({
     }
   }
 
+  function handleVolumeChange(event: ChangeEvent<HTMLInputElement>) {
+    const next = Number(event.target.value);
+    setVolume(next);
+  }
+
   const shownDurationSeconds =
     resolvedDurationSeconds > 0 ? resolvedDurationSeconds : durationSeconds ?? null;
-  const canPlayAudio = Boolean(playableSource);
+  const canPlayAudio = blobReady;
   const note = !audioPath
     ? missingNote
     : audioPath.startsWith("browser-fallback://")
       ? browserFallbackNote
-      : !canPlayAudio
+      : !blobReady && playbackState === "unavailable"
         ? desktopOnlyNote
         : availableNote;
 
@@ -209,7 +271,7 @@ export function ManagedAudioPlayer({
         </div>
       </div>
 
-      <audio ref={audioRef} preload="metadata" src={playableSource ?? undefined} />
+      <audio ref={audioRef} preload="metadata" />
 
       <div className="render-audio-controls">
         <button
@@ -229,6 +291,20 @@ export function ManagedAudioPlayer({
           <strong>
             {formatDuration(currentTimeSeconds)} / {formatDuration(shownDurationSeconds)}
           </strong>
+        </div>
+        <div className="render-audio-volume">
+          <span>Vol</span>
+          <input
+            type="range"
+            className="volume-slider"
+            min={0}
+            max={1}
+            step={0.01}
+            value={volume}
+            onChange={handleVolumeChange}
+            aria-label={`${title} volume`}
+          />
+          <strong>{Math.round(volume * 100)}%</strong>
         </div>
       </div>
 
@@ -251,3 +327,4 @@ export function ManagedAudioPlayer({
     </div>
   );
 }
+

@@ -97,3 +97,17 @@
 - The reference playlist, selected genre, and selected preset are persisted to `localStorage` under key `maia.monitor-prefs.<repoId>`. Each repo gets its own saved settings. The `useState` initializer reads `loadMonitorPrefs(repository.id)` on first render so state is pre-populated without an effect round-trip. The persist effect (`useEffect(saveMonitorPrefs, [repo, playlistIds, genre, preset])`) writes on every change. On repo switch, the existing reset effect now calls `loadMonitorPrefs` for the new repo id instead of zero-filling.
 - A stray orphan `</select>` element was present in the toolbar JSX. Removed; no behaviour change.
 - The updated priority order for the next feature: **always-on background monitoring** first, then broader stream adapters, then test coverage consolidation, then dense multi-track arrangement, then export/bounce UI. This order was chosen because always-on monitoring unlocks the core product promise (hear your system without babysitting the analyzer screen) more directly than test hygiene does, and it builds on the existing `SessionRegistry` + ring-buffer infrastructure without requiring a new data model.
+
+## 07. Aesthetic Mapping for Live Sonification (Presets)
+**Date:** 2026-04-05
+
+**Context:**
+Log sonification was previously using static mappings (e.g., Error = Sine). This lacked artistic depth and didn't fulfill the "Live System Performance" vision.
+
+**Decision:**
+Implement a **Preset-based Sonification Engine**. The mapping between log events and musical parameters (waveforms, frequencies, interaction with stems) will be governed by aesthetic "Presets" (Techno, Ambient, Glitch).
+
+**Consequences:**
+- The frontend must support selecting `presetId`.
+- The analyzer must expose a registry of available presets.
+- Logs will now "mutate" active audio stems (e.g., triggering filters or effects).

@@ -1,4 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
+import { getLogger } from "../utils/logger";
+
+const log = getLogger("API.Repos");
 
 import type {
   ImportRepositoryInput,
@@ -24,8 +27,11 @@ function isNativeBridgeUnavailable(error: unknown): boolean {
 export async function listRepositories(): Promise<RepositoryAnalysis[]> {
   try {
     return await invoke<RepositoryAnalysis[]>("list_repositories");
-  } catch {
-    return listMockRepositories();
+  } catch (error) {
+    if (isNativeBridgeUnavailable(error)) {
+      return listMockRepositories();
+    }
+    throw error;
   }
 }
 
@@ -34,8 +40,11 @@ export async function importRepository(
 ): Promise<RepositoryAnalysis> {
   try {
     return await invoke<RepositoryAnalysis>("import_repository", { input });
-  } catch {
-    return importMockRepository(input);
+  } catch (error) {
+    if (isNativeBridgeUnavailable(error)) {
+      return importMockRepository(input);
+    }
+    throw error;
   }
 }
 
@@ -92,20 +101,64 @@ export async function exportCompositionFile(
   return invoke<string>("export_composition_file", { sourcePath, destPath });
 }
 
+export async function pickStemsExportDirectory(): Promise<string | null> {
+  try {
+    return await invoke<string | null>("pick_stems_export_directory");
+  } catch (error) {
+    if (isNativeBridgeUnavailable(error)) {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+export interface StemExportResult {
+  stemId: string;
+  label: string;
+  role: string;
+  gainDb: number;
+  pan: number;
+  path: string;
+  format: string;
+  sampleRateHz: number;
+  channels: number;
+  durationSeconds: number;
+}
+
+export interface ExportStemsResponse {
+  status: "ok";
+  stems: StemExportResult[];
+}
+
+export async function exportCompositionStems(
+  compositionId: string,
+  destDir: string,
+): Promise<ExportStemsResponse> {
+  return invoke<ExportStemsResponse>("export_composition_stems", {
+    compositionId,
+    destDir,
+  });
+}
+
 export async function pollLogStream(
   sourcePath: string,
   cursor?: number,
 ): Promise<LiveLogStreamUpdate> {
+  log.trace("pollLogStream path=%s cursor=%s", sourcePath, cursor);
   try {
-    return await invoke<LiveLogStreamUpdate>("poll_log_stream", {
+    const result = await invoke<LiveLogStreamUpdate>("poll_log_stream", {
       sourcePath,
       cursor,
     });
+    log.debug("pollLogStream → hasData=%s lines=%d cues=%d", result.hasData, result.lineCount, result.sonificationCues.length);
+    return result;
   } catch (error) {
     if (isNativeBridgeUnavailable(error)) {
+      log.debug("pollLogStream fallback to mock");
       return pollMockLogStream(sourcePath, cursor);
     }
-
+    log.error("pollLogStream failed:", error);
     throw error;
   }
 }
@@ -113,7 +166,10 @@ export async function pollLogStream(
 export async function startStreamSession(
   input: StartSessionInput,
 ): Promise<StreamSessionRecord> {
-  return invoke<StreamSessionRecord>("start_stream_session", { input });
+  log.info("startStreamSession id=%s adapter=%s source=%s", input.sessionId, input.adapterKind, input.source);
+  const result = await invoke<StreamSessionRecord>("start_stream_session", { input });
+  log.info("startStreamSession → session created");
+  return result;
 }
 
 export async function stopStreamSession(
@@ -129,7 +185,10 @@ export async function listStreamSessions(): Promise<StreamSessionRecord[]> {
 export async function pollStreamSession(
   sessionId: string,
 ): Promise<StreamSessionPollResult> {
-  return invoke<StreamSessionPollResult>("poll_stream_session", { sessionId });
+  log.trace("pollStreamSession id=%s", sessionId);
+  const result = await invoke<StreamSessionPollResult>("poll_stream_session", { sessionId });
+  log.debug("pollStreamSession → hasData=%s lines=%d cues=%d", result.hasData, result.lineCount, result.sonificationCues.length);
+  return result;
 }
 
 /**
@@ -144,5 +203,12 @@ export async function ingestStreamChunk(
   sessionId: string,
   chunk: string,
 ): Promise<StreamSessionPollResult> {
-  return invoke<StreamSessionPollResult>("ingest_stream_chunk", { sessionId, chunk });
+  log.trace("ingestStreamChunk id=%s chunkLen=%d", sessionId, chunk.length);
+  const result = await invoke<StreamSessionPollResult>("ingest_stream_chunk", { sessionId, chunk });
+  log.debug("ingestStreamChunk → hasData=%s lines=%d cues=%d", result.hasData, result.lineCount, result.sonificationCues.length);
+  return result;
+}
+
+export async function readAudioBytes(path: string): Promise<string> {
+  return invoke<string>("read_audio_bytes", { path });
 }

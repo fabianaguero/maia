@@ -20,8 +20,11 @@ function isNativeBridgeUnavailable(error: unknown): boolean {
 export async function listBaseAssets(): Promise<BaseAssetRecord[]> {
   try {
     return await invoke<BaseAssetRecord[]>("list_base_assets");
-  } catch {
-    return listMockBaseAssets();
+  } catch (error) {
+    if (isNativeBridgeUnavailable(error)) {
+      return listMockBaseAssets();
+    }
+    throw error;
   }
 }
 
@@ -30,8 +33,11 @@ export async function importBaseAsset(
 ): Promise<BaseAssetRecord> {
   try {
     return await invoke<BaseAssetRecord>("import_base_asset", { input });
-  } catch {
-    return importMockBaseAsset(input);
+  } catch (error) {
+    if (isNativeBridgeUnavailable(error)) {
+      return importMockBaseAsset(input);
+    }
+    throw error;
   }
 }
 

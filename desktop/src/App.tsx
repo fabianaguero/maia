@@ -15,7 +15,7 @@ import { useLibrary } from "./hooks/useLibrary";
 import { useRepositories } from "./hooks/useRepositories";
 import { NotificationProvider, useNotify } from "./components/NotificationSystem";
 import { Web3Spinner } from "./components/Web3Spinner";
-import { MonitorWaveformBar } from "./components/MonitorWaveformBar";
+ import { MonitorWaveformBar } from "./components/MonitorWaveformBar";
 import { en } from "./i18n/en";
 import { es } from "./i18n/es";
 import { I18nContext } from "./i18n/I18nContext";
@@ -185,6 +185,32 @@ function AppContent() {
     return false;
   }
 
+  async function handleReanalyzeTrack(trackId: string) {
+    try {
+      const nextTrack = await library.reanalyzeTrack(trackId);
+      if (nextTrack) {
+        notify("success", "Re-analysis complete", `${nextTrack.title} analysis updated.`);
+        return true;
+      }
+    } catch (err) {
+      notify("error", "Re-analysis failed", String(err));
+    }
+    return false;
+  }
+
+  async function handleReanalyzeRepository(repositoryId: string) {
+    try {
+      const nextRepository = await repositories.reanalyzeRepository(repositoryId);
+      if (nextRepository) {
+        notify("success", "Re-analysis complete", `${nextRepository.title} analysis updated.`);
+        return true;
+      }
+    } catch (err) {
+      notify("error", "Re-analysis failed", String(err));
+    }
+    return false;
+  }
+
   function handleOpenMonitoredRepo() {
     const { session } = monitor;
     if (!session) return;
@@ -315,6 +341,8 @@ function AppContent() {
             onImportRepository={handleImportRepository}
             onImportBaseAsset={handleImportBaseAsset}
             onImportComposition={handleImportComposition}
+            onReanalyzeTrack={handleReanalyzeTrack}
+            onReanalyzeRepository={handleReanalyzeRepository}
             onSeedDemo={library.seedLibrary}
             onSelectTrack={(trackId) => { library.setSelectedTrackId(trackId); setAnalysisMode("track"); }}
             onSelectRepository={(repositoryId) => { repositories.setSelectedRepositoryId(repositoryId); setAnalysisMode("repo"); }}

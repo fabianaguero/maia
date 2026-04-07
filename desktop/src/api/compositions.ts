@@ -9,11 +9,21 @@ import {
   listMockCompositionResults,
 } from "./mockCompositionResults";
 
+function isNativeBridgeUnavailable(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    /tauri|__TAURI_INTERNALS__|ipc|native bridge/i.test(error.message)
+  );
+}
+
 export async function listCompositions(): Promise<CompositionResultRecord[]> {
   try {
     return await invoke<CompositionResultRecord[]>("list_compositions");
-  } catch {
-    return listMockCompositionResults();
+  } catch (error) {
+    if (isNativeBridgeUnavailable(error)) {
+      return listMockCompositionResults();
+    }
+    throw error;
   }
 }
 
@@ -22,7 +32,10 @@ export async function importComposition(
 ): Promise<CompositionResultRecord> {
   try {
     return await invoke<CompositionResultRecord>("import_composition", { input });
-  } catch {
-    return importMockCompositionResult(input);
+  } catch (error) {
+    if (isNativeBridgeUnavailable(error)) {
+      return importMockCompositionResult(input);
+    }
+    throw error;
   }
 }

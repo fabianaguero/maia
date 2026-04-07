@@ -16,6 +16,10 @@ src/maia_analyzer.egg-info/dependency_links.txt
 src/maia_analyzer.egg-info/entry_points.txt
 src/maia_analyzer.egg-info/requires.txt
 src/maia_analyzer.egg-info/top_level.txt
+tests/test_composition.py
 tests/test_contracts.py
+tests/test_golden_analysis.py
 tests/test_repository.py
+tests/test_schema_validation.py
 tests/test_stream.py
+tests/test_treesitter.py

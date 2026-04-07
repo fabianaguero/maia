@@ -52,6 +52,8 @@ interface LibraryScreenProps {
   onImportRepository: (input: ImportRepositoryInput) => Promise<boolean>;
   onImportBaseAsset: (input: ImportBaseAssetInput) => Promise<boolean>;
   onImportComposition: (input: ImportCompositionInput) => Promise<boolean>;
+  onReanalyzeTrack: (trackId: string) => Promise<boolean>;
+  onReanalyzeRepository: (repositoryId: string) => Promise<boolean>;
   onSeedDemo: () => Promise<void>;
   onSelectTrack: (trackId: string) => void;
   onSelectRepository: (repositoryId: string) => void;
@@ -94,6 +96,8 @@ export function LibraryScreen({
   onImportTrack,
   onImportRepository,
   onImportBaseAsset,
+  onReanalyzeTrack,
+  onReanalyzeRepository,
   onSeedDemo,
   onSelectTrack,
   onSelectRepository,
@@ -301,6 +305,15 @@ export function LibraryScreen({
                       <span className="asset-card-date">{formatShortDate(track.importedAt)}</span>
                     </div>
                     <div className="asset-card-actions">
+                      {track.analyzerStatus === "pending" && (
+                        <button
+                          type="button"
+                          className="card-action-btn"
+                          onClick={(e) => { e.stopPropagation(); void onReanalyzeTrack(track.id); }}
+                        >
+                          Re-analyze
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="card-action-btn"
@@ -357,6 +370,15 @@ export function LibraryScreen({
                       <span className="asset-card-date">{formatShortDate(repo.importedAt)}</span>
                     </div>
                     <div className="asset-card-actions">
+                      {repo.analyzerStatus === "pending" && (
+                        <button
+                          type="button"
+                          className="card-action-btn"
+                          onClick={(e) => { e.stopPropagation(); void onReanalyzeRepository(repo.id); }}
+                        >
+                          Re-analyze
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="card-action-btn"

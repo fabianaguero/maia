@@ -108,6 +108,15 @@ async fn list_assets(db_path: String) -> Result<serde_json::Value, String> {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Frontend logging — forwards JS console messages to the terminal
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+fn log_to_terminal(level: String, message: String) {
+    println!("{level} {message}");
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -115,6 +124,7 @@ fn main() {
             analyze_track,
             analyze_repo,
             list_assets,
+            log_to_terminal,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

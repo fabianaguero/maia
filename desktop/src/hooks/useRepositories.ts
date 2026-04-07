@@ -4,6 +4,8 @@ import {
   importRepository,
   listRepositories,
 } from "../api/repositories";
+import { runAnalyzerRequest } from "../api/analyzer";
+import { createAnalyzeRepositoryRequest } from "../contracts";
 import type {
   ImportRepositoryInput,
   RepositoryAnalysis,
@@ -90,6 +92,79 @@ export function useRepositories() {
         setError(null);
       });
 
+      // Start background analysis
+      if (nextRepository.analyzerStatus === "pending") {
+        void analyzeRepositoryBackground(nextRepository);
+      }
+
+      return nextRepository;
+    } catch (nextError) {
+      startTransition(() => {
+        setError(toMessage(nextError));
+      });
+      return null;
+    } finally {
+      setMutating(false);
+    }
+  }
+
+  async function analyzeRepositoryBackground(repository: RepositoryAnalysis): Promise<void> {
+    try {
+      const request = createAnalyzeRepositoryRequest(repository.sourceKind, repository.sourcePath);
+      const response = await runAnalyzerRequest(request);
+
+      if (response.status === "ok" && "musicalAsset" in response.payload) {
+        const analyzed = response.payload.musicalAsset;
+        startTransition(() => {
+          setRepositories((current) =>
+            sortRepositories(
+              current.map((r) =>
+                r.id === repository.id
+                  ? {
+                      ...r,
+                      analyzerStatus: "ready",
+                      suggestedBpm: analyzed.suggestedBpm ?? r.suggestedBpm,
+                      confidence: analyzed.confidence ?? r.confidence,
+                      waveformBins: analyzed.artifacts?.waveformBins ?? r.waveformBins,
+                      beatGrid: analyzed.artifacts?.beatGrid ?? r.beatGrid,
+                      bpmCurve: analyzed.artifacts?.bpmCurve ?? r.bpmCurve,
+                    }
+                  : r,
+              ),
+            ),
+          );
+        });
+      }
+    } catch {
+      // Silent fail — analysis in background doesn't block user
+    }
+  }
+
+  async function reanalyzeRepository(repositoryId: string): Promise<RepositoryAnalysis | null> {
+    setMutating(true);
+
+    try {
+      const repository = repositories.find((r) => r.id === repositoryId);
+      if (!repository) throw new Error("Repository not found");
+
+      // Re-analyze using the same source path
+      const input: ImportRepositoryInput = {
+        sourceKind: repository.sourceKind,
+        sourcePath: repository.sourcePath,
+        label: repository.title,
+      };
+
+      const nextRepository = await importRepository(input);
+
+      startTransition(() => {
+        setRepositories((current) =>
+          sortRepositories(
+            current.map((r) => (r.id === repositoryId ? nextRepository : r)),
+          ),
+        );
+        setError(null);
+      });
+
       return nextRepository;
     } catch (nextError) {
       startTransition(() => {
@@ -113,5 +188,6 @@ export function useRepositories() {
     mutating,
     error,
     importRepositorySource,
+    reanalyzeRepository,
   };
 }

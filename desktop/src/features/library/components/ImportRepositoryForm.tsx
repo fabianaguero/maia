@@ -1,3 +1,4 @@
+import { FolderOpen, GitBranch, ScrollText } from "lucide-react";
 import type { FormEvent } from "react";
 import { useState } from "react";
 
@@ -200,7 +201,7 @@ export function ImportRepositoryForm({
             disabled={busy || pickerBusy}
             onClick={() => void handleBrowseDirectory()}
           >
-            {pickerBusy ? "Browsing..." : "Browse folder"}
+            {pickerBusy ? <><span className="spin-ring" aria-hidden="true" /> Browsing...</> : <><FolderOpen size={14} /> Browse folder</>}
           </button>
         ) : null}
         {sourceKind === "file" ? (
@@ -210,11 +211,11 @@ export function ImportRepositoryForm({
             disabled={busy || pickerBusy}
             onClick={() => void handleBrowseFile()}
           >
-            {pickerBusy ? "Browsing..." : "Browse log file"}
+            {pickerBusy ? <><span className="spin-ring" aria-hidden="true" /> Browsing...</> : <><ScrollText size={14} /> Browse log file</>}
           </button>
         ) : null}
         <button type="submit" className="action" disabled={busy}>
-          {busy ? "Analyzing..." : "Import source"}
+          {busy ? <><span className="spin-ring" aria-hidden="true" /> Analyzing...</> : <><GitBranch size={14} /> Import source</>}
         </button>
         {defaultDirectoryPath ? (
           <button

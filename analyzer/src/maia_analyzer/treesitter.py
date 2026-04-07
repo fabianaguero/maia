@@ -139,8 +139,9 @@ def analyze_java_sources(java_files: list[Path], max_files: int = 220) -> dict[s
     annotation_count = 0
     endpoint_count = 0
     annotation_breakdown: Counter[str] = Counter()
-    jakarta_imports = 0
     javax_imports = 0
+    max_nesting = 0
+    complexity_score = 0
 
     for file_path in java_files[:max_files]:
         try:
@@ -152,6 +153,10 @@ def analyze_java_sources(java_files: list[Path], max_files: int = 220) -> dict[s
         tree = parser.parse(source_bytes)
         if tree.root_node.has_error:
             parse_errors += 1
+
+        file_nesting = _calculate_max_nesting(tree.root_node)
+        max_nesting = max(max_nesting, file_nesting)
+        complexity_score += _calculate_node_complexity(tree.root_node)
 
         for node in _walk_nodes(tree.root_node):
             if node.type == "class_declaration":
@@ -192,6 +197,8 @@ def analyze_java_sources(java_files: list[Path], max_files: int = 220) -> dict[s
         "endpointAnnotationCount": endpoint_count,
         "jakartaImportCount": jakarta_imports,
         "javaxImportCount": javax_imports,
+        "maxNesting": max_nesting,
+        "complexityScore": round(complexity_score / max(1, file_count), 2),
         "annotationBreakdown": dict(annotation_breakdown.most_common(8)),
     }
 
@@ -215,6 +222,8 @@ def analyze_kotlin_sources(kotlin_files: list[Path], max_files: int = 220) -> di
     annotation_count = 0
     endpoint_count = 0
     annotation_breakdown: Counter[str] = Counter()
+    max_nesting = 0
+    complexity_score = 0
 
     for file_path in kotlin_files[:max_files]:
         try:
@@ -226,6 +235,9 @@ def analyze_kotlin_sources(kotlin_files: list[Path], max_files: int = 220) -> di
         tree = parser.parse(source_bytes)
         if tree.root_node.has_error:
             parse_errors += 1
+
+        max_nesting = max(max_nesting, _calculate_max_nesting(tree.root_node))
+        complexity_score += _calculate_node_complexity(tree.root_node)
 
         for node in _walk_nodes(tree.root_node):
             if node.type == "class_declaration":
@@ -259,6 +271,8 @@ def analyze_kotlin_sources(kotlin_files: list[Path], max_files: int = 220) -> di
         "propertyCount": property_count,
         "annotationCount": annotation_count,
         "endpointAnnotationCount": endpoint_count,
+        "maxNesting": max_nesting,
+        "complexityScore": round(complexity_score / max(1, file_count), 2),
         "annotationBreakdown": dict(annotation_breakdown.most_common(8)),
     }
 
@@ -298,6 +312,8 @@ def analyze_python_sources(python_files: list[Path], max_files: int = 220) -> di
     decorator_count = 0
     import_count = 0
     framework_imports: set[str] = set()
+    max_nesting = 0
+    complexity_score = 0
 
     for file_path in python_files[:max_files]:
         try:
@@ -309,6 +325,9 @@ def analyze_python_sources(python_files: list[Path], max_files: int = 220) -> di
         tree = parser.parse(source_bytes)
         if tree.root_node.has_error:
             parse_errors += 1
+
+        max_nesting = max(max_nesting, _calculate_max_nesting(tree.root_node))
+        complexity_score += _calculate_node_complexity(tree.root_node)
 
         for node in _walk_nodes(tree.root_node):
             if node.type == "class_definition":
@@ -343,6 +362,8 @@ def analyze_python_sources(python_files: list[Path], max_files: int = 220) -> di
         "asyncFunctionCount": async_function_count,
         "decoratorCount": decorator_count,
         "importCount": import_count,
+        "maxNesting": max_nesting,
+        "complexityScore": round(complexity_score / max(1, file_count), 2),
         "detectedFrameworks": sorted(framework_imports),
     }
 
@@ -385,6 +406,8 @@ def analyze_typescript_sources(ts_files: list[Path], max_files: int = 220) -> di
     type_alias_count = 0
     decorator_count = 0
     framework_imports: set[str] = set()
+    max_nesting = 0
+    complexity_score = 0
 
     for file_path in ts_files[:max_files]:
         try:
@@ -401,6 +424,9 @@ def analyze_typescript_sources(ts_files: list[Path], max_files: int = 220) -> di
         tree = parser.parse(source_bytes)
         if tree.root_node.has_error:
             parse_errors += 1
+
+        max_nesting = max(max_nesting, _calculate_max_nesting(tree.root_node))
+        complexity_score += _calculate_node_complexity(tree.root_node)
 
         for node in _walk_nodes(tree.root_node):
             if node.type == "class_declaration":
@@ -429,6 +455,8 @@ def analyze_typescript_sources(ts_files: list[Path], max_files: int = 220) -> di
         "interfaceCount": interface_count,
         "typeAliasCount": type_alias_count,
         "decoratorCount": decorator_count,
+        "maxNesting": max_nesting,
+        "complexityScore": round(complexity_score / max(1, file_count), 2),
         "detectedFrameworks": sorted(framework_imports),
     }
 
@@ -457,6 +485,8 @@ def analyze_rust_sources(rust_files: list[Path], max_files: int = 220) -> dict[s
     function_count = 0
     macro_count = 0
     unsafe_count = 0
+    max_nesting = 0
+    complexity_score = 0
 
     for file_path in rust_files[:max_files]:
         try:
@@ -468,6 +498,9 @@ def analyze_rust_sources(rust_files: list[Path], max_files: int = 220) -> dict[s
         tree = parser.parse(source_bytes)
         if tree.root_node.has_error:
             parse_errors += 1
+
+        max_nesting = max(max_nesting, _calculate_max_nesting(tree.root_node))
+        complexity_score += _calculate_node_complexity(tree.root_node)
 
         for node in _walk_nodes(tree.root_node):
             if node.type == "struct_item":
@@ -497,6 +530,8 @@ def analyze_rust_sources(rust_files: list[Path], max_files: int = 220) -> dict[s
         "functionCount": function_count,
         "macroCount": macro_count,
         "unsafeCount": unsafe_count,
+        "maxNesting": max_nesting,
+        "complexityScore": round(complexity_score / max(1, file_count), 2),
     }
 
 
@@ -524,6 +559,8 @@ def analyze_go_sources(go_files: list[Path], max_files: int = 220) -> dict[str, 
     goroutine_count = 0
     channel_count = 0
     import_count = 0
+    max_nesting = 0
+    complexity_score = 0
 
     for file_path in go_files[:max_files]:
         try:
@@ -535,6 +572,9 @@ def analyze_go_sources(go_files: list[Path], max_files: int = 220) -> dict[str, 
         tree = parser.parse(source_bytes)
         if tree.root_node.has_error:
             parse_errors += 1
+
+        max_nesting = max(max_nesting, _calculate_max_nesting(tree.root_node))
+        complexity_score += _calculate_node_complexity(tree.root_node)
 
         for node in _walk_nodes(tree.root_node):
             if node.type == "function_declaration":
@@ -569,6 +609,8 @@ def analyze_go_sources(go_files: list[Path], max_files: int = 220) -> dict[str, 
         "goroutineCount": goroutine_count,
         "channelCount": channel_count,
         "importCount": import_count,
+        "maxNesting": max_nesting,
+        "complexityScore": round(complexity_score / max(1, file_count), 2),
     }
 
 
@@ -739,3 +781,66 @@ def _annotation_name(source_bytes: bytes, node: Any) -> str | None:
 def _count_imports(source_bytes: bytes, namespace: str) -> int:
     needle = f"import {namespace}".encode("utf-8")
     return source_bytes.count(needle)
+
+
+def _calculate_max_nesting(node: Any, current_depth: int = 0) -> int:
+    """Calculate the maximum block nesting depth of the AST."""
+    if not node.children:
+        return current_depth
+
+    # Nodes that increase nesting depth
+    nesting_types = {
+        "if_statement",
+        "for_statement",
+        "while_statement",
+        "do_statement",
+        "try_statement",
+        "catch_clause",
+        "switch_statement",
+        "function_definition",
+        "method_declaration",
+        "class_declaration",
+        "class_definition",
+        "compound_statement",  # C-style blocks
+        "block",               # Java/TS blocks
+    }
+
+    depth_increment = 1 if node.type in nesting_types else 0
+    max_child_depth = current_depth + depth_increment
+
+    for child in node.children:
+        child_depth = _calculate_max_nesting(child, current_depth + depth_increment)
+        max_child_depth = max(max_child_depth, child_depth)
+
+    return max_child_depth
+
+
+def _calculate_node_complexity(node: Any) -> float:
+    """Calculate a heuristic complexity score (similar to cyclomatic complexity)."""
+    score = 0.0
+    stack = [node]
+
+    # Types that represent decision points or independent units
+    branch_types = {
+        "if_statement",
+        "for_statement",
+        "while_statement",
+        "do_statement",
+        "case_statement",
+        "catch_clause",
+        "ternary_expression",
+        "conditional_expression",
+        "binary_expression",  # Logical '&&' and '||' handled below
+    }
+
+    while stack:
+        n = stack.pop()
+        if n.type in branch_types:
+            score += 1.0
+        elif n.type in {"function_definition", "method_declaration", "class_declaration"}:
+            score += 0.5  # Base complexity for new units
+
+        for child in n.children:
+            stack.append(child)
+
+    return score

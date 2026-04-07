@@ -508,6 +508,21 @@ const GENRE_PROFILES: Record<string, GenreProfile> = {
     anomalyLabel: "Tritone accent",
     descriptor: "instrumental jazz palette",
   },
+  "tropical-house": {
+    label: "Tropical House",
+    infoWaveform: "sine",
+    warnWaveform: "triangle",
+    errorWaveform: "triangle",
+    anomalyWaveform: "sawtooth",
+    noteMultiplier: 1.12,
+    durationScale: 0.85,
+    gainScale: 1.25,
+    infoLabel: "Pluck pulse",
+    warnLabel: "Tropical rise",
+    errorLabel: "Sunset surge",
+    anomalyLabel: "Steel drum accent",
+    descriptor: "chill instrumental tropical house",
+  },
 };
 
 // ---------------------------------------------------------------------------

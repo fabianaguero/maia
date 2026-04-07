@@ -6,6 +6,7 @@ interface TracksTableProps {
   selectedTrackId: string | null;
   onSelectTrack: (trackId: string) => void;
   onInspectTrack: (trackId: string) => void;
+  onReanalyze?: (trackId: string) => Promise<boolean>;
 }
 
 export function TracksTable({
@@ -13,6 +14,7 @@ export function TracksTable({
   selectedTrackId,
   onSelectTrack,
   onInspectTrack,
+  onReanalyze,
 }: TracksTableProps) {
   return (
     <div className="table-shell">
@@ -50,7 +52,22 @@ export function TracksTable({
                   <small>{Math.round(track.bpmConfidence * 100)}% confidence</small>
                 </td>
                 <td>{track.repoSuggestedBpm ?? "Pending"}</td>
-                <td>{track.analyzerStatus}</td>
+                <td>
+                  {track.analyzerStatus === "pending" && onReanalyze ? (
+                    <button
+                      type="button"
+                      className="table-action"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void onReanalyze(track.id);
+                      }}
+                    >
+                      Re-analyze
+                    </button>
+                  ) : (
+                    track.analyzerStatus
+                  )}
+                </td>
                 <td>{formatShortDateTime(track.importedAt)}</td>
                 <td>
                   <button

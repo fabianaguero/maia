@@ -29,11 +29,21 @@ const frontendOnlyManifest: BootstrapManifest = {
   baseAssetCategories: baseAssetCategoryCatalog.baseAssetCategories,
 };
 
+function isNativeBridgeUnavailable(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    /tauri|__TAURI_INTERNALS__|ipc|native bridge/i.test(error.message)
+  );
+}
+
 export async function loadBootstrapManifest(): Promise<BootstrapManifest> {
   try {
     return await invoke<BootstrapManifest>("bootstrap_manifest");
-  } catch {
-    return frontendOnlyManifest;
+  } catch (error) {
+    if (isNativeBridgeUnavailable(error)) {
+      return frontendOnlyManifest;
+    }
+    throw error;
   }
 }
 

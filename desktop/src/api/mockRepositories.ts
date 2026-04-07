@@ -192,6 +192,9 @@ function createRepository(
         : input.sourceKind === "file"
           ? ["repo-analysis", "log-file", `dominant:${anomalyMarkers[0]?.level ?? "info"}`]
           : ["repo-analysis", "remote-url", provider],
+    waveformBins: createLogCadenceBins(seed, 256),
+    beatGrid: [],
+    bpmCurve: [],
     metrics: {
       buildSystem: input.sourceKind === "file" ? "log-stream" : buildSystem,
       primaryLanguage: input.sourceKind === "file" ? "logs" : primaryLanguage,

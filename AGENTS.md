@@ -2,8 +2,11 @@
 
 ## Product
 Desktop app tipo Rekordbox para Linux, Windows y macOS.
-Analiza reppositorios , logs y genera canciones, grafica waveform/beat grid/BPM curve
-para inferir BPM sugerido, patrones musicales y bases reutilizables.
+Analiza repositorios, logs y genera arte sonoro en vivo (Live System Performance). 
+Grafica waveform/beat grid/BPM curve para inferir BPM sugerido desde código fuente y streams de logs.
+Evoluciona código estático y logs en vivo hacia música generativa (Techno, Ambient, Glitch, Heartbeat).
+Mezclador Híbrido: Combina stems reales (AI-separated) con síntesis reactiva a datos.
+Ideal para 'Team Soundscape Monitoring' en equipos de DevOps/SRE: 'Chill but Alerting'.
 
 ## Fixed architecture
 - Desktop shell: Tauri + React + TypeScript
@@ -13,13 +16,14 @@ para inferir BPM sugerido, patrones musicales y bases reutilizables.
 - Repo parsing: tree-sitter
 - Audio analysis: librosa + Essentia
 
-## Domain model
+Domain model
 Core entity: musical_asset
 Types:
 - track_analysis
 - repo_analysis
 - base_asset
 - composition_result
+- live_sonification_preset (Techno, Ambient, Glitch)
 
 ## Non-goals for MVP
 - No cloud backend

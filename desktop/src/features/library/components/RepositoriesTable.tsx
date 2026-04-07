@@ -6,6 +6,7 @@ interface RepositoriesTableProps {
   selectedRepositoryId: string | null;
   onSelectRepository: (repositoryId: string) => void;
   onInspectRepository: (repositoryId: string) => void;
+  onReanalyze?: (repositoryId: string) => Promise<boolean>;
 }
 
 export function RepositoriesTable({
@@ -13,6 +14,7 @@ export function RepositoriesTable({
   selectedRepositoryId,
   onSelectRepository,
   onInspectRepository,
+  onReanalyze,
 }: RepositoriesTableProps) {
   function sourceKindLabel(sourceKind: RepositoryAnalysis["sourceKind"]): string {
     if (sourceKind === "directory") {
@@ -60,7 +62,22 @@ export function RepositoriesTable({
                 </td>
                 <td>{repository.buildSystem}</td>
                 <td>{repository.primaryLanguage}</td>
-                <td>{repository.analyzerStatus}</td>
+                <td>
+                  {repository.analyzerStatus === "pending" && onReanalyze ? (
+                    <button
+                      type="button"
+                      className="table-action"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void onReanalyze(repository.id);
+                      }}
+                    >
+                      Re-analyze
+                    </button>
+                  ) : (
+                    repository.analyzerStatus
+                  )}
+                </td>
                 <td>{formatShortDateTime(repository.importedAt)}</td>
                 <td>
                   <button

@@ -2,7 +2,9 @@ import { useState } from "react";
 
 import {
   exportCompositionFile,
+  exportCompositionStems,
   pickExportSavePath,
+  pickStemsExportDirectory,
 } from "../../../api/repositories";
 import type { CompositionResultRecord } from "../../../types/library";
 
@@ -31,6 +33,27 @@ export function ExportCompositionPanel({
 }: ExportCompositionPanelProps) {
   const [planState, setPlanState] = useState<ExportState>(IDLE);
   const [audioState, setAudioState] = useState<ExportState>(IDLE);
+  const [stemsState, setStemsState] = useState<ExportState>(IDLE);
+
+  async function handleExportStems() {
+    setStemsState({ status: "exporting", message: "" });
+    try {
+      const destDir = await pickStemsExportDirectory();
+      if (!destDir) {
+        setStemsState(IDLE);
+        return;
+      }
+      const result = await exportCompositionStems(composition.id, destDir);
+      const count = result.stems.length;
+      setStemsState({
+        status: "done",
+        message: `${count} stem${count === 1 ? "" : "s"} written to ${destDir}`,
+      });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      setStemsState({ status: "error", message: msg });
+    }
+  }
 
   async function handleExportPlan() {
     if (!composition.exportPath) return;
@@ -84,10 +107,6 @@ export function ExportCompositionPanel({
   const hasPlan = Boolean(composition.exportPath);
   const hasAudio = Boolean(composition.previewAudioPath);
 
-  if (!hasPlan && !hasAudio) {
-    return null;
-  }
-
   return (
     <section className="panel">
       <div className="panel-header compact">
@@ -137,6 +156,23 @@ export function ExportCompositionPanel({
             )}
           </div>
         )}
+
+        <div className="export-row">
+          <button
+            className="action"
+            disabled={stemsState.status === "exporting"}
+            onClick={() => void handleExportStems()}
+            type="button"
+          >
+            {stemsState.status === "exporting" ? "Rendering stems…" : "Export stems as WAV"}
+          </button>
+          {stemsState.status === "done" && (
+            <span className="export-feedback export-feedback--ok">{stemsState.message}</span>
+          )}
+          {stemsState.status === "error" && (
+            <span className="export-feedback export-feedback--error">{stemsState.message}</span>
+          )}
+        </div>
       </div>
     </section>
   );

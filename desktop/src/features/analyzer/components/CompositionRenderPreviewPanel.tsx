@@ -4,6 +4,7 @@ import { resolveArrangementSections, resolveRenderPreview } from "./compositionP
 
 interface CompositionRenderPreviewPanelProps {
   composition: CompositionResultRecord;
+  onTimeUpdate?: (seconds: number) => void;
 }
 
 function formatPan(pan: number): string {
@@ -15,6 +16,7 @@ function formatPan(pan: number): string {
 
 export function CompositionRenderPreviewPanel({
   composition,
+  onTimeUpdate,
 }: CompositionRenderPreviewPanelProps) {
   const renderPreview = resolveRenderPreview(composition);
   const sections = resolveArrangementSections(composition);
@@ -100,6 +102,7 @@ export function CompositionRenderPreviewPanel({
         desktopOnlyNote="Managed preview playback is available inside the desktop shell."
         availableNote="Preview playback runs from the managed local snapshot stored by Maia."
         errorNote="Maia could not read the managed preview audio. Re-import the composition if the file is missing."
+        onTimeUpdate={onTimeUpdate}
       />
 
       <div className="panel-header compact top-spaced">

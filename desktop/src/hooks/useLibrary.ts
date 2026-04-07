@@ -1,6 +1,8 @@
 import { startTransition, useEffect, useState } from "react";
 
 import { importTrack, listTracks, seedDemoTracks } from "../api/library";
+import { runAnalyzerRequest } from "../api/analyzer";
+import { createAnalyzeTrackRequest } from "../contracts";
 import type { ImportTrackInput, LibraryTrack } from "../types/library";
 
 function toMessage(error: unknown): string {
@@ -82,6 +84,79 @@ export function useLibrary() {
         setError(null);
       });
 
+      // Start background analysis
+      if (nextTrack.analyzerStatus === "pending") {
+        void analyzeTrackBackground(nextTrack);
+      }
+
+      return nextTrack;
+    } catch (nextError) {
+      startTransition(() => {
+        setError(toMessage(nextError));
+      });
+      return null;
+    } finally {
+      setMutating(false);
+    }
+  }
+
+  async function analyzeTrackBackground(track: LibraryTrack): Promise<void> {
+    try {
+      const request = createAnalyzeTrackRequest(track.sourcePath);
+      const response = await runAnalyzerRequest(request);
+
+      if (response.status === "ok" && "musicalAsset" in response.payload) {
+        const analyzed = response.payload.musicalAsset;
+        startTransition(() => {
+          setTracks((current) =>
+            sortTracks(
+              current.map((t) =>
+                t.id === track.id
+                  ? {
+                      ...t,
+                      analyzerStatus: "ready",
+                      bpm: analyzed.suggestedBpm ?? t.bpm,
+                      bpmConfidence: analyzed.confidence ?? t.bpmConfidence,
+                      waveformBins: analyzed.artifacts?.waveformBins ?? t.waveformBins,
+                      beatGrid: analyzed.artifacts?.beatGrid ?? t.beatGrid,
+                      bpmCurve: analyzed.artifacts?.bpmCurve ?? t.bpmCurve,
+                    }
+                  : t,
+              ),
+            ),
+          );
+        });
+      }
+    } catch {
+      // Silent fail — analysis in background doesn't block user
+    }
+  }
+
+  async function reanalyzeTrack(trackId: string): Promise<LibraryTrack | null> {
+    setMutating(true);
+
+    try {
+      const track = tracks.find((t) => t.id === trackId);
+      if (!track) throw new Error("Track not found");
+
+      // Re-analyze using the same source path
+      const input: ImportTrackInput = {
+        title: track.title,
+        sourcePath: track.sourcePath,
+        musicStyleId: track.musicStyleId,
+      };
+
+      const nextTrack = await importTrack(input);
+
+      startTransition(() => {
+        setTracks((current) =>
+          sortTracks(
+            current.map((t) => (t.id === trackId ? nextTrack : t)),
+          ),
+        );
+        setError(null);
+      });
+
       return nextTrack;
     } catch (nextError) {
       startTransition(() => {
@@ -126,6 +201,7 @@ export function useLibrary() {
     mutating,
     error,
     importLibraryTrack,
+    reanalyzeTrack,
     seedLibrary,
   };
 }

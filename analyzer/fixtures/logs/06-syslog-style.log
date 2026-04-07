@@ -1,0 +1,300 @@
+Mar 20 00:00:15 prod-node-1 kernel: cron: pam_unix(cron:session): opened for user root
+Mar 20 00:08:43 prod-node-2 kernel: iptables: New chain created
+Mar 20 00:13:01 prod-node-3 journald: Container maia-worker started (pid=6212)
+Mar 20 00:15:42 prod-node-1 systemd: NFS mount /mnt/data stale, remounting
+Mar 20 00:23:37 prod-node-2 journald: iptables: New chain created
+Mar 20 00:27:45 prod-node-1 journald: Container maia-api started (pid=2673)
+Mar 20 00:32:24 prod-node-1 cron: Started Docker Application Container Engine
+Mar 20 00:36:00 prod-node-1 containerd: systemd: maia-worker.service: Scheduled restart job
+Mar 20 00:41:20 prod-node-1 systemd: Container maia-api started (pid=82821)
+Mar 20 00:45:23 prod-node-3 containerd: Container maia-api started (pid=59312)
+Mar 20 00:51:12 prod-node-3 systemd: systemd: maia-worker.service: Scheduled restart job
+Mar 20 00:55:04 prod-node-1 cron: sshd: Disconnecting: Too many authentication failures
+Mar 20 00:59:28 prod-node-2 kubelet: cron: pam_unix(cron:session): opened for user root
+Mar 20 01:03:16 prod-node-1 sshd: Accepted connection from 10.0.2.4
+Mar 20 01:09:58 prod-node-2 kernel: kernel: TCP: request_sock_TCP: Possible SYN flooding on port 1421
+Mar 20 01:14:56 prod-node-2 kubelet: cron: pam_unix(cron:session): opened for user root
+Mar 20 01:19:56 prod-node-2 cron: systemd: maia-worker.service: Main process exited, code=killed, status=9/KILL
+Mar 20 01:24:27 prod-node-1 journald: kernel: TCP: request_sock_TCP: Possible SYN flooding on port 1421
+Mar 20 01:29:31 prod-node-3 containerd: OOM killer invoked: killing process 57258 (maia-worker)
+Mar 20 01:35:49 prod-node-2 dockerd: sshd: Disconnecting: Too many authentication failures
+Mar 20 01:40:20 prod-node-1 kubelet: NetworkManager: interface eth0 up
+Mar 20 01:42:30 prod-node-3 systemd: CPU steal time spike: 30185%
+Mar 20 01:48:58 prod-node-3 sshd: Segmentation fault (core dumped) -- pid 12891
+Mar 20 01:50:47 prod-node-2 kubelet: CPU steal time spike: 70096%
+Mar 20 01:57:56 prod-node-2 systemd: Container maia-worker started (pid=51419)
+Mar 20 02:02:48 prod-node-1 kubelet: kernel: EXT4-fs warning: maximal mount count reached
+Mar 20 02:09:04 prod-node-2 kernel: sshd: Disconnecting: Too many authentication failures
+Mar 20 02:11:21 prod-node-2 journald: kernel: EXT4-fs warning: maximal mount count reached
+Mar 20 02:15:32 prod-node-1 journald: cron: pam_unix(cron:session): opened for user root
+Mar 20 02:21:20 prod-node-2 containerd: iptables: New chain created
+Mar 20 02:27:26 prod-node-2 kernel: Accepted connection from 10.0.2.1
+Mar 20 02:32:35 prod-node-2 journald: systemd: maia-worker.service: Main process exited, code=killed, status=9/KILL
+Mar 20 02:36:05 prod-node-1 systemd: Started Docker Application Container Engine
+Mar 20 02:42:29 prod-node-1 journald: NetworkManager: interface eth0 up
+Mar 20 02:47:14 prod-node-1 cron: iptables: New chain created
+Mar 20 02:50:01 prod-node-2 systemd: iptables: New chain created
+Mar 20 02:53:40 prod-node-2 dockerd: CPU steal time spike: 28947%
+Mar 20 02:57:51 prod-node-3 dockerd: NFS mount /mnt/data stale, remounting
+Mar 20 03:06:24 prod-node-1 kernel: Container maia-worker started (pid=61764)
+Mar 20 03:11:36 prod-node-2 systemd: Container maia-api started (pid=70942)
+Mar 20 03:12:38 prod-node-2 containerd: systemd: maia-worker.service: Scheduled restart job
+Mar 20 03:20:49 prod-node-3 sshd: Container maia-api started (pid=62285)
+Mar 20 03:21:51 prod-node-1 sshd: cron: pam_unix(cron:session): opened for user root
+Mar 20 03:29:55 prod-node-2 sshd: kernel: TCP: request_sock_TCP: Possible SYN flooding on port 1421
+Mar 20 03:35:08 prod-node-3 kubelet: NetworkManager: interface eth0 up
+Mar 20 03:37:16 prod-node-1 sshd: OOM killer invoked: killing process 79813 (maia-worker)
+Mar 20 03:41:09 prod-node-3 dockerd: Accepted connection from 10.0.5.1
+Mar 20 03:48:25 prod-node-1 kubelet: OOM killer invoked: killing process 92771 (maia-worker)
+Mar 20 03:51:12 prod-node-3 cron: kernel: EXT4-fs warning: maximal mount count reached
+Mar 20 03:58:56 prod-node-1 journald: Accepted connection from 10.0.2.3
+Mar 20 04:02:50 prod-node-3 cron: Segmentation fault (core dumped) -- pid 35765
+Mar 20 04:05:51 prod-node-3 journald: CPU steal time spike: 25965%
+Mar 20 04:13:21 prod-node-1 cron: Container maia-api started (pid=18600)
+Mar 20 04:16:17 prod-node-1 systemd: Container maia-api started (pid=19349)
+Mar 20 04:21:28 prod-node-3 kubelet: Container maia-worker started (pid=51524)
+Mar 20 04:28:19 prod-node-1 dockerd: Container maia-worker started (pid=60438)
+Mar 20 04:33:10 prod-node-1 journald: sshd: Disconnecting: Too many authentication failures
+Mar 20 04:36:48 prod-node-1 sshd: iptables: New chain created
+Mar 20 04:43:03 prod-node-2 sshd: systemd: maia-worker.service: Scheduled restart job
+Mar 20 04:44:40 prod-node-2 kubelet: iptables: New chain created
+Mar 20 04:50:08 prod-node-2 cron: Disk usage on /var/data: 38209%
+Mar 20 04:56:23 prod-node-3 cron: iptables: New chain created
+Mar 20 04:59:56 prod-node-3 kubelet: sshd: Disconnecting: Too many authentication failures
+Mar 20 05:06:24 prod-node-1 containerd: sshd: Disconnecting: Too many authentication failures
+Mar 20 05:09:42 prod-node-1 journald: Started Docker Application Container Engine
+Mar 20 05:15:45 prod-node-3 cron: NFS mount /mnt/data stale, remounting
+Mar 20 05:21:24 prod-node-2 cron: Container maia-api started (pid=52620)
+Mar 20 05:25:07 prod-node-2 containerd: OOM killer invoked: killing process 71614 (maia-worker)
+Mar 20 05:30:23 prod-node-3 systemd: kernel: EXT4-fs warning: maximal mount count reached
+Mar 20 05:33:28 prod-node-1 sshd: kernel: TCP: request_sock_TCP: Possible SYN flooding on port 1421
+Mar 20 05:39:34 prod-node-3 journald: Segmentation fault (core dumped) -- pid 39912
+Mar 20 05:44:37 prod-node-1 dockerd: kernel: TCP: request_sock_TCP: Possible SYN flooding on port 1421
+Mar 20 05:50:12 prod-node-1 containerd: Segmentation fault (core dumped) -- pid 83441
+Mar 20 05:53:27 prod-node-2 containerd: cron: pam_unix(cron:session): opened for user root
+Mar 20 05:58:31 prod-node-1 sshd: NetworkManager: interface eth0 up
+Mar 20 06:03:06 prod-node-2 containerd: Started Docker Application Container Engine
+Mar 20 06:08:42 prod-node-2 journald: Disk usage on /var/data: 93335%
+Mar 20 06:09:46 prod-node-1 sshd: Container maia-worker started (pid=96885)
+Mar 20 06:18:13 prod-node-3 kubelet: NetworkManager: interface eth0 up
+Mar 20 06:20:48 prod-node-2 kubelet: NetworkManager: interface eth0 up
+Mar 20 06:28:31 prod-node-2 containerd: Disk usage on /var/data: 61527%
+Mar 20 06:33:12 prod-node-1 containerd: kernel: TCP: request_sock_TCP: Possible SYN flooding on port 1421
+Mar 20 06:36:38 prod-node-3 journald: CPU steal time spike: 56095%
+Mar 20 06:42:17 prod-node-3 systemd: CPU steal time spike: 31681%
+Mar 20 06:45:22 prod-node-3 dockerd: NFS mount /mnt/data stale, remounting
+Mar 20 06:52:31 prod-node-1 kernel: CPU steal time spike: 69626%
+Mar 20 06:54:53 prod-node-2 dockerd: OOM killer invoked: killing process 98137 (maia-worker)
+Mar 20 07:01:55 prod-node-1 kubelet: Container maia-api started (pid=24045)
+Mar 20 07:04:22 prod-node-3 containerd: cron: pam_unix(cron:session): opened for user root
+Mar 20 07:07:57 prod-node-2 containerd: OOM killer invoked: killing process 20110 (maia-worker)
+Mar 20 07:15:38 prod-node-3 cron: iptables: New chain created
+Mar 20 07:18:49 prod-node-3 cron: Segmentation fault (core dumped) -- pid 2785
+Mar 20 07:26:19 prod-node-3 sshd: kernel: TCP: request_sock_TCP: Possible SYN flooding on port 1421
+Mar 20 07:30:30 prod-node-1 cron: Disk usage on /var/data: 81549%
+Mar 20 07:34:25 prod-node-1 cron: NetworkManager: interface eth0 up
+Mar 20 07:39:42 prod-node-1 cron: kernel: TCP: request_sock_TCP: Possible SYN flooding on port 1421
+Mar 20 07:43:44 prod-node-2 cron: CPU steal time spike: 24661%
+Mar 20 07:49:46 prod-node-2 sshd: iptables: New chain created
+Mar 20 07:52:25 prod-node-1 kernel: kernel: EXT4-fs warning: maximal mount count reached
+Mar 20 07:57:01 prod-node-2 kubelet: NFS mount /mnt/data stale, remounting
+Mar 20 08:03:24 prod-node-2 journald: Disk usage on /var/data: 19692%
+Mar 20 08:04:56 prod-node-1 containerd: sshd: Disconnecting: Too many authentication failures
+Mar 20 08:12:07 prod-node-2 containerd: cron: pam_unix(cron:session): opened for user root
+Mar 20 08:19:01 prod-node-1 sshd: Container maia-api started (pid=54965)
+Mar 20 08:21:32 prod-node-2 cron: Disk usage on /var/data: 7877%
+Mar 20 08:25:55 prod-node-1 kubelet: kernel: TCP: request_sock_TCP: Possible SYN flooding on port 1421
+Mar 20 08:31:57 prod-node-1 kernel: CPU steal time spike: 71333%
+Mar 20 08:37:26 prod-node-2 kernel: Segmentation fault (core dumped) -- pid 84604
+Mar 20 08:39:51 prod-node-1 sshd: kernel: EXT4-fs warning: maximal mount count reached
+Mar 20 08:47:04 prod-node-1 cron: Segmentation fault (core dumped) -- pid 42964
+Mar 20 08:51:54 prod-node-2 kernel: Container maia-worker started (pid=49240)
+Mar 20 08:55:04 prod-node-2 sshd: Accepted connection from 10.0.4.4
+Mar 20 08:58:54 prod-node-1 sshd: sshd: Disconnecting: Too many authentication failures
+Mar 20 09:04:21 prod-node-1 sshd: systemd: maia-worker.service: Main process exited, code=killed, status=9/KILL
+Mar 20 09:08:16 prod-node-1 sshd: kernel: EXT4-fs warning: maximal mount count reached
+Mar 20 09:15:35 prod-node-3 kubelet: NetworkManager: interface eth0 up
+Mar 20 09:17:36 prod-node-1 dockerd: Disk usage on /var/data: 38355%
+Mar 20 09:23:58 prod-node-1 sshd: kernel: EXT4-fs warning: maximal mount count reached
+Mar 20 09:27:55 prod-node-2 dockerd: CPU steal time spike: 66566%
+Mar 20 09:31:22 prod-node-3 systemd: Disk usage on /var/data: 55607%
+Mar 20 09:38:12 prod-node-3 dockerd: OOM killer invoked: killing process 8297 (maia-worker)
+Mar 20 09:44:48 prod-node-2 kubelet: Segmentation fault (core dumped) -- pid 65125
+Mar 20 09:48:07 prod-node-3 systemd: Container maia-api started (pid=93972)
+Mar 20 09:55:10 prod-node-2 dockerd: systemd: maia-worker.service: Main process exited, code=killed, status=9/KILL
+Mar 20 09:57:18 prod-node-3 kubelet: Container maia-api started (pid=47098)
+Mar 20 10:01:53 prod-node-2 kernel: iptables: New chain created
+Mar 20 10:05:36 prod-node-3 kernel: Accepted connection from 10.0.4.4
+Mar 20 10:10:51 prod-node-3 journald: iptables: New chain created
+Mar 20 10:17:09 prod-node-3 kubelet: Accepted connection from 10.0.1.5
+Mar 20 10:22:33 prod-node-2 dockerd: kernel: EXT4-fs warning: maximal mount count reached
+Mar 20 10:25:22 prod-node-3 journald: Accepted connection from 10.0.4.5
+Mar 20 10:33:13 prod-node-2 containerd: Started Docker Application Container Engine
+Mar 20 10:37:14 prod-node-3 kubelet: CPU steal time spike: 67095%
+Mar 20 10:38:36 prod-node-2 cron: OOM killer invoked: killing process 75192 (maia-worker)
+Mar 20 10:45:59 prod-node-1 containerd: kernel: TCP: request_sock_TCP: Possible SYN flooding on port 1421
+Mar 20 10:52:36 prod-node-1 kubelet: Container maia-worker started (pid=55859)
+Mar 20 10:54:04 prod-node-1 kubelet: OOM killer invoked: killing process 27390 (maia-worker)
+Mar 20 10:57:59 prod-node-2 containerd: cron: pam_unix(cron:session): opened for user root
+Mar 20 11:05:46 prod-node-2 dockerd: sshd: Disconnecting: Too many authentication failures
+Mar 20 11:09:37 prod-node-2 dockerd: systemd: maia-worker.service: Scheduled restart job
+Mar 20 11:14:33 prod-node-1 cron: systemd: maia-worker.service: Main process exited, code=killed, status=9/KILL
+Mar 20 11:16:55 prod-node-2 systemd: Container maia-api started (pid=79048)
+Mar 20 11:26:06 prod-node-2 kernel: Started Docker Application Container Engine
+Mar 20 11:27:21 prod-node-1 containerd: NFS mount /mnt/data stale, remounting
+Mar 20 11:35:30 prod-node-1 cron: kernel: EXT4-fs warning: maximal mount count reached
+Mar 20 11:40:03 prod-node-1 dockerd: systemd: maia-worker.service: Main process exited, code=killed, status=9/KILL
+Mar 20 11:41:34 prod-node-1 kernel: systemd: maia-worker.service: Main process exited, code=killed, status=9/KILL
+Mar 20 11:50:05 prod-node-2 containerd: CPU steal time spike: 78816%
+Mar 20 11:51:23 prod-node-2 sshd: Disk usage on /var/data: 52318%
+Mar 20 11:59:07 prod-node-3 containerd: kernel: EXT4-fs warning: maximal mount count reached
+Mar 20 12:02:54 prod-node-2 dockerd: OOM killer invoked: killing process 49666 (maia-worker)
+Mar 20 12:07:08 prod-node-3 dockerd: NFS mount /mnt/data stale, remounting
+Mar 20 12:11:05 prod-node-1 kubelet: iptables: New chain created
+Mar 20 12:17:07 prod-node-1 systemd: systemd: maia-worker.service: Main process exited, code=killed, status=9/KILL
+Mar 20 12:21:39 prod-node-1 dockerd: systemd: maia-worker.service: Main process exited, code=killed, status=9/KILL
+Mar 20 12:28:26 prod-node-2 dockerd: iptables: New chain created
+Mar 20 12:31:14 prod-node-3 systemd: NetworkManager: interface eth0 up
+Mar 20 12:35:09 prod-node-1 dockerd: Disk usage on /var/data: 75827%
+Mar 20 12:41:49 prod-node-2 cron: sshd: Disconnecting: Too many authentication failures
+Mar 20 12:47:49 prod-node-1 kernel: Started Docker Application Container Engine
+Mar 20 12:49:33 prod-node-3 kubelet: Started Docker Application Container Engine
+Mar 20 12:54:26 prod-node-2 containerd: Started Docker Application Container Engine
+Mar 20 13:02:12 prod-node-2 cron: systemd: maia-worker.service: Scheduled restart job
+Mar 20 13:06:18 prod-node-1 kernel: systemd: maia-worker.service: Scheduled restart job
+Mar 20 13:10:20 prod-node-1 cron: kernel: EXT4-fs warning: maximal mount count reached
+Mar 20 13:12:43 prod-node-1 cron: NetworkManager: interface eth0 up
+Mar 20 13:20:38 prod-node-3 cron: NetworkManager: interface eth0 up
+Mar 20 13:24:26 prod-node-1 kubelet: Accepted connection from 10.0.5.2
+Mar 20 13:28:40 prod-node-2 kubelet: Segmentation fault (core dumped) -- pid 75050
+Mar 20 13:34:44 prod-node-2 containerd: sshd: Disconnecting: Too many authentication failures
+Mar 20 13:39:38 prod-node-3 cron: cron: pam_unix(cron:session): opened for user root
+Mar 20 13:41:24 prod-node-3 kubelet: sshd: Disconnecting: Too many authentication failures
+Mar 20 13:48:45 prod-node-1 systemd: Container maia-api started (pid=73527)
+Mar 20 13:50:44 prod-node-1 containerd: iptables: New chain created
+Mar 20 13:57:34 prod-node-2 systemd: sshd: Disconnecting: Too many authentication failures
+Mar 20 14:04:32 prod-node-2 journald: kernel: TCP: request_sock_TCP: Possible SYN flooding on port 1421
+Mar 20 14:09:29 prod-node-3 kubelet: Started Docker Application Container Engine
+Mar 20 14:14:16 prod-node-2 containerd: Accepted connection from 10.0.2.2
+Mar 20 14:15:31 prod-node-1 systemd: iptables: New chain created
+Mar 20 14:19:28 prod-node-1 kubelet: Container maia-api started (pid=76103)
+Mar 20 14:24:58 prod-node-1 journald: iptables: New chain created
+Mar 20 14:28:59 prod-node-2 dockerd: Accepted connection from 10.0.5.3
+Mar 20 14:34:47 prod-node-3 kubelet: sshd: Disconnecting: Too many authentication failures
+Mar 20 14:40:18 prod-node-2 kernel: systemd: maia-worker.service: Main process exited, code=killed, status=9/KILL
+Mar 20 14:44:12 prod-node-2 kubelet: Container maia-worker started (pid=54816)
+Mar 20 14:50:35 prod-node-2 containerd: CPU steal time spike: 64337%
+Mar 20 14:55:31 prod-node-1 cron: Disk usage on /var/data: 43916%
+Mar 20 14:57:38 prod-node-3 dockerd: Segmentation fault (core dumped) -- pid 21847
+Mar 20 15:03:14 prod-node-1 dockerd: sshd: Disconnecting: Too many authentication failures
+Mar 20 15:10:43 prod-node-2 systemd: OOM killer invoked: killing process 8369 (maia-worker)
+Mar 20 15:13:51 prod-node-3 kernel: kernel: TCP: request_sock_TCP: Possible SYN flooding on port 1421
+Mar 20 15:16:49 prod-node-2 dockerd: Started Docker Application Container Engine
+Mar 20 15:25:07 prod-node-3 containerd: systemd: maia-worker.service: Scheduled restart job
+Mar 20 15:30:06 prod-node-1 containerd: Container maia-api started (pid=83092)
+Mar 20 15:33:20 prod-node-2 systemd: systemd: maia-worker.service: Scheduled restart job
+Mar 20 15:39:06 prod-node-2 journald: CPU steal time spike: 41010%
+Mar 20 15:43:51 prod-node-2 cron: iptables: New chain created
+Mar 20 15:48:07 prod-node-1 kubelet: kernel: EXT4-fs warning: maximal mount count reached
+Mar 20 15:51:52 prod-node-2 sshd: NFS mount /mnt/data stale, remounting
+Mar 20 15:59:18 prod-node-3 systemd: Accepted connection from 10.0.2.2
+Mar 20 16:00:29 prod-node-1 sshd: systemd: maia-worker.service: Scheduled restart job
+Mar 20 16:05:07 prod-node-3 kubelet: Started Docker Application Container Engine
+Mar 20 16:10:12 prod-node-3 kernel: Segmentation fault (core dumped) -- pid 8039
+Mar 20 16:18:43 prod-node-3 containerd: systemd: maia-worker.service: Main process exited, code=killed, status=9/KILL
+Mar 20 16:21:24 prod-node-2 sshd: kernel: TCP: request_sock_TCP: Possible SYN flooding on port 1421
+Mar 20 16:27:21 prod-node-2 systemd: NetworkManager: interface eth0 up
+Mar 20 16:31:09 prod-node-1 kubelet: Started Docker Application Container Engine
+Mar 20 16:37:00 prod-node-1 dockerd: cron: pam_unix(cron:session): opened for user root
+Mar 20 16:39:49 prod-node-1 systemd: Disk usage on /var/data: 51988%
+Mar 20 16:47:44 prod-node-3 cron: Container maia-api started (pid=53796)
+Mar 20 16:50:26 prod-node-2 journald: NetworkManager: interface eth0 up
+Mar 20 16:53:00 prod-node-1 sshd: kernel: TCP: request_sock_TCP: Possible SYN flooding on port 1421
+Mar 20 17:00:48 prod-node-2 sshd: Container maia-worker started (pid=30247)
+Mar 20 17:06:58 prod-node-3 kernel: OOM killer invoked: killing process 41769 (maia-worker)
+Mar 20 17:09:12 prod-node-3 kubelet: Disk usage on /var/data: 47408%
+Mar 20 17:12:34 prod-node-1 containerd: iptables: New chain created
+Mar 20 17:18:57 prod-node-2 sshd: Started Docker Application Container Engine
+Mar 20 17:22:38 prod-node-1 systemd: iptables: New chain created
+Mar 20 17:29:40 prod-node-3 cron: NetworkManager: interface eth0 up
+Mar 20 17:34:30 prod-node-2 kubelet: kernel: TCP: request_sock_TCP: Possible SYN flooding on port 1421
+Mar 20 17:40:46 prod-node-2 kubelet: Accepted connection from 10.0.3.3
+Mar 20 17:45:09 prod-node-2 sshd: Disk usage on /var/data: 34547%
+Mar 20 17:47:15 prod-node-1 systemd: iptables: New chain created
+Mar 20 17:54:46 prod-node-2 sshd: systemd: maia-worker.service: Main process exited, code=killed, status=9/KILL
+Mar 20 17:59:25 prod-node-3 sshd: sshd: Disconnecting: Too many authentication failures
+Mar 20 18:02:03 prod-node-2 sshd: sshd: Disconnecting: Too many authentication failures
+Mar 20 18:07:27 prod-node-1 sshd: CPU steal time spike: 56971%
+Mar 20 18:10:12 prod-node-1 cron: Disk usage on /var/data: 64947%
+Mar 20 18:15:20 prod-node-1 cron: systemd: maia-worker.service: Scheduled restart job
+Mar 20 18:19:17 prod-node-3 cron: cron: pam_unix(cron:session): opened for user root
+Mar 20 18:28:39 prod-node-2 dockerd: OOM killer invoked: killing process 70163 (maia-worker)
+Mar 20 18:31:45 prod-node-1 systemd: Container maia-worker started (pid=98256)
+Mar 20 18:37:10 prod-node-2 kubelet: kernel: TCP: request_sock_TCP: Possible SYN flooding on port 1421
+Mar 20 18:39:28 prod-node-2 containerd: CPU steal time spike: 6224%
+Mar 20 18:44:55 prod-node-2 systemd: Container maia-api started (pid=99297)
+Mar 20 18:50:48 prod-node-2 cron: cron: pam_unix(cron:session): opened for user root
+Mar 20 18:56:29 prod-node-2 containerd: iptables: New chain created
+Mar 20 19:01:13 prod-node-3 sshd: Accepted connection from 10.0.3.5
+Mar 20 19:04:48 prod-node-2 journald: systemd: maia-worker.service: Main process exited, code=killed, status=9/KILL
+Mar 20 19:09:38 prod-node-1 dockerd: kernel: TCP: request_sock_TCP: Possible SYN flooding on port 1421
+Mar 20 19:12:44 prod-node-2 kubelet: cron: pam_unix(cron:session): opened for user root
+Mar 20 19:18:45 prod-node-1 dockerd: cron: pam_unix(cron:session): opened for user root
+Mar 20 19:23:58 prod-node-1 containerd: kernel: EXT4-fs warning: maximal mount count reached
+Mar 20 19:26:36 prod-node-2 sshd: Container maia-worker started (pid=70340)
+Mar 20 19:35:25 prod-node-1 dockerd: Accepted connection from 10.0.3.4
+Mar 20 19:37:22 prod-node-1 sshd: kernel: TCP: request_sock_TCP: Possible SYN flooding on port 1421
+Mar 20 19:44:47 prod-node-2 cron: Accepted connection from 10.0.5.1
+Mar 20 19:48:30 prod-node-1 kubelet: Segmentation fault (core dumped) -- pid 14372
+Mar 20 19:52:00 prod-node-2 cron: systemd: maia-worker.service: Scheduled restart job
+Mar 20 19:57:13 prod-node-2 kubelet: cron: pam_unix(cron:session): opened for user root
+Mar 20 20:01:48 prod-node-2 cron: iptables: New chain created
+Mar 20 20:06:19 prod-node-2 cron: Accepted connection from 10.0.5.4
+Mar 20 20:13:27 prod-node-2 kubelet: cron: pam_unix(cron:session): opened for user root
+Mar 20 20:17:50 prod-node-3 kubelet: NetworkManager: interface eth0 up
+Mar 20 20:23:06 prod-node-2 cron: CPU steal time spike: 89289%
+Mar 20 20:25:18 prod-node-2 journald: CPU steal time spike: 84939%
+Mar 20 20:33:09 prod-node-1 journald: Accepted connection from 10.0.2.5
+Mar 20 20:37:53 prod-node-2 dockerd: Container maia-api started (pid=81620)
+Mar 20 20:41:51 prod-node-2 kubelet: Container maia-api started (pid=59783)
+Mar 20 20:45:00 prod-node-3 containerd: Segmentation fault (core dumped) -- pid 78596
+Mar 20 20:51:28 prod-node-2 containerd: kernel: EXT4-fs warning: maximal mount count reached
+Mar 20 20:57:24 prod-node-3 containerd: sshd: Disconnecting: Too many authentication failures
+Mar 20 21:01:32 prod-node-2 kubelet: cron: pam_unix(cron:session): opened for user root
+Mar 20 21:06:12 prod-node-1 kernel: systemd: maia-worker.service: Scheduled restart job
+Mar 20 21:10:34 prod-node-2 sshd: Container maia-api started (pid=69736)
+Mar 20 21:16:23 prod-node-3 journald: systemd: maia-worker.service: Scheduled restart job
+Mar 20 21:20:23 prod-node-1 cron: Started Docker Application Container Engine
+Mar 20 21:26:11 prod-node-2 containerd: cron: pam_unix(cron:session): opened for user root
+Mar 20 21:30:22 prod-node-2 cron: CPU steal time spike: 9582%
+Mar 20 21:34:06 prod-node-1 dockerd: cron: pam_unix(cron:session): opened for user root
+Mar 20 21:39:43 prod-node-2 kernel: Segmentation fault (core dumped) -- pid 71370
+Mar 20 21:45:20 prod-node-2 containerd: cron: pam_unix(cron:session): opened for user root
+Mar 20 21:47:50 prod-node-2 systemd: NetworkManager: interface eth0 up
+Mar 20 21:51:08 prod-node-1 sshd: cron: pam_unix(cron:session): opened for user root
+Mar 20 21:57:44 prod-node-1 systemd: Accepted connection from 10.0.3.5
+Mar 20 22:01:47 prod-node-2 cron: Segmentation fault (core dumped) -- pid 93533
+Mar 20 22:05:49 prod-node-2 systemd: systemd: maia-worker.service: Main process exited, code=killed, status=9/KILL
+Mar 20 22:14:02 prod-node-2 cron: sshd: Disconnecting: Too many authentication failures
+Mar 20 22:16:58 prod-node-2 dockerd: Disk usage on /var/data: 40862%
+Mar 20 22:21:42 prod-node-2 kernel: OOM killer invoked: killing process 69263 (maia-worker)
+Mar 20 22:27:47 prod-node-2 sshd: Started Docker Application Container Engine
+Mar 20 22:28:51 prod-node-2 sshd: Container maia-worker started (pid=9432)
+Mar 20 22:36:35 prod-node-2 containerd: Started Docker Application Container Engine
+Mar 20 22:39:39 prod-node-1 systemd: systemd: maia-worker.service: Scheduled restart job
+Mar 20 22:46:57 prod-node-3 systemd: systemd: maia-worker.service: Main process exited, code=killed, status=9/KILL
+Mar 20 22:51:40 prod-node-1 kernel: CPU steal time spike: 76587%
+Mar 20 22:57:18 prod-node-2 kernel: iptables: New chain created
+Mar 20 22:59:35 prod-node-2 sshd: iptables: New chain created
+Mar 20 23:04:54 prod-node-2 journald: cron: pam_unix(cron:session): opened for user root
+Mar 20 23:09:47 prod-node-3 kernel: Container maia-api started (pid=49753)
+Mar 20 23:15:32 prod-node-1 kernel: kernel: TCP: request_sock_TCP: Possible SYN flooding on port 1421
+Mar 20 23:18:23 prod-node-2 kernel: OOM killer invoked: killing process 12229 (maia-worker)
+Mar 20 23:23:41 prod-node-1 dockerd: NFS mount /mnt/data stale, remounting
+Mar 20 23:28:52 prod-node-2 containerd: NetworkManager: interface eth0 up
+Mar 20 23:32:58 prod-node-3 kubelet: Accepted connection from 10.0.5.1
+Mar 20 23:37:47 prod-node-2 dockerd: Disk usage on /var/data: 68803%
+Mar 20 23:44:35 prod-node-1 dockerd: CPU steal time spike: 17188%
+Mar 20 23:46:38 prod-node-2 kubelet: sshd: Disconnecting: Too many authentication failures
+Mar 20 23:54:46 prod-node-2 kubelet: Container maia-worker started (pid=68688)
+Mar 20 23:58:30 prod-node-2 sshd: systemd: maia-worker.service: Main process exited, code=killed, status=9/KILL

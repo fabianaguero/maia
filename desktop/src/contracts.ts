@@ -76,6 +76,20 @@ export interface MusicalAsset {
       bpm: number;
     }>;
   };
+  visualization?: {
+    waveform: number[];
+    hotCues: Array<{
+      second: number;
+      label: string;
+      type: string;
+      excerpt?: string;
+    }>;
+    beatGrid: Array<{
+      index: number;
+      second: number;
+    }>;
+    complexityCurve?: number[];
+  };
   createdAt: string;
 }
 
@@ -153,6 +167,44 @@ export function createHealthRequest(): HealthRequest {
     requestId: createRequestId("health"),
     action: "health",
     payload: {},
+  };
+}
+
+export function createAnalyzeTrackRequest(sourcePath: string): AnalyzeRequest {
+  return {
+    contractVersion: CONTRACT_VERSION,
+    requestId: createRequestId("track"),
+    action: "analyze",
+    payload: {
+      assetType: "track_analysis",
+      source: {
+        kind: "file",
+        path: sourcePath,
+      },
+      options: {
+        waveformBins: 256,
+        beatGridResolution: 1,
+        captureBpmCurve: true,
+      },
+    },
+  };
+}
+
+export function createAnalyzeRepositoryRequest(sourceKind: string, sourcePath: string): AnalyzeRequest {
+  return {
+    contractVersion: CONTRACT_VERSION,
+    requestId: createRequestId("repo"),
+    action: "analyze",
+    payload: {
+      assetType: "repo_analysis",
+      source: {
+        kind: sourceKind as SourceKind,
+        path: sourcePath,
+      },
+      options: {
+        inferCodeSuggestedBpm: true,
+      },
+    },
   };
 }
 

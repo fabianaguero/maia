@@ -3,6 +3,7 @@ import { ManagedAudioPlayer } from "./ManagedAudioPlayer";
 
 interface TrackPlaybackPanelProps {
   track: LibraryTrack;
+  onTimeUpdate?: (seconds: number) => void;
 }
 
 function formatDuration(durationSeconds: number | null): string {
@@ -17,30 +18,38 @@ function formatDuration(durationSeconds: number | null): string {
 }
 
 function describePlaybackSource(track: LibraryTrack): string {
-  if (!track.storagePath) {
+  if (!track.storagePath && !track.sourcePath) {
     return "Unavailable";
   }
 
-  if (track.storagePath.startsWith("browser-fallback://")) {
+  if (
+    track.storagePath?.startsWith("browser-fallback://") ||
+    track.sourcePath?.startsWith("browser-fallback://")
+  ) {
     return "Browser fallback";
   }
 
-  if (track.storagePath === track.sourcePath) {
-    return "Legacy/original path";
+  if (track.storagePath && track.storagePath !== track.sourcePath) {
+    return "Managed snapshot";
   }
 
-  return "Managed snapshot";
+  return "Original file";
 }
 
 function resolvePlayableTrackPath(track: LibraryTrack): string | null {
-  if (!track.storagePath || track.storagePath === track.sourcePath) {
-    return null;
+  // Prefer the managed snapshot; fall back to the original source path.
+  if (track.storagePath && !track.storagePath.startsWith("browser-fallback://")) {
+    return track.storagePath;
   }
 
-  return track.storagePath;
+  if (track.sourcePath && !track.sourcePath.startsWith("browser-fallback://")) {
+    return track.sourcePath;
+  }
+
+  return null;
 }
 
-export function TrackPlaybackPanel({ track }: TrackPlaybackPanelProps) {
+export function TrackPlaybackPanel({ track, onTimeUpdate }: TrackPlaybackPanelProps) {
   const playableTrackPath = resolvePlayableTrackPath(track);
   const trackFormat = track.fileExtension.replace(/^\./, "").toUpperCase() || "AUDIO";
 
@@ -72,8 +81,8 @@ export function TrackPlaybackPanel({ track }: TrackPlaybackPanelProps) {
       </div>
 
       <div className="audio-path-card top-spaced">
-        <span>Managed audio path</span>
-        <strong>{track.storagePath ?? "No managed snapshot created"}</strong>
+        <span>Audio path</span>
+        <strong>{track.storagePath ?? track.sourcePath ?? "No audio path"}</strong>
       </div>
 
       <ManagedAudioPlayer
@@ -83,11 +92,12 @@ export function TrackPlaybackPanel({ track }: TrackPlaybackPanelProps) {
         durationSeconds={track.durationSeconds}
         playLabel="Play track"
         pauseLabel="Pause track"
-        missingNote="This track does not have a managed Maia snapshot yet. Re-import it to enable in-app playback."
+        missingNote="No audio path found for this track. Re-import it to enable playback."
         browserFallbackNote="Browser fallback simulates track storage. Open the Tauri desktop shell to audition the managed track."
         desktopOnlyNote="Managed track playback is available inside the desktop shell."
         availableNote="Track playback runs from the managed local snapshot stored by Maia."
         errorNote="Maia could not read the managed track snapshot. Re-import the track if the file is missing."
+        onTimeUpdate={onTimeUpdate}
       />
     </section>
   );

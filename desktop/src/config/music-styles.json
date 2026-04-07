@@ -44,6 +44,13 @@
       "maxBpm": 140
     },
     {
+      "id": "tropical-house",
+      "label": "Tropical House",
+      "description": "Chill-out sun-drenched instrumental — pluck-led maritime house melodies, turquoise and coral vibes.",
+      "minBpm": 110,
+      "maxBpm": 120
+    },
+    {
       "id": "classic",
       "label": "Classical",
       "description": "Orchestral instrumental palette — long sine phrases, gentle dynamics, wide harmonic spacing.",

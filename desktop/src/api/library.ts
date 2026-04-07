@@ -17,8 +17,11 @@ function isNativeBridgeUnavailable(error: unknown): boolean {
 export async function listTracks(): Promise<LibraryTrack[]> {
   try {
     return await invoke<LibraryTrack[]>("list_tracks");
-  } catch {
-    return listMockTracks();
+  } catch (error) {
+    if (isNativeBridgeUnavailable(error)) {
+      return listMockTracks();
+    }
+    throw error;
   }
 }
 
@@ -27,16 +30,22 @@ export async function importTrack(
 ): Promise<LibraryTrack> {
   try {
     return await invoke<LibraryTrack>("import_track", { input });
-  } catch {
-    return importMockTrack(input);
+  } catch (error) {
+    if (isNativeBridgeUnavailable(error)) {
+      return importMockTrack(input);
+    }
+    throw error;
   }
 }
 
 export async function seedDemoTracks(): Promise<LibraryTrack[]> {
   try {
     return await invoke<LibraryTrack[]>("seed_demo_tracks");
-  } catch {
-    return seedMockTracks();
+  } catch (error) {
+    if (isNativeBridgeUnavailable(error)) {
+      return seedMockTracks();
+    }
+    throw error;
   }
 }
 

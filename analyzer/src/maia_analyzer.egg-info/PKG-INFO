@@ -7,7 +7,14 @@ Requires-Dist: miniaudio<2,>=1.61
 Requires-Dist: tree-sitter<1,>=0.22
 Requires-Dist: tree-sitter-java<1,>=0.23
 Requires-Dist: tree-sitter-kotlin<2,>=1.0
+Requires-Dist: tree-sitter-python<1,>=0.23
+Requires-Dist: tree-sitter-typescript<1,>=0.23
+Requires-Dist: tree-sitter-rust<1,>=0.23
+Requires-Dist: tree-sitter-go<1,>=0.23
 Requires-Dist: librosa<1,>=0.10
+Requires-Dist: demucs<5,>=4.0.0
+Requires-Dist: torch>=2.4.0
+Requires-Dist: lameenc>=1.7.0
 Provides-Extra: dev
 Requires-Dist: pytest>=8.0; extra == "dev"
 Requires-Dist: pytest-mock>=3.12; extra == "dev"

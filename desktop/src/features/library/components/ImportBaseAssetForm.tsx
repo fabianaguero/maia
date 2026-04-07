@@ -1,3 +1,4 @@
+import { FolderOpen, PackagePlus } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 
@@ -207,10 +208,10 @@ export function ImportBaseAssetForm({
           disabled={busy || pickerBusy}
           onClick={() => void handleBrowse()}
         >
-          {pickerBusy ? "Browsing..." : sourceKind === "directory" ? "Browse folder" : "Browse file"}
+          {pickerBusy ? <><span className="spin-ring" aria-hidden="true" /> Browsing...</> : <><FolderOpen size={14} /> {sourceKind === "directory" ? "Browse folder" : "Browse file"}</>}
         </button>
         <button type="submit" className="action" disabled={busy}>
-          {busy ? "Registering..." : "Register base asset"}
+          {busy ? <><span className="spin-ring" aria-hidden="true" /> Registering...</> : <><PackagePlus size={14} /> Register base asset</>}
         </button>
       </div>
     </form>

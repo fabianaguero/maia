@@ -1,3 +1,4 @@
+import { FolderOpen, Music, Shuffle } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 
@@ -167,10 +168,10 @@ export function ImportTrackForm({
           onClick={() => void handleBrowseTrack()}
           disabled={busy || pickerBusy}
         >
-          {pickerBusy ? "Browsing..." : "Browse audio file"}
+          {pickerBusy ? <><span className="spin-ring" aria-hidden="true" /> Browsing...</> : <><FolderOpen size={14} /> Browse audio file</>}
         </button>
         <button type="submit" className="action" disabled={busy}>
-          {busy ? "Saving..." : "Import track"}
+          {busy ? <><span className="spin-ring" aria-hidden="true" /> Saving...</> : <><Music size={14} /> Import track</>}
         </button>
         <button
           type="button"
@@ -178,7 +179,7 @@ export function ImportTrackForm({
           onClick={() => void onSeedDemo()}
           disabled={busy}
         >
-          Load demo tracks
+          <Shuffle size={14} /> Load demo tracks
         </button>
       </div>
     </form>
