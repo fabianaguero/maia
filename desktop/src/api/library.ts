@@ -65,6 +65,17 @@ export async function pickTrackSourcePath(
   }
 }
 
+export async function checkTrackExists(sourcePath: string): Promise<boolean> {
+  try {
+    return await invoke<boolean>("check_file_exists", { path: sourcePath });
+  } catch (error) {
+    if (isNativeBridgeUnavailable(error)) {
+      return true; // Mock: assume exists
+    }
+    throw error;
+  }
+}
+
 export async function deleteTrack(trackId: string): Promise<void> {
   try {
     await invoke<void>("delete_track", { trackId });

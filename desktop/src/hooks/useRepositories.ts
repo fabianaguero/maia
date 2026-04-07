@@ -4,6 +4,7 @@ import {
   importRepository,
   listRepositories,
   deleteRepository,
+  checkRepositoryExists,
 } from "../api/repositories";
 import { runAnalyzerRequest } from "../api/analyzer";
 import { createAnalyzeRepositoryRequest } from "../contracts";
@@ -151,6 +152,12 @@ export function useRepositories() {
     try {
       const repository = repositories.find((r) => r.id === repositoryId);
       if (!repository) throw new Error("Repository not found");
+
+      // Check if file/directory exists before analyzing
+      const sourceExists = await checkRepositoryExists(repository.sourcePath);
+      if (!sourceExists) {
+        throw new Error(`Repository source not found: ${repository.sourcePath}`);
+      }
 
       // Re-analyze using the same source path
       const input: ImportRepositoryInput = {

@@ -213,6 +213,17 @@ export async function readAudioBytes(path: string): Promise<string> {
   return invoke<string>("read_audio_bytes", { path });
 }
 
+export async function checkRepositoryExists(sourcePath: string): Promise<boolean> {
+  try {
+    return await invoke<boolean>("check_file_exists", { path: sourcePath });
+  } catch (error) {
+    if (isNativeBridgeUnavailable(error)) {
+      return true; // Mock: assume exists
+    }
+    throw error;
+  }
+}
+
 export async function deleteRepository(repositoryId: string): Promise<void> {
   try {
     await invoke<void>("delete_repository", { repositoryId });

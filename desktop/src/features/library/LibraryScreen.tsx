@@ -196,7 +196,7 @@ export function LibraryScreen({
                   await onDeleteTrack(orphan.id);
                 }
               }}
-              title="Delete all unanalyzed tracks"
+              title="Delete all unanalyzed or missing tracks"
             >
               <Trash2 size={14} /> Clean Orphans
             </button>
@@ -216,7 +216,7 @@ export function LibraryScreen({
                   await onDeleteRepository(orphan.id);
                 }
               }}
-              title="Delete all unanalyzed repositories"
+              title="Delete all unanalyzed or missing repositories"
             >
               <Trash2 size={14} /> Clean Orphans
             </button>

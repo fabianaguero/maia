@@ -1,6 +1,6 @@
 import { startTransition, useEffect, useState } from "react";
 
-import { importTrack, listTracks, seedDemoTracks, deleteTrack } from "../api/library";
+import { importTrack, listTracks, seedDemoTracks, deleteTrack, checkTrackExists } from "../api/library";
 import { runAnalyzerRequest } from "../api/analyzer";
 import { createAnalyzeTrackRequest } from "../contracts";
 import type { ImportTrackInput, LibraryTrack } from "../types/library";
@@ -142,6 +142,12 @@ export function useLibrary() {
     try {
       const track = tracks.find((t) => t.id === trackId);
       if (!track) throw new Error("Track not found");
+
+      // Check if file exists before analyzing
+      const fileExists = await checkTrackExists(track.sourcePath);
+      if (!fileExists) {
+        throw new Error(`Track file not found: ${track.sourcePath}`);
+      }
 
       // Re-analyze using the same source path
       const input: ImportTrackInput = {
