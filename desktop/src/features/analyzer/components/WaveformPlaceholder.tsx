@@ -13,6 +13,7 @@ interface WaveformPlaceholderProps {
   }>;
   currentTime?: number;
   hero?: boolean;
+  onSeek?: (second: number) => void;
 }
 
 function formatDuration(durationSeconds: number | null): string {
@@ -33,7 +34,17 @@ export function WaveformPlaceholder({
   hotCues = [],
   currentTime = 0,
   hero = false,
+  onSeek,
 }: WaveformPlaceholderProps) {
+  const handleWaveformClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!onSeek || !durationSeconds || durationSeconds <= 0) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, clickX / rect.width));
+    const seekTime = percentage * durationSeconds;
+    onSeek(seekTime);
+  };
   // Use bins as-is; if empty, create a fallback with more detail
   const normalizedBins =
     bins.length > 0
@@ -67,7 +78,11 @@ export function WaveformPlaceholder({
         </div>
       </div>
 
-      <div className="waveform-stage">
+      <div
+        className="waveform-stage"
+        onClick={handleWaveformClick}
+        style={{ cursor: onSeek ? 'pointer' : 'default' }}
+      >
         <div
           className="waveform-bars"
           aria-label="Waveform overview"

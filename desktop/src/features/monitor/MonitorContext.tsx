@@ -366,6 +366,10 @@ interface MonitorContextValue {
    */
   setGuideTrack: (path: string | null) => void;
   /**
+   * Seek the guide track to a specific time (seconds).
+   */
+  seekGuideTrack: (second: number) => void;
+  /**
    * Start a monitoring session.  Delegates to the Tauri stream-session registry
    * when available and falls back to direct-file polling in browser mode.
    * Returns false if both paths fail.
@@ -442,6 +446,13 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
   // -------------------------------------------------------------------------
 
   const guideTrackPathRef = useRef<string | null>(null);
+
+  const seekGuideTrack = useCallback((second: number) => {
+    if (!guideTrackRef.current) return;
+    const targetSample = Math.max(0, Math.floor(second * guideTrackRef.current.sampleRate));
+    guideTrackCursorRef.current.current = Math.min(targetSample, guideTrackRef.current.samples.length - 1);
+    log.info(`guide track seek to ${second.toFixed(2)}s (sample ${guideTrackCursorRef.current.current})`);
+  }, []);
 
   const setGuideTrack = useCallback((path: string | null) => {
     // Skip if path hasn't changed
@@ -897,6 +908,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       guideTrackReady,
       guideTrackPath,
       setGuideTrack,
+      seekGuideTrack,
       startSession,
       stopSession,
       playbackSession,
@@ -909,6 +921,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       guideTrackReady,
       guideTrackPath,
       setGuideTrack,
+      seekGuideTrack,
       startSession,
       stopSession,
       playbackSession,
