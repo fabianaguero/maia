@@ -847,12 +847,37 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       // Replay events one by one at POLL_INTERVAL_MS
       let idx = 0;
       const replayNext = () => {
-        if (!activeRef.current || idx >= events.length) {
-          // Playback finished
+        if (!activeRef.current) return;
+
+        if (idx >= events.length) {
+          // Events finished, but allow guide track to continue in silence
+          if (guideTrackRef.current && !guideTrackFinishedRef.current) {
+            // Continue playing guide track without sonification
+            const wav = sliceGuideTrackBar(
+              guideTrackRef.current,
+              guideTrackCursorRef.current,
+              [], // No cues — silent
+              0.8,
+              null,
+            );
+            if (wav === null) {
+              // Track reached end
+              guideTrackFinishedRef.current = true;
+              log.info("playback finished — guide track reached end after %d events", idx);
+              activeRef.current = false;
+              return;
+            }
+            // Continue looping without sonification
+            pollTimerRef.current = window.setTimeout(replayNext, POLL_INTERVAL_MS);
+            return;
+          }
+
+          // No guide track, playback fully finished
           log.info("playback finished after %d events", idx);
           activeRef.current = false;
           return;
         }
+
         const evt = events[idx++];
         const update: LiveLogStreamUpdate = {
           sourcePath,
