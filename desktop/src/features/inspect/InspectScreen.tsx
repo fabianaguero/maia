@@ -212,6 +212,7 @@ export function InspectScreen({
             currentTime={currentTime}
             hero
             onSeek={monitor.seekGuideTrack}
+            analysisProgress={monitor.playbackProgress}
           />
           <TrackPlaybackPanel track={track} onTimeUpdate={setCurrentTime} />
         </div>

@@ -14,6 +14,7 @@ interface WaveformPlaceholderProps {
   currentTime?: number;
   hero?: boolean;
   onSeek?: (second: number) => void;
+  analysisProgress?: number | null; // 0-1, null if not applicable
 }
 
 function formatDuration(durationSeconds: number | null): string {
@@ -35,6 +36,7 @@ export function WaveformPlaceholder({
   currentTime = 0,
   hero = false,
   onSeek,
+  analysisProgress = null,
 }: WaveformPlaceholderProps) {
   const handleWaveformClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!onSeek || !durationSeconds || durationSeconds <= 0) return;
@@ -152,6 +154,15 @@ export function WaveformPlaceholder({
               style={{
                 left: `${Math.min(100, (currentTime / durationSeconds) * 100)}%`,
               } as CSSProperties}
+            />
+          ) : null}
+          {analysisProgress !== null && analysisProgress < 1 && durationSeconds && durationSeconds > 0 ? (
+            <div
+              className="waveform-analysis-end"
+              style={{
+                left: `${Math.min(100, analysisProgress * 100)}%`,
+              } as CSSProperties}
+              title={`Analysis complete up to this point (${Math.round(analysisProgress * 100)}%)`}
             />
           ) : null}
         </div>

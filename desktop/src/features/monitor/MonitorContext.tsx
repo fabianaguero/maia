@@ -373,6 +373,10 @@ interface MonitorContextValue {
   guideTrackReady: boolean;
   /** Path of the currently loaded guide track (null = synth fallback). */
   guideTrackPath: string | null;
+  /** Progress of playback session (0-1 when isPlayback=true, null otherwise). */
+  playbackProgress: number | null;
+  /** Total duration of guide track in seconds, or null if no track loaded. */
+  guideTrackDurationSec: number | null;
   /**
    * Load a guide track from disk.  Pass null to clear and fall back to synth.
    */
@@ -430,6 +434,8 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
   });
   const [guideTrackReady, setGuideTrackReady] = useState(false);
   const [guideTrackPath, setGuideTrackPathState] = useState<string | null>(null);
+  const [playbackProgress, setPlaybackProgress] = useState<number | null>(null);
+  const [guideTrackDurationSec, setGuideTrackDurationSec] = useState<number | null>(null);
 
   // Refs that survive across re-renders without causing them
   const pollTimerRef = useRef<number | null>(null);
@@ -483,6 +489,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       guideTrackFinishedRef.current = false;
       setGuideTrackReady(false);
       setGuideTrackPathState(null);
+      setGuideTrackDurationSec(null);
       return;
     }
     log.info(`loading guide track: ${path}`);
@@ -493,6 +500,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       .then((pcm) => {
         guideTrackRef.current = pcm;
         guideTrackCursorRef.current.current = 0;
+        setGuideTrackDurationSec(pcm.durationSec);
         setGuideTrackReady(true);
         log.info(`guide track ready: ${pcm.durationSec.toFixed(2)}s, ${pcm.samples.length} samples`);
       })
@@ -849,6 +857,10 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       const replayNext = () => {
         if (!activeRef.current) return;
 
+        // Update playback progress (0-1)
+        const progress = events.length > 0 ? Math.min(1, idx / events.length) : 0;
+        setPlaybackProgress(progress);
+
         if (idx >= events.length) {
           // Events finished, but allow guide track to continue in silence
           if (guideTrackRef.current && !guideTrackFinishedRef.current) {
@@ -962,6 +974,8 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       stopSession,
       playbackSession,
       subscribe,
+      playbackProgress,
+      guideTrackDurationSec,
     }),
     [
       session,
@@ -975,6 +989,8 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       stopSession,
       playbackSession,
       subscribe,
+      playbackProgress,
+      guideTrackDurationSec,
     ],
   );
 

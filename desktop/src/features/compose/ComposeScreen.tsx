@@ -143,6 +143,7 @@ export function ComposeScreen({
                     currentTime={currentTime}
                     hero
                     onSeek={monitor.seekGuideTrack}
+                    analysisProgress={monitor.playbackProgress}
                   />
                 </div>
               )}
