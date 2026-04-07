@@ -180,13 +180,49 @@ export function LibraryScreen({
           <h2>Library</h2>
           <p className="support-copy">Everything you've added lives here. Pick an item to work with it.</p>
         </div>
-        <button
-          type="button"
-          className={showForm ? "action active" : "action"}
-          onClick={() => setShowForm((v) => !v)}
-        >
-          {showForm ? <><X size={14} /> Cancel</> : <><Plus size={14} /> Add {tab === "tracks" ? "track" : tab === "sources" ? "source" : "base"}</>}
-        </button>
+        <div className="library-header-actions">
+          {tab === "tracks" && (() => {
+            const orphanTracks = tracks.filter(t => !t.bpm);
+            return orphanTracks.length > 0 ? (
+              <button
+                type="button"
+                className="action action-secondary"
+                onClick={async () => {
+                  for (const orphan of orphanTracks) {
+                    await onDeleteTrack(orphan.id);
+                  }
+                }}
+                title="Delete all unanalyzed tracks"
+              >
+                <Trash2 size={14} /> Clean Orphans ({orphanTracks.length})
+              </button>
+            ) : null;
+          })()}
+          {tab === "sources" && (() => {
+            const orphanRepos = repositories.filter(r => !r.suggestedBpm);
+            return orphanRepos.length > 0 ? (
+              <button
+                type="button"
+                className="action action-secondary"
+                onClick={async () => {
+                  for (const orphan of orphanRepos) {
+                    await onDeleteRepository(orphan.id);
+                  }
+                }}
+                title="Delete all unanalyzed repositories"
+              >
+                <Trash2 size={14} /> Clean Orphans ({orphanRepos.length})
+              </button>
+            ) : null;
+          })()}
+          <button
+            type="button"
+            className={showForm ? "action active" : "action"}
+            onClick={() => setShowForm((v) => !v)}
+          >
+            {showForm ? <><X size={14} /> Cancel</> : <><Plus size={14} /> Add {tab === "tracks" ? "track" : tab === "sources" ? "source" : "base"}</>}
+          </button>
+        </div>
       </header>
 
       {/* Quick Import Bar */}

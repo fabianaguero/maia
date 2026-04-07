@@ -401,6 +401,23 @@ dt,
   margin: 0 0 4px;
 }
 
+.library-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.action-secondary {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #ef4444 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.action-secondary:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+}
+
 .library-tabs {
   display: flex;
   gap: 6px;
