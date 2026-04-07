@@ -3695,6 +3695,23 @@ html.light-mode .field-input {
   align-items: center;
 }
 
+.bpm-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: rgba(34, 211, 122, 0.15);
+  color: #22d37a;
+  border: 1px solid rgba(34, 211, 122, 0.3);
+}
+
+.bpm-badge.pending {
+  background: rgba(245, 166, 35, 0.15);
+  color: #f5a623;
+  border-color: rgba(245, 166, 35, 0.3);
+}
+
 .asset-card-actions {
   display: flex;
   gap: 6px;

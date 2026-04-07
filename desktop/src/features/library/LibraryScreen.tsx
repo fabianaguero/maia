@@ -294,10 +294,11 @@ export function LibraryScreen({
                     <div className="asset-card-body">
                       <strong className="asset-card-title">{track.title}</strong>
                       <div className="asset-card-meta">
-                        <span className={`status-badge ${getStatusBadgeClass(track.analyzerStatus)}`}>
-                          {getStatusLabel(track.analyzerStatus)}
-                        </span>
-                        {track.bpm ? `${Math.round(track.bpm)} BPM` : "No BPM yet"}
+                        {track.bpm ? (
+                          <span className="bpm-badge">{Math.round(track.bpm)} BPM</span>
+                        ) : (
+                          <span className="bpm-badge pending">-</span>
+                        )}
                         {track.durationSeconds ? ` · ${Math.round(track.durationSeconds / 60)}m${Math.round(track.durationSeconds % 60)}s` : ""}
                         {" · "}{track.musicStyleLabel}
                         {" · "}{track.fileExtension}
@@ -305,33 +306,13 @@ export function LibraryScreen({
                       <span className="asset-card-date">{formatShortDate(track.importedAt)}</span>
                     </div>
                     <div className="asset-card-actions">
-                      {!track.bpm && (
-                        <button
-                          type="button"
-                          className="card-action-btn"
-                          onClick={(e) => { e.stopPropagation(); void onReanalyzeTrack(track.id); }}
-                        >
-                          Re-analyze
-                        </button>
-                      )}
-                      {track.bpm && (
-                        <button
-                          type="button"
-                          className="card-action-btn"
-                          onClick={(e) => { e.stopPropagation(); onInspectTrack(track.id); }}
-                        >
-                          {t.library.analyze}
-                        </button>
-                      )}
-                      {track.analyzerStatus === "ready" && (
-                        <button
-                          type="button"
-                          className="card-action-compose"
-                          onClick={(e) => { e.stopPropagation(); onInspectTrack(track.id); }}
-                        >
-                          {t.library.compose} →
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        className="card-action-btn"
+                        onClick={(e) => { e.stopPropagation(); !track.bpm ? void onReanalyzeTrack(track.id) : onInspectTrack(track.id); }}
+                      >
+                        {!track.bpm ? "Analyze" : "View"}
+                      </button>
                     </div>
                   </li>
                 ))}
@@ -363,42 +344,23 @@ export function LibraryScreen({
                       <strong className="asset-card-title">{repo.title}</strong>
                       <div className="asset-card-meta">
                         <span className="type-badge">{SOURCE_KIND_LABEL[repo.sourceKind] ?? repo.sourceKind}</span>
-                        <span className={`status-badge ${getStatusBadgeClass(repo.analyzerStatus)}`}>
-                          {getStatusLabel(repo.analyzerStatus)}
-                        </span>
-                        {repo.suggestedBpm ? `${Math.round(repo.suggestedBpm)} BPM` : ""}
+                        {repo.suggestedBpm ? (
+                          <span className="bpm-badge">{Math.round(repo.suggestedBpm)} BPM</span>
+                        ) : (
+                          <span className="bpm-badge pending">-</span>
+                        )}
                         {repo.primaryLanguage ? ` · ${repo.primaryLanguage}` : ""}
                       </div>
                       <span className="asset-card-date">{formatShortDate(repo.importedAt)}</span>
                     </div>
                     <div className="asset-card-actions">
-                      {!repo.suggestedBpm && (
-                        <button
-                          type="button"
-                          className="card-action-btn"
-                          onClick={(e) => { e.stopPropagation(); void onReanalyzeRepository(repo.id); }}
-                        >
-                          Re-analyze
-                        </button>
-                      )}
-                      {repo.suggestedBpm && (
-                        <button
-                          type="button"
-                          className="card-action-btn"
-                          onClick={(e) => { e.stopPropagation(); onInspectRepository(repo.id); }}
-                        >
-                          {t.library.analyze}
-                        </button>
-                      )}
-                      {repo.analyzerStatus === "ready" && (
-                        <button
-                          type="button"
-                          className="card-action-compose"
-                          onClick={(e) => { e.stopPropagation(); onInspectRepository(repo.id); }}
-                        >
-                          {t.library.compose} →
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        className="card-action-btn"
+                        onClick={(e) => { e.stopPropagation(); !repo.suggestedBpm ? void onReanalyzeRepository(repo.id) : onInspectRepository(repo.id); }}
+                      >
+                        {!repo.suggestedBpm ? "Analyze" : "View"}
+                      </button>
                     </div>
                   </li>
                 ))}
