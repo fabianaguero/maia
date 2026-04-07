@@ -305,7 +305,7 @@ export function LibraryScreen({
                       <span className="asset-card-date">{formatShortDate(track.importedAt)}</span>
                     </div>
                     <div className="asset-card-actions">
-                      {track.analyzerStatus === "pending" && (
+                      {!track.bpm && (
                         <button
                           type="button"
                           className="card-action-btn"
@@ -314,7 +314,7 @@ export function LibraryScreen({
                           Re-analyze
                         </button>
                       )}
-                      {track.analyzerStatus !== "pending" && (
+                      {track.bpm && (
                         <button
                           type="button"
                           className="card-action-btn"
@@ -372,7 +372,7 @@ export function LibraryScreen({
                       <span className="asset-card-date">{formatShortDate(repo.importedAt)}</span>
                     </div>
                     <div className="asset-card-actions">
-                      {repo.analyzerStatus === "pending" && (
+                      {!repo.suggestedBpm && (
                         <button
                           type="button"
                           className="card-action-btn"
@@ -381,7 +381,7 @@ export function LibraryScreen({
                           Re-analyze
                         </button>
                       )}
-                      {repo.analyzerStatus !== "pending" && (
+                      {repo.suggestedBpm && (
                         <button
                           type="button"
                           className="card-action-btn"

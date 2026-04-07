@@ -117,6 +117,8 @@ export function useRepositories() {
 
       if (response.status === "ok" && "musicalAsset" in response.payload) {
         const analyzed = response.payload.musicalAsset;
+        // Just update metadata, don't change analyzerStatus
+        // Status change requires re-import from backend to persist to DB
         startTransition(() => {
           setRepositories((current) =>
             sortRepositories(
@@ -124,7 +126,6 @@ export function useRepositories() {
                 r.id === repository.id
                   ? {
                       ...r,
-                      analyzerStatus: "ready",
                       suggestedBpm: analyzed.suggestedBpm ?? r.suggestedBpm,
                       confidence: analyzed.confidence ?? r.confidence,
                       waveformBins: analyzed.artifacts?.waveformBins ?? r.waveformBins,

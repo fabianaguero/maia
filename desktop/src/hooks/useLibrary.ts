@@ -109,6 +109,8 @@ export function useLibrary() {
 
       if (response.status === "ok" && "musicalAsset" in response.payload) {
         const analyzed = response.payload.musicalAsset;
+        // Just update metadata, don't change analyzerStatus
+        // Status change requires re-import from backend to persist to DB
         startTransition(() => {
           setTracks((current) =>
             sortTracks(
@@ -116,7 +118,6 @@ export function useLibrary() {
                 t.id === track.id
                   ? {
                       ...t,
-                      analyzerStatus: "ready",
                       bpm: analyzed.suggestedBpm ?? t.bpm,
                       bpmConfidence: analyzed.confidence ?? t.bpmConfidence,
                       waveformBins: analyzed.artifacts?.waveformBins ?? t.waveformBins,
