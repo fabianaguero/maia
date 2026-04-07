@@ -181,40 +181,46 @@ export function LibraryScreen({
           <p className="support-copy">Everything you've added lives here. Pick an item to work with it.</p>
         </div>
         <div className="library-header-actions">
-          {tab === "tracks" && (() => {
-            const orphanTracks = tracks.filter(t => !t.bpm);
-            return orphanTracks.length > 0 ? (
-              <button
-                type="button"
-                className="action action-secondary"
-                onClick={async () => {
-                  for (const orphan of orphanTracks) {
-                    await onDeleteTrack(orphan.id);
-                  }
-                }}
-                title="Delete all unanalyzed tracks"
-              >
-                <Trash2 size={14} /> Clean Orphans ({orphanTracks.length})
-              </button>
-            ) : null;
-          })()}
-          {tab === "sources" && (() => {
-            const orphanRepos = repositories.filter(r => !r.suggestedBpm);
-            return orphanRepos.length > 0 ? (
-              <button
-                type="button"
-                className="action action-secondary"
-                onClick={async () => {
-                  for (const orphan of orphanRepos) {
-                    await onDeleteRepository(orphan.id);
-                  }
-                }}
-                title="Delete all unanalyzed repositories"
-              >
-                <Trash2 size={14} /> Clean Orphans ({orphanRepos.length})
-              </button>
-            ) : null;
-          })()}
+          {tab === "tracks" && tracks.length > 0 && (
+            <button
+              type="button"
+              className="action action-secondary"
+              onClick={async () => {
+                const orphanTracks = tracks.filter(t => !t.bpm);
+                if (orphanTracks.length === 0) {
+                  alert("No unanalyzed tracks to delete");
+                  return;
+                }
+                if (!confirm(`Delete ${orphanTracks.length} unanalyzed track(s)?`)) return;
+                for (const orphan of orphanTracks) {
+                  await onDeleteTrack(orphan.id);
+                }
+              }}
+              title="Delete all unanalyzed tracks"
+            >
+              <Trash2 size={14} /> Clean Orphans
+            </button>
+          )}
+          {tab === "sources" && repositories.length > 0 && (
+            <button
+              type="button"
+              className="action action-secondary"
+              onClick={async () => {
+                const orphanRepos = repositories.filter(r => !r.suggestedBpm);
+                if (orphanRepos.length === 0) {
+                  alert("No unanalyzed repositories to delete");
+                  return;
+                }
+                if (!confirm(`Delete ${orphanRepos.length} unanalyzed repositor(y|ies)?`)) return;
+                for (const orphan of orphanRepos) {
+                  await onDeleteRepository(orphan.id);
+                }
+              }}
+              title="Delete all unanalyzed repositories"
+            >
+              <Trash2 size={14} /> Clean Orphans
+            </button>
+          )}
           <button
             type="button"
             className={showForm ? "action active" : "action"}
