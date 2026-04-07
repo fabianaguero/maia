@@ -19,6 +19,14 @@ from .treesitter import (
     build_repo_waveform_bins,
 )
 from .stream import ingest_lines
+from .presets import get_preset as get_style_preset
+
+try:
+    import numpy as np
+    from sklearn.ensemble import IsolationForest
+except ImportError:
+    np = None
+    IsolationForest = None
 
 MAX_LOG_LINES = 4000
 LOG_BUCKET_COUNT = 24
@@ -259,6 +267,24 @@ def _analyze_local_repository(
     go_function_count = int(go_metrics.get("functionCount", 0) or 0)
     go_goroutine_count = int(go_metrics.get("goroutineCount", 0) or 0)
 
+    # Complexity Aggregation
+    max_nesting = max(
+        ast_metrics.get("maxNesting", 0),
+        kt_metrics.get("maxNesting", 0),
+        py_metrics.get("maxNesting", 0),
+        ts_metrics.get("maxNesting", 0),
+        rs_metrics.get("maxNesting", 0),
+        go_metrics.get("maxNesting", 0),
+    )
+    avg_complexity = (
+        ast_metrics.get("complexityScore", 0) +
+        kt_metrics.get("complexityScore", 0) +
+        py_metrics.get("complexityScore", 0) +
+        ts_metrics.get("complexityScore", 0) +
+        rs_metrics.get("complexityScore", 0) +
+        go_metrics.get("complexityScore", 0)
+    ) / 6.0
+
     suggested_bpm = max(
         85,
         min(
@@ -270,6 +296,8 @@ def _analyze_local_repository(
             + min(14, typescript_files // 10)
             + min(10, rust_files // 8)
             + min(10, go_files // 8)
+            + (max_nesting * 2)
+            + min(25, int(avg_complexity * 3))
             + controller_count * 2
             + service_count
             + repository_count
@@ -309,7 +337,9 @@ def _analyze_local_repository(
             + (0.06 if ast_enabled and ast_metrics.get("parseErrors", 0) == 0 else 0)
             + (0.04 if kt_enabled and kt_metrics.get("parseErrors", 0) == 0 else 0)
             + (0.04 if py_enabled and py_metrics.get("parseErrors", 0) == 0 else 0)
-            + (0.04 if ts_enabled and ts_metrics.get("parseErrors", 0) == 0 else 0),
+            + (0.04 if ts_enabled and ts_metrics.get("parseErrors", 0) == 0 else 0)
+            + min(0.12, max_nesting / 20)
+            + min(0.08, avg_complexity / 50),
         ),
         2,
     )
@@ -422,6 +452,8 @@ def _analyze_local_repository(
         "goAstInterfaceCount": go_metrics.get("interfaceCount", 0),
         "goAstGoroutineCount": go_metrics.get("goroutineCount", 0),
         "goAstChannelCount": go_metrics.get("channelCount", 0),
+        "maxNesting": max_nesting,
+        "avgComplexity": round(avg_complexity, 2),
     }
 
     if ast_enabled is False and ast_metrics.get("error"):
@@ -654,11 +686,110 @@ def _extract_log_component(line: str) -> str | None:
     return None
 
 
-def _is_anomaly_line(lowered_line: str, level: str) -> bool:
+def _is_anomaly_line(lowered_line: str, level: str, ai_score: float = 0.0) -> bool:
     if level == "error":
         return True
 
+    # AI-based anomaly detection (Conservative threshold)
+    if ai_score < -0.12:
+        return True
+
     return any(keyword in lowered_line for keyword in ANOMALY_KEYWORDS)
+
+
+class LogAnomalyDetector:
+    """Unsupervised anomaly detection for raw text logs using IsolationForest.
+
+    Features:
+    - Structural: length, character ratios, entropy
+    - Pattern-based: anomaly keywords, stack traces
+    - Contextual: similarity to previous line
+    """
+    def __init__(self, conservative: bool = True):
+        self.model = IsolationForest(
+            contamination=0.04 if conservative else 0.08,
+            random_state=42,
+            n_estimators=50  # Lightweight for latency
+        ) if IsolationForest else None
+        self.is_fitted = False
+        self.prev_line = ""
+
+    def _entropy(self, text: str) -> float:
+        """Shannon entropy of character distribution (0-8 bits)."""
+        if not text:
+            return 0.0
+        from collections import Counter
+        from math import log2
+        counts = Counter(text)
+        length = len(text)
+        entropy = 0.0
+        for count in counts.values():
+            p = count / length
+            if p > 0:
+                entropy -= p * log2(p)
+        return entropy / 8.0  # Normalize to [0, 1]
+
+    def _vectorize(self, line: str) -> list[float]:
+        length = len(line)
+        if length == 0:
+            return [0.0] * 9
+
+        # Structural features
+        alpha_ratio = sum(c.isalpha() for c in line) / length
+        symbol_ratio = sum(not c.isalnum() and not c.isspace() for c in line) / length
+        digit_ratio = sum(c.isdigit() for c in line) / length
+        entropy_norm = self._entropy(line)
+
+        # Pattern features: anomaly indicators
+        has_error_keywords = 1.0 if any(kw in line.lower() for kw in ANOMALY_KEYWORDS) else 0.0
+        has_stack_trace = 1.0 if re.search(r'\s+at\s+|File.*line\s+\d+|\.rs:\d+', line) else 0.0
+
+        # Contextual: comparison with previous line
+        if self.prev_line and self.prev_line != line:
+            # Simple diff ratio: how different from last line
+            diff_chars = sum(1 for a, b in zip(self.prev_line, line) if a != b)
+            max_len = max(len(self.prev_line), len(line))
+            dissimilarity = (diff_chars / max_len) if max_len > 0 else 0.0
+        else:
+            dissimilarity = 0.0
+
+        self.prev_line = line
+
+        return [
+            float(length) / 256.0,  # Normalize length [0, 1]
+            alpha_ratio,
+            symbol_ratio,
+            digit_ratio,
+            entropy_norm,
+            has_error_keywords,
+            has_stack_trace,
+            dissimilarity,
+            0.0  # Reserved for future features
+        ]
+
+    def fit(self, lines: list[str]):
+        if self.model is None or not lines:
+            return
+
+        # Fit on representative sample to establish 'normalcy'
+        self.prev_line = ""
+        X = []
+        for line in lines[:1000]:
+            vec = self._vectorize(line)
+            X.append(vec)
+
+        if X:
+            self.model.fit(X)
+            self.is_fitted = True
+
+        # Reset for scoring phase
+        self.prev_line = ""
+
+    def score(self, line: str) -> float:
+        if not self.is_fitted or self.model is None:
+            return 0.0
+        X = [self._vectorize(line)]
+        return float(self.model.decision_function(X)[0])
 
 
 def _event_weight(level: str, anomaly: bool) -> float:
@@ -744,6 +875,7 @@ def _summarize_log_signal(
     from_offset: int | None = None,
     to_offset: int | None = None,
     truncated: bool = False,
+    options: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], list[str]]:
     warnings: list[str] = []
     level_counts: Counter[str] = Counter()
@@ -755,6 +887,10 @@ def _summarize_log_signal(
     non_empty_line_count = 0
     timestamped_line_count = 0
     anomaly_count = 0
+    
+    # Initialize AI Detector
+    detector = LogAnomalyDetector(conservative=True)
+    detector.fit(raw_lines)
 
     for line_number, raw_line in enumerate(raw_lines, start=1):
         line_count += 1
@@ -766,7 +902,14 @@ def _summarize_log_signal(
         lowered = stripped.lower()
         level = _detect_log_level(lowered)
         component = _extract_log_component(stripped) or "unknown"
-        anomaly = _is_anomaly_line(lowered, level)
+        
+        # AI Scoring
+        ai_score = detector.score(stripped)
+        anomaly = _is_anomaly_line(lowered, level, ai_score)
+        
+        # Level elevation if AI detects strong anomaly in unknown logs
+        if level == "unknown" and ai_score < -0.15:
+            level = "error" if ai_score < -0.22 else "warn"
 
         level_counts[level] += 1
         if component != "unknown":
@@ -858,7 +1001,6 @@ def _summarize_log_signal(
         "anomalyMarkers": anomaly_markers,
         "detectedFormat": file_extension,
         "trackedAs": "log-tail-window" if live_mode else "log-signal",
-        "sonificationCues": _build_sonification_cues(event_records),
     }
     if live_mode:
         metrics["logTailFromOffset"] = from_offset
@@ -889,27 +1031,39 @@ def _summarize_log_signal(
         "createdAt": datetime.now(UTC).isoformat(),
     }
 
+    # Inject Preset-based Visuals
+    preset_id = options.get("presetId", "techno") if options else "techno"
+    preset = get_style_preset(preset_id)
+    asset["metrics"]["colorPalette"] = {
+        "primary": preset.palette.primary,
+        "secondary": preset.palette.secondary,
+        "accent": preset.palette.accent,
+        "background": preset.palette.background,
+        "anomaly": preset.palette.anomaly,
+    }
+    asset["metrics"]["sonificationCues"] = _build_sonification_cues(event_records, preset)
+    asset["metrics"]["stemInteraction"] = preset.stem_interaction
+
     return asset, warnings
 
 
-def _build_sonification_cues(event_records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _build_sonification_cues(
+    event_records: list[dict[str, Any]], 
+    preset: Any,
+) -> list[dict[str, Any]]:
     cues: list[dict[str, Any]] = []
 
-    for record in event_records[:24]:
+    for record in event_records[:32]:  # Increase cue window for live art
         level = str(record["level"])
         anomaly = bool(record["anomaly"])
         event_index = int(record["eventIndex"])
         component = str(record["component"])
         excerpt = str(record["excerpt"])
 
-        note_hz = {
-            "trace": 196.0,
-            "debug": 220.0,
-            "info": 261.63,
-            "warn": 329.63,
-            "error": 392.0,
-            "unknown": 246.94,
-        }.get(level, 246.94)
+        # Mapping governed by Style Preset
+        profile = preset.mappings.get(level, preset.mappings.get("unknown"))
+        
+        note_hz = profile.freq_multiplier * 261.63 # Base on C4
         if anomaly:
             note_hz *= 1.5
 
@@ -921,10 +1075,12 @@ def _build_sonification_cues(event_records: list[dict[str, Any]]) -> list[dict[s
                 "component": component,
                 "excerpt": excerpt,
                 "noteHz": round(note_hz, 2),
-                "durationMs": 260 if anomaly else 180 if level in {"warn", "error"} else 120,
-                "gain": 0.22 if anomaly else 0.16 if level in {"warn", "error"} else 0.1,
-                "waveform": "sawtooth" if anomaly else "triangle" if level == "warn" else "sine",
+                "durationMs": profile.base_duration_ms + (80 if anomaly else 0),
+                "gain": profile.base_gain + (0.08 if anomaly else 0),
+                "waveform": profile.waveform,
                 "accent": "anomaly" if anomaly else level,
+                "filterCutoff": profile.filter_cutoff,
+                "resonance": profile.resonance,
             }
         )
 
