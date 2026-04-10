@@ -1,6 +1,14 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 
 type InvokeArgs = Record<string, unknown> | undefined;
+
+// Safe wrapper around invoke that handles non-Tauri environments
+const invoke = async <T,>(command: string, args?: InvokeArgs): Promise<T> => {
+  if (!tauriInvoke) {
+    throw new Error("Tauri runtime not available");
+  }
+  return tauriInvoke<T>(command, args);
+};
 
 const BRIDGE_WAIT_TIMEOUT_MS = 1500;
 const BRIDGE_POLL_INTERVAL_MS = 50;
