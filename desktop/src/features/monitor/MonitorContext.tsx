@@ -90,7 +90,8 @@ async function _decodeAudioFileImpl(path: string): Promise<GuideTrackPCM> {
 
   let arrayBuf: ArrayBuffer;
   try {
-    // Prefer convertFileSrc + fetch (avoids large base64 IPC for big files)
+    // Prefer convertFileSrc + fetch (avoids large base64 IPC for big files) - only in Tauri
+    if (!isTauri()) throw new Error("convertFileSrc not available in browser");
     const url = convertFileSrc(path);
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
