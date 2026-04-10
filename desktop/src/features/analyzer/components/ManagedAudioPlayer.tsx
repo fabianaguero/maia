@@ -139,7 +139,11 @@ export function ManagedAudioPlayer({
     let cancelled = false;
     let cleanupListeners: (() => void) | null = null;
 
-    invoke<string>("read_audio_bytes", { path: audioPath })
+    const loadPromise = isTauri()
+      ? invoke<string>("read_audio_bytes", { path: audioPath })
+      : Promise.reject(new Error("Audio playback not available in this environment"));
+
+    loadPromise
       .then((b64) => {
         if (cancelled) return;
 
