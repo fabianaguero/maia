@@ -507,7 +507,7 @@ function AppContent() {
           </div>
         </header>
 
-        {selectedItemTitle && (
+        {selectedItemTitle && selectedItemTitle.trim() && (
           <section className="waveform-section">
             <div className="waveform-header">
               <div>

@@ -459,16 +459,6 @@ code {
   line-height: 1.4;
 }
 
-  &::-webkit-scrollbar {
-    width: 4px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: rgba(72, 215, 255, 0.2);
-    border-radius: 2px;
-  }
-}
-
 .sidebar-section {
   display: flex;
   flex-direction: column;
