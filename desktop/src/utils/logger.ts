@@ -3,7 +3,7 @@
 // Dual output: console.log (WebKitGTK DevTools) + file via Tauri invoke.
 // ---------------------------------------------------------------------------
 
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 
 type LogLevel = "TRACE" | "DEBUG" | "INFO" | "WARN" | "ERROR";
 
@@ -22,20 +22,22 @@ let globalLevel: LogLevel = "TRACE";
 let ipcReady = false;
 const pendingLogs: string[] = [];
 
-// Test IPC availability once
-invoke("log_to_terminal", { level: "INFO", message: "=== MAIA LOGGER INITIALIZED ===" })
-  .then(() => {
-    ipcReady = true;
-    // Flush buffered logs
-    for (const msg of pendingLogs) {
-      invoke("log_to_terminal", { level: "INFO", message: msg }).catch(() => {});
-    }
-    pendingLogs.length = 0;
-  })
-  .catch(() => {
-    // IPC not available — file fallback mode
-    console.warn("[Logger] Tauri IPC not available — using console-only mode");
-  });
+// Test IPC availability once (only if running in Tauri)
+if (isTauri()) {
+  invoke("log_to_terminal", { level: "INFO", message: "=== MAIA LOGGER INITIALIZED ===" })
+    .then(() => {
+      ipcReady = true;
+      // Flush buffered logs
+      for (const msg of pendingLogs) {
+        invoke("log_to_terminal", { level: "INFO", message: msg }).catch(() => {});
+      }
+      pendingLogs.length = 0;
+    })
+    .catch(() => {
+      // IPC not available — file fallback mode
+      console.warn("[Logger] Tauri IPC not available — using console-only mode");
+    });
+}
 
 export function setLogLevel(level: LogLevel): void {
   globalLevel = level;

@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { getLogger } from "../utils/logger";
 
 const log = getLogger("API.Sessions");
@@ -46,6 +46,7 @@ function isTauriUnavailable(error: unknown): boolean {
 export async function createPersistedSession(
   input: CreateSessionInput,
 ): Promise<PersistedSession> {
+  if (!isTauri()) return null as any;
   log.info("createPersistedSession id=%s adapter=%s mode=%s", input.id, input.adapterKind, input.mode);
   const result = await invoke<PersistedSession>("create_persisted_session", { input });
   log.info("createPersistedSession → created status=%s", result.status);
@@ -62,6 +63,7 @@ export async function listPersistedSessions(): Promise<PersistedSession[]> {
 }
 
 export async function getPersistedSession(id: string): Promise<PersistedSession> {
+  if (!isTauri()) return null as any;
   return invoke<PersistedSession>("get_persisted_session", { id });
 }
 
@@ -69,6 +71,7 @@ export async function updatePersistedSessionStatus(
   id: string,
   status: "active" | "paused" | "stopped",
 ): Promise<void> {
+  if (!isTauri()) return;
   return invoke("update_persisted_session_status", { id, status });
 }
 
@@ -79,6 +82,7 @@ export async function updatePersistedSessionCursor(
   anomaliesDelta: number,
   lastBpm: number | null,
 ): Promise<void> {
+  if (!isTauri()) return;
   return invoke("update_persisted_session_cursor", {
     id,
     cursor,
@@ -89,6 +93,7 @@ export async function updatePersistedSessionCursor(
 }
 
 export async function deletePersistedSession(id: string): Promise<boolean> {
+  if (!isTauri()) return false;
   return invoke<boolean>("delete_persisted_session", { id });
 }
 
