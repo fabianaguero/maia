@@ -478,13 +478,12 @@ function AppContent() {
         <header className="topbar">
           <div className="topbar-brand">
             <img
-              src="/assets/branding/maia-icon-site.png"
-              alt="MAIA icon"
-              className="topbar-icon"
+              src="/assets/branding/maia-wordmark-site.png"
+              alt="MAIA"
+              className="topbar-wordmark"
             />
             <div className="topbar-copy">
-              <p className="eyebrow">DJ Browser Shell</p>
-              <h2>{t.workspace}</h2>
+              <span className="topbar-subtitle">{t.workspace}</span>
             </div>
           </div>
 
@@ -493,17 +492,17 @@ function AppContent() {
               type="button"
               className="control-button"
               onClick={() => setLang((l) => (l === "en" ? "es" : "en"))}
+              title={t.controls.lang}
             >
-              <Globe2 size={14} />
-              {t.controls.lang}
+              <Globe2 size={16} />
             </button>
             <button
               type="button"
               className="control-button"
               onClick={() => setIsDark((v) => !v)}
+              title={isDark ? t.controls.light : t.controls.dark}
             >
-              {isDark ? <Sun size={14} /> : <Moon size={14} />}
-              {isDark ? t.controls.light : t.controls.dark}
+              {isDark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
           </div>
         </header>
