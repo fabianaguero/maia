@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getLogger } from "../../utils/logger";
 
@@ -97,7 +97,8 @@ async function _decodeAudioFileImpl(path: string): Promise<GuideTrackPCM> {
     arrayBuf = await resp.arrayBuffer();
     log.info(`audio file loaded ${arrayBuf.byteLength} bytes, decoding via fetch`);
   } catch (err) {
-    // Fallback: read_audio_bytes via IPC (base64)
+    // Fallback: read_audio_bytes via IPC (base64) - only in Tauri
+    if (!isTauri()) throw new Error("Audio file not available in browser environment");
     log.info(`convertFileSrc failed, falling back to read_audio_bytes: ${err instanceof Error ? err.message : String(err)}`);
     const b64 = await invoke<string>("read_audio_bytes", { path });
     const bin = atob(b64);
