@@ -1250,3 +1250,196 @@ code {
 .top-spaced {
   margin-top: var(--space-lg);
 }
+
+/* ========================================
+   8. ADDITIONAL COMPONENT STYLES
+   ======================================== */
+
+.support-copy {
+  margin: 0;
+  font-size: var(--font-label);
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-lg);
+  flex-shrink: 0;
+
+  &.compact {
+    gap: var(--space-md);
+
+    h3 {
+      font-size: var(--font-body);
+    }
+  }
+}
+
+.secondary-action {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-soft);
+  color: var(--text-secondary);
+  font-size: var(--font-label);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration-base) ease;
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--color-accent);
+    color: var(--text-primary);
+  }
+}
+
+.table-action {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--font-label);
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--color-accent), var(--color-gold));
+  color: var(--bg-dark);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--duration-base) ease;
+
+  &:hover {
+    transform: translateY(-1px);
+  }
+}
+
+.pill-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.waveform-meta-pill,
+.status-row {
+  display: flex;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  font-size: var(--font-label);
+  align-items: center;
+
+  span {
+    color: var(--text-secondary);
+  }
+
+  strong {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-lg);
+}
+
+.metric-panel {
+  h3 {
+    margin: 0 0 var(--space-md) 0;
+  }
+}
+
+.compact-select {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--font-label);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+
+  &:hover {
+    border-color: var(--color-accent);
+    background: rgba(72, 215, 255, 0.1);
+  }
+}
+
+.compact-input {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--font-label);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+
+  &:focus {
+    outline: 1px solid var(--color-accent);
+    border-color: var(--color-accent);
+  }
+}
+
+.metadata-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  small {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 10px;
+  }
+
+  span {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+}
+
+.stack-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.repo-hero-card {
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(72, 215, 255, 0.1), rgba(247, 189, 79, 0.05));
+  border: 1px solid var(--border-soft);
+}
+
+.style-preview {
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-soft);
+}
+
+.spin-ring {
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.panel.waveform-panel {
+  flex: 1;
+  padding: var(--space-lg);
+  min-height: 0;
+}
+
+.audio-path-card {
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-soft);
+}
