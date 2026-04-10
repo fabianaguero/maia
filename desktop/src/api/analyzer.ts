@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "./tauri";
 
 import { baseAssetCategoryCatalog } from "../config/baseAssetCategories";
 import { musicStyleCatalog } from "../config/musicStyles";

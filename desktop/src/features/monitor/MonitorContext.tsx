@@ -8,8 +8,14 @@ import {
   type ReactNode,
 } from "react";
 
-import { invoke, isTauri } from "@tauri-apps/api/core";
+import { invoke } from "../../api/tauri";
 import { convertFileSrc } from "@tauri-apps/api/core";
+
+function isTauri(): boolean {
+  if (typeof window === "undefined") return false;
+  const tauriWindow = window as any;
+  return Boolean(tauriWindow.__TAURI_INTERNALS__ || tauriWindow.__TAURI__);
+}
 import { getLogger } from "../../utils/logger";
 
 const log = getLogger("MonitorCtx");

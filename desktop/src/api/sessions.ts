@@ -1,4 +1,4 @@
-import { invoke, isTauri } from "@tauri-apps/api/core";
+import { invoke } from "./tauri";
 import { getLogger } from "../utils/logger";
 
 const log = getLogger("API.Sessions");
