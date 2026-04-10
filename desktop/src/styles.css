@@ -1823,3 +1823,146 @@ code {
   gap: var(--space-xs);
   margin-top: var(--space-sm);
 }
+
+/* ========================================
+   11. TABLE & LIST STYLES
+   ======================================== */
+
+.meta-list {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-lg);
+}
+
+.meta-list div {
+  padding-bottom: var(--space-lg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.meta-list div:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+.table-shell {
+  overflow: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.tracks-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 860px;
+}
+
+.tracks-table th,
+.tracks-table td {
+  padding: var(--space-lg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+  vertical-align: top;
+}
+
+.tracks-table thead th {
+  position: sticky;
+  top: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 72%);
+  z-index: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+  color: rgba(244, 242, 233, 0.58);
+  font-weight: 600;
+}
+
+.tracks-table tbody tr {
+  cursor: pointer;
+  transition: background var(--duration-base) ease;
+}
+
+.tracks-table tbody tr:hover,
+.tracks-table tbody tr.selected {
+  background: rgba(72, 215, 255, 0.08);
+}
+
+.tracks-table td strong,
+.tracks-table td small {
+  display: block;
+}
+
+.tracks-table td strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.tracks-table td small {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: var(--font-label);
+}
+
+.render-stem-card,
+.render-master-card,
+.monitor-setup-card {
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 72%);
+}
+
+.render-stem-card span,
+.render-stem-card strong,
+.render-stem-card small,
+.render-master-card span,
+.render-master-card strong,
+.render-master-card small {
+  display: block;
+}
+
+.render-stem-card strong,
+.render-master-card strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.render-stem-card small,
+.render-master-card small {
+  color: var(--text-muted);
+  font-size: var(--font-label);
+  margin-top: 4px;
+}
+
+.render-stem-card span,
+.render-master-card span {
+  color: var(--text-secondary);
+}
+
+.replay-bookmark-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.monitor-readiness-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.monitor-readiness-list li {
+  list-style: none;
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: var(--font-label);
+  color: var(--text-secondary);
+}
