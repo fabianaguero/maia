@@ -1,91 +1,99 @@
-import { invoke } from "@tauri-apps/api/core";
-
-import type { ImportTrackInput, LibraryTrack } from "../types/library";
+import type {
+  BaseTrackPlaylist,
+  ImportTrackInput,
+  LibraryTrack,
+  SaveBaseTrackPlaylistInput,
+  UpdateTrackAnalysisInput,
+  UpdateTrackPerformanceInput,
+} from "../types/library";
+import { invokeOrFallback } from "./tauri";
 import {
+  deleteMockPlaylist,
+  listMockPlaylists,
+  saveMockPlaylist,
   importMockTrack,
   listMockTracks,
   seedMockTracks,
+  updateMockTrackAnalysis,
+  updateMockTrackPerformance,
 } from "./mockLibrary";
 
-function isNativeBridgeUnavailable(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    /tauri|__TAURI_INTERNALS__|ipc|native bridge/i.test(error.message)
-  );
+export async function listTracks(): Promise<LibraryTrack[]> {
+  return invokeOrFallback("list_tracks", undefined, () => listMockTracks());
 }
 
-export async function listTracks(): Promise<LibraryTrack[]> {
-  try {
-    return await invoke<LibraryTrack[]>("list_tracks");
-  } catch (error) {
-    if (isNativeBridgeUnavailable(error)) {
-      return listMockTracks();
-    }
-    throw error;
-  }
+export async function listPlaylists(): Promise<BaseTrackPlaylist[]> {
+  return invokeOrFallback("list_playlists", undefined, () => listMockPlaylists());
 }
 
 export async function importTrack(
   input: ImportTrackInput,
 ): Promise<LibraryTrack> {
-  try {
-    return await invoke<LibraryTrack>("import_track", { input });
-  } catch (error) {
-    if (isNativeBridgeUnavailable(error)) {
-      return importMockTrack(input);
-    }
-    throw error;
-  }
+  return invokeOrFallback("import_track", { input }, () => importMockTrack(input));
 }
 
 export async function seedDemoTracks(): Promise<LibraryTrack[]> {
-  try {
-    return await invoke<LibraryTrack[]>("seed_demo_tracks");
-  } catch (error) {
-    if (isNativeBridgeUnavailable(error)) {
-      return seedMockTracks();
-    }
-    throw error;
-  }
+  return invokeOrFallback("seed_demo_tracks", undefined, () => seedMockTracks());
+}
+
+export async function saveBaseTrackPlaylist(
+  input: SaveBaseTrackPlaylistInput,
+): Promise<BaseTrackPlaylist> {
+  return invokeOrFallback(
+    "save_playlist",
+    { input },
+    () => saveMockPlaylist(input),
+  );
+}
+
+export async function deleteBaseTrackPlaylist(
+  playlistId: string,
+): Promise<void> {
+  return invokeOrFallback(
+    "delete_playlist",
+    { playlistId },
+    () => deleteMockPlaylist(playlistId),
+  );
 }
 
 export async function pickTrackSourcePath(
   initialPath?: string,
 ): Promise<string | null> {
-  try {
-    return await invoke<string | null>("pick_track_source_path", {
-      initialPath: initialPath?.trim() || undefined,
-    });
-  } catch (error) {
-    if (isNativeBridgeUnavailable(error)) {
-      return null;
-    }
-
-    throw error;
-  }
+  return invokeOrFallback(
+    "pick_track_source_path",
+    { initialPath: initialPath?.trim() || undefined },
+    () => null,
+  );
 }
 
 export async function checkTrackExists(sourcePath: string): Promise<boolean> {
-  try {
-    return await invoke<boolean>("check_file_exists", { path: sourcePath });
-  } catch (error) {
-    if (isNativeBridgeUnavailable(error)) {
-      return true; // Mock: assume exists
-    }
-    throw error;
-  }
+  return invokeOrFallback("check_file_exists", { path: sourcePath }, () => true);
 }
 
 export async function deleteTrack(trackId: string): Promise<void> {
-  try {
-    await invoke<void>("delete_track", { trackId });
-  } catch (error) {
-    if (isNativeBridgeUnavailable(error)) {
-      // Mock: just log it
-      console.log("Mock delete track:", trackId);
-      return;
-    }
+  return invokeOrFallback("delete_track", { trackId }, () => {
+    console.log("Mock delete track:", trackId);
+  });
+}
 
-    throw error;
-  }
+export async function updateTrackPerformance(
+  trackId: string,
+  input: UpdateTrackPerformanceInput,
+): Promise<LibraryTrack> {
+  return invokeOrFallback(
+    "update_track_performance",
+    { trackId, input },
+    () => updateMockTrackPerformance(trackId, input),
+  );
+}
+
+export async function updateTrackAnalysis(
+  trackId: string,
+  input: UpdateTrackAnalysisInput,
+): Promise<LibraryTrack> {
+  return invokeOrFallback(
+    "update_track_analysis",
+    { trackId, input },
+    () => updateMockTrackAnalysis(trackId, input),
+  );
 }

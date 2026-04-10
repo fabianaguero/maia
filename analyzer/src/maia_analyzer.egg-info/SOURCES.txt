@@ -6,7 +6,9 @@ src/maia_analyzer/cli.py
 src/maia_analyzer/composition.py
 src/maia_analyzer/contracts.py
 src/maia_analyzer/dsp.py
+src/maia_analyzer/presets.py
 src/maia_analyzer/repository.py
+src/maia_analyzer/separator.py
 src/maia_analyzer/service.py
 src/maia_analyzer/stream.py
 src/maia_analyzer/treesitter.py

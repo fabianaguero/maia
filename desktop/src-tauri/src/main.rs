@@ -1,21 +1,23 @@
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
+use std::cmp::Ordering;
 use std::env;
 use std::fs;
 use std::hash::{Hash, Hasher};
-use std::io::{ErrorKind, Read, Seek, SeekFrom, Write};
+use std::io::{BufRead, BufReader, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use std::sync::Mutex;
+use std::process::{Child, Command, Stdio};
+use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager, State};
 
 const CONTRACT_VERSION: &str = "1.0";
 const INITIAL_LOG_TAIL_BYTES: u64 = 32 * 1024;
 const MAX_LOG_TAIL_READ_BYTES: u64 = 128 * 1024;
+const SESSION_RING_BUFFER_LINES: usize = 1_200;
 const SCHEMA_SQL: &str = include_str!("../../../database/schema.sql");
 const DEFAULT_MUSIC_STYLE_CATALOG_JSON: &str = include_str!("../../src/config/music-styles.json");
 const DEFAULT_BASE_ASSET_CATEGORY_CATALOG_JSON: &str =
@@ -88,10 +90,131 @@ struct BpmCurvePoint {
     bpm: f64,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+struct TrackStructuralPattern {
+    r#type: String,
+    start: f64,
+    end: f64,
+    confidence: f64,
+    label: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+struct TrackCuePoint {
+    id: String,
+    slot: Option<u32>,
+    second: f64,
+    label: String,
+    kind: String,
+    color: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+struct TrackSavedLoop {
+    id: String,
+    slot: Option<u32>,
+    start_second: f64,
+    end_second: f64,
+    label: String,
+    color: Option<String>,
+    locked: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct TrackFileInfo {
+    source_path: String,
+    storage_path: Option<String>,
+    source_kind: String,
+    file_extension: String,
+    size_bytes: Option<i64>,
+    modified_at: Option<String>,
+    checksum: Option<String>,
+    availability_state: String,
+    playback_source: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct TrackTagsInfo {
+    title: String,
+    artist: Option<String>,
+    album: Option<String>,
+    genre: Option<String>,
+    year: Option<i32>,
+    comment: Option<String>,
+    artwork_path: Option<String>,
+    music_style_id: String,
+    music_style_label: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct TrackAnalysisInfo {
+    imported_at: String,
+    bpm: Option<f64>,
+    bpm_confidence: f64,
+    duration_seconds: Option<f64>,
+    waveform_bins: Vec<f64>,
+    beat_grid: Vec<BeatGridPoint>,
+    bpm_curve: Vec<BpmCurvePoint>,
+    analyzer_status: String,
+    analysis_mode: String,
+    analyzer_version: Option<String>,
+    analyzed_at: Option<String>,
+    repo_suggested_bpm: Option<f64>,
+    repo_suggested_status: String,
+    notes: Vec<String>,
+    key_signature: Option<String>,
+    energy_level: Option<f64>,
+    danceability: Option<f64>,
+    structural_patterns: Vec<TrackStructuralPattern>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct TrackPerformanceInfo {
+    color: Option<String>,
+    rating: i64,
+    play_count: i64,
+    last_played_at: Option<String>,
+    bpm_lock: bool,
+    grid_lock: bool,
+    main_cue_second: Option<f64>,
+    hot_cues: Vec<TrackCuePoint>,
+    memory_cues: Vec<TrackCuePoint>,
+    saved_loops: Vec<TrackSavedLoop>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct BaseTrackPlaylist {
+    id: String,
+    name: String,
+    track_ids: Vec<String>,
+    created_at: String,
+    updated_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SaveBaseTrackPlaylistInput {
+    id: Option<String>,
+    name: String,
+    track_ids: Vec<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct LibraryTrack {
     id: String,
+    file: TrackFileInfo,
+    tags: TrackTagsInfo,
+    analysis: TrackAnalysisInfo,
+    performance: TrackPerformanceInfo,
     title: String,
     source_path: String,
     storage_path: Option<String>,
@@ -110,6 +233,10 @@ struct LibraryTrack {
     analysis_mode: String,
     music_style_id: String,
     music_style_label: String,
+    key_signature: Option<String>,
+    energy_level: Option<f64>,
+    danceability: Option<f64>,
+    structural_patterns: Vec<TrackStructuralPattern>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -148,6 +275,8 @@ struct CompositionResultRecord {
     base_asset_title: String,
     base_asset_category_id: String,
     base_asset_category_label: String,
+    base_playlist_id: Option<String>,
+    base_playlist_name: Option<String>,
     reference_type: String,
     reference_asset_id: Option<String>,
     reference_title: String,
@@ -246,7 +375,7 @@ struct LiveLogStreamUpdate {
 #[serde(rename_all = "camelCase")]
 pub struct StreamSessionRecord {
     pub session_id: String,
-    pub adapter_kind: String,  // "file" | "process"
+    pub adapter_kind: String,  // file | process | websocket | http-poll | journald
     pub source: String,
     pub label: Option<String>,
     pub created_at: String,
@@ -255,12 +384,50 @@ pub struct StreamSessionRecord {
     pub file_cursor: Option<u64>,
 }
 
-#[derive(Debug, Default)]
-pub struct SessionRegistry {
-    pub sessions: HashMap<String, StreamSessionRecord>,
+#[derive(Debug)]
+struct StreamSessionState {
+    record: StreamSessionRecord,
+    ring_buffer: Vec<String>,
+    pending_lines: Vec<String>,
+    process: Option<Child>,
 }
 
-pub type SessionRegistryState = Mutex<SessionRegistry>;
+impl StreamSessionState {
+    fn new(record: StreamSessionRecord) -> Self {
+        Self {
+            record,
+            ring_buffer: Vec::new(),
+            pending_lines: Vec::new(),
+            process: None,
+        }
+    }
+
+    fn append_lines<I>(&mut self, lines: I)
+    where
+        I: IntoIterator<Item = String>,
+    {
+        for line in lines {
+            self.pending_lines.push(line.clone());
+            self.ring_buffer.push(line);
+        }
+
+        if self.ring_buffer.len() > SESSION_RING_BUFFER_LINES {
+            let overflow = self.ring_buffer.len() - SESSION_RING_BUFFER_LINES;
+            self.ring_buffer.drain(0..overflow);
+        }
+    }
+
+    fn drain_pending_chunk(&mut self) -> String {
+        std::mem::take(&mut self.pending_lines).join("\n")
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct SessionRegistry {
+    sessions: HashMap<String, StreamSessionState>,
+}
+
+pub type SessionRegistryState = Arc<Mutex<SessionRegistry>>;
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -270,6 +437,198 @@ struct StartSessionInput {
     source: String,
     label: Option<String>,
     command: Option<Vec<String>>,
+}
+
+fn append_lines_to_session<I>(
+    registry: &SessionRegistryState,
+    session_id: &str,
+    lines: I,
+) -> Result<(), String>
+where
+    I: IntoIterator<Item = String>,
+{
+    let mut reg = registry
+        .lock()
+        .map_err(|e| format!("Registry lock failed: {e}"))?;
+    let session = reg
+        .sessions
+        .get_mut(session_id)
+        .ok_or_else(|| format!("Session not found: {session_id}"))?;
+    session.append_lines(lines);
+    Ok(())
+}
+
+fn update_session_metadata<F>(
+    registry: &SessionRegistryState,
+    session_id: &str,
+    update: F,
+) -> Result<StreamSessionRecord, String>
+where
+    F: FnOnce(&mut StreamSessionState),
+{
+    let mut reg = registry
+        .lock()
+        .map_err(|e| format!("Registry lock failed: {e}"))?;
+    let session = reg
+        .sessions
+        .get_mut(session_id)
+        .ok_or_else(|| format!("Session not found: {session_id}"))?;
+    update(session);
+    Ok(session.record.clone())
+}
+
+fn drain_pending_chunk(
+    registry: &SessionRegistryState,
+    session_id: &str,
+) -> Result<(StreamSessionRecord, String), String> {
+    let mut reg = registry
+        .lock()
+        .map_err(|e| format!("Registry lock failed: {e}"))?;
+    let session = reg
+        .sessions
+        .get_mut(session_id)
+        .ok_or_else(|| format!("Session not found: {session_id}"))?;
+    let chunk = session.drain_pending_chunk();
+    Ok((session.record.clone(), chunk))
+}
+
+fn waiting_stream_poll_result(
+    session: StreamSessionRecord,
+    summary: &str,
+    warnings: Vec<String>,
+) -> StreamSessionPollResult {
+    StreamSessionPollResult {
+        session,
+        has_data: false,
+        summary: summary.to_string(),
+        suggested_bpm: None,
+        confidence: 0.0,
+        dominant_level: "unknown".to_string(),
+        line_count: 0,
+        anomaly_count: 0,
+        level_counts: Value::Object(serde_json::Map::new()),
+        anomaly_markers: Vec::new(),
+        top_components: Vec::new(),
+        sonification_cues: Vec::new(),
+        warnings,
+    }
+}
+
+fn analyze_stream_chunk(
+    session: StreamSessionRecord,
+    chunk: String,
+    warnings: Vec<String>,
+) -> Result<StreamSessionPollResult, String> {
+    if chunk.trim().is_empty() {
+        return Ok(waiting_stream_poll_result(
+            session,
+            "Waiting for new log lines.",
+            warnings,
+        ));
+    }
+
+    let request = json!({
+        "contractVersion": CONTRACT_VERSION,
+        "requestId": format!("stream-analyze-{}", now_millis()),
+        "action": "analyze",
+        "payload": {
+            "assetType": "repo_analysis",
+            "source": {
+                "kind": "file",
+                "path": session.source
+            },
+            "options": {
+                "inferCodeSuggestedBpm": true,
+                "logTailChunk": chunk,
+                "logTailLiveMode": true
+            }
+        }
+    });
+    let response = execute_analyzer_request(&request)?;
+    let parsed: AnalyzerResponseEnvelope = serde_json::from_value(response)
+        .map_err(|error| format!("Failed to decode stream analyzer response: {error}"))?;
+
+    if parsed.status == "error" {
+        let message = parsed
+            .error
+            .map(|error| error.message)
+            .unwrap_or_else(|| "Analyzer returned an unknown stream error.".to_string());
+        return Err(message);
+    }
+
+    let payload = parsed
+        .payload
+        .ok_or_else(|| "Analyzer did not return a stream payload.".to_string())?;
+    let mut merged_warnings = warnings;
+    merged_warnings.extend(parsed.warnings);
+
+    let metrics = &payload.musical_asset.metrics;
+    let cues: Vec<LiveLogCue> = decode_json_metric(metrics, "sonificationCues")?;
+
+    Ok(StreamSessionPollResult {
+        session,
+        has_data: true,
+        summary: payload.summary,
+        suggested_bpm: payload.musical_asset.suggested_bpm,
+        confidence: payload.musical_asset.confidence,
+        dominant_level: metric_string(metrics, "dominantLevel"),
+        line_count: metric_i64(metrics, "lineCount"),
+        anomaly_count: metric_i64(metrics, "anomalyCount"),
+        level_counts: metrics
+            .get("levelCounts")
+            .cloned()
+            .unwrap_or_else(|| Value::Object(serde_json::Map::new())),
+        anomaly_markers: decode_json_metric(metrics, "anomalyMarkers")?,
+        top_components: decode_json_metric(metrics, "topComponents")?,
+        sonification_cues: cues,
+        warnings: merged_warnings,
+    })
+}
+
+fn spawn_process_reader<R>(
+    session_id: String,
+    registry: SessionRegistryState,
+    reader: R,
+) where
+    R: Read + Send + 'static,
+{
+    std::thread::spawn(move || {
+        let buffered = BufReader::new(reader);
+        for line in buffered.lines() {
+            let Ok(text) = line else {
+                break;
+            };
+            if append_lines_to_session(&registry, &session_id, vec![text]).is_err() {
+                break;
+            }
+        }
+    });
+}
+
+fn spawn_process_session(
+    registry: SessionRegistryState,
+    session_id: String,
+    command: Vec<String>,
+) -> Result<Child, String> {
+    let (program, args) = command
+        .split_first()
+        .ok_or_else(|| "command list required for process adapter".to_string())?;
+
+    let mut child = Command::new(program)
+        .args(args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|error| format!("Failed to start process adapter: {error}"))?;
+
+    if let Some(stdout) = child.stdout.take() {
+        spawn_process_reader(session_id.clone(), registry.clone(), stdout);
+    }
+    if let Some(stderr) = child.stderr.take() {
+        spawn_process_reader(session_id, registry, stderr);
+    }
+
+    Ok(child)
 }
 
 // ---------------------------------------------------------------------------
@@ -287,6 +646,8 @@ pub struct PersistedSession {
     pub source_kind: Option<String>,
     pub track_id: Option<String>,
     pub track_title: Option<String>,
+    pub playlist_id: Option<String>,
+    pub playlist_name: Option<String>,
     pub adapter_kind: String,
     pub mode: String,
     pub status: String,
@@ -306,6 +667,7 @@ struct CreateSessionInput {
     label: Option<String>,
     source_id: Option<String>,
     track_id: Option<String>,
+    playlist_id: Option<String>,
     adapter_kind: String,
     mode: String,
 }
@@ -313,9 +675,18 @@ struct CreateSessionInput {
 fn db_create_session(conn: &Connection, input: &CreateSessionInput) -> Result<PersistedSession, String> {
     let now = now_iso();
     conn.execute(
-        "INSERT OR REPLACE INTO sessions (id, label, source_id, track_id, adapter_kind, mode, status, file_cursor, total_polls, total_lines, total_anomalies, last_bpm, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'stopped', 0, 0, 0, 0, NULL, ?7, ?7)",
-        rusqlite::params![input.id, input.label, input.source_id, input.track_id, input.adapter_kind, input.mode, now],
+        "INSERT OR REPLACE INTO sessions (id, label, source_id, track_id, playlist_id, adapter_kind, mode, status, file_cursor, total_polls, total_lines, total_anomalies, last_bpm, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'stopped', 0, 0, 0, 0, NULL, ?8, ?8)",
+        rusqlite::params![
+            input.id,
+            input.label,
+            input.source_id,
+            input.track_id,
+            input.playlist_id,
+            input.adapter_kind,
+            input.mode,
+            now
+        ],
     ).map_err(|e| format!("Failed to create session: {e}"))?;
 
     db_get_session(conn, &input.id)
@@ -326,12 +697,14 @@ fn db_get_session(conn: &Connection, id: &str) -> Result<PersistedSession, Strin
         "SELECT s.id, s.label, s.source_id,
                 ma_src.title, ma_src.source_path, ma_src.source_kind,
                 s.track_id, ma_trk.title,
+                s.playlist_id, p.name,
                 s.adapter_kind, s.mode, s.status,
                 s.file_cursor, s.total_polls, s.total_lines, s.total_anomalies, s.last_bpm,
                 s.created_at, s.updated_at
          FROM sessions s
          LEFT JOIN musical_assets ma_src ON ma_src.id = s.source_id
          LEFT JOIN musical_assets ma_trk ON ma_trk.id = s.track_id
+         LEFT JOIN base_track_playlists p ON p.id = s.playlist_id
          WHERE s.id = ?1",
         rusqlite::params![id],
         row_to_persisted_session,
@@ -348,16 +721,18 @@ fn row_to_persisted_session(row: &rusqlite::Row<'_>) -> rusqlite::Result<Persist
         source_kind: row.get(5)?,
         track_id: row.get(6)?,
         track_title: row.get(7)?,
-        adapter_kind: row.get(8)?,
-        mode: row.get(9)?,
-        status: row.get(10)?,
-        file_cursor: row.get::<_, i64>(11).map(|v| v as u64)?,
-        total_polls: row.get::<_, i64>(12).map(|v| v as u64)?,
-        total_lines: row.get::<_, i64>(13).map(|v| v as u64)?,
-        total_anomalies: row.get::<_, i64>(14).map(|v| v as u64)?,
-        last_bpm: row.get(15)?,
-        created_at: row.get(16)?,
-        updated_at: row.get(17)?,
+        playlist_id: row.get(8)?,
+        playlist_name: row.get(9)?,
+        adapter_kind: row.get(10)?,
+        mode: row.get(11)?,
+        status: row.get(12)?,
+        file_cursor: row.get::<_, i64>(13).map(|v| v as u64)?,
+        total_polls: row.get::<_, i64>(14).map(|v| v as u64)?,
+        total_lines: row.get::<_, i64>(15).map(|v| v as u64)?,
+        total_anomalies: row.get::<_, i64>(16).map(|v| v as u64)?,
+        last_bpm: row.get(17)?,
+        created_at: row.get(18)?,
+        updated_at: row.get(19)?,
     })
 }
 
@@ -366,12 +741,14 @@ fn db_list_sessions(conn: &Connection) -> Result<Vec<PersistedSession>, String> 
         "SELECT s.id, s.label, s.source_id,
                 ma_src.title, ma_src.source_path, ma_src.source_kind,
                 s.track_id, ma_trk.title,
+                s.playlist_id, p.name,
                 s.adapter_kind, s.mode, s.status,
                 s.file_cursor, s.total_polls, s.total_lines, s.total_anomalies, s.last_bpm,
                 s.created_at, s.updated_at
          FROM sessions s
          LEFT JOIN musical_assets ma_src ON ma_src.id = s.source_id
          LEFT JOIN musical_assets ma_trk ON ma_trk.id = s.track_id
+         LEFT JOIN base_track_playlists p ON p.id = s.playlist_id
          ORDER BY s.updated_at DESC",
     ).map_err(|e| format!("Failed to prepare session list: {e}"))?;
 
@@ -443,6 +820,41 @@ pub struct SessionEvent {
     pub top_components_json: String,
     pub sonification_cues_json: String,
     pub warnings_json: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionBookmark {
+    pub id: i64,
+    pub session_id: String,
+    pub replay_window_index: u64,
+    pub event_index: Option<u64>,
+    pub label: String,
+    pub note: String,
+    pub bookmark_tag: Option<String>,
+    pub suggested_style_profile_id: Option<String>,
+    pub suggested_mutation_profile_id: Option<String>,
+    pub track_id: Option<String>,
+    pub track_title: Option<String>,
+    pub track_second: Option<f64>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UpsertSessionBookmarkInput {
+    session_id: String,
+    replay_window_index: u64,
+    event_index: Option<u64>,
+    label: String,
+    note: String,
+    bookmark_tag: Option<String>,
+    suggested_style_profile_id: Option<String>,
+    suggested_mutation_profile_id: Option<String>,
+    track_id: Option<String>,
+    track_title: Option<String>,
+    track_second: Option<f64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -519,6 +931,129 @@ fn db_list_session_events(conn: &Connection, session_id: &str) -> Result<Vec<Ses
     rows.map(|r| r.map_err(|e| format!("Row error: {e}"))).collect()
 }
 
+fn row_to_session_bookmark(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionBookmark> {
+    Ok(SessionBookmark {
+        id: row.get(0)?,
+        session_id: row.get(1)?,
+        replay_window_index: row.get::<_, i64>(2).map(|v| v as u64)?,
+        event_index: row
+            .get::<_, Option<i64>>(3)?
+            .map(|value| value as u64),
+        label: row.get(4)?,
+        note: row.get(5)?,
+        bookmark_tag: row.get(6)?,
+        suggested_style_profile_id: row.get(7)?,
+        suggested_mutation_profile_id: row.get(8)?,
+        track_id: row.get(9)?,
+        track_title: row.get(10)?,
+        track_second: row.get(11)?,
+        created_at: row.get(12)?,
+        updated_at: row.get(13)?,
+    })
+}
+
+fn db_upsert_session_bookmark(
+    conn: &Connection,
+    input: &UpsertSessionBookmarkInput,
+) -> Result<SessionBookmark, String> {
+    let now = now_iso();
+    conn.execute(
+        "INSERT INTO session_bookmarks (
+            session_id,
+            replay_window_index,
+            event_index,
+            label,
+            note,
+            bookmark_tag,
+            suggested_style_profile_id,
+            suggested_mutation_profile_id,
+            track_id,
+            track_title,
+            track_second,
+            created_at,
+            updated_at
+         )
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?12)
+         ON CONFLICT(session_id, replay_window_index) DO UPDATE SET
+            event_index = excluded.event_index,
+            label = excluded.label,
+            note = excluded.note,
+            bookmark_tag = excluded.bookmark_tag,
+            suggested_style_profile_id = excluded.suggested_style_profile_id,
+            suggested_mutation_profile_id = excluded.suggested_mutation_profile_id,
+            track_id = excluded.track_id,
+            track_title = excluded.track_title,
+            track_second = excluded.track_second,
+            updated_at = excluded.updated_at",
+        rusqlite::params![
+            input.session_id,
+            input.replay_window_index as i64,
+            input.event_index.map(|value| value as i64),
+            input.label.trim(),
+            input.note.trim(),
+            input.bookmark_tag.as_ref().map(|value| value.trim()).filter(|value| !value.is_empty()),
+            input
+                .suggested_style_profile_id
+                .as_ref()
+                .map(|value| value.trim())
+                .filter(|value| !value.is_empty()),
+            input
+                .suggested_mutation_profile_id
+                .as_ref()
+                .map(|value| value.trim())
+                .filter(|value| !value.is_empty()),
+            input.track_id,
+            input.track_title,
+            input.track_second,
+            now,
+        ],
+    )
+    .map_err(|e| format!("Failed to upsert session bookmark: {e}"))?;
+
+    conn.query_row(
+        "SELECT id, session_id, replay_window_index, event_index, label, note,
+                bookmark_tag, suggested_style_profile_id, suggested_mutation_profile_id,
+                track_id, track_title, track_second, created_at, updated_at
+         FROM session_bookmarks
+         WHERE session_id = ?1 AND replay_window_index = ?2",
+        rusqlite::params![input.session_id, input.replay_window_index as i64],
+        row_to_session_bookmark,
+    )
+    .map_err(|e| format!("Failed to load session bookmark: {e}"))
+}
+
+fn db_list_session_bookmarks(
+    conn: &Connection,
+    session_id: &str,
+) -> Result<Vec<SessionBookmark>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, session_id, replay_window_index, event_index, label, note,
+                    bookmark_tag, suggested_style_profile_id, suggested_mutation_profile_id,
+                    track_id, track_title, track_second, created_at, updated_at
+             FROM session_bookmarks
+             WHERE session_id = ?1
+             ORDER BY replay_window_index ASC, updated_at DESC",
+        )
+        .map_err(|e| format!("Failed to prepare session bookmarks query: {e}"))?;
+
+    let rows = stmt
+        .query_map(rusqlite::params![session_id], row_to_session_bookmark)
+        .map_err(|e| format!("Failed to query session bookmarks: {e}"))?;
+
+    rows.map(|r| r.map_err(|e| format!("Row error: {e}"))).collect()
+}
+
+fn db_delete_session_bookmark(conn: &Connection, id: i64) -> Result<bool, String> {
+    let deleted = conn
+        .execute(
+            "DELETE FROM session_bookmarks WHERE id = ?1",
+            rusqlite::params![id],
+        )
+        .map_err(|e| format!("Failed to delete session bookmark: {e}"))?;
+    Ok(deleted > 0)
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct StreamSessionPollResult {
@@ -543,6 +1078,28 @@ struct ImportTrackInput {
     title: String,
     source_path: String,
     music_style_id: String,
+}
+
+#[derive(Debug, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+struct UpdateTrackPerformanceInput {
+    rating: Option<i64>,
+    color: Option<Option<String>>,
+    bpm_lock: Option<bool>,
+    grid_lock: Option<bool>,
+    mark_played: Option<bool>,
+    main_cue_second: Option<Option<f64>>,
+    hot_cues: Option<Vec<TrackCuePoint>>,
+    memory_cues: Option<Vec<TrackCuePoint>>,
+    saved_loops: Option<Vec<TrackSavedLoop>>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+struct UpdateTrackAnalysisInput {
+    bpm: Option<f64>,
+    beat_grid: Option<Vec<BeatGridPoint>>,
+    bpm_curve: Option<Vec<BpmCurvePoint>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -572,12 +1129,58 @@ struct ImportCompositionInput {
     manual_bpm: Option<f64>,
     label: Option<String>,
     track_id: Option<String>,
+    playlist_id: Option<String>,
     structure_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
+struct TrackFileMetadata {
+    source_kind: String,
+    file_extension: String,
+    size_bytes: Option<i64>,
+    modified_at: Option<String>,
+    checksum: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+struct TrackTagsMetadata {
+    title: Option<String>,
+    artist: Option<String>,
+    album: Option<String>,
+    genre: Option<String>,
+    year: Option<i32>,
+    comment: Option<String>,
+    artwork_path: Option<String>,
+    music_style_id: String,
+    music_style_label: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+struct TrackAnalysisMetadata {
+    analyzer_status: String,
+    analysis_mode: String,
+    analyzer_version: Option<String>,
+    analyzed_at: Option<String>,
+    repo_suggested_bpm: Option<f64>,
+    repo_suggested_status: String,
+    notes: Vec<String>,
+    key_signature: Option<String>,
+    energy_level: Option<f64>,
+    danceability: Option<f64>,
+    structural_patterns: Vec<TrackStructuralPattern>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
 struct TrackMetadata {
+    file: TrackFileMetadata,
+    tags: TrackTagsMetadata,
+    analysis: TrackAnalysisMetadata,
+
+    // Legacy flat fields retained for backward-compatible decoding.
     file_extension: String,
     analyzer_status: String,
     analysis_mode: String,
@@ -586,6 +1189,10 @@ struct TrackMetadata {
     notes: Vec<String>,
     music_style_id: String,
     music_style_label: String,
+    key_signature: Option<String>,
+    energy_level: Option<f64>,
+    danceability: Option<f64>,
+    structural_patterns: Vec<TrackStructuralPattern>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
@@ -617,6 +1224,8 @@ struct CompositionMetadata {
     base_asset_title: String,
     base_asset_category_id: String,
     base_asset_category_label: String,
+    base_playlist_id: Option<String>,
+    base_playlist_name: Option<String>,
     reference_type: String,
     reference_asset_id: Option<String>,
     reference_title: String,
@@ -645,6 +1254,24 @@ struct TrackImportAnalysis {
     bpm_curve_json: String,
     metadata: TrackMetadata,
     analyzer_notes: String,
+}
+
+#[derive(Debug, Clone)]
+struct TrackLibraryStateDb {
+    color: Option<String>,
+    rating: i64,
+    play_count: i64,
+    last_played_at: Option<String>,
+    bpm_lock: bool,
+    grid_lock: bool,
+    main_cue_second: Option<f64>,
+    hot_cues: Vec<TrackCuePoint>,
+    memory_cues: Vec<TrackCuePoint>,
+    saved_loops: Vec<TrackSavedLoop>,
+    missing_state: String,
+    file_size_bytes: Option<i64>,
+    source_modified_at: Option<String>,
+    source_checksum: Option<String>,
 }
 
 struct BaseAssetImportAnalysis {
@@ -691,6 +1318,8 @@ struct CompositionImportAnalysis {
 }
 
 struct CompositionReferenceDraft {
+    base_playlist_id: Option<String>,
+    base_playlist_name: Option<String>,
     reference_type: String,
     reference_asset_id: Option<String>,
     reference_title: String,
@@ -927,49 +1556,6 @@ fn start_stream_session(
         return Err("source must not be empty".to_string());
     }
 
-    // If adapter is process, start it via the Python analyzer session_start action
-    if input.adapter_kind == "process" {
-        let command = input.command.clone().unwrap_or_default();
-        if command.is_empty() {
-            return Err("command list required for process adapter".to_string());
-        }
-        let request = json!({
-            "contractVersion": CONTRACT_VERSION,
-            "requestId": format!("sess-start-{session_id}"),
-            "action": "session_start",
-            "payload": {
-                "sessionId": session_id,
-                "adapterKind": "process",
-                "source": input.source,
-                "command": command
-            }
-        });
-        let response = execute_analyzer_request(&request)?;
-        let parsed: Value = serde_json::from_value(response)
-            .map_err(|e| format!("Failed to parse session_start response: {e}"))?;
-        if parsed.get("status").and_then(Value::as_str) == Some("error") {
-            let msg = parsed
-                .pointer("/error/message")
-                .and_then(Value::as_str)
-                .unwrap_or("Analyzer returned session_start error")
-                .to_string();
-            return Err(msg);
-        }
-    } else {
-        // File adapter — just register in Python so the ring buffer exists
-        let request = json!({
-            "contractVersion": CONTRACT_VERSION,
-            "requestId": format!("sess-start-{session_id}"),
-            "action": "session_start",
-            "payload": {
-                "sessionId": session_id,
-                "adapterKind": "file",
-                "source": input.source
-            }
-        });
-        execute_analyzer_request(&request)?;
-    }
-
     let record = StreamSessionRecord {
         session_id: session_id.clone(),
         adapter_kind: input.adapter_kind.clone(),
@@ -983,7 +1569,59 @@ fn start_stream_session(
 
     {
         let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
-        reg.sessions.insert(session_id, record.clone());
+        reg.sessions
+            .insert(session_id.clone(), StreamSessionState::new(record.clone()));
+    }
+
+    if input.adapter_kind == "journald" {
+        let mut cmd: Vec<String> = vec![
+            "journalctl".to_string(),
+            "-f".to_string(),
+            "-o".to_string(),
+            "json".to_string(),
+            "--no-pager".to_string(),
+        ];
+        let unit = input.source.trim().to_string();
+        if !unit.is_empty() && unit != "system" {
+            cmd.push("-u".to_string());
+            cmd.push(unit);
+        }
+
+        let registry_handle = Arc::clone(&*registry);
+        let child = match spawn_process_session(registry_handle, session_id.clone(), cmd) {
+            Ok(child) => child,
+            Err(error) => {
+                let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+                reg.sessions.remove(&session_id);
+                return Err(error);
+            }
+        };
+        let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+        if let Some(session) = reg.sessions.get_mut(&session_id) {
+            session.process = Some(child);
+        }
+    } else if input.adapter_kind == "process" {
+        let command = input.command.clone().unwrap_or_default();
+        if command.is_empty() {
+            let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+            reg.sessions.remove(&session_id);
+            return Err("command list required for process adapter".to_string());
+        }
+
+        let registry_handle = Arc::clone(&*registry);
+        let child = match spawn_process_session(registry_handle, session_id.clone(), command) {
+            Ok(child) => child,
+            Err(error) => {
+                let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+                reg.sessions.remove(&session_id);
+                return Err(error);
+            }
+        };
+
+        let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+        if let Some(session) = reg.sessions.get_mut(&session_id) {
+            session.process = Some(child);
+        }
     }
 
     Ok(record)
@@ -994,16 +1632,15 @@ fn stop_stream_session(
     session_id: String,
     registry: State<'_, SessionRegistryState>,
 ) -> Result<bool, String> {
-    let request = json!({
-        "contractVersion": CONTRACT_VERSION,
-        "requestId": format!("sess-stop-{session_id}"),
-        "action": "session_stop",
-        "payload": { "sessionId": session_id }
-    });
-    execute_analyzer_request(&request)?;
-
     let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
-    Ok(reg.sessions.remove(&session_id).is_some())
+    let mut removed = reg.sessions.remove(&session_id);
+    if let Some(session) = removed.as_mut() {
+        if let Some(process) = session.process.as_mut() {
+            let _ = process.kill();
+            let _ = process.wait();
+        }
+    }
+    Ok(removed.is_some())
 }
 
 #[tauri::command]
@@ -1011,7 +1648,8 @@ fn list_stream_sessions(
     registry: State<'_, SessionRegistryState>,
 ) -> Result<Vec<StreamSessionRecord>, String> {
     let reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
-    let mut sessions: Vec<StreamSessionRecord> = reg.sessions.values().cloned().collect();
+    let mut sessions: Vec<StreamSessionRecord> =
+        reg.sessions.values().map(|state| state.record.clone()).collect();
     sessions.sort_by(|a, b| a.created_at.cmp(&b.created_at));
     Ok(sessions)
 }
@@ -1089,127 +1727,89 @@ fn list_session_events(
 }
 
 #[tauri::command]
+fn upsert_session_bookmark(
+    app_handle: AppHandle,
+    input: UpsertSessionBookmarkInput,
+) -> Result<SessionBookmark, String> {
+    let conn = open_database(&app_handle)?;
+    db_upsert_session_bookmark(&conn, &input)
+}
+
+#[tauri::command]
+fn list_session_bookmarks(
+    app_handle: AppHandle,
+    session_id: String,
+) -> Result<Vec<SessionBookmark>, String> {
+    let conn = open_database(&app_handle)?;
+    db_list_session_bookmarks(&conn, &session_id)
+}
+
+#[tauri::command]
+fn delete_session_bookmark(app_handle: AppHandle, id: i64) -> Result<bool, String> {
+    let conn = open_database(&app_handle)?;
+    db_delete_session_bookmark(&conn, id)
+}
+
+#[tauri::command]
 fn poll_stream_session(
     session_id: String,
     registry: State<'_, SessionRegistryState>,
 ) -> Result<StreamSessionPollResult, String> {
     eprintln!("[MAIA:Rust] poll_stream_session id={}", session_id);
-    // For file adapter: read new bytes, feed them into the session ring buffer
-    // via the normal poll_log_stream path with logTailSessionId included,
-    // then call session_poll to get the accumulated analysis.
     let (adapter_kind, source, cursor) = {
         let reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
         let session = reg.sessions.get(&session_id)
             .ok_or_else(|| format!("Session not found: {session_id}"))?;
-        (session.adapter_kind.clone(), session.source.clone(), session.file_cursor)
+        (
+            session.record.adapter_kind.clone(),
+            session.record.source.clone(),
+            session.record.file_cursor,
+        )
     };
 
     let mut warnings: Vec<String> = Vec::new();
 
     if adapter_kind == "file" {
-        // Read a new chunk and feed it into the Python session ring buffer
         let (_resolved, _from, to_offset, chunk, read_warnings) =
             read_log_stream_chunk(&source, cursor)?;
         warnings.extend(read_warnings);
 
-        if !chunk.trim().is_empty() {
-            let feed_request = json!({
-                "contractVersion": CONTRACT_VERSION,
-                "requestId": format!("sess-feed-{session_id}"),
-                "action": "analyze",
-                "payload": {
-                    "assetType": "repo_analysis",
-                    "source": { "kind": "file", "path": source },
-                    "options": {
-                        "logTailChunk": chunk,
-                        "logTailSessionId": session_id,
-                        "logTailFromOffset": cursor.unwrap_or(0),
-                        "logTailToOffset": to_offset,
-                        "logTailLiveMode": true
-                    }
-                }
-            });
-            // fire-and-forget — we only care about updating the ring buffer
-            let _ = execute_analyzer_request(&feed_request);
+        let session_record = update_session_metadata(&registry, &session_id, |session| {
+            session.record.file_cursor = Some(to_offset);
+            session.record.last_polled_at = Some(now_iso());
+            session.record.total_polls += 1;
+        })?;
+
+        if chunk.trim().is_empty() {
+            return Ok(waiting_stream_poll_result(
+                session_record,
+                "Waiting for new log lines.",
+                warnings,
+            ));
         }
 
-        // Update cursor in registry
-        {
-            let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
-            if let Some(session) = reg.sessions.get_mut(&session_id) {
-                session.file_cursor = Some(to_offset);
-                session.last_polled_at = Some(now_iso());
-                session.total_polls += 1;
-            }
-        }
-    } else {
-        // Process adapter: lines arrive via the Python reader thread, just bump poll count
-        let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
-        if let Some(session) = reg.sessions.get_mut(&session_id) {
-            session.last_polled_at = Some(now_iso());
-            session.total_polls += 1;
-        }
+        append_lines_to_session(&registry, &session_id, chunk.lines().map(str::to_string))?;
+        return analyze_stream_chunk(session_record, chunk, warnings);
     }
 
-    // Ask Python to analyze the accumulated ring buffer
-    let poll_request = json!({
-        "contractVersion": CONTRACT_VERSION,
-        "requestId": format!("sess-poll-{session_id}"),
-        "action": "session_poll",
-        "payload": { "sessionId": session_id }
-    });
-    let response = execute_analyzer_request(&poll_request)?;
-    let parsed: AnalyzerResponseEnvelope = serde_json::from_value(response)
-        .map_err(|e| format!("Failed to decode session_poll response: {e}"))?;
-
-    if parsed.status == "error" {
-        let message = parsed.error
-            .map(|e| e.message)
-            .unwrap_or_else(|| "Analyzer returned unknown session_poll error.".to_string());
-        return Err(message);
-    }
-
-    let resp_payload = parsed.payload
-        .ok_or_else(|| "Analyzer did not return session_poll payload.".to_string())?;
-    warnings.extend(parsed.warnings);
-
-    let has_data: bool = resp_payload.summary != "Session buffer empty — waiting for data.";
-    let metrics = &resp_payload.musical_asset.metrics;
-
-    let session_record = {
-        let reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
-        reg.sessions.get(&session_id).cloned()
-            .ok_or_else(|| format!("Session disappeared during poll: {session_id}"))?
+    let (session_record, chunk) = {
+        let session_record = update_session_metadata(&registry, &session_id, |session| {
+            session.record.last_polled_at = Some(now_iso());
+            session.record.total_polls += 1;
+        })?;
+        let (_, chunk) = drain_pending_chunk(&registry, &session_id)?;
+        (session_record, chunk)
     };
 
-    let cues_ss: Vec<LiveLogCue> = decode_json_metric(metrics, "sonificationCues")?;
-    eprintln!("[MAIA:Rust] poll_stream_session → has_data={} lines={} cues={} bpm={:?}",
-        has_data, metric_i64(metrics, "lineCount"), cues_ss.len(), resp_payload.musical_asset.suggested_bpm);
-
-    Ok(StreamSessionPollResult {
-        session: session_record,
-        has_data,
-        summary: resp_payload.summary,
-        suggested_bpm: resp_payload.musical_asset.suggested_bpm,
-        confidence: resp_payload.musical_asset.confidence,
-        dominant_level: metric_string(metrics, "dominantLevel"),
-        line_count: metric_i64(metrics, "lineCount"),
-        anomaly_count: metric_i64(metrics, "anomalyCount"),
-        level_counts: metrics.get("levelCounts").cloned()
-            .unwrap_or_else(|| Value::Object(serde_json::Map::new())),
-        anomaly_markers: decode_json_metric(metrics, "anomalyMarkers")?,
-        top_components: decode_json_metric(metrics, "topComponents")?,
-        sonification_cues: cues_ss,
-        warnings,
-    })
+    analyze_stream_chunk(session_record, chunk, warnings)
 }
 
 // ---------------------------------------------------------------------------
 // ingest_stream_chunk — used by WebSocket and HTTP-poll adapters that manage
-// their own connection on the JS side.  Feeds a raw text chunk into the
-// session ring buffer via the Python analyzer, then polls for accumulated
-// analysis.  If `chunk` is empty the feed step is skipped; `session_poll` is
-// always called so callers still receive the current accumulated state.
+// their own connection on the JS side. Feeds a raw text chunk into the
+// Rust-owned transient session buffer and analyzes just that chunk through the
+// stateless Python analyzer. If `chunk` is empty the feed step is skipped and
+// a waiting result is returned.
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
@@ -1218,91 +1818,23 @@ fn ingest_stream_chunk(
     chunk: String,
     registry: State<'_, SessionRegistryState>,
 ) -> Result<StreamSessionPollResult, String> {
-    let mut warnings: Vec<String> = Vec::new();
+    let warnings: Vec<String> = Vec::new();
 
-    // Feed non-empty chunks into the Python ring buffer
-    if !chunk.trim().is_empty() {
-        let source_path = {
-            let reg = registry.lock().map_err(|e| format!("Registry lock: {e}"))?;
-            reg.sessions.get(&session_id)
-                .map(|s| s.source.clone())
-                .unwrap_or_else(|| session_id.clone())
-        };
+    let session_record = update_session_metadata(&registry, &session_id, |session| {
+        session.record.last_polled_at = Some(now_iso());
+        session.record.total_polls += 1;
+    })?;
 
-        let feed_request = json!({
-            "contractVersion": CONTRACT_VERSION,
-            "requestId": format!("sess-feed-{session_id}"),
-            "action": "analyze",
-            "payload": {
-                "assetType": "repo_analysis",
-                "source": { "kind": "file", "path": source_path },
-                "options": {
-                    "logTailChunk": chunk,
-                    "logTailSessionId": session_id,
-                    "logTailFromOffset": 0,
-                    "logTailLiveMode": true
-                }
-            }
-        });
-        let _ = execute_analyzer_request(&feed_request);
+    if chunk.trim().is_empty() {
+        return Ok(waiting_stream_poll_result(
+            session_record,
+            "Waiting for new log lines.",
+            warnings,
+        ));
     }
 
-    // Update session metadata
-    {
-        let mut reg = registry.lock().map_err(|e| format!("Registry lock: {e}"))?;
-        if let Some(session) = reg.sessions.get_mut(&session_id) {
-            session.last_polled_at = Some(now_iso());
-            session.total_polls += 1;
-        }
-    }
-
-    // Ask Python to analyse the accumulated ring buffer
-    let poll_request = json!({
-        "contractVersion": CONTRACT_VERSION,
-        "requestId": format!("sess-poll-{session_id}"),
-        "action": "session_poll",
-        "payload": { "sessionId": session_id }
-    });
-    let response = execute_analyzer_request(&poll_request)?;
-    let parsed: AnalyzerResponseEnvelope = serde_json::from_value(response)
-        .map_err(|e| format!("Failed to decode session_poll response: {e}"))?;
-
-    if parsed.status == "error" {
-        let message = parsed.error
-            .map(|e| e.message)
-            .unwrap_or_else(|| "Analyzer returned unknown session_poll error.".to_string());
-        return Err(message);
-    }
-
-    let resp_payload = parsed.payload
-        .ok_or_else(|| "Analyzer did not return session_poll payload.".to_string())?;
-    warnings.extend(parsed.warnings);
-
-    let has_data: bool = resp_payload.summary != "Session buffer empty — waiting for data.";
-    let metrics = &resp_payload.musical_asset.metrics;
-
-    let session_record = {
-        let reg = registry.lock().map_err(|e| format!("Registry lock: {e}"))?;
-        reg.sessions.get(&session_id).cloned()
-            .ok_or_else(|| format!("Session disappeared during ingest_stream_chunk: {session_id}"))?
-    };
-
-    Ok(StreamSessionPollResult {
-        session: session_record,
-        has_data,
-        summary: resp_payload.summary,
-        suggested_bpm: resp_payload.musical_asset.suggested_bpm,
-        confidence: resp_payload.musical_asset.confidence,
-        dominant_level: metric_string(metrics, "dominantLevel"),
-        line_count: metric_i64(metrics, "lineCount"),
-        anomaly_count: metric_i64(metrics, "anomalyCount"),
-        level_counts: metrics.get("levelCounts").cloned()
-            .unwrap_or_else(|| Value::Object(serde_json::Map::new())),
-        anomaly_markers: decode_json_metric(metrics, "anomalyMarkers")?,
-        top_components: decode_json_metric(metrics, "topComponents")?,
-        sonification_cues: decode_json_metric(metrics, "sonificationCues")?,
-        warnings,
-    })
+    append_lines_to_session(&registry, &session_id, chunk.lines().map(str::to_string))?;
+    analyze_stream_chunk(session_record, chunk, warnings)
 }
 
 #[tauri::command]
@@ -1330,11 +1862,52 @@ fn list_tracks(app_handle: AppHandle) -> Result<Vec<LibraryTrack>, String> {
 }
 
 #[tauri::command]
+fn list_playlists(app_handle: AppHandle) -> Result<Vec<BaseTrackPlaylist>, String> {
+    let conn = open_database(&app_handle)?;
+    read_playlists(&conn)
+}
+
+#[tauri::command]
 fn import_track(app_handle: AppHandle, input: ImportTrackInput) -> Result<LibraryTrack, String> {
     let conn = open_database(&app_handle)?;
     let music_style_catalog = load_music_style_catalog(&repo_root());
     let managed_root = managed_tracks_root(&app_handle)?;
     insert_track(&conn, input, &music_style_catalog, &managed_root)
+}
+
+#[tauri::command]
+fn save_playlist(
+    app_handle: AppHandle,
+    input: SaveBaseTrackPlaylistInput,
+) -> Result<BaseTrackPlaylist, String> {
+    let conn = open_database(&app_handle)?;
+    persist_playlist(&conn, input)
+}
+
+#[tauri::command]
+fn delete_playlist(app_handle: AppHandle, playlist_id: String) -> Result<(), String> {
+    let conn = open_database(&app_handle)?;
+    delete_playlist_record(&conn, &playlist_id)
+}
+
+#[tauri::command]
+fn update_track_performance(
+    app_handle: AppHandle,
+    track_id: String,
+    input: UpdateTrackPerformanceInput,
+) -> Result<LibraryTrack, String> {
+    let conn = open_database(&app_handle)?;
+    persist_track_performance_update(&conn, &track_id, input)
+}
+
+#[tauri::command]
+fn update_track_analysis(
+    app_handle: AppHandle,
+    track_id: String,
+    input: UpdateTrackAnalysisInput,
+) -> Result<LibraryTrack, String> {
+    let conn = open_database(&app_handle)?;
+    persist_track_analysis_update(&conn, &track_id, input)
 }
 
 #[tauri::command]
@@ -2003,8 +2576,11 @@ fn open_database(app_handle: &AppHandle) -> Result<Connection, String> {
     conn.execute_batch(SCHEMA_SQL)
         .map_err(|error| format!("Failed to refresh SQLite schema after migration: {error}"))?;
     ensure_track_storage_path_column(&conn)?;
+    ensure_track_library_state_rows(&conn)?;
     ensure_repository_storage_path_column(&conn)?;
     ensure_composition_export_path_column(&conn)?;
+    ensure_session_playlist_column(&conn)?;
+    ensure_session_bookmark_feedback_columns(&conn)?;
     let managed_compositions_root = managed_compositions_root(app_handle)?;
     backfill_composition_export_paths(&conn, &managed_compositions_root)?;
 
@@ -2123,6 +2699,31 @@ fn ensure_track_storage_path_column(conn: &Connection) -> Result<(), String> {
     Ok(())
 }
 
+fn ensure_track_library_state_rows(conn: &Connection) -> Result<(), String> {
+    conn.execute_batch(
+        "
+        INSERT INTO track_library_states (
+            asset_id,
+            main_cue_second,
+            missing_state
+        )
+        SELECT
+            t.asset_id,
+            NULL,
+            CASE
+                WHEN t.storage_path IS NULL OR t.storage_path = '' THEN 'missing'
+                ELSE 'available'
+            END
+        FROM track_analyses t
+        LEFT JOIN track_library_states tls ON tls.asset_id = t.asset_id
+        WHERE tls.asset_id IS NULL;
+        ",
+    )
+    .map_err(|error| format!("Failed to backfill track library state rows: {error}"))?;
+
+    Ok(())
+}
+
 fn ensure_repository_storage_path_column(conn: &Connection) -> Result<(), String> {
     let mut statement = conn
         .prepare("PRAGMA table_info(repo_analyses)")
@@ -2198,6 +2799,94 @@ fn ensure_composition_export_path_column(conn: &Connection) -> Result<(), String
     Ok(())
 }
 
+fn ensure_session_playlist_column(conn: &Connection) -> Result<(), String> {
+    let mut statement = conn
+        .prepare("PRAGMA table_info(sessions)")
+        .map_err(|error| format!("Failed to inspect sessions columns: {error}"))?;
+    let mut rows = statement
+        .query([])
+        .map_err(|error| format!("Failed to query sessions columns: {error}"))?;
+    let mut has_playlist_id = false;
+
+    while let Some(row) = rows
+        .next()
+        .map_err(|error| format!("Failed to iterate sessions columns: {error}"))?
+    {
+        let name: String = row
+            .get(1)
+            .map_err(|error| format!("Failed to read sessions column name: {error}"))?;
+        if name == "playlist_id" {
+            has_playlist_id = true;
+            break;
+        }
+    }
+
+    if has_playlist_id {
+        return Ok(());
+    }
+
+    conn.execute_batch("ALTER TABLE sessions ADD COLUMN playlist_id TEXT;")
+        .map_err(|error| format!("Failed to add sessions playlist_id column: {error}"))?;
+
+    Ok(())
+}
+
+fn ensure_session_bookmark_feedback_columns(conn: &Connection) -> Result<(), String> {
+    let mut statement = conn
+        .prepare("PRAGMA table_info(session_bookmarks)")
+        .map_err(|error| format!("Failed to inspect session_bookmarks columns: {error}"))?;
+    let mut rows = statement
+        .query([])
+        .map_err(|error| format!("Failed to query session_bookmarks columns: {error}"))?;
+    let mut has_bookmark_tag = false;
+    let mut has_suggested_style_profile_id = false;
+    let mut has_suggested_mutation_profile_id = false;
+
+    while let Some(row) = rows
+        .next()
+        .map_err(|error| format!("Failed to iterate session_bookmarks columns: {error}"))?
+    {
+        let name: String = row
+            .get(1)
+            .map_err(|error| format!("Failed to read session_bookmarks column name: {error}"))?;
+        match name.as_str() {
+            "bookmark_tag" => has_bookmark_tag = true,
+            "suggested_style_profile_id" => has_suggested_style_profile_id = true,
+            "suggested_mutation_profile_id" => has_suggested_mutation_profile_id = true,
+            _ => {}
+        }
+    }
+
+    if !has_bookmark_tag {
+        conn.execute_batch("ALTER TABLE session_bookmarks ADD COLUMN bookmark_tag TEXT;")
+            .map_err(|error| format!("Failed to add session_bookmarks bookmark_tag column: {error}"))?;
+    }
+
+    if !has_suggested_style_profile_id {
+        conn.execute_batch(
+            "ALTER TABLE session_bookmarks ADD COLUMN suggested_style_profile_id TEXT;",
+        )
+        .map_err(|error| {
+            format!(
+                "Failed to add session_bookmarks suggested_style_profile_id column: {error}"
+            )
+        })?;
+    }
+
+    if !has_suggested_mutation_profile_id {
+        conn.execute_batch(
+            "ALTER TABLE session_bookmarks ADD COLUMN suggested_mutation_profile_id TEXT;",
+        )
+        .map_err(|error| {
+            format!(
+                "Failed to add session_bookmarks suggested_mutation_profile_id column: {error}"
+            )
+        })?;
+    }
+
+    Ok(())
+}
+
 fn composition_export_note(export_path: &str) -> String {
     format!("Managed composition plan snapshot written to {export_path}.")
 }
@@ -2212,6 +2901,8 @@ fn composition_metadata_from_record(composition: &CompositionResultRecord) -> Co
         base_asset_title: composition.base_asset_title.clone(),
         base_asset_category_id: composition.base_asset_category_id.clone(),
         base_asset_category_label: composition.base_asset_category_label.clone(),
+        base_playlist_id: composition.base_playlist_id.clone(),
+        base_playlist_name: composition.base_playlist_name.clone(),
         reference_type: composition.reference_type.clone(),
         reference_asset_id: composition.reference_asset_id.clone(),
         reference_title: composition.reference_title.clone(),
@@ -2654,7 +3345,11 @@ fn preferred_music_style_id(catalog: &MusicStyleCatalog, preferred_id: &str) -> 
 }
 
 fn normalized_music_style_id(metadata: &TrackMetadata) -> String {
-    let music_style_id = metadata.music_style_id.trim();
+    let music_style_id = if !metadata.tags.music_style_id.trim().is_empty() {
+        metadata.tags.music_style_id.trim()
+    } else {
+        metadata.music_style_id.trim()
+    };
     if music_style_id.is_empty() {
         "not-set".to_string()
     } else {
@@ -2663,7 +3358,11 @@ fn normalized_music_style_id(metadata: &TrackMetadata) -> String {
 }
 
 fn normalized_music_style_label(metadata: &TrackMetadata) -> String {
-    let music_style_label = metadata.music_style_label.trim();
+    let music_style_label = if !metadata.tags.music_style_label.trim().is_empty() {
+        metadata.tags.music_style_label.trim()
+    } else {
+        metadata.music_style_label.trim()
+    };
     if !music_style_label.is_empty() {
         return music_style_label.to_string();
     }
@@ -2700,11 +3399,86 @@ fn normalized_base_asset_category_label(metadata: &BaseAssetMetadata) -> String 
 }
 
 fn normalized_analysis_mode(metadata: &TrackMetadata) -> String {
-    let analysis_mode = metadata.analysis_mode.trim();
+    let analysis_mode = if !metadata.analysis.analysis_mode.trim().is_empty() {
+        metadata.analysis.analysis_mode.trim()
+    } else {
+        metadata.analysis_mode.trim()
+    };
     if analysis_mode.is_empty() {
         "unknown".to_string()
     } else {
         analysis_mode.to_string()
+    }
+}
+
+fn normalized_file_extension(metadata: &TrackMetadata) -> String {
+    let file_extension = if !metadata.file.file_extension.trim().is_empty() {
+        metadata.file.file_extension.trim()
+    } else {
+        metadata.file_extension.trim()
+    };
+    if file_extension.is_empty() {
+        ".audio".to_string()
+    } else {
+        file_extension.to_string()
+    }
+}
+
+fn normalized_analyzer_status(metadata: &TrackMetadata) -> String {
+    let analyzer_status = if !metadata.analysis.analyzer_status.trim().is_empty() {
+        metadata.analysis.analyzer_status.trim()
+    } else {
+        metadata.analyzer_status.trim()
+    };
+    if analyzer_status.is_empty() {
+        "Unknown analyzer status".to_string()
+    } else {
+        analyzer_status.to_string()
+    }
+}
+
+fn normalized_repo_suggested_status(metadata: &TrackMetadata) -> String {
+    let repo_suggested_status = if !metadata.analysis.repo_suggested_status.trim().is_empty() {
+        metadata.analysis.repo_suggested_status.trim()
+    } else {
+        metadata.repo_suggested_status.trim()
+    };
+    if repo_suggested_status.is_empty() {
+        "Waiting for repository heuristics in a future analyzer pass".to_string()
+    } else {
+        repo_suggested_status.to_string()
+    }
+}
+
+fn resolved_track_notes(metadata: &TrackMetadata) -> Vec<String> {
+    if !metadata.analysis.notes.is_empty() {
+        metadata.analysis.notes.clone()
+    } else {
+        metadata.notes.clone()
+    }
+}
+
+fn resolved_track_key_signature(metadata: &TrackMetadata) -> Option<String> {
+    metadata
+        .analysis
+        .key_signature
+        .clone()
+        .or_else(|| metadata.key_signature.clone())
+}
+
+fn resolved_track_energy_level(metadata: &TrackMetadata) -> Option<f64> {
+    metadata.analysis.energy_level.or(metadata.energy_level)
+}
+
+fn resolved_track_danceability(metadata: &TrackMetadata) -> Option<f64> {
+    metadata.analysis.danceability.or(metadata.danceability)
+}
+
+fn resolved_structural_patterns(metadata: &TrackMetadata) -> Vec<TrackStructuralPattern> {
+    if !metadata.analysis.structural_patterns.is_empty() {
+        metadata.analysis.structural_patterns.clone()
+    } else {
+        metadata.structural_patterns.clone()
     }
 }
 
@@ -2715,6 +3489,472 @@ fn count_tracks(conn: &Connection) -> Result<i64, String> {
         |row| row.get(0),
     )
     .map_err(|error| format!("Failed to count tracks: {error}"))
+}
+
+fn path_is_file(path: &str) -> bool {
+    if path.trim().is_empty() {
+        return false;
+    }
+    Path::new(path).is_file()
+}
+
+fn file_modified_millis(path: &Path) -> Option<String> {
+    fs::metadata(path)
+        .ok()
+        .and_then(|metadata| metadata.modified().ok())
+        .and_then(|modified| modified.duration_since(UNIX_EPOCH).ok())
+        .map(|duration| duration.as_millis().to_string())
+}
+
+fn file_size_bytes(path: &Path) -> Option<i64> {
+    fs::metadata(path)
+        .ok()
+        .filter(|metadata| metadata.is_file())
+        .map(|metadata| metadata.len() as i64)
+}
+
+fn probe_track_file_state(
+    source_path: &str,
+    storage_path: Option<&str>,
+    fallback_size_bytes: Option<i64>,
+    fallback_modified_at: Option<String>,
+) -> (Option<i64>, Option<String>, String, String) {
+    let storage_existing = storage_path.filter(|path| path_is_file(path));
+    let source_existing = if path_is_file(source_path) {
+        Some(source_path)
+    } else {
+        None
+    };
+    let active_path = storage_existing.or(source_existing);
+    let size_bytes = active_path
+        .and_then(|path| file_size_bytes(Path::new(path)))
+        .or(fallback_size_bytes);
+    let modified_at = active_path
+        .and_then(|path| file_modified_millis(Path::new(path)))
+        .or(fallback_modified_at);
+    let availability_state = if active_path.is_some() {
+        "available".to_string()
+    } else {
+        "missing".to_string()
+    };
+    let playback_source = if storage_existing.is_some() {
+        "managed_snapshot".to_string()
+    } else if source_existing.is_some() {
+        "source_file".to_string()
+    } else {
+        "unavailable".to_string()
+    };
+
+    (size_bytes, modified_at, availability_state, playback_source)
+}
+
+fn default_track_hot_cues(
+    structural_patterns: &[TrackStructuralPattern],
+) -> Vec<TrackCuePoint> {
+    let colors = ["#f59e0b", "#22d3ee", "#ef4444", "#8b5cf6"];
+
+    structural_patterns
+        .iter()
+        .take(4)
+        .enumerate()
+        .map(|(index, pattern)| TrackCuePoint {
+            id: format!("hot-cue-{}", index + 1),
+            slot: Some((index + 1) as u32),
+            second: pattern.start,
+            label: pattern.label.clone(),
+            kind: "hot".to_string(),
+            color: Some(colors[index].to_string()),
+        })
+        .collect()
+}
+
+fn default_track_library_state(
+    beat_grid: &[BeatGridPoint],
+    structural_patterns: &[TrackStructuralPattern],
+    file_size_bytes: Option<i64>,
+    source_modified_at: Option<String>,
+    missing_state: String,
+) -> TrackLibraryStateDb {
+    TrackLibraryStateDb {
+        color: None,
+        rating: 0,
+        play_count: 0,
+        last_played_at: None,
+        bpm_lock: false,
+        grid_lock: false,
+        main_cue_second: beat_grid.first().map(|point| point.second),
+        hot_cues: default_track_hot_cues(structural_patterns),
+        memory_cues: Vec::new(),
+        saved_loops: Vec::new(),
+        missing_state,
+        file_size_bytes,
+        source_modified_at,
+        source_checksum: None,
+    }
+}
+
+fn track_library_state_from_track(track: &LibraryTrack) -> TrackLibraryStateDb {
+    TrackLibraryStateDb {
+        color: track.performance.color.clone(),
+        rating: track.performance.rating,
+        play_count: track.performance.play_count,
+        last_played_at: track.performance.last_played_at.clone(),
+        bpm_lock: track.performance.bpm_lock,
+        grid_lock: track.performance.grid_lock,
+        main_cue_second: track.performance.main_cue_second,
+        hot_cues: track.performance.hot_cues.clone(),
+        memory_cues: track.performance.memory_cues.clone(),
+        saved_loops: track.performance.saved_loops.clone(),
+        missing_state: track.file.availability_state.clone(),
+        file_size_bytes: track.file.size_bytes,
+        source_modified_at: track.file.modified_at.clone(),
+        source_checksum: track.file.checksum.clone(),
+    }
+}
+
+fn track_metadata_from_track(track: &LibraryTrack) -> TrackMetadata {
+    TrackMetadata {
+        file: TrackFileMetadata {
+            source_kind: track.file.source_kind.clone(),
+            file_extension: track.file.file_extension.clone(),
+            size_bytes: track.file.size_bytes,
+            modified_at: track.file.modified_at.clone(),
+            checksum: track.file.checksum.clone(),
+        },
+        tags: TrackTagsMetadata {
+            title: Some(track.tags.title.clone()),
+            artist: track.tags.artist.clone(),
+            album: track.tags.album.clone(),
+            genre: track.tags.genre.clone(),
+            year: track.tags.year,
+            comment: track.tags.comment.clone(),
+            artwork_path: track.tags.artwork_path.clone(),
+            music_style_id: track.tags.music_style_id.clone(),
+            music_style_label: track.tags.music_style_label.clone(),
+        },
+        analysis: TrackAnalysisMetadata {
+            analyzer_status: track.analysis.analyzer_status.clone(),
+            analysis_mode: track.analysis.analysis_mode.clone(),
+            analyzer_version: track.analysis.analyzer_version.clone(),
+            analyzed_at: track.analysis.analyzed_at.clone(),
+            repo_suggested_bpm: track.analysis.repo_suggested_bpm,
+            repo_suggested_status: track.analysis.repo_suggested_status.clone(),
+            notes: track.analysis.notes.clone(),
+            key_signature: track.analysis.key_signature.clone(),
+            energy_level: track.analysis.energy_level,
+            danceability: track.analysis.danceability,
+            structural_patterns: track.analysis.structural_patterns.clone(),
+        },
+        file_extension: track.file.file_extension.clone(),
+        analyzer_status: track.analysis.analyzer_status.clone(),
+        analysis_mode: track.analysis.analysis_mode.clone(),
+        repo_suggested_bpm: track.analysis.repo_suggested_bpm,
+        repo_suggested_status: track.analysis.repo_suggested_status.clone(),
+        notes: track.analysis.notes.clone(),
+        music_style_id: track.tags.music_style_id.clone(),
+        music_style_label: track.tags.music_style_label.clone(),
+        key_signature: track.analysis.key_signature.clone(),
+        energy_level: track.analysis.energy_level,
+        danceability: track.analysis.danceability,
+        structural_patterns: track.analysis.structural_patterns.clone(),
+    }
+}
+
+fn normalize_beat_grid_points(
+    points: Vec<BeatGridPoint>,
+    duration_seconds: Option<f64>,
+) -> Vec<BeatGridPoint> {
+    let max_duration = duration_seconds.unwrap_or(f64::INFINITY);
+    let mut normalized: Vec<BeatGridPoint> = points
+        .into_iter()
+        .filter(|point| {
+            point.second.is_finite() && point.second >= 0.0 && point.second <= max_duration
+        })
+        .collect();
+
+    normalized.sort_by(|left, right| {
+        left.second
+            .partial_cmp(&right.second)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    normalized
+        .into_iter()
+        .fold(Vec::<BeatGridPoint>::new(), |mut acc, point| {
+            let duplicate = acc
+                .last()
+                .map(|last| (last.second - point.second).abs() <= 0.0005)
+                .unwrap_or(false);
+            if !duplicate {
+                acc.push(BeatGridPoint {
+                    index: acc.len() as u32,
+                    second: (point.second * 1000.0).round() / 1000.0,
+                });
+            }
+            acc
+        })
+}
+
+fn normalize_bpm_curve_points(
+    points: Vec<BpmCurvePoint>,
+    duration_seconds: Option<f64>,
+) -> Vec<BpmCurvePoint> {
+    let max_duration = duration_seconds.unwrap_or(f64::INFINITY);
+    let mut normalized: Vec<BpmCurvePoint> = points
+        .into_iter()
+        .filter(|point| {
+            point.second.is_finite() && point.bpm.is_finite() && point.second >= 0.0
+                && point.second <= max_duration
+        })
+        .collect();
+
+    normalized.sort_by(|left, right| {
+        left.second
+            .partial_cmp(&right.second)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    normalized
+        .into_iter()
+        .fold(Vec::<BpmCurvePoint>::new(), |mut acc, point| {
+            let duplicate = acc
+                .last()
+                .map(|last| (last.second - point.second).abs() <= 0.0005)
+                .unwrap_or(false);
+            if !duplicate {
+                acc.push(BpmCurvePoint {
+                    second: (point.second * 1000.0).round() / 1000.0,
+                    bpm: (point.bpm * 1000.0).round() / 1000.0,
+                });
+            }
+            acc
+        })
+}
+
+fn decode_track_row(row: &rusqlite::Row<'_>) -> Result<LibraryTrack, String> {
+    let metadata_json: String = row
+        .get(6)
+        .map_err(|error| format!("Failed to read track metadata: {error}"))?;
+    let title: String = row
+        .get(1)
+        .map_err(|error| format!("Failed to read track title: {error}"))?;
+    let source_path: String = row
+        .get(2)
+        .map_err(|error| format!("Failed to read track source path: {error}"))?;
+    let storage_path: Option<String> = row
+        .get(7)
+        .map_err(|error| format!("Failed to read track storage path: {error}"))?;
+    let imported_at: String = row
+        .get(5)
+        .map_err(|error| format!("Failed to read import timestamp: {error}"))?;
+    let waveform_json: String = row
+        .get(9)
+        .map_err(|error| format!("Failed to read waveform bins: {error}"))?;
+    let beat_grid_json: String = row
+        .get(10)
+        .map_err(|error| format!("Failed to read beat grid: {error}"))?;
+    let bpm_curve_json: String = row
+        .get(11)
+        .map_err(|error| format!("Failed to read BPM curve: {error}"))?;
+    let metadata: TrackMetadata = serde_json::from_str(&metadata_json)
+        .map_err(|error| format!("Failed to decode track metadata JSON: {error}"))?;
+    let waveform_bins: Vec<f64> = serde_json::from_str(&waveform_json)
+        .map_err(|error| format!("Failed to decode waveform JSON: {error}"))?;
+    let beat_grid: Vec<BeatGridPoint> = serde_json::from_str(&beat_grid_json)
+        .map_err(|error| format!("Failed to decode beat grid JSON: {error}"))?;
+    let bpm_curve: Vec<BpmCurvePoint> = serde_json::from_str(&bpm_curve_json)
+        .map_err(|error| format!("Failed to decode BPM curve JSON: {error}"))?;
+    let music_style_id = normalized_music_style_id(&metadata);
+    let music_style_label = normalized_music_style_label(&metadata);
+    let analysis_mode = normalized_analysis_mode(&metadata);
+    let file_extension = normalized_file_extension(&metadata);
+    let analyzer_status = normalized_analyzer_status(&metadata);
+    let repo_suggested_bpm = metadata
+        .analysis
+        .repo_suggested_bpm
+        .or(metadata.repo_suggested_bpm);
+    let repo_suggested_status = normalized_repo_suggested_status(&metadata);
+    let notes = resolved_track_notes(&metadata);
+    let key_signature = resolved_track_key_signature(&metadata);
+    let energy_level = resolved_track_energy_level(&metadata);
+    let danceability = resolved_track_danceability(&metadata);
+    let structural_patterns = resolved_structural_patterns(&metadata);
+    let row_file_size_bytes: Option<i64> = row
+        .get(23)
+        .map_err(|error| format!("Failed to read track file size: {error}"))?;
+    let row_source_modified_at: Option<String> = row
+        .get(24)
+        .map_err(|error| format!("Failed to read track modified timestamp: {error}"))?;
+    let row_source_checksum: Option<String> = row
+        .get(25)
+        .map_err(|error| format!("Failed to read track checksum: {error}"))?;
+    let (size_bytes, modified_at, availability_state, playback_source) = probe_track_file_state(
+        &source_path,
+        storage_path.as_deref(),
+        row_file_size_bytes,
+        row_source_modified_at.clone(),
+    );
+    let hot_cues = row
+        .get::<_, Option<String>>(19)
+        .map_err(|error| format!("Failed to read hot cues JSON: {error}"))?
+        .map(|value| serde_json::from_str::<Vec<TrackCuePoint>>(&value))
+        .transpose()
+        .map_err(|error| format!("Failed to decode hot cues JSON: {error}"))?
+        .unwrap_or_default();
+    let memory_cues = row
+        .get::<_, Option<String>>(20)
+        .map_err(|error| format!("Failed to read memory cues JSON: {error}"))?
+        .map(|value| serde_json::from_str::<Vec<TrackCuePoint>>(&value))
+        .transpose()
+        .map_err(|error| format!("Failed to decode memory cues JSON: {error}"))?
+        .unwrap_or_default();
+    let saved_loops = row
+        .get::<_, Option<String>>(21)
+        .map_err(|error| format!("Failed to read saved loops JSON: {error}"))?
+        .map(|value| serde_json::from_str::<Vec<TrackSavedLoop>>(&value))
+        .transpose()
+        .map_err(|error| format!("Failed to decode saved loops JSON: {error}"))?
+        .unwrap_or_default();
+    let performance_defaults = default_track_library_state(
+        &beat_grid,
+        &structural_patterns,
+        size_bytes,
+        modified_at.clone(),
+        availability_state.clone(),
+    );
+    let performance = TrackPerformanceInfo {
+        color: row
+            .get(12)
+            .map_err(|error| format!("Failed to read track color: {error}"))?,
+        rating: row
+            .get::<_, Option<i64>>(13)
+            .map_err(|error| format!("Failed to read track rating: {error}"))?
+            .unwrap_or(performance_defaults.rating),
+        play_count: row
+            .get::<_, Option<i64>>(14)
+            .map_err(|error| format!("Failed to read track play count: {error}"))?
+            .unwrap_or(performance_defaults.play_count),
+        last_played_at: row
+            .get(15)
+            .map_err(|error| format!("Failed to read track last-played timestamp: {error}"))?,
+        bpm_lock: row
+            .get::<_, Option<i64>>(16)
+            .map_err(|error| format!("Failed to read track BPM lock: {error}"))?
+            .unwrap_or(if performance_defaults.bpm_lock { 1 } else { 0 })
+            != 0,
+        grid_lock: row
+            .get::<_, Option<i64>>(17)
+            .map_err(|error| format!("Failed to read track grid lock: {error}"))?
+            .unwrap_or(if performance_defaults.grid_lock { 1 } else { 0 })
+            != 0,
+        main_cue_second: row
+            .get::<_, Option<f64>>(18)
+            .map_err(|error| format!("Failed to read track main cue second: {error}"))?
+            .or(performance_defaults.main_cue_second),
+        hot_cues: if hot_cues.is_empty() {
+            performance_defaults.hot_cues.clone()
+        } else {
+            hot_cues
+        },
+        memory_cues,
+        saved_loops,
+    };
+    let track_title = metadata
+        .tags
+        .title
+        .clone()
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| title.clone());
+    let track_tags = TrackTagsInfo {
+        title: track_title.clone(),
+        artist: metadata.tags.artist.clone(),
+        album: metadata.tags.album.clone(),
+        genre: metadata.tags.genre.clone(),
+        year: metadata.tags.year,
+        comment: metadata.tags.comment.clone(),
+        artwork_path: metadata.tags.artwork_path.clone(),
+        music_style_id: music_style_id.clone(),
+        music_style_label: music_style_label.clone(),
+    };
+    let track_file = TrackFileInfo {
+        source_path: source_path.clone(),
+        storage_path: storage_path.clone(),
+        source_kind: "file".to_string(),
+        file_extension: file_extension.clone(),
+        size_bytes,
+        modified_at,
+        checksum: row_source_checksum,
+        availability_state,
+        playback_source,
+    };
+    let track_analysis = TrackAnalysisInfo {
+        imported_at: imported_at.clone(),
+        bpm: row
+            .get(3)
+            .map_err(|error| format!("Failed to read track BPM: {error}"))?,
+        bpm_confidence: row
+            .get(4)
+            .map_err(|error| format!("Failed to read track confidence: {error}"))?,
+        duration_seconds: row
+            .get(8)
+            .map_err(|error| format!("Failed to read duration: {error}"))?,
+        waveform_bins: waveform_bins.clone(),
+        beat_grid: beat_grid.clone(),
+        bpm_curve: bpm_curve.clone(),
+        analyzer_status: analyzer_status.clone(),
+        analysis_mode: analysis_mode.clone(),
+        analyzer_version: metadata.analysis.analyzer_version.clone(),
+        analyzed_at: metadata
+            .analysis
+            .analyzed_at
+            .clone()
+            .or_else(|| Some(imported_at.clone())),
+        repo_suggested_bpm,
+        repo_suggested_status: repo_suggested_status.clone(),
+        notes: notes.clone(),
+        key_signature: key_signature.clone(),
+        energy_level,
+        danceability,
+        structural_patterns: structural_patterns.clone(),
+    };
+
+    Ok(LibraryTrack {
+        id: row
+            .get(0)
+            .map_err(|error| format!("Failed to read track id: {error}"))?,
+        file: track_file,
+        tags: track_tags,
+        analysis: track_analysis,
+        performance,
+        title: track_title,
+        source_path,
+        storage_path,
+        bpm: row
+            .get(3)
+            .map_err(|error| format!("Failed to read track BPM: {error}"))?,
+        bpm_confidence: row
+            .get(4)
+            .map_err(|error| format!("Failed to read track confidence: {error}"))?,
+        imported_at,
+        duration_seconds: row
+            .get(8)
+            .map_err(|error| format!("Failed to read duration: {error}"))?,
+        waveform_bins,
+        beat_grid,
+        bpm_curve,
+        analyzer_status,
+        repo_suggested_bpm,
+        repo_suggested_status,
+        notes,
+        file_extension,
+        analysis_mode,
+        music_style_id,
+        music_style_label,
+        key_signature,
+        energy_level,
+        danceability,
+        structural_patterns,
+    })
 }
 
 fn read_tracks(conn: &Connection) -> Result<Vec<LibraryTrack>, String> {
@@ -2733,9 +3973,24 @@ fn read_tracks(conn: &Connection) -> Result<Vec<LibraryTrack>, String> {
                 t.duration_seconds,
                 t.waveform_bins_json,
                 t.beat_grid_json,
-                t.bpm_curve_json
+                t.bpm_curve_json,
+                s.color,
+                s.rating,
+                s.play_count,
+                s.last_played_at,
+                s.bpm_lock,
+                s.grid_lock,
+                s.main_cue_second,
+                s.hot_cues_json,
+                s.memory_cues_json,
+                s.saved_loops_json,
+                s.missing_state,
+                s.file_size_bytes,
+                s.source_modified_at,
+                s.source_checksum
             FROM musical_assets m
             INNER JOIN track_analyses t ON t.asset_id = m.id
+            LEFT JOIN track_library_states s ON s.asset_id = m.id
             WHERE m.asset_type = 'track_analysis'
             ORDER BY m.created_at DESC
             ",
@@ -2747,74 +4002,432 @@ fn read_tracks(conn: &Connection) -> Result<Vec<LibraryTrack>, String> {
         .map_err(|error| format!("Failed to query tracks: {error}"))?;
     let mut tracks = Vec::new();
 
+    let mut skipped_rows = 0usize;
+
     while let Some(row) = rows
         .next()
         .map_err(|error| format!("Failed to iterate track rows: {error}"))?
     {
-        let metadata_json: String = row
-            .get(6)
-            .map_err(|error| format!("Failed to read track metadata: {error}"))?;
-        let waveform_json: String = row
-            .get(9)
-            .map_err(|error| format!("Failed to read waveform bins: {error}"))?;
-        let beat_grid_json: String = row
-            .get(10)
-            .map_err(|error| format!("Failed to read beat grid: {error}"))?;
-        let bpm_curve_json: String = row
-            .get(11)
-            .map_err(|error| format!("Failed to read BPM curve: {error}"))?;
-        let metadata: TrackMetadata = serde_json::from_str(&metadata_json)
-            .map_err(|error| format!("Failed to decode track metadata JSON: {error}"))?;
-        let waveform_bins: Vec<f64> = serde_json::from_str(&waveform_json)
-            .map_err(|error| format!("Failed to decode waveform JSON: {error}"))?;
-        let beat_grid: Vec<BeatGridPoint> = serde_json::from_str(&beat_grid_json)
-            .map_err(|error| format!("Failed to decode beat grid JSON: {error}"))?;
-        let bpm_curve: Vec<BpmCurvePoint> = serde_json::from_str(&bpm_curve_json)
-            .map_err(|error| format!("Failed to decode BPM curve JSON: {error}"))?;
-        let music_style_id = normalized_music_style_id(&metadata);
-        let music_style_label = normalized_music_style_label(&metadata);
-        let analysis_mode = normalized_analysis_mode(&metadata);
+        match decode_track_row(row) {
+            Ok(track) => tracks.push(track),
+            Err(error) => {
+                skipped_rows += 1;
+                eprintln!("[MAIA:Rust] skipping track row: {error}");
+            }
+        }
+    }
 
-        tracks.push(LibraryTrack {
-            id: row
-                .get(0)
-                .map_err(|error| format!("Failed to read track id: {error}"))?,
-            title: row
-                .get(1)
-                .map_err(|error| format!("Failed to read track title: {error}"))?,
-            source_path: row
-                .get(2)
-                .map_err(|error| format!("Failed to read track source path: {error}"))?,
-            storage_path: row
-                .get(7)
-                .map_err(|error| format!("Failed to read track storage path: {error}"))?,
-            bpm: row
-                .get(3)
-                .map_err(|error| format!("Failed to read track BPM: {error}"))?,
-            bpm_confidence: row
-                .get(4)
-                .map_err(|error| format!("Failed to read track confidence: {error}"))?,
-            imported_at: row
-                .get(5)
-                .map_err(|error| format!("Failed to read import timestamp: {error}"))?,
-            duration_seconds: row
-                .get(8)
-                .map_err(|error| format!("Failed to read duration: {error}"))?,
-            waveform_bins,
-            beat_grid,
-            bpm_curve,
-            analyzer_status: metadata.analyzer_status,
-            repo_suggested_bpm: metadata.repo_suggested_bpm,
-            repo_suggested_status: metadata.repo_suggested_status,
-            notes: metadata.notes,
-            file_extension: metadata.file_extension,
-            analysis_mode,
-            music_style_id,
-            music_style_label,
-        });
+    if tracks.is_empty() && skipped_rows > 0 {
+        return Err(format!(
+            "Failed to decode all track rows. Skipped {skipped_rows} corrupted entries. Check the Tauri terminal for row-level details."
+        ));
     }
 
     Ok(tracks)
+}
+
+fn read_playlists(conn: &Connection) -> Result<Vec<BaseTrackPlaylist>, String> {
+    let mut playlist_statement = conn
+        .prepare(
+            "
+            SELECT id, name, created_at, updated_at
+            FROM base_track_playlists
+            ORDER BY updated_at DESC, name COLLATE NOCASE ASC
+            ",
+        )
+        .map_err(|error| format!("Failed to prepare base playlist query: {error}"))?;
+    let mut item_statement = conn
+        .prepare(
+            "
+            SELECT track_id
+            FROM base_track_playlist_items
+            WHERE playlist_id = ?1
+            ORDER BY position ASC
+            ",
+        )
+        .map_err(|error| format!("Failed to prepare base playlist items query: {error}"))?;
+
+    let playlist_rows = playlist_statement
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+            ))
+        })
+        .map_err(|error| format!("Failed to query base playlists: {error}"))?;
+
+    let mut playlists = Vec::new();
+
+    for playlist_row in playlist_rows {
+        let (id, name, created_at, updated_at) = playlist_row
+            .map_err(|error| format!("Failed to decode base playlist row: {error}"))?;
+        let item_rows = item_statement
+            .query_map([id.clone()], |row| row.get::<_, String>(0))
+            .map_err(|error| format!("Failed to query playlist items for {id}: {error}"))?;
+
+        let mut track_ids = Vec::new();
+        for item_row in item_rows {
+            track_ids.push(
+                item_row.map_err(|error| {
+                    format!("Failed to decode playlist track for {id}: {error}")
+                })?,
+            );
+        }
+
+        playlists.push(BaseTrackPlaylist {
+            id,
+            name,
+            track_ids,
+            created_at,
+            updated_at,
+        });
+    }
+
+    Ok(playlists)
+}
+
+fn persist_playlist(
+    conn: &Connection,
+    input: SaveBaseTrackPlaylistInput,
+) -> Result<BaseTrackPlaylist, String> {
+    let name = input.name.trim();
+    if name.is_empty() {
+        return Err("Playlist name is required.".to_string());
+    }
+
+    let mut track_ids = Vec::new();
+    for track_id in input.track_ids {
+        let trimmed = track_id.trim();
+        if !trimmed.is_empty() && !track_ids.iter().any(|existing: &String| existing == trimmed) {
+            track_ids.push(trimmed.to_string());
+        }
+    }
+
+    if track_ids.is_empty() {
+        return Err("Playlist must include at least one track.".to_string());
+    }
+
+    for track_id in &track_ids {
+        let exists: i64 = conn
+            .query_row(
+                "
+                SELECT COUNT(*)
+                FROM musical_assets
+                WHERE id = ?1 AND asset_type = 'track_analysis'
+                ",
+                [track_id],
+                |row| row.get(0),
+            )
+            .map_err(|error| format!("Failed to validate playlist track {track_id}: {error}"))?;
+
+        if exists == 0 {
+            return Err(format!("Playlist track not found: {track_id}"));
+        }
+    }
+
+    let now = now_iso();
+    let playlist_id = input
+        .id
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(|| format!("playlist-{}", now_millis()));
+    let created_at = conn
+        .query_row(
+            "SELECT created_at FROM base_track_playlists WHERE id = ?1",
+            [playlist_id.clone()],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()
+        .map_err(|error| format!("Failed to read existing playlist timestamp: {error}"))?
+        .unwrap_or_else(|| now.clone());
+
+    conn.execute(
+        "
+        INSERT INTO base_track_playlists (id, name, created_at, updated_at)
+        VALUES (?1, ?2, ?3, ?4)
+        ON CONFLICT(id) DO UPDATE SET
+          name = excluded.name,
+          updated_at = excluded.updated_at
+        ",
+        params![playlist_id, name, created_at, now],
+    )
+    .map_err(|error| format!("Failed to persist playlist header: {error}"))?;
+
+    conn.execute(
+        "DELETE FROM base_track_playlist_items WHERE playlist_id = ?1",
+        [playlist_id.clone()],
+    )
+    .map_err(|error| format!("Failed to reset playlist items: {error}"))?;
+
+    for (index, track_id) in track_ids.iter().enumerate() {
+        conn.execute(
+            "
+            INSERT INTO base_track_playlist_items (playlist_id, track_id, position)
+            VALUES (?1, ?2, ?3)
+            ",
+            params![playlist_id, track_id, index as i64],
+        )
+        .map_err(|error| format!("Failed to persist playlist item {track_id}: {error}"))?;
+    }
+
+    read_playlists(conn)?
+        .into_iter()
+        .find(|playlist| playlist.id == playlist_id)
+        .ok_or_else(|| "Failed to reload persisted playlist.".to_string())
+}
+
+fn delete_playlist_record(conn: &Connection, playlist_id: &str) -> Result<(), String> {
+    conn.execute(
+        "UPDATE sessions SET playlist_id = NULL WHERE playlist_id = ?1",
+        [playlist_id],
+    )
+    .map_err(|error| format!("Failed to clear sessions for playlist {playlist_id}: {error}"))?;
+
+    conn.execute(
+        "DELETE FROM base_track_playlists WHERE id = ?1",
+        [playlist_id],
+    )
+    .map_err(|error| format!("Failed to delete playlist {playlist_id}: {error}"))?;
+
+    Ok(())
+}
+
+fn persist_track_performance_update(
+    conn: &Connection,
+    track_id: &str,
+    input: UpdateTrackPerformanceInput,
+) -> Result<LibraryTrack, String> {
+    let track = read_tracks(conn)?
+        .into_iter()
+        .find(|entry| entry.id == track_id)
+        .ok_or_else(|| format!("Track not found: {track_id}"))?;
+    let mut state = track_library_state_from_track(&track);
+
+    if let Some(rating) = input.rating {
+        if !(0..=5).contains(&rating) {
+            return Err("Track rating must be between 0 and 5.".to_string());
+        }
+        state.rating = rating;
+    }
+
+    if let Some(color) = input.color {
+        state.color = color.and_then(|value| {
+            let trimmed = value.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        });
+    }
+
+    if let Some(bpm_lock) = input.bpm_lock {
+        state.bpm_lock = bpm_lock;
+    }
+
+    if let Some(grid_lock) = input.grid_lock {
+        state.grid_lock = grid_lock;
+    }
+
+    if let Some(main_cue_second) = input.main_cue_second {
+        state.main_cue_second = main_cue_second;
+    }
+
+    if let Some(mut hot_cues) = input.hot_cues {
+        hot_cues.sort_by(|left, right| {
+            left.second
+                .partial_cmp(&right.second)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        state.hot_cues = hot_cues;
+    }
+
+    if let Some(mut memory_cues) = input.memory_cues {
+        memory_cues.sort_by(|left, right| {
+            left.second
+                .partial_cmp(&right.second)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        state.memory_cues = memory_cues;
+    }
+
+    if let Some(mut saved_loops) = input.saved_loops {
+        saved_loops.sort_by(|left, right| {
+            left.start_second
+                .partial_cmp(&right.start_second)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        state.saved_loops = saved_loops;
+    }
+
+    if input.mark_played.unwrap_or(false) {
+        state.play_count += 1;
+        state.last_played_at = Some(now_iso());
+    }
+
+    let hot_cues_json = serde_json::to_string(&state.hot_cues)
+        .map_err(|error| format!("Failed to encode hot cues JSON: {error}"))?;
+    let memory_cues_json = serde_json::to_string(&state.memory_cues)
+        .map_err(|error| format!("Failed to encode memory cues JSON: {error}"))?;
+    let saved_loops_json = serde_json::to_string(&state.saved_loops)
+        .map_err(|error| format!("Failed to encode saved loops JSON: {error}"))?;
+
+    conn.execute(
+        "
+        INSERT INTO track_library_states (
+            asset_id,
+            color,
+            rating,
+            play_count,
+            last_played_at,
+            bpm_lock,
+            grid_lock,
+            main_cue_second,
+            hot_cues_json,
+            memory_cues_json,
+            saved_loops_json,
+            missing_state,
+            file_size_bytes,
+            source_modified_at,
+            source_checksum
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
+        ON CONFLICT(asset_id) DO UPDATE SET
+            color = excluded.color,
+            rating = excluded.rating,
+            play_count = excluded.play_count,
+            last_played_at = excluded.last_played_at,
+            bpm_lock = excluded.bpm_lock,
+            grid_lock = excluded.grid_lock,
+            main_cue_second = excluded.main_cue_second,
+            hot_cues_json = excluded.hot_cues_json,
+            memory_cues_json = excluded.memory_cues_json,
+            saved_loops_json = excluded.saved_loops_json,
+            missing_state = excluded.missing_state,
+            file_size_bytes = excluded.file_size_bytes,
+            source_modified_at = excluded.source_modified_at,
+            source_checksum = excluded.source_checksum
+        ",
+        params![
+            track_id,
+            state.color,
+            state.rating,
+            state.play_count,
+            state.last_played_at,
+            if state.bpm_lock { 1 } else { 0 },
+            if state.grid_lock { 1 } else { 0 },
+            state.main_cue_second,
+            hot_cues_json,
+            memory_cues_json,
+            saved_loops_json,
+            state.missing_state,
+            state.file_size_bytes,
+            state.source_modified_at,
+            state.source_checksum
+        ],
+    )
+    .map_err(|error| format!("Failed to update track performance state: {error}"))?;
+
+    conn.execute(
+        "UPDATE musical_assets SET updated_at = ?1 WHERE id = ?2",
+        params![now_iso(), track_id],
+    )
+    .map_err(|error| format!("Failed to touch track updated_at: {error}"))?;
+
+    read_tracks(conn)?
+        .into_iter()
+        .find(|entry| entry.id == track_id)
+        .ok_or_else(|| format!("Track disappeared after update: {track_id}"))
+}
+
+fn persist_track_analysis_update(
+    conn: &Connection,
+    track_id: &str,
+    input: UpdateTrackAnalysisInput,
+) -> Result<LibraryTrack, String> {
+    let track = read_tracks(conn)?
+        .into_iter()
+        .find(|entry| entry.id == track_id)
+        .ok_or_else(|| format!("Track not found: {track_id}"))?;
+
+    if track.performance.grid_lock {
+        return Err("Unlock the track grid before editing beat markers.".to_string());
+    }
+
+    let next_bpm = input.bpm.or(track.analysis.bpm);
+    if let Some(bpm) = next_bpm {
+        if !(40.0..=240.0).contains(&bpm) {
+            return Err("Track BPM must be between 40 and 240.".to_string());
+        }
+    }
+
+    let next_beat_grid = normalize_beat_grid_points(
+        input.beat_grid.unwrap_or_else(|| track.analysis.beat_grid.clone()),
+        track.analysis.duration_seconds,
+    );
+    let next_bpm_curve = normalize_bpm_curve_points(
+        input.bpm_curve.unwrap_or_else(|| track.analysis.bpm_curve.clone()),
+        track.analysis.duration_seconds,
+    );
+
+    let mut metadata = track_metadata_from_track(&track);
+    let now = now_iso();
+    metadata.analysis.analyzed_at = Some(now.clone());
+    if !metadata
+        .analysis
+        .notes
+        .iter()
+        .any(|note| note == "Beat grid manually adjusted in Maia desktop.")
+    {
+        metadata
+            .analysis
+            .notes
+            .push("Beat grid manually adjusted in Maia desktop.".to_string());
+    }
+    metadata.notes = metadata.analysis.notes.clone();
+
+    let metadata_json = serde_json::to_string(&metadata)
+        .map_err(|error| format!("Failed to encode track metadata JSON: {error}"))?;
+    let beat_grid_json = serde_json::to_string(&next_beat_grid)
+        .map_err(|error| format!("Failed to encode beat grid JSON: {error}"))?;
+    let bpm_curve_json = serde_json::to_string(&next_bpm_curve)
+        .map_err(|error| format!("Failed to encode BPM curve JSON: {error}"))?;
+
+    conn.execute(
+        "
+        UPDATE musical_assets
+        SET suggested_bpm = ?1,
+            metadata_json = ?2,
+            updated_at = ?3
+        WHERE id = ?4
+        ",
+        params![next_bpm, metadata_json, now, track_id],
+    )
+    .map_err(|error| format!("Failed to update track asset metadata: {error}"))?;
+
+    let updated_rows = conn
+        .execute(
+            "
+            UPDATE track_analyses
+            SET beat_grid_json = ?1,
+                bpm_curve_json = ?2
+            WHERE asset_id = ?3
+            ",
+            params![beat_grid_json, bpm_curve_json, track_id],
+        )
+        .map_err(|error| format!("Failed to update track beat grid: {error}"))?;
+
+    if updated_rows == 0 {
+        return Err(format!("Track analysis row missing for: {track_id}"));
+    }
+
+    read_tracks(conn)?
+        .into_iter()
+        .find(|entry| entry.id == track_id)
+        .ok_or_else(|| format!("Track disappeared after analysis update: {track_id}"))
 }
 
 fn read_base_assets(conn: &Connection) -> Result<Vec<BaseAssetRecord>, String> {
@@ -2999,6 +4612,8 @@ fn read_compositions(conn: &Connection) -> Result<Vec<CompositionResultRecord>, 
             base_asset_title: metadata.base_asset_title,
             base_asset_category_id: metadata.base_asset_category_id,
             base_asset_category_label: metadata.base_asset_category_label,
+            base_playlist_id: metadata.base_playlist_id,
+            base_playlist_name: metadata.base_playlist_name,
             reference_type: row
                 .get(9)
                 .map_err(|error| format!("Failed to read composition reference type: {error}"))?,
@@ -3254,8 +4869,148 @@ fn insert_track(
     )
     .map_err(|error| format!("Failed to insert track analysis: {error}"))?;
 
+    let structural_patterns = resolved_structural_patterns(&analysis.metadata);
+    let notes = resolved_track_notes(&analysis.metadata);
+    let file_extension = normalized_file_extension(&analysis.metadata);
+    let analyzer_status = normalized_analyzer_status(&analysis.metadata);
+    let analysis_mode = normalized_analysis_mode(&analysis.metadata);
+    let music_style_id = normalized_music_style_id(&analysis.metadata);
+    let music_style_label = normalized_music_style_label(&analysis.metadata);
+    let key_signature = resolved_track_key_signature(&analysis.metadata);
+    let energy_level = resolved_track_energy_level(&analysis.metadata);
+    let danceability = resolved_track_danceability(&analysis.metadata);
+    let repo_suggested_bpm = analysis
+        .metadata
+        .analysis
+        .repo_suggested_bpm
+        .or(analysis.metadata.repo_suggested_bpm);
+    let repo_suggested_status = normalized_repo_suggested_status(&analysis.metadata);
+    let (size_bytes, modified_at, missing_state, playback_source) = probe_track_file_state(
+        &analysis.source_path,
+        analysis.storage_path.as_deref(),
+        analysis.metadata.file.size_bytes,
+        analysis.metadata.file.modified_at.clone(),
+    );
+    let performance_state = default_track_library_state(
+        &analysis.beat_grid,
+        &structural_patterns,
+        size_bytes,
+        modified_at.clone(),
+        missing_state.clone(),
+    );
+    let hot_cues_json = serde_json::to_string(&performance_state.hot_cues)
+        .map_err(|error| format!("Failed to encode track hot cues: {error}"))?;
+    let memory_cues_json = serde_json::to_string(&performance_state.memory_cues)
+        .map_err(|error| format!("Failed to encode track memory cues: {error}"))?;
+    let saved_loops_json = serde_json::to_string(&performance_state.saved_loops)
+        .map_err(|error| format!("Failed to encode track saved loops: {error}"))?;
+
+    conn.execute(
+        "
+        INSERT INTO track_library_states (
+            asset_id,
+            color,
+            rating,
+            play_count,
+            last_played_at,
+            bpm_lock,
+            grid_lock,
+            main_cue_second,
+            hot_cues_json,
+            memory_cues_json,
+            saved_loops_json,
+            missing_state,
+            file_size_bytes,
+            source_modified_at,
+            source_checksum
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
+        ",
+        params![
+            &id,
+            &performance_state.color,
+            performance_state.rating,
+            performance_state.play_count,
+            &performance_state.last_played_at,
+            if performance_state.bpm_lock { 1 } else { 0 },
+            if performance_state.grid_lock { 1 } else { 0 },
+            performance_state.main_cue_second,
+            hot_cues_json,
+            memory_cues_json,
+            saved_loops_json,
+            &performance_state.missing_state,
+            performance_state.file_size_bytes,
+            &performance_state.source_modified_at,
+            &performance_state.source_checksum
+        ],
+    )
+    .map_err(|error| format!("Failed to insert track library state: {error}"))?;
+
+    let file = TrackFileInfo {
+        source_path: analysis.source_path.clone(),
+        storage_path: analysis.storage_path.clone(),
+        source_kind: "file".to_string(),
+        file_extension: file_extension.clone(),
+        size_bytes,
+        modified_at,
+        checksum: None,
+        availability_state: missing_state,
+        playback_source,
+    };
+    let tags = TrackTagsInfo {
+        title: analysis.title.clone(),
+        artist: analysis.metadata.tags.artist.clone(),
+        album: analysis.metadata.tags.album.clone(),
+        genre: analysis.metadata.tags.genre.clone(),
+        year: analysis.metadata.tags.year,
+        comment: analysis.metadata.tags.comment.clone(),
+        artwork_path: analysis.metadata.tags.artwork_path.clone(),
+        music_style_id: music_style_id.clone(),
+        music_style_label: music_style_label.clone(),
+    };
+    let analysis_info = TrackAnalysisInfo {
+        imported_at: now.clone(),
+        bpm: Some(analysis.bpm),
+        bpm_confidence: analysis.confidence,
+        duration_seconds: analysis.duration_seconds,
+        waveform_bins: analysis.waveform_bins.clone(),
+        beat_grid: analysis.beat_grid.clone(),
+        bpm_curve: analysis.bpm_curve.clone(),
+        analyzer_status: analyzer_status.clone(),
+        analysis_mode: analysis_mode.clone(),
+        analyzer_version: analysis.metadata.analysis.analyzer_version.clone(),
+        analyzed_at: analysis
+            .metadata
+            .analysis
+            .analyzed_at
+            .clone()
+            .or_else(|| Some(now.clone())),
+        repo_suggested_bpm,
+        repo_suggested_status: repo_suggested_status.clone(),
+        notes: notes.clone(),
+        key_signature: key_signature.clone(),
+        energy_level,
+        danceability,
+        structural_patterns: structural_patterns.clone(),
+    };
+    let performance = TrackPerformanceInfo {
+        color: performance_state.color.clone(),
+        rating: performance_state.rating,
+        play_count: performance_state.play_count,
+        last_played_at: performance_state.last_played_at.clone(),
+        bpm_lock: performance_state.bpm_lock,
+        grid_lock: performance_state.grid_lock,
+        main_cue_second: performance_state.main_cue_second,
+        hot_cues: performance_state.hot_cues.clone(),
+        memory_cues: performance_state.memory_cues.clone(),
+        saved_loops: performance_state.saved_loops.clone(),
+    };
+
     Ok(LibraryTrack {
         id,
+        file,
+        tags,
+        analysis: analysis_info,
+        performance,
         title: analysis.title,
         source_path: analysis.source_path,
         storage_path: analysis.storage_path,
@@ -3266,14 +5021,18 @@ fn insert_track(
         waveform_bins: analysis.waveform_bins,
         beat_grid: analysis.beat_grid,
         bpm_curve: analysis.bpm_curve,
-        analyzer_status: analysis.metadata.analyzer_status,
-        repo_suggested_bpm: analysis.metadata.repo_suggested_bpm,
-        repo_suggested_status: analysis.metadata.repo_suggested_status,
-        notes: analysis.metadata.notes,
-        file_extension: analysis.metadata.file_extension,
-        analysis_mode: analysis.metadata.analysis_mode,
-        music_style_id: analysis.metadata.music_style_id,
-        music_style_label: analysis.metadata.music_style_label,
+        analyzer_status,
+        repo_suggested_bpm,
+        repo_suggested_status,
+        notes,
+        file_extension,
+        analysis_mode,
+        music_style_id,
+        music_style_label,
+        key_signature,
+        energy_level,
+        danceability,
+        structural_patterns,
     })
 }
 
@@ -3427,8 +5186,11 @@ fn insert_composition(
         return Err("A base asset must be selected before composing.".to_string());
     }
 
-    if !matches!(reference_type, "track" | "repo" | "manual") {
-        return Err("Composition reference type must be 'track', 'repo', or 'manual'.".to_string());
+    if !matches!(reference_type, "track" | "playlist" | "repo" | "manual") {
+        return Err(
+            "Composition reference type must be 'track', 'playlist', 'repo', or 'manual'."
+                .to_string(),
+        );
     }
 
     let base_asset = read_base_assets(conn)?
@@ -3468,6 +5230,8 @@ fn insert_composition(
         base_asset_title: analysis.base_asset_title,
         base_asset_category_id: analysis.base_asset_category_id,
         base_asset_category_label: analysis.base_asset_category_label,
+        base_playlist_id: reference.base_playlist_id.clone(),
+        base_playlist_name: reference.base_playlist_name.clone(),
         reference_type: analysis.reference_type,
         reference_asset_id: analysis.reference_asset_id,
         reference_title: analysis.reference_title,
@@ -3563,54 +5327,121 @@ fn resolve_composition_reference(
     conn: &Connection,
     input: &ImportCompositionInput,
 ) -> Result<CompositionReferenceDraft, String> {
-    // Get the track (always required as instrumental base)
-    let track_id = input
+    let tracks = read_tracks(conn)?;
+    let base_playlist = input
+        .playlist_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|playlist_id| {
+            read_playlists(conn)?
+                .into_iter()
+                .find(|entry| entry.id == playlist_id)
+                .ok_or_else(|| format!("Playlist not found: {playlist_id}"))
+        })
+        .transpose()?;
+
+    let base_track = input
         .track_id
         .as_deref()
         .map(str::trim)
         .filter(|value| !value.is_empty())
-        .ok_or_else(|| {
-            "Composition requires a track as the instrumental base.".to_string()
-        })?;
+        .map(|track_id| {
+            tracks
+                .iter()
+                .find(|entry| entry.id == track_id)
+                .cloned()
+                .ok_or_else(|| format!("Track not found: {track_id}"))
+        })
+        .transpose()?;
 
-    let track = read_tracks(conn)?
-        .into_iter()
-        .find(|entry| entry.id == track_id)
-        .ok_or_else(|| format!("Track not found: {track_id}"))?;
+    if base_track.is_none() && base_playlist.is_none() {
+        return Err("Composition requires a base track or a base playlist.".to_string());
+    }
 
-    let base_bpm = track
-        .bpm
-        .ok_or_else(|| "The selected track does not have a stored BPM yet.".to_string())?;
+    let (base_bpm, base_reference_title, base_reference_source_path, base_reference_asset_id, base_reference_type, base_playlist_id, base_playlist_name) =
+        if let Some(playlist) = base_playlist {
+            let mut playlist_bpms = playlist
+                .track_ids
+                .iter()
+                .filter_map(|track_id| {
+                    tracks
+                        .iter()
+                        .find(|entry| entry.id == *track_id)
+                        .and_then(|entry| entry.bpm)
+                })
+                .collect::<Vec<_>>();
 
-    // Check if a structural reference (repo/log) is also provided
-    if let Some(structure_id) = input.structure_id.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+            if playlist_bpms.is_empty() {
+                return Err("The selected playlist does not contain any tracks with stored BPM yet.".to_string());
+            }
+
+            playlist_bpms.sort_by(|left, right| left.partial_cmp(right).unwrap_or(Ordering::Equal));
+            let midpoint = playlist_bpms.len() / 2;
+            let median_bpm = if playlist_bpms.len() % 2 == 0 {
+                (playlist_bpms[midpoint - 1] + playlist_bpms[midpoint]) / 2.0
+            } else {
+                playlist_bpms[midpoint]
+            };
+
+            (
+                median_bpm,
+                playlist.name.clone(),
+                None,
+                Some(playlist.id.clone()),
+                "playlist".to_string(),
+                Some(playlist.id),
+                Some(playlist.name),
+            )
+        } else if let Some(track) = base_track {
+            let bpm = track
+                .bpm
+                .ok_or_else(|| "The selected track does not have a stored BPM yet.".to_string())?;
+
+            (
+                bpm,
+                track.title.clone(),
+                Some(track.source_path.clone()),
+                Some(track.id.clone()),
+                "track".to_string(),
+                None,
+                None,
+            )
+        } else {
+            return Err("Composition requires a base track or a base playlist.".to_string());
+        };
+
+    if let Some(structure_id) = input
+        .structure_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
         let repository = read_repositories(conn)?
             .into_iter()
             .find(|entry| entry.id == structure_id)
             .ok_or_else(|| format!("Repository reference not found: {structure_id}"))?;
 
-        // Use repo's BPM if available, otherwise fall back to track BPM
-        let target_bpm = repository.suggested_bpm.unwrap_or(base_bpm);
-
-        // Store both track and structure in the reference for the analyzer
-        Ok(CompositionReferenceDraft {
+        return Ok(CompositionReferenceDraft {
+            base_playlist_id,
+            base_playlist_name,
             reference_type: "repo".to_string(),
             reference_asset_id: Some(repository.id),
-            reference_title: format!("{} (structured by {})", track.title, repository.title),
+            reference_title: format!("{} (structured by {})", base_reference_title, repository.title),
             reference_source_path: Some(repository.source_path),
-            target_bpm,
-            // TODO: Store track_id in metadata for analyzer to use as instrumental base
-        })
-    } else {
-        // Use only the track as reference
-        Ok(CompositionReferenceDraft {
-            reference_type: "track".to_string(),
-            reference_asset_id: Some(track.id),
-            reference_title: track.title,
-            reference_source_path: Some(track.source_path),
-            target_bpm: base_bpm,
-        })
+            target_bpm: repository.suggested_bpm.unwrap_or(base_bpm),
+        });
     }
+
+    Ok(CompositionReferenceDraft {
+        base_playlist_id,
+        base_playlist_name,
+        reference_type: base_reference_type,
+        reference_asset_id: base_reference_asset_id,
+        reference_title: base_reference_title,
+        reference_source_path: base_reference_source_path,
+        target_bpm: base_bpm,
+    })
 }
 
 fn insert_repository(
@@ -3918,6 +5749,11 @@ fn analyze_track_import(
         metric_f64(&payload.musical_asset.metrics, "durationSeconds").or(fallback.duration_seconds);
     let sample_rate_hz = metric_i64_opt(&payload.musical_asset.metrics, "sampleRateHz");
     let channels = metric_i64_opt(&payload.musical_asset.metrics, "channels");
+    let key_signature = metric_string_opt(&payload.musical_asset.metrics, "keySignature");
+    let energy_level = metric_f64(&payload.musical_asset.metrics, "energyLevel");
+    let danceability = metric_f64(&payload.musical_asset.metrics, "danceability");
+    let structural_patterns: Vec<TrackStructuralPattern> =
+        decode_json_metric(&payload.musical_asset.metrics, "structuralPatterns")?;
     let beat_grid_json = serde_json::to_string(&beat_grid)
         .map_err(|error| format!("Failed to encode beat grid: {error}"))?;
     let bpm_curve_json = serde_json::to_string(&bpm_curve)
@@ -3927,6 +5763,7 @@ fn analyze_track_import(
         "hash-stub" => "Hash waveform stub + style BPM prior".to_string(),
         _ => "Track analysis imported".to_string(),
     };
+    let analyzed_at = now_iso();
     let mut notes = vec![format!(
         "Imported with {} prior ({}-{} BPM).",
         music_style.label, music_style.min_bpm, music_style.max_bpm
@@ -3965,6 +5802,38 @@ fn analyze_track_import(
         bpm_curve_json,
         analyzer_notes: payload.summary.clone(),
         metadata: TrackMetadata {
+            file: TrackFileMetadata {
+                source_kind: "file".to_string(),
+                file_extension: file_extension.clone(),
+                size_bytes: None,
+                modified_at: None,
+                checksum: None,
+            },
+            tags: TrackTagsMetadata {
+                title: Some(title.to_string()),
+                artist: None,
+                album: None,
+                genre: None,
+                year: None,
+                comment: None,
+                artwork_path: None,
+                music_style_id: music_style.id.clone(),
+                music_style_label: music_style.label.clone(),
+            },
+            analysis: TrackAnalysisMetadata {
+                analyzer_status: analyzer_status.clone(),
+                analysis_mode: analysis_mode.clone(),
+                analyzer_version: Some("maia-analyzer".to_string()),
+                analyzed_at: Some(analyzed_at),
+                repo_suggested_bpm: None,
+                repo_suggested_status: "Waiting for repository heuristics in a future analyzer pass"
+                    .to_string(),
+                notes: notes.clone(),
+                key_signature: key_signature.clone(),
+                energy_level,
+                danceability,
+                structural_patterns: structural_patterns.clone(),
+            },
             file_extension,
             analyzer_status,
             analysis_mode,
@@ -3974,6 +5843,10 @@ fn analyze_track_import(
             notes,
             music_style_id: music_style.id.clone(),
             music_style_label: music_style.label.clone(),
+            key_signature,
+            energy_level,
+            danceability,
+            structural_patterns,
         },
     })
 }
@@ -4123,6 +5996,8 @@ fn analyze_composition_import(
                 "baseAssetCategory": base_asset.category_id,
                 "baseAssetReusable": base_asset.reusable,
                 "compositionBaseAssetEntryCount": base_asset.entry_count,
+                "compositionBasePlaylistId": reference.base_playlist_id,
+                "compositionBasePlaylistName": reference.base_playlist_name,
                 "compositionReferenceType": reference.reference_type,
                 "compositionReferenceLabel": reference.reference_title,
                 "compositionReferenceBpm": reference.target_bpm,
@@ -4175,6 +6050,9 @@ fn analyze_composition_import(
             reference.reference_type, reference.reference_title
         ),
     ];
+    if let Some(playlist_name) = reference.base_playlist_name.as_deref() {
+        notes.push(format!("Base playlist is {}.", playlist_name));
+    }
     if !base_asset.reusable {
         notes.push(
             "The selected base asset is reference-only, so the composition remains a local sketch."
@@ -4204,6 +6082,7 @@ fn analyze_composition_import(
 
     let analyzer_status = match reference.reference_type.as_str() {
         "track" => "Track-referenced composition plan".to_string(),
+        "playlist" => "Playlist-referenced composition plan".to_string(),
         "repo" => "Repository-referenced composition plan".to_string(),
         _ => "Manual-tempo composition plan".to_string(),
     };
@@ -4240,6 +6119,8 @@ fn analyze_composition_import(
             base_asset_title: base_asset.title.clone(),
             base_asset_category_id: base_asset.category_id.clone(),
             base_asset_category_label: base_asset.category_label.clone(),
+            base_playlist_id: reference.base_playlist_id.clone(),
+            base_playlist_name: reference.base_playlist_name.clone(),
             reference_type: reference.reference_type.clone(),
             reference_asset_id: reference.reference_asset_id.clone(),
             reference_title: reference.reference_title.clone(),
@@ -4287,6 +6168,51 @@ fn build_mock_track(
         beat_grid_json: serde_json::to_string(&beat_grid).unwrap_or_else(|_| "[]".to_string()),
         bpm_curve_json: serde_json::to_string(&bpm_curve).unwrap_or_else(|_| "[]".to_string()),
         metadata: TrackMetadata {
+            file: TrackFileMetadata {
+                source_kind: "file".to_string(),
+                file_extension: file_extension.clone(),
+                size_bytes: None,
+                modified_at: None,
+                checksum: None,
+            },
+            tags: TrackTagsMetadata {
+                title: Some(title.to_string()),
+                artist: None,
+                album: None,
+                genre: None,
+                year: None,
+                comment: None,
+                artwork_path: None,
+                music_style_id: music_style.id.clone(),
+                music_style_label: music_style.label.clone(),
+            },
+            analysis: TrackAnalysisMetadata {
+                analyzer_status: "Mock waveform + BPM ready".to_string(),
+                analysis_mode: "style-prior-mock".to_string(),
+                analyzer_version: Some("mock-analyzer".to_string()),
+                analyzed_at: Some(now_iso()),
+                repo_suggested_bpm: None,
+                repo_suggested_status: "Waiting for repository heuristics in a future analyzer pass".to_string(),
+                notes: vec![
+                    format!(
+                        "Imported with {} prior ({}-{} BPM).",
+                        music_style.label, music_style.min_bpm, music_style.max_bpm
+                    ),
+                    match storage_path {
+                        Some(path) => format!(
+                            "Maia captured a managed local snapshot for this track at {}.",
+                            path
+                        ),
+                        None => "No managed snapshot exists for this track yet because the source file was not available during import.".to_string(),
+                    },
+                    "Waveform, beat grid, and BPM curve are lightweight local preview artifacts.".to_string(),
+                    "Browser and demo flows mirror the same analyzer-screen structure as Tauri.".to_string(),
+                ],
+                key_signature: None,
+                energy_level: None,
+                danceability: None,
+                structural_patterns: Vec::new(),
+            },
             file_extension,
             analyzer_status: "Mock waveform + BPM ready".to_string(),
             analysis_mode: "style-prior-mock".to_string(),
@@ -4309,6 +6235,10 @@ fn build_mock_track(
             ],
             music_style_id: music_style.id.clone(),
             music_style_label: music_style.label.clone(),
+            key_signature: None,
+            energy_level: None,
+            danceability: None,
+            structural_patterns: Vec::new(),
         },
         waveform_bins,
         beat_grid,
@@ -4507,12 +6437,97 @@ fn log_to_terminal(level: String, message: String) {
     eprintln!("{level} {message}");
 }
 
+// ---------------------------------------------------------------------------
+// Background mode — hide window to tray, reveal from tray click / "Show Maia"
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+fn hide_window(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("main") {
+        w.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn show_window(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("main") {
+        w.show().map_err(|e| e.to_string())?;
+        w.set_focus().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn quit_app(app: AppHandle) {
+    app.exit(0);
+}
+
+fn build_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    use tauri::menu::{MenuBuilder, MenuItem};
+    use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+
+    let show_item = MenuItem::with_id(app, "show", "Show Maia", true, None::<&str>)?;
+    let quit_item = MenuItem::with_id(app, "quit", "Quit Maia", true, None::<&str>)?;
+    let menu = MenuBuilder::new(app)
+        .items(&[&show_item, &quit_item])
+        .build()?;
+
+    TrayIconBuilder::new()
+        .icon(app.default_window_icon().cloned().unwrap_or_else(|| {
+            tauri::image::Image::new(&[], 0, 0)
+        }))
+        .menu(&menu)
+        .tooltip("Maia — Auditory Monitoring")
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "show" => {
+                if let Some(w) = app.get_webview_window("main") {
+                    let _ = w.show();
+                    let _ = w.set_focus();
+                }
+            }
+            "quit" => {
+                app.exit(0);
+            }
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                let app = tray.app_handle();
+                if let Some(w) = app.get_webview_window("main") {
+                    let _ = w.show();
+                    let _ = w.set_focus();
+                }
+            }
+        })
+        .build(app)?;
+
+    Ok(())
+}
+
 fn main() {
     eprintln!("═══════════════════════════════════════════════════════");
     eprintln!("[MAIA:Rust] Desktop app starting — eprintln! verified");
     eprintln!("═══════════════════════════════════════════════════════");
     tauri::Builder::default()
-        .manage(Mutex::new(SessionRegistry::default()))
+        .manage(Arc::new(Mutex::new(SessionRegistry::default())))
+        .setup(|app| {
+            build_tray(app)?;
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                // Hide to background instead of quitting so the monitor keeps running.
+                // The user can quit via the system tray "Quit Maia" menu item.
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             bootstrap_manifest,
             run_analyzer,
@@ -4537,9 +6552,17 @@ fn main() {
             delete_persisted_session,
             insert_session_event,
             list_session_events,
+            upsert_session_bookmark,
+            list_session_bookmarks,
+            delete_session_bookmark,
             pick_base_asset_path,
             list_tracks,
+            list_playlists,
             import_track,
+            save_playlist,
+            delete_playlist,
+            update_track_performance,
+            update_track_analysis,
             seed_demo_tracks,
             list_base_assets,
             import_base_asset,
@@ -4548,7 +6571,10 @@ fn main() {
             list_repositories,
             import_repository,
             read_audio_bytes,
-            log_to_terminal
+            log_to_terminal,
+            hide_window,
+            show_window,
+            quit_app
         ])
         .run(tauri::generate_context!())
         .expect("error while running Maia desktop");

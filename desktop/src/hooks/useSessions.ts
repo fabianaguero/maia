@@ -2,11 +2,13 @@ import { startTransition, useCallback, useEffect, useState } from "react";
 import {
   createPersistedSession,
   deletePersistedSession,
+  listSessionBookmarks,
   listPersistedSessions,
   updatePersistedSessionCursor,
   updatePersistedSessionStatus,
   type CreateSessionInput,
   type PersistedSession,
+  type SessionBookmark,
 } from "../api/sessions";
 import { getLogger } from "../utils/logger";
 
@@ -18,6 +20,9 @@ function toMessage(error: unknown): string {
 
 export function useSessions() {
   const [sessions, setSessions] = useState<PersistedSession[]>([]);
+  const [sessionBookmarksBySessionId, setSessionBookmarksBySessionId] = useState<
+    Record<string, SessionBookmark[]>
+  >({});
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [mutating, setMutating] = useState(false);
@@ -54,6 +59,38 @@ export function useSessions() {
     return () => { active = false; };
   }, []);
 
+  const loadBookmarks = useCallback(async (sessionList: PersistedSession[]) => {
+    try {
+      if (sessionList.length === 0) {
+        startTransition(() => {
+          setSessionBookmarksBySessionId({});
+        });
+        return;
+      }
+
+      const entries = await Promise.all(
+        sessionList.map(async (session) => [
+          session.id,
+          (await listSessionBookmarks(session.id)).slice().sort(
+            (left, right) => left.replayWindowIndex - right.replayWindowIndex,
+          ),
+        ] as const),
+      );
+
+      startTransition(() => {
+        setSessionBookmarksBySessionId(Object.fromEntries(entries));
+      });
+    } catch (err) {
+      startTransition(() => setError(toMessage(err)));
+    }
+  }, []);
+
+  const sessionIdsKey = sessions.map((session) => session.id).join("|");
+
+  useEffect(() => {
+    void loadBookmarks(sessions);
+  }, [loadBookmarks, sessionIdsKey]);
+
   const createSession = useCallback(async (input: CreateSessionInput): Promise<PersistedSession | null> => {
     log.info("createSession id=%s adapter=%s mode=%s", input.id, input.adapterKind, input.mode);
     setMutating(true);
@@ -62,6 +99,10 @@ export function useSessions() {
       log.info("createSession → success status=%s", session.status);
       startTransition(() => {
         setSessions((prev) => [session, ...prev.filter((s) => s.id !== session.id)]);
+        setSessionBookmarksBySessionId((current) => ({
+          ...current,
+          [session.id]: current[session.id] ?? [],
+        }));
         setSelectedSessionId(session.id);
         setError(null);
       });
@@ -83,6 +124,11 @@ export function useSessions() {
         setSessions((prev) => {
           const next = prev.filter((s) => s.id !== id);
           setSelectedSessionId((cur) => cur === id ? (next[0]?.id ?? null) : cur);
+          return next;
+        });
+        setSessionBookmarksBySessionId((current) => {
+          const next = { ...current };
+          delete next[id];
           return next;
         });
       });
@@ -141,9 +187,13 @@ export function useSessions() {
   const selectedSession = sessions.find((s) => s.id === selectedSessionId) ?? null;
 
   const clearError = useCallback(() => setError(null), []);
+  const refreshBookmarks = useCallback(async () => {
+    await loadBookmarks(sessions);
+  }, [loadBookmarks, sessions]);
 
   return {
     sessions,
+    sessionBookmarksBySessionId,
     selectedSession,
     selectedSessionId,
     setSelectedSessionId,
@@ -151,6 +201,7 @@ export function useSessions() {
     mutating,
     error,
     clearError,
+    refreshBookmarks,
     createSession,
     removeSession,
     setStatus,

@@ -2,24 +2,24 @@ import type { AppTranslations } from "./en";
 
 export const es: AppTranslations = {
   workspace: "Maia Studio",
-  workspaceCopy: "Importar · Inspeccionar · Componer",
-  tagline: "Importar → Inspeccionar → Componer",
+  workspaceCopy: "Biblioteca · Deck · Booth",
+  tagline: "Biblioteca → Analizar → Performear",
   nav: {
     library: {
       label: "Biblioteca",
-      description: "Importar pistas, logs y activos base",
+      description: "Crates, imports de sources y material base",
     },
     session: {
       label: "Monitor",
-      description: "Cola en vivo y sesiones de reproducción",
+      description: "Booth en vivo y reproducción reactiva",
     },
     inspect: {
       label: "Analizar",
-      description: "Análisis profundo y detalles de forma de onda",
+      description: "Waveform, cues y deck de detalle",
     },
     compose: {
       label: "Componer",
-      description: "Crear y exportar composiciones",
+      description: "Deck de arreglo y render",
     },
   },
   sidebar: {

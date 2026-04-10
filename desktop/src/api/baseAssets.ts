@@ -1,60 +1,38 @@
-import { invoke } from "@tauri-apps/api/core";
-
 import type {
   BaseAssetRecord,
   BaseAssetSourceKind,
   ImportBaseAssetInput,
 } from "../types/library";
+import { invokeOrFallback } from "./tauri";
 import {
   importMockBaseAsset,
   listMockBaseAssets,
 } from "./mockBaseAssets";
 
-function isNativeBridgeUnavailable(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    /tauri|__TAURI_INTERNALS__|ipc|native bridge/i.test(error.message)
-  );
-}
-
 export async function listBaseAssets(): Promise<BaseAssetRecord[]> {
-  try {
-    return await invoke<BaseAssetRecord[]>("list_base_assets");
-  } catch (error) {
-    if (isNativeBridgeUnavailable(error)) {
-      return listMockBaseAssets();
-    }
-    throw error;
-  }
+  return invokeOrFallback("list_base_assets", undefined, () => listMockBaseAssets());
 }
 
 export async function importBaseAsset(
   input: ImportBaseAssetInput,
 ): Promise<BaseAssetRecord> {
-  try {
-    return await invoke<BaseAssetRecord>("import_base_asset", { input });
-  } catch (error) {
-    if (isNativeBridgeUnavailable(error)) {
-      return importMockBaseAsset(input);
-    }
-    throw error;
-  }
+  return invokeOrFallback(
+    "import_base_asset",
+    { input },
+    () => importMockBaseAsset(input),
+  );
 }
 
 export async function pickBaseAssetPath(
   sourceKind: BaseAssetSourceKind,
   initialPath?: string,
 ): Promise<string | null> {
-  try {
-    return await invoke<string | null>("pick_base_asset_path", {
+  return invokeOrFallback(
+    "pick_base_asset_path",
+    {
       sourceKind,
       initialPath: initialPath?.trim() || undefined,
-    });
-  } catch (error) {
-    if (isNativeBridgeUnavailable(error)) {
-      return null;
-    }
-
-    throw error;
-  }
+    },
+    () => null,
+  );
 }

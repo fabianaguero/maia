@@ -23,11 +23,11 @@ export function RepoStatusPanel({
       <div className="status-stack">
         <div className="status-row">
           <span>Status</span>
-          <strong>{track.repoSuggestedStatus}</strong>
+          <strong>{track.analysis.repoSuggestedStatus}</strong>
         </div>
         <div className="status-row">
           <span>Suggested BPM</span>
-          <strong>{track.repoSuggestedBpm ?? "Pending"}</strong>
+          <strong>{track.analysis.repoSuggestedBpm ?? "Pending"}</strong>
         </div>
         <div className="status-row">
           <span>Analyzer bridge</span>
@@ -37,4 +37,3 @@ export function RepoStatusPanel({
     </section>
   );
 }
-

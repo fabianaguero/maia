@@ -3,6 +3,7 @@ import type React from "react";
 import type { ActiveMonitorSession, MonitorMetrics } from "../features/monitor/MonitorContext";
 import { useT } from "../i18n/I18nContext";
 import type { AppScreen } from "../types/library";
+import { getStreamAdapterLabel } from "../utils/streamAdapter";
 
 const SCREEN_ICONS: Record<AppScreen, React.ReactNode> = {
   library: <Library size={15} />,
@@ -23,6 +24,7 @@ interface AppSidebarProps {
   monitorMetrics: MonitorMetrics;
   onStopMonitor: () => void;
   onOpenMonitoredRepo: () => void;
+  onHideToBackground: () => void;
 }
 
 export function AppSidebar({
@@ -37,13 +39,40 @@ export function AppSidebar({
   monitorMetrics,
   onStopMonitor,
   onOpenMonitoredRepo,
+  onHideToBackground,
 }: AppSidebarProps) {
   const t = useT();
   const navigationItems = [
-    { id: "library" as AppScreen, label: t.nav.library.label, description: t.nav.library.description },
-    { id: "session" as AppScreen, label: t.nav.session.label, description: t.nav.session.description },
-    { id: "inspect" as AppScreen, label: t.nav.inspect.label, description: t.nav.inspect.description },
-    { id: "compose" as AppScreen, label: t.nav.compose.label, description: t.nav.compose.description },
+    {
+      id: "library" as AppScreen,
+      label: t.nav.library.label,
+      description: t.nav.library.description,
+      lane: "A01",
+      detail: `${trackCount + repositoryCount + baseAssetCount} assets cued`,
+    },
+    {
+      id: "session" as AppScreen,
+      label: t.nav.session.label,
+      description: t.nav.session.description,
+      lane: "LIVE",
+      detail: monitorSession
+        ? `${monitorMetrics.windowCount} windows in flight`
+        : "Booth idle",
+    },
+    {
+      id: "inspect" as AppScreen,
+      label: t.nav.inspect.label,
+      description: t.nav.inspect.description,
+      lane: "B02",
+      detail: selectedItemTitle ? "Loaded on detail deck" : "No cue loaded",
+    },
+    {
+      id: "compose" as AppScreen,
+      label: t.nav.compose.label,
+      description: t.nav.compose.description,
+      lane: "C03",
+      detail: `${compositionCount} arrangement renders`,
+    },
   ];
   const uptimeSeconds = monitorSession
     ? Math.floor((Date.now() - monitorSession.startedAt) / 1000)
@@ -52,10 +81,14 @@ export function AppSidebar({
     uptimeSeconds < 60
       ? `${uptimeSeconds}s`
       : `${Math.floor(uptimeSeconds / 60)}m ${uptimeSeconds % 60}s`;
+  const monitorAdapterLabel = monitorSession
+    ? getStreamAdapterLabel(monitorSession.adapterKind)
+    : null;
 
   return (
     <aside className="sidebar panel">
       <div className="sidebar-brand">
+        <span className="sidebar-kicker">Hybrid Booth Browser</span>
         <img
           src="/assets/branding/maia-wordmark-site.png"
           alt="MAIA"
@@ -77,9 +110,13 @@ export function AppSidebar({
                 className={`nav-button${active ? " active" : ""}${isMonitor ? " nav-button--monitor" : ""}`}
                 onClick={() => onScreenChange(item.id)}
               >
-                {SCREEN_ICONS[item.id]}
-                <span>{item.label}</span>
-                <small>{item.description}</small>
+                <span className="nav-lane">{item.lane}</span>
+                <span className="nav-icon-shell">{SCREEN_ICONS[item.id]}</span>
+                <span className="nav-copy">
+                  <span className="nav-title">{item.label}</span>
+                  <small>{item.description}</small>
+                </span>
+                <strong className="nav-detail">{item.detail}</strong>
               </button>
             </div>
           );
@@ -92,7 +129,7 @@ export function AppSidebar({
             <span className="monitor-pulse" aria-hidden="true" />
             <span className="monitor-status-label">Live monitor</span>
             <span className="monitor-mode-badge">
-              {monitorSession.adapterKind === "process" ? "process" : "file tail"}
+              {monitorAdapterLabel}
             </span>
           </div>
           <p className="monitor-repo-title" title={monitorSession.repoTitle}>
@@ -115,6 +152,14 @@ export function AppSidebar({
             </button>
             <button
               type="button"
+              className="compact-action compact-action--bg"
+              title="Hide the window and keep monitoring in the background"
+              onClick={onHideToBackground}
+            >
+              Hide
+            </button>
+            <button
+              type="button"
               className="compact-action danger"
               onClick={onStopMonitor}
             >
@@ -126,24 +171,29 @@ export function AppSidebar({
 
       <div className="sidebar-meta">
         <div className="sidebar-stat">
+          <small className="sidebar-stat-code">TRK</small>
           <span>{t.sidebar.tracks}</span>
           <strong>{trackCount}</strong>
         </div>
         <div className="sidebar-stat">
+          <small className="sidebar-stat-code">SRC</small>
           <span>{t.sidebar.codeLogs}</span>
           <strong>{repositoryCount}</strong>
         </div>
         <div className="sidebar-stat">
+          <small className="sidebar-stat-code">BAS</small>
           <span>{t.sidebar.bases}</span>
           <strong>{baseAssetCount}</strong>
         </div>
         <div className="sidebar-stat">
+          <small className="sidebar-stat-code">RND</small>
           <span>{t.sidebar.comps}</span>
           <strong>{compositionCount}</strong>
         </div>
       </div>
 
       <div className="sidebar-footer">
+        <span className="sidebar-footer-kicker">Loaded deck</span>
         <span>{t.sidebar.selected}</span>
         <strong>{selectedItemTitle ?? t.sidebar.noAsset}</strong>
       </div>

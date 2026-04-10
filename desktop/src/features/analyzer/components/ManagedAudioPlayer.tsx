@@ -3,6 +3,12 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 
 type PlaybackState = "idle" | "loading" | "ready" | "playing" | "error" | "unavailable";
 
+export interface ManagedAudioCueRequest {
+  id: number;
+  second: number;
+  autoplay?: boolean;
+}
+
 interface ManagedAudioPlayerProps {
   title: string;
   description: string;
@@ -16,6 +22,7 @@ interface ManagedAudioPlayerProps {
   availableNote: string;
   errorNote: string;
   onTimeUpdate?: (seconds: number) => void;
+  cueRequest?: ManagedAudioCueRequest | null;
 }
 
 function formatDuration(durationSeconds: number | null): string {
@@ -78,9 +85,11 @@ export function ManagedAudioPlayer({
   availableNote,
   errorNote,
   onTimeUpdate,
+  cueRequest,
 }: ManagedAudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
+  const lastCueRequestIdRef = useRef<number | null>(null);
   const [blobReady, setBlobReady] = useState(false);
   const [playbackState, setPlaybackState] = useState<PlaybackState>(
     canAttemptPlayback(audioPath) ? "loading" : audioPath ? "unavailable" : "idle",
@@ -104,6 +113,7 @@ export function ManagedAudioPlayer({
     setCurrentTimeSeconds(0);
     setBlobReady(false);
     setResolvedDurationSeconds(durationSeconds ?? 0);
+    lastCueRequestIdRef.current = null;
 
     // Revoke any previous blob URL immediately.
     if (blobUrlRef.current) {
@@ -206,6 +216,53 @@ export function ManagedAudioPlayer({
       }
     };
   }, [audioPath, durationSeconds, errorNote]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!cueRequest || !audio || !blobReady) {
+      return;
+    }
+
+    if (lastCueRequestIdRef.current === cueRequest.id) {
+      return;
+    }
+
+    lastCueRequestIdRef.current = cueRequest.id;
+
+    const maxDuration =
+      resolvedDurationSeconds > 0 ? resolvedDurationSeconds : durationSeconds ?? 0;
+    const targetSecond =
+      maxDuration > 0
+        ? Math.min(Math.max(0, cueRequest.second), maxDuration)
+        : Math.max(0, cueRequest.second);
+
+    setPlaybackError(null);
+    setCurrentTimeSeconds(targetSecond);
+    onTimeUpdate?.(targetSecond);
+    audio.currentTime = targetSecond;
+
+    if (!cueRequest.autoplay) {
+      if (audio.paused && playbackState !== "error") {
+        setPlaybackState("ready");
+      }
+      return;
+    }
+
+    setPlaybackState("loading");
+    void audio.play().catch((error) => {
+      setPlaybackState("error");
+      setPlaybackError(
+        error instanceof Error ? error.message : "Maia could not jump to the requested cue.",
+      );
+    });
+  }, [
+    blobReady,
+    cueRequest,
+    durationSeconds,
+    onTimeUpdate,
+    playbackState,
+    resolvedDurationSeconds,
+  ]);
 
   async function handleTogglePlayback() {
     const audio = audioRef.current;
@@ -327,4 +384,3 @@ export function ManagedAudioPlayer({
     </div>
   );
 }
-

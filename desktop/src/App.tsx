@@ -1,7 +1,9 @@
 import { Globe2, Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 
 import { loadBootstrapManifest, runAnalyzerRequest } from "./api/analyzer";
+import type { PersistedSession } from "./api/sessions";
 import { AppSidebar } from "./components/AppSidebar";
 import { ComposeScreen } from "./features/compose/ComposeScreen";
 import { InspectScreen } from "./features/inspect/InspectScreen";
@@ -15,7 +17,7 @@ import { useLibrary } from "./hooks/useLibrary";
 import { useRepositories } from "./hooks/useRepositories";
 import { NotificationProvider, useNotify } from "./components/NotificationSystem";
 import { Web3Spinner } from "./components/Web3Spinner";
- import { MonitorWaveformBar } from "./components/MonitorWaveformBar";
+import { MonitorWaveformBar } from "./components/MonitorWaveformBar";
 import { en } from "./i18n/en";
 import { es } from "./i18n/es";
 import { I18nContext } from "./i18n/I18nContext";
@@ -25,13 +27,18 @@ import {
   type BootstrapManifest,
   type HealthResponse,
 } from "./contracts";
+import { findPlaylistLeadTrack, resolvePlaylistTracks } from "./utils/playlist";
+import { resolvePlayableTrackPath } from "./utils/track";
 import type {
   AnalyzerViewMode,
   AppScreen,
+  SaveBaseTrackPlaylistInput,
   ImportCompositionInput,
   ImportBaseAssetInput,
   ImportRepositoryInput,
   ImportTrackInput,
+  UpdateTrackAnalysisInput,
+  UpdateTrackPerformanceInput,
 } from "./types/library";
 
 function isHealthResponse(
@@ -78,12 +85,135 @@ function AppContent() {
     }
   }, [isDark]);
 
-  // Auto-sync selected library track → monitor guide track
   useEffect(() => {
+    if (screen === "session") {
+      void sessions.refreshBookmarks();
+    }
+  }, [screen, sessions.refreshBookmarks]);
+
+  function armTrackBase(trackId: string | null | undefined) {
+    const track =
+      typeof trackId === "string"
+        ? library.tracks.find((entry) => entry.id === trackId) ?? null
+        : null;
+    library.setSelectedPlaylistId(null);
+    library.setSelectedTrackId(track?.id ?? null);
+  }
+
+  function armPlaylistBase(playlistId: string | null | undefined) {
+    const playlist =
+      typeof playlistId === "string"
+        ? library.playlists.find((entry) => entry.id === playlistId) ?? null
+        : null;
+    const leadTrack = findPlaylistLeadTrack(playlist, library.tracks);
+    library.setSelectedPlaylistId(playlist?.id ?? null);
+    library.setSelectedTrackId(leadTrack?.id ?? null);
+  }
+
+  // Auto-sync selected base track / playlist → monitor guide runtime
+  useEffect(() => {
+    if (library.selectedPlaylist) {
+      const queue = resolvePlaylistTracks(library.selectedPlaylist, library.tracks)
+        .map((track) => resolvePlayableTrackPath(track))
+        .filter((path): path is string => Boolean(path));
+      monitor.setGuideTrackPlaylist(queue);
+      return;
+    }
+
     const track = library.selectedTrack;
-    const path = track?.storagePath ?? track?.sourcePath ?? null;
+    const path = track ? resolvePlayableTrackPath(track) : null;
     monitor.setGuideTrack(path);
-  }, [library.selectedTrackId, library.selectedTrack?.storagePath, library.selectedTrack?.sourcePath, monitor.setGuideTrack]);
+  }, [
+    library.selectedPlaylistId,
+    library.selectedPlaylist?.updatedAt,
+    library.selectedPlaylist?.trackIds,
+    library.selectedTrackId,
+    library.selectedTrack?.file.storagePath,
+    library.selectedTrack?.file.sourcePath,
+    library.tracks,
+    monitor.setGuideTrack,
+    monitor.setGuideTrackPlaylist,
+  ]);
+
+  function armSessionMusicalBase(draft?: {
+    trackId?: string;
+    playlistId?: string;
+  }) {
+    if (draft?.playlistId) {
+      armPlaylistBase(draft.playlistId);
+      return;
+    }
+
+    if (draft?.trackId) {
+      armTrackBase(draft.trackId);
+      return;
+    }
+
+    library.setSelectedPlaylistId(null);
+    library.setSelectedTrackId(null);
+  }
+
+  async function startReplaySession(
+    session: PersistedSession,
+    replayWindowIndex?: number,
+  ): Promise<boolean> {
+    sessions.setSelectedSessionId(session.id);
+    armSessionMusicalBase({
+      trackId: session.trackId ?? undefined,
+      playlistId: session.playlistId ?? undefined,
+    });
+
+    const sourceRepository =
+      (session.sourceId
+        ? repositories.repositories.find(
+            (entry) => entry.id === session.sourceId,
+          )
+        : null) ??
+      repositories.repositories.find(
+        (entry) =>
+          session.sourcePath !== null &&
+          entry.sourcePath === session.sourcePath,
+      ) ??
+      null;
+
+    if (!sourceRepository) {
+      notify(
+        "error",
+        "Replay unavailable",
+        "Maia could not find the stored source for this session.",
+      );
+      return false;
+    }
+
+    repositories.setSelectedRepositoryId(sourceRepository.id);
+    setAnalysisMode("repo");
+
+    const alreadyActiveReplay =
+      monitor.isPlayback &&
+      monitor.session?.persistedSessionId === session.id;
+
+    const ok = alreadyActiveReplay
+      ? true
+      : await monitor.playbackSession({
+          sessionId: session.id,
+          label: session.label || "Unnamed",
+          sourcePath: session.sourcePath || "",
+          repoId: sourceRepository.id ?? session.sourceId,
+        });
+
+    if (!ok) {
+      return false;
+    }
+
+    if (typeof replayWindowIndex === "number") {
+      monitor.pausePlayback();
+      monitor.seekPlaybackWindow(replayWindowIndex);
+    }
+
+    setAnalysisMode("repo");
+    setScreen("inspect");
+    return true;
+  }
 
   useEffect(() => {
     let active = true;
@@ -125,7 +255,7 @@ function AppContent() {
     try {
       const nextTrack = await library.importLibraryTrack(input);
       if (nextTrack) {
-        notify("success", "Track imported", `${nextTrack.title} is now in your library.`);
+        notify("success", "Track imported", `${nextTrack.tags.title} is now in your library.`);
         setNewlyImportedId(nextTrack.id);
         setTimeout(() => setNewlyImportedId(null), 3000);
         setAnalysisMode("track");
@@ -189,7 +319,7 @@ function AppContent() {
     try {
       const nextTrack = await library.reanalyzeTrack(trackId);
       if (nextTrack) {
-        notify("success", "Re-analysis complete", `${nextTrack.title} analysis updated.`);
+        notify("success", "Re-analysis complete", `${nextTrack.tags.title} analysis updated.`);
         return true;
       }
     } catch (err) {
@@ -237,6 +367,66 @@ function AppContent() {
     return false;
   }
 
+  async function handleUpdateTrackPerformance(
+    trackId: string,
+    input: UpdateTrackPerformanceInput,
+  ): Promise<void> {
+    try {
+      const nextTrack = await library.updateTrackPerformance(trackId, input);
+      if (!nextTrack) {
+        notify("error", "Track update failed", "Maia could not persist track performance state.");
+      }
+    } catch (err) {
+      notify("error", "Track update failed", String(err));
+    }
+  }
+
+  async function handleUpdateTrackAnalysis(
+    trackId: string,
+    input: UpdateTrackAnalysisInput,
+  ): Promise<void> {
+    try {
+      const nextTrack = await library.updateTrackAnalysis(trackId, input);
+      if (!nextTrack) {
+        notify("error", "Beat grid update failed", "Maia could not persist track analysis changes.");
+      }
+    } catch (err) {
+      notify("error", "Beat grid update failed", String(err));
+    }
+  }
+
+  async function handleSavePlaylist(
+    input: SaveBaseTrackPlaylistInput,
+  ): Promise<boolean> {
+    try {
+      const nextPlaylist = await library.savePlaylist(input);
+      if (nextPlaylist) {
+        notify(
+          "success",
+          "Playlist saved",
+          `${nextPlaylist.name} is ready as a base playlist.`,
+        );
+        return true;
+      }
+    } catch (err) {
+      notify("error", "Playlist save failed", String(err));
+    }
+    return false;
+  }
+
+  async function handleDeletePlaylist(playlistId: string): Promise<boolean> {
+    try {
+      const success = await library.deletePlaylist(playlistId);
+      if (success) {
+        notify("success", "Playlist deleted", "Base playlist removed from library.");
+        return true;
+      }
+    } catch (err) {
+      notify("error", "Playlist delete failed", String(err));
+    }
+    return false;
+  }
+
   function handleOpenMonitoredRepo() {
     const { session } = monitor;
     if (!session) return;
@@ -251,14 +441,30 @@ function AppContent() {
       ? "Booting analyzer bridge"
       : "Analyzer unavailable";
 
+  const screenLabel =
+    screen === "library"
+      ? t.nav.library.label
+      : screen === "session"
+        ? t.nav.session.label
+        : screen === "inspect"
+          ? t.nav.inspect.label
+          : t.nav.compose.label;
+
+  const detailDeckLabel =
+    analysisMode === "repo"
+      ? "Source deck armed"
+      : analysisMode === "base"
+        ? "Base pool armed"
+        : "Track deck armed";
+
   const selectedItemTitle =
     screen === "compose"
       ? compositions.selectedComposition?.title ?? null
       : screen === "inspect" && analysisMode === "repo"
         ? repositories.selectedRepository?.title ?? null
-        : screen === "inspect" && analysisMode === "base"
-          ? baseAssets.selectedBaseAsset?.title ?? null
-          : library.selectedTrack?.title ?? null;
+      : screen === "inspect" && analysisMode === "base"
+        ? baseAssets.selectedBaseAsset?.title ?? null
+          : library.selectedPlaylist?.name ?? library.selectedTrack?.tags.title ?? null;
 
   const isMutating = library.mutating || repositories.mutating || baseAssets.mutating || compositions.mutating;
   const mutateLabel = library.mutating ? "Scanning Track DNA" :
@@ -268,64 +474,82 @@ function AppContent() {
   return (
     <I18nContext.Provider value={t}>
       <Web3Spinner visible={booting || isMutating} label={booting ? "Booting Maia" : mutateLabel} />
-      <div className="ambient-layer" aria-hidden="true">
-        <div className="ambient-cyan" />
-        <div className="ambient-violet" />
-      </div>
       <main className="app-shell">
-      <AppSidebar
-        currentScreen={screen}
-        onScreenChange={setScreen}
-        trackCount={library.tracks.length}
-        repositoryCount={repositories.repositories.length}
-        baseAssetCount={baseAssets.baseAssets.length}
-        compositionCount={compositions.compositions.length}
-        selectedItemTitle={selectedItemTitle}
-        monitorSession={monitor.session}
-        monitorMetrics={monitor.metrics}
-        onStopMonitor={() => void monitor.stopSession()}
-        onOpenMonitoredRepo={handleOpenMonitoredRepo}
-      />
-
-      <section className="app-main">
-        <header className="topbar panel">
+        <header className="topbar">
           <div className="topbar-brand">
             <img
               src="/assets/branding/maia-icon-site.png"
               alt="MAIA icon"
               className="topbar-icon"
             />
-            <div>
+            <div className="topbar-copy">
+              <p className="eyebrow">DJ Browser Shell</p>
               <h2>{t.workspace}</h2>
-              <p className="support-copy">{t.workspaceCopy}</p>
             </div>
           </div>
 
-          <div className="topbar-metrics">
-            <div className="topbar-controls">
-              <button
-                type="button"
-                className="control-button"
-                onClick={() => setLang((l) => (l === "en" ? "es" : "en"))}
-              >
-                <Globe2 size={14} />
-                {t.controls.lang}
-              </button>
-              <button
-                type="button"
-                className="control-button"
-                onClick={() => setIsDark((v) => !v)}
-              >
-                {isDark ? <Sun size={14} /> : <Moon size={14} />}
-                {isDark ? t.controls.light : t.controls.dark}
-              </button>
-            </div>
-            <div className="summary-pill">
-              <span>Analyzer</span>
-              <strong>{analyzerLabel}</strong>
-            </div>
+          <div className="topbar-controls">
+            <button
+              type="button"
+              className="control-button"
+              onClick={() => setLang((l) => (l === "en" ? "es" : "en"))}
+            >
+              <Globe2 size={14} />
+              {t.controls.lang}
+            </button>
+            <button
+              type="button"
+              className="control-button"
+              onClick={() => setIsDark((v) => !v)}
+            >
+              {isDark ? <Sun size={14} /> : <Moon size={14} />}
+              {isDark ? t.controls.light : t.controls.dark}
+            </button>
           </div>
         </header>
+
+        <section className="waveform-section">
+          <div className="waveform-header">
+            <div>
+              <p className="waveform-label">Now Playing</p>
+              <h3 className="waveform-track-title">{selectedItemTitle ?? "No track loaded"}</h3>
+            </div>
+            <div className="status-pills">
+              <div className="status-pill">
+                <span>{screenLabel}</span>
+                <strong>{detailDeckLabel}</strong>
+              </div>
+              {monitor.session && (
+                <div className="status-pill status-pill--live">
+                  <span>Live</span>
+                  <strong>{monitor.metrics.totalAnomalies} anomalies</strong>
+                </div>
+              )}
+            </div>
+          </div>
+          <MonitorWaveformBar tracks={library.tracks} />
+        </section>
+
+      <section className="app-main">
+        <AppSidebar
+          currentScreen={screen}
+          onScreenChange={setScreen}
+          trackCount={library.tracks.length}
+          repositoryCount={repositories.repositories.length}
+          baseAssetCount={baseAssets.baseAssets.length}
+          compositionCount={compositions.compositions.length}
+          selectedItemTitle={selectedItemTitle}
+          monitorSession={monitor.session}
+          monitorMetrics={monitor.metrics}
+          onStopMonitor={() => void monitor.stopSession()}
+          onOpenMonitoredRepo={handleOpenMonitoredRepo}
+          onHideToBackground={() => {
+            if (isTauri()) {
+              void invoke("hide_window").catch(() => {});
+              notify("info", "Maia is monitoring in the background", "Find it in the system tray to bring it back.");
+            }
+          }}
+        />
 
         {health?.warnings.length ? (
           <section className="notice inline-notice">
@@ -338,11 +562,13 @@ function AppContent() {
         {screen === "library" && (
           <LibraryScreen
             tracks={library.tracks}
+            playlists={library.playlists}
             repositories={repositories.repositories}
             baseAssets={baseAssets.baseAssets}
             compositions={compositions.compositions}
             newlyImportedId={newlyImportedId}
             selectedTrackId={library.selectedTrackId}
+            selectedPlaylistId={library.selectedPlaylistId}
             selectedRepositoryId={repositories.selectedRepositoryId}
             selectedBaseAssetId={baseAssets.selectedBaseAssetId}
             selectedCompositionId={compositions.selectedCompositionId}
@@ -372,11 +598,14 @@ function AppContent() {
             onDeleteTrack={handleDeleteTrack}
             onDeleteRepository={handleDeleteRepository}
             onSeedDemo={library.seedLibrary}
-            onSelectTrack={(trackId) => { library.setSelectedTrackId(trackId); setAnalysisMode("track"); }}
+            onSavePlaylist={handleSavePlaylist}
+            onDeletePlaylist={handleDeletePlaylist}
+            onSelectTrack={(trackId) => { armTrackBase(trackId); setAnalysisMode("track"); }}
+            onSelectPlaylist={armPlaylistBase}
             onSelectRepository={(repositoryId) => { repositories.setSelectedRepositoryId(repositoryId); setAnalysisMode("repo"); }}
             onSelectBaseAsset={(baseAssetId) => { baseAssets.setSelectedBaseAssetId(baseAssetId); setAnalysisMode("base"); }}
             onSelectComposition={(compositionId) => { compositions.setSelectedCompositionId(compositionId); }}
-            onInspectTrack={(trackId) => { library.setSelectedTrackId(trackId); setAnalysisMode("track"); setScreen("inspect"); }}
+            onInspectTrack={(trackId) => { armTrackBase(trackId); setAnalysisMode("track"); setScreen("inspect"); }}
             onInspectRepository={(repositoryId) => { repositories.setSelectedRepositoryId(repositoryId); setAnalysisMode("repo"); setScreen("inspect"); }}
             onInspectBaseAsset={(baseAssetId) => { baseAssets.setSelectedBaseAssetId(baseAssetId); setAnalysisMode("base"); setScreen("inspect"); }}
             onInspectComposition={(compositionId) => { compositions.setSelectedCompositionId(compositionId); setScreen("compose"); }}
@@ -389,16 +618,20 @@ function AppContent() {
             repository={repositories.selectedRepository}
             baseAsset={baseAssets.selectedBaseAsset}
             availableTracks={library.tracks}
+            availablePlaylists={library.playlists}
             availableRepositories={repositories.repositories}
             availableBaseAssets={baseAssets.baseAssets}
             mode={analysisMode}
             analyzerLabel={analyzerLabel}
             onChangeMode={setAnalysisMode}
-            onSelectTrack={(id: string) => { library.setSelectedTrackId(id); setAnalysisMode("track"); }}
+            onSelectTrack={(id: string) => { armTrackBase(id); setAnalysisMode("track"); }}
             onSelectRepository={(id: string) => { repositories.setSelectedRepositoryId(id); setAnalysisMode("repo"); }}
             onSelectBaseAsset={(id: string) => { baseAssets.setSelectedBaseAssetId(id); setAnalysisMode("base"); }}
             onGoLibrary={() => setScreen("library")}
             onGoCompose={() => setScreen("compose")}
+            onUpdateTrackPerformance={handleUpdateTrackPerformance}
+            onUpdateTrackAnalysis={handleUpdateTrackAnalysis}
+            trackMutating={library.mutating}
           />
         )}
 
@@ -408,6 +641,7 @@ function AppContent() {
             compositions={compositions.compositions}
             baseAssets={baseAssets.baseAssets}
             tracks={library.tracks}
+            playlists={library.playlists}
             repositories={repositories.repositories}
             analyzerLabel={analyzerLabel}
             busy={compositions.mutating}
@@ -420,15 +654,29 @@ function AppContent() {
         {screen === "session" && (
           <SessionScreen
             tracks={library.tracks}
+            playlists={library.playlists}
             repositories={repositories.repositories}
             sessions={sessions.sessions}
+            sessionBookmarksBySessionId={sessions.sessionBookmarksBySessionId}
             selectedSessionId={sessions.selectedSessionId}
             loading={sessions.loading}
             mutating={sessions.mutating}
             error={sessions.error}
-            activeSessionId={monitor.session?.sessionId ?? null}
-            onStartSession={async (input, persistedSessionId) => {
+            activeSessionId={
+              monitor.session?.persistedSessionId ?? monitor.session?.sessionId ?? null
+            }
+            activeSessionMode={
+              monitor.session ? (monitor.isPlayback ? "playback" : "live") : null
+            }
+            activePlaybackProgress={
+              monitor.isPlayback ? monitor.playbackProgress : null
+            }
+            onStartSession={async (input, persistedSessionId, draft) => {
               sessions.clearError();
+              armSessionMusicalBase({
+                trackId: draft?.trackId,
+                playlistId: draft?.playlistId,
+              });
               const success = await monitor.startSession(
                 input.adapterKind === "file"
                   ? repositories.repositories.find((r) => r.sourcePath === input.source) ??
@@ -475,32 +723,37 @@ function AppContent() {
                 persistedSessionId,
               );
               if (success) {
-                await sessions.createSession({
-                  id: persistedSessionId,
-                  label: input.label,
-                  sourceId: repositories.repositories.find(
-                    (r) => r.sourcePath === input.source,
-                  )?.id,
-                  trackId: library.tracks.find((t) => t.sourcePath === input.source)?.id,
-                  adapterKind: input.adapterKind,
-                  mode: "live",
-                });
+                const isExistingSession = sessions.sessions.some(
+                  (entry) => entry.id === persistedSessionId,
+                );
+                if (!isExistingSession) {
+                  await sessions.createSession({
+                    id: persistedSessionId,
+                    label: input.label,
+                    sourceId: draft?.sourceId,
+                    trackId: draft?.trackId,
+                    playlistId: draft?.playlistId,
+                    adapterKind: input.adapterKind,
+                    mode: "live",
+                  });
+                } else {
+                  sessions.setSelectedSessionId(persistedSessionId);
+                }
               }
               return success;
             }}
             onStopSession={() => monitor.stopSession()}
             onResume={(sessionId) => sessions.setSelectedSessionId(sessionId)}
-            onPlayback={async (sessionId, label, sourcePath) => {
-              const ok = await monitor.playbackSession(sessionId, label, sourcePath);
-              if (ok) setScreen("inspect");
-              return ok;
+            onPlayback={async (session) => {
+              return startReplaySession(session);
             }}
+            onReplayBookmark={async (session, replayWindowIndex) =>
+              startReplaySession(session, replayWindowIndex)
+            }
             onDelete={(sessionId) => sessions.removeSession(sessionId)}
             onSelectSession={(sessionId) => sessions.setSelectedSessionId(sessionId)}
           />
         )}
-
-        <MonitorWaveformBar tracks={library.tracks} />
       </section>
       </main>
     </I18nContext.Provider>

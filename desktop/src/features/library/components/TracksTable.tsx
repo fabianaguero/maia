@@ -1,5 +1,6 @@
 import type { LibraryTrack } from "../../../types/library";
 import { formatShortDateTime } from "../../../utils/date";
+import { getTrackSourcePath, getTrackTitle } from "../../../utils/track";
 
 interface TracksTableProps {
   tracks: LibraryTrack[];
@@ -41,19 +42,19 @@ export function TracksTable({
                 onClick={() => onSelectTrack(track.id)}
               >
                 <td>
-                  <strong>{track.title}</strong>
+                  <strong>{getTrackTitle(track)}</strong>
                   <small>
-                    {track.fileExtension} · {track.musicStyleLabel}
+                    {track.file.fileExtension} · {track.tags.musicStyleLabel}
                   </small>
                 </td>
-                <td title={track.sourcePath}>{track.sourcePath}</td>
+                <td title={track.file.sourcePath}>{getTrackSourcePath(track)}</td>
                 <td>
-                  {track.bpm ? Math.round(track.bpm) : "Pending"}
-                  <small>{Math.round(track.bpmConfidence * 100)}% confidence</small>
+                  {track.analysis.bpm ? Math.round(track.analysis.bpm) : "Pending"}
+                  <small>{Math.round(track.analysis.bpmConfidence * 100)}% confidence</small>
                 </td>
-                <td>{track.repoSuggestedBpm ?? "Pending"}</td>
+                <td>{track.analysis.repoSuggestedBpm ?? "Pending"}</td>
                 <td>
-                  {!track.bpm && onReanalyze ? (
+                  {!track.analysis.bpm && onReanalyze ? (
                     <button
                       type="button"
                       className="table-action"
@@ -65,10 +66,10 @@ export function TracksTable({
                       Re-analyze
                     </button>
                   ) : (
-                    track.analyzerStatus
+                    track.analysis.analyzerStatus
                   )}
                 </td>
-                <td>{formatShortDateTime(track.importedAt)}</td>
+                <td>{formatShortDateTime(track.analysis.importedAt)}</td>
                 <td>
                   <button
                     type="button"

@@ -130,6 +130,58 @@
           "items": {
             "type": "string"
           }
+        },
+        "presets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "label",
+              "description",
+              "palette"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "palette": {
+                "type": "object",
+                "required": [
+                  "primary",
+                  "secondary",
+                  "accent",
+                  "background",
+                  "anomaly"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "primary": {
+                    "type": "string"
+                  },
+                  "secondary": {
+                    "type": "string"
+                  },
+                  "accent": {
+                    "type": "string"
+                  },
+                  "background": {
+                    "type": "string"
+                  },
+                  "anomaly": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -271,4 +323,3 @@
   },
   "additionalProperties": false
 }
-

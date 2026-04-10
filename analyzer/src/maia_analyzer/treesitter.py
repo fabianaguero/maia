@@ -139,6 +139,7 @@ def analyze_java_sources(java_files: list[Path], max_files: int = 220) -> dict[s
     annotation_count = 0
     endpoint_count = 0
     annotation_breakdown: Counter[str] = Counter()
+    jakarta_imports = 0
     javax_imports = 0
     max_nesting = 0
     complexity_score = 0

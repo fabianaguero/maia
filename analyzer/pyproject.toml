@@ -27,6 +27,8 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "pytest-mock>=3.12",
+    "pytest-cov>=5.0",
+    "jsonschema[format-nongpl]>=4.23",
 ]
 
 [project.scripts]
@@ -38,6 +40,20 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
+
+[tool.coverage.run]
+branch = true
+source = ["maia_analyzer"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+[tool.coverage.html]
+directory = "htmlcov"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

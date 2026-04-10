@@ -11,8 +11,141 @@ export interface BpmCurvePoint {
   bpm: number;
 }
 
+export interface TrackStructuralPattern {
+  type: string;
+  start: number;
+  end: number;
+  confidence: number;
+  label: string;
+}
+
+export type TrackAvailabilityState = "available" | "missing";
+export type TrackPlaybackSource =
+  | "managed_snapshot"
+  | "source_file"
+  | "unavailable";
+
+export interface TrackCuePoint {
+  id: string;
+  slot: number | null;
+  second: number;
+  label: string;
+  kind: "main" | "hot" | "memory";
+  color: string | null;
+}
+
+export interface TrackSavedLoop {
+  id: string;
+  slot: number | null;
+  startSecond: number;
+  endSecond: number;
+  label: string;
+  color: string | null;
+  locked: boolean;
+}
+
+export interface VisualizationCuePoint {
+  second: number;
+  label: string;
+  type: string;
+  excerpt?: string;
+}
+
+export interface VisualizationRegionPoint {
+  id: string;
+  startSecond: number;
+  endSecond: number;
+  label: string;
+  type: string;
+  color?: string | null;
+  excerpt?: string;
+}
+
+export interface AssetVisualization {
+  waveform: number[];
+  hotCues: VisualizationCuePoint[];
+  beatGrid: BeatGridPoint[];
+  complexityCurve?: number[];
+}
+
+export interface TrackFileRecord {
+  sourcePath: string;
+  storagePath: string | null;
+  sourceKind: "file";
+  fileExtension: string;
+  sizeBytes: number | null;
+  modifiedAt: string | null;
+  checksum: string | null;
+  availabilityState: TrackAvailabilityState;
+  playbackSource: TrackPlaybackSource;
+}
+
+export interface TrackTagsRecord {
+  title: string;
+  artist: string | null;
+  album: string | null;
+  genre: string | null;
+  year: number | null;
+  comment: string | null;
+  artworkPath: string | null;
+  musicStyleId: string;
+  musicStyleLabel: string;
+}
+
+export interface TrackAnalysisRecord {
+  importedAt: string;
+  bpm: number | null;
+  bpmConfidence: number;
+  durationSeconds: number | null;
+  waveformBins: number[];
+  beatGrid: BeatGridPoint[];
+  bpmCurve: BpmCurvePoint[];
+  analyzerStatus: string;
+  analysisMode: string;
+  analyzerVersion: string | null;
+  analyzedAt: string | null;
+  repoSuggestedBpm: number | null;
+  repoSuggestedStatus: string;
+  notes: string[];
+  keySignature: string | null;
+  energyLevel: number | null;
+  danceability: number | null;
+  structuralPatterns: TrackStructuralPattern[];
+}
+
+export interface TrackPerformanceRecord {
+  color: string | null;
+  rating: number;
+  playCount: number;
+  lastPlayedAt: string | null;
+  bpmLock: boolean;
+  gridLock: boolean;
+  mainCueSecond: number | null;
+  hotCues: TrackCuePoint[];
+  memoryCues: TrackCuePoint[];
+  savedLoops: TrackSavedLoop[];
+}
+
+export interface BaseTrackPlaylist {
+  id: string;
+  name: string;
+  trackIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SaveBaseTrackPlaylistInput {
+  id?: string;
+  name: string;
+  trackIds: string[];
+}
+
 export interface LibraryTrack {
   id: string;
+  file: TrackFileRecord;
+  tags: TrackTagsRecord;
+  analysis: TrackAnalysisRecord;
+  performance: TrackPerformanceRecord;
   title: string;
   sourcePath: string;
   storagePath: string | null;
@@ -31,23 +164,35 @@ export interface LibraryTrack {
   analysisMode: string;
   musicStyleId: string;
   musicStyleLabel: string;
-  visualization?: {
-    waveform: number[];
-    hotCues: Array<{
-      second: number;
-      label: string;
-      type: string;
-      excerpt?: string;
-    }>;
-    beatGrid: BeatGridPoint[];
-    complexityCurve?: number[];
-  };
+  keySignature: string | null;
+  energyLevel: number | null;
+  danceability: number | null;
+  structuralPatterns: TrackStructuralPattern[];
+  visualization?: AssetVisualization;
 }
 
 export interface ImportTrackInput {
   title: string;
   sourcePath: string;
   musicStyleId: string;
+}
+
+export interface UpdateTrackPerformanceInput {
+  rating?: number;
+  color?: string | null;
+  bpmLock?: boolean;
+  gridLock?: boolean;
+  markPlayed?: boolean;
+  mainCueSecond?: number | null;
+  hotCues?: TrackCuePoint[];
+  memoryCues?: TrackCuePoint[];
+  savedLoops?: TrackSavedLoop[];
+}
+
+export interface UpdateTrackAnalysisInput {
+  bpm?: number | null;
+  beatGrid?: BeatGridPoint[];
+  bpmCurve?: BpmCurvePoint[];
 }
 
 export type BaseAssetSourceKind = "file" | "directory";
@@ -80,7 +225,7 @@ export interface ImportBaseAssetInput {
   reusable: boolean;
 }
 
-export type CompositionReferenceType = "track" | "repo" | "manual";
+export type CompositionReferenceType = "track" | "playlist" | "repo" | "manual";
 
 export interface CompositionResultRecord {
   id: string;
@@ -94,6 +239,8 @@ export interface CompositionResultRecord {
   baseAssetTitle: string;
   baseAssetCategoryId: string;
   baseAssetCategoryLabel: string;
+  basePlaylistId?: string | null;
+  basePlaylistName?: string | null;
   referenceType: CompositionReferenceType;
   referenceAssetId: string | null;
   referenceTitle: string;
@@ -109,17 +256,7 @@ export interface CompositionResultRecord {
   waveformBins: number[];
   beatGrid: BeatGridPoint[];
   bpmCurve: BpmCurvePoint[];
-  visualization?: {
-    waveform: number[];
-    hotCues: Array<{
-      second: number;
-      label: string;
-      type: string;
-      excerpt?: string;
-    }>;
-    beatGrid: BeatGridPoint[];
-    complexityCurve?: number[];
-  };
+  visualization?: AssetVisualization;
 }
 
 export interface ImportCompositionInput {
@@ -130,6 +267,8 @@ export interface ImportCompositionInput {
   label?: string;
   /** Track ID to use as instrumental/beat base (required) */
   trackId?: string;
+  /** Playlist ID to use as the musical base instead of a single track */
+  playlistId?: string;
   /** Repository/log ID for structural variation (optional) */
   structureId?: string;
 }
@@ -188,6 +327,7 @@ export interface LiveLogStreamUpdate {
   sourcePath: string;
   fromOffset: number;
   toOffset: number;
+  replayWindowIndex?: number | null;
   hasData: boolean;
   summary: string;
   suggestedBpm: number | null;
@@ -208,7 +348,7 @@ export interface ImportRepositoryInput {
   label?: string;
 }
 
-export type StreamAdapterKind = "file" | "process" | "websocket" | "http-poll";
+export type StreamAdapterKind = "file" | "process" | "websocket" | "http-poll" | "journald";
 
 export interface StreamSessionRecord {
   sessionId: string;

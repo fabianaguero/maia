@@ -1,24 +1,32 @@
 # Architecture
 
 ## Product intent
-Maia is a local-first desktop app that turns repositories, logs, and reusable sonic assets into audible operational signals and musical response plans.
+Maia is a local-first desktop app for auditory monitoring. The user selects a favorite track or playlist as the musical base, and repositories, logs, streams, scanned files, and reusable sonic assets drive alterations on top of that base.
 
-Code and logs — not imported tracks — are the primary signal sources. The business goal is to make software behavior listenable:
+The business goal is to make software behavior listenable inside a recognizable musical frame, so a team can monitor systems without staring at a dashboard:
 
-- ingest codebases and live log streams, starting with local growing log files
-- extract structural patterns, tension, rhythm, and anomalous events
-- map those events to reusable sonic assets and genre-configured musical changes
-- let teams listen to systems and repositories as an operational signal surface
+- choose a base track or playlist that defines the original groove, tone, and listening mood
+- ingest codebases, live log streams, file scans, and other local sources
+- extract structural patterns, tension, rhythm, and anomalous events from those sources
+- map those events to audible and visual changes over the selected musical base
+- let teams hear systems as variations, interruptions, and mutations of a known track or playlist
+- keep the resulting mix pleasant enough for long background listening, not just alert playback
 
-Current MVP ships: local repository intake (Java/Kotlin tree-sitter parsing), local log-file analysis, reusable base assets, composition previews with in-app playback, a live log-tail sonification loop with runtime scenes, session-based stream polling for growing files and spawned process output, a genre-configured instrumental palette shaping live cues, sequencer presets (sparse / balanced / beat-locked / cascade) with component-level cue routing, a reference-anchor system that aligns live cues to an imported favourite track's BPM and energy, a multi-track reference playlist with `blendAnchors` compositing, beat-phase-aware scheduling with a persistent beat clock and gentle drift resync, and full per-repo persistence of the reference playlist, genre, and preset via `localStorage`. Always-on background monitoring and generalized multi-source stream ingestion remain the next product expansion.
+Current MVP ships: local repository intake (Java/Kotlin tree-sitter parsing), local log-file analysis, reusable base assets, composition previews with in-app playback, an app-level live sonification loop with runtime scenes, Rust-owned session-based stream polling for local files plus process / WebSocket / HTTP-poll / journald adapters, a genre-configured instrumental palette shaping live cues, sequencer presets (sparse / balanced / beat-locked / cascade) with component-level cue routing, a base-anchor system that aligns live cues to a selected favorite track or blended playlist BPM and energy, beat-phase-aware scheduling with a persistent beat clock and gentle drift resync, session replay with bookmarks and feedback capture, and full per-repo persistence of the base playlist plus style/mutation profile defaults via `localStorage`.
 
-Current product state is intentionally focused and credible: MAIA's real-time sonification loop is centered on repositories, local log files, and session-scoped process streams rather than on generalized external integrations. In native desktop runtime, the app already supports structure-aware repository parsing, live log-tail polling, reusable sonic scenes, reference-track BPM and energy anchoring, multi-track reference playlist blending, and beat-phase-aware scheduling through a persistent beat clock. Future expansion should follow a disciplined order: add always-on background monitoring first, then broaden stream adapters for managed log platforms, then consolidate with test coverage, deepen the sonification engine, and finally extend export and format coverage.
+Current product state is intentionally focused and credible: MAIA's real-time sonification loop is centered on repositories, local log files, and runtime stream adapters, but it already treats the chosen track or playlist as the pleasant, audible monitoring bed. In native desktop runtime, the app supports structure-aware repository parsing, live log-tail polling, Rust-owned transient stream sessions that survive analyzer process boundaries, app-level monitor state that survives screen navigation inside the running app, reusable sonic scenes, base-track BPM and energy anchoring, multi-track playlist blending, beat-phase-aware scheduling through a persistent beat clock, and replay feedback that can now be carried forward into per-repo defaults when the operator applies a recommendation. The next expansion should follow a disciplined order: push from app-level monitoring toward a true background music-server mode, broaden external adapters further, deepen the sonification engine, and only after that extend export and format coverage.
+
+## Source of truth
+- Product app: `desktop/`
+- Native shell/backend: `desktop/src-tauri/`
+- Active analyzer runtime: `analyzer/src/maia_analyzer/`
+- Landing only: `site/`
 
 ## Main modules
 - `desktop/`: Tauri + React + TypeScript desktop shell
 - `desktop/src/config/music-styles.json`: local source of truth for curated track-import music styles
 - `desktop/src/config/base-asset-categories.json`: local source of truth for curated base-asset categories
-- `analyzer/`: Python analyzer service
+- `analyzer/src/maia_analyzer/`: Python analyzer service used by desktop
 - `contracts/`: JSON schemas
 - `database/`: SQLite + local asset folders
 
@@ -35,7 +43,7 @@ import.
 - base_asset
 - composition_result
 
-Tracks are currently a reference/control lane. Repositories and, later, logs are the primary business signal sources. Base assets are the reusable sonic vocabulary. Composition results are the derived musical response plans Maia can materialize and audition locally.
+Tracks are not just a reference/control lane. A selected track, or a playlist blended from multiple tracks, can act as the base musical lane that Maia alters in response to repositories, logs, and streams. Base assets are the reusable sonic vocabulary. Composition results are the derived musical response plans Maia can materialize and audition locally.
 
 ## Current technical decisions
 - Track import style selection is configured from `desktop/src/config/music-styles.json`.
@@ -49,6 +57,7 @@ Tracks are currently a reference/control lane. Repositories and, later, logs are
 - Manual path entry stays in the forms as the compatibility fallback when no native picker is available.
 - Once a file or folder is chosen, parsing and analysis stay inside the app stack instead of shelling out to OS processing tools.
 - Track import prefers analyzer-backed waveform, duration, BPM, and beat-grid intake for existing local `wav`, `mp3`, `flac`, and `ogg/vorbis` files using embedded tempo heuristics.
+- Track metadata now also carries key signature, energy level, danceability, and lightweight structural cues in the persisted JSON consumed by desktop.
 - Tauri now snapshots imported track files into Maia-managed local storage and keeps the original import path separately in `musical_assets.source_path`.
 - Browser fallback preserves the same `track_analysis` shape but can only simulate a managed track path instead of creating a native on-disk snapshot.
 - Tauri now snapshots imported local repositories into Maia-managed local storage and keeps the original import path separately in `musical_assets.source_path`.
@@ -81,12 +90,12 @@ Tracks are currently a reference/control lane. Repositories and, later, logs are
 - Tauri now exposes both managed track snapshots and managed composition previews back into the webview through the scoped asset protocol, so playback stays inside Maia without opening generic filesystem access.
 - Tauri now also materializes each `composition_result` as a managed `plan.json` snapshot inside Maia storage, while SQLite keeps the indexed metadata and preview artifacts.
 - Genre/style profiles are defined in `desktop/src/config/music-styles.json` with explicit BPM ranges, per-severity waveform types, and gain/duration/pitch multipliers. `liveSonificationScene.ts` resolves those profiles at runtime into a `ResolvedLiveSonificationScene` for the live monitor. Genre selection is a guided instrumental palette — all output is instrumental and deterministic, not a full composition engine that generates genre-specific arrangements.
-- Stream sessions now extend live monitoring beyond local growing log files: `stream.py` defines a session ring buffer and a process adapter; `main.rs` exposes four Tauri commands (`start_stream_session`, `stop_stream_session`, `list_stream_sessions`, `poll_stream_session`) backed by `SessionRegistry` in `Arc<Mutex>` state. Sessions are scoped to the active analyzer screen; ring buffers are transient. Always-on background monitoring outside an open session is future work.
-- Saved output for composition results is previews and arrangement artifacts (`plan.json`, `preview.wav`) under Maia-managed local storage. A full audio export/bounce pipeline has not been built yet.
+- Stream sessions now extend live monitoring beyond local growing log files: `main.rs` owns the transient session runtime in `SessionRegistry` (`Arc<Mutex<...>>`), exposes `start_stream_session`, `stop_stream_session`, `list_stream_sessions`, `poll_stream_session`, and `ingest_stream_chunk`, and supports file, process, WebSocket, HTTP-poll, and `journald` adapters through one session UI. File/process/`journald` follow loops live natively in Rust; WebSocket/HTTP-poll feed text chunks from JS into the same Rust buffer. The Python analyzer is now stateless for live sessions and analyzes only the current chunk per request. The live monitor runtime remains app-level via `MonitorProvider`, so it survives screen navigation inside the running app. Headless/background service mode outside the desktop process is still future work.
+- Saved output for composition results now includes managed arrangement artifacts (`plan.json`), deterministic preview audio (`preview.wav`), and exported per-stem WAV files under Maia-managed local storage. A fuller master-bounce/export pipeline is still future work.
 - Browser fallback and Tauri/SQLite paths now also emit the same `composition_result` shape so composition UX does not fork by runtime.
 - Missing or unresolved track sources still fall back to deterministic mock analysis so demo flows keep working without blocking the library.
-- A reference track selected as a creative anchor seeds the `BeatClock` origin at session start with the anchor BPM. `nextBeatTime` then aligns each poll window's first cue to the nearest subdivision boundary of that clock. If no anchor is set, the clock auto-seeds from the first live-detected BPM. The clock's BPM re-syncs gently (>12% drift threshold) while the origin stays fixed, preserving phase across tempo changes.
-- The reference anchor can now be a multi-track playlist. `blendAnchors` computes a composite anchor from all playlist tracks: BPM by median of non-null values, energy by arithmetic mean, and musicStyleId by mode (most frequent). A single-track playlist is a passthrough to avoid unnecessary computation.
-- The reference playlist, selected genre, and selected preset are now persisted to `localStorage` under the key `maia.monitor-prefs.<repoId>`. The per-repo initializer reads this key so that switching repos restores each repo's own last-used settings. The persist effect saves on every change.
+- A selected base track, or blended base playlist, seeds the `BeatClock` origin at session start with the anchor BPM. `nextBeatTime` then aligns each poll window's first cue to the nearest subdivision boundary of that clock. If no anchor is set, the clock auto-seeds from the first live-detected BPM. The clock's BPM re-syncs gently (>12% drift threshold) while the origin stays fixed, preserving phase across tempo changes.
+- The base anchor can now be a multi-track playlist. `blendAnchors` computes a composite anchor from all playlist tracks: BPM by median of non-null values, energy by arithmetic mean, and musicStyleId by mode (most frequent). A single-track playlist is a passthrough to avoid unnecessary computation.
+- `MonitorPrefs` now persist `basePlaylist`, `selectedStyleProfileId`, and `selectedMutationProfileId` to `localStorage` under the key `maia.monitor-prefs.<repoId>`. The per-repo initializer reads this key so that switching repos restores each repo's own last-used settings. The loader also migrates the older `referencePlaylistIds` / `selectedGenreId` / `selectedPresetId` shape forward on read. The persist effect saves on every change.
 - Sequencer presets define cue density, gain spread, and scheduling mode. The `beat-locked` preset uses the beat clock for phase-accurate first-cue placement; other presets use fixed gap milliseconds. Component routes in `COMPONENT_ROUTES` map log-event pattern strings to oscillator/sample assignments.
-- Live log-stream sonification now exists for local growing files in the analyzer UI, but broader stream adapters and background monitoring outside the active screen are not part of the current MVP.
+- Live log-stream sonification now exists in the analyzer UI with file, process, WebSocket, HTTP-poll, and `journald` adapters, backed by a native transient session runtime in Rust rather than analyzer in-memory state. The current gap is no longer in-app session continuity, but headless/background service mode and additional external adapters such as Kafka/Loki.

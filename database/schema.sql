@@ -29,6 +29,44 @@ CREATE TABLE IF NOT EXISTS track_analyses (
   analyzer_notes TEXT NOT NULL DEFAULT ''
 );
 
+CREATE TABLE IF NOT EXISTS track_library_states (
+  asset_id TEXT PRIMARY KEY REFERENCES musical_assets(id) ON DELETE CASCADE,
+  color TEXT,
+  rating INTEGER NOT NULL DEFAULT 0 CHECK (rating BETWEEN 0 AND 5),
+  play_count INTEGER NOT NULL DEFAULT 0,
+  last_played_at TEXT,
+  bpm_lock INTEGER NOT NULL DEFAULT 0 CHECK (bpm_lock IN (0, 1)),
+  grid_lock INTEGER NOT NULL DEFAULT 0 CHECK (grid_lock IN (0, 1)),
+  main_cue_second REAL,
+  hot_cues_json TEXT NOT NULL DEFAULT '[]',
+  memory_cues_json TEXT NOT NULL DEFAULT '[]',
+  saved_loops_json TEXT NOT NULL DEFAULT '[]',
+  missing_state TEXT NOT NULL DEFAULT 'available' CHECK (missing_state IN ('available', 'missing')),
+  file_size_bytes INTEGER,
+  source_modified_at TEXT,
+  source_checksum TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_track_library_states_last_played
+  ON track_library_states (last_played_at DESC);
+
+CREATE TABLE IF NOT EXISTS base_track_playlists (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS base_track_playlist_items (
+  playlist_id TEXT NOT NULL REFERENCES base_track_playlists(id) ON DELETE CASCADE,
+  track_id TEXT NOT NULL REFERENCES musical_assets(id) ON DELETE CASCADE,
+  position INTEGER NOT NULL,
+  PRIMARY KEY (playlist_id, position)
+);
+
+CREATE INDEX IF NOT EXISTS idx_base_track_playlist_items_track
+  ON base_track_playlist_items (track_id);
+
 CREATE TABLE IF NOT EXISTS repo_analyses (
   asset_id TEXT PRIMARY KEY REFERENCES musical_assets(id) ON DELETE CASCADE,
   repo_path TEXT NOT NULL,
@@ -79,6 +117,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   label TEXT,
   source_id TEXT REFERENCES musical_assets(id) ON DELETE SET NULL,
   track_id TEXT REFERENCES musical_assets(id) ON DELETE SET NULL,
+  playlist_id TEXT REFERENCES base_track_playlists(id) ON DELETE SET NULL,
   adapter_kind TEXT NOT NULL DEFAULT 'file',
   mode TEXT NOT NULL DEFAULT 'live' CHECK (mode IN ('live', 'play')),
   status TEXT NOT NULL DEFAULT 'stopped' CHECK (status IN ('active', 'paused', 'stopped')),
@@ -116,6 +155,26 @@ CREATE TABLE IF NOT EXISTS session_events (
 
 CREATE INDEX IF NOT EXISTS idx_session_events_session_poll
   ON session_events (session_id, poll_index);
+
+CREATE TABLE IF NOT EXISTS session_bookmarks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  replay_window_index INTEGER NOT NULL,
+  event_index INTEGER,
+  label TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '',
+  bookmark_tag TEXT,
+  suggested_style_profile_id TEXT,
+  suggested_mutation_profile_id TEXT,
+  track_id TEXT,
+  track_title TEXT,
+  track_second REAL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_session_bookmarks_session_window
+  ON session_bookmarks (session_id, replay_window_index);
 
 CREATE INDEX IF NOT EXISTS idx_musical_assets_type_created
   ON musical_assets (asset_type, created_at DESC);

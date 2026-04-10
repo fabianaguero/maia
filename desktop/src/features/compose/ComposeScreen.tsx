@@ -2,6 +2,7 @@ import { AudioWaveform } from "lucide-react";
 import { useState } from "react";
 import type {
   BaseAssetRecord,
+  BaseTrackPlaylist,
   CompositionResultRecord,
   ImportCompositionInput,
   LibraryTrack,
@@ -26,6 +27,7 @@ interface ComposeScreenProps {
   compositions: CompositionResultRecord[];
   baseAssets: BaseAssetRecord[];
   tracks: LibraryTrack[];
+  playlists: BaseTrackPlaylist[];
   repositories: RepositoryAnalysis[];
   analyzerLabel: string;
   busy: boolean;
@@ -39,6 +41,7 @@ export function ComposeScreen({
   compositions,
   baseAssets,
   tracks,
+  playlists,
   repositories,
   analyzerLabel,
   busy,
@@ -51,7 +54,8 @@ export function ComposeScreen({
   const [tab, setTab] = useState<ComposeTab>("preview");
   const [currentTime, setCurrentTime] = useState(0);
 
-  const canCompose = baseAssets.length > 0 && (tracks.length > 0 || repositories.length > 0);
+  const canCompose =
+    baseAssets.length > 0 && (tracks.length > 0 || playlists.length > 0);
 
   return (
     <section className="screen">
@@ -74,7 +78,7 @@ export function ComposeScreen({
                   <strong>{composition.targetBpm.toFixed(0)}</strong>
                 </div>
                 <div className="summary-pill">
-                  <span>Reference</span>
+                  <span>Timing source</span>
                   <strong>{composition.referenceTitle}</strong>
                 </div>
               </>
@@ -89,7 +93,7 @@ export function ComposeScreen({
           {!canCompose ? (
             <div className="empty-state">
               <AudioWaveform size={28} style={{ opacity: 0.3, marginBottom: 10 }} />
-              <p>You need at least one base asset and one track or log to compose.</p>
+              <p>You need at least one base asset and one base track or playlist to compose.</p>
               <button type="button" className="action" onClick={onGoLibrary}>
                 Go to Library →
               </button>
@@ -99,6 +103,7 @@ export function ComposeScreen({
               busy={busy}
               baseAssets={baseAssets}
               tracks={tracks}
+              playlists={playlists}
               repositories={repositories}
               onImportComposition={onImportComposition}
             />
@@ -207,7 +212,10 @@ export function ComposeScreen({
                         )}
                         <dl className="meta-list compact-meta">
                           <div><dt>Base asset</dt><dd>{composition.baseAssetTitle}</dd></div>
-                          <div><dt>Reference</dt><dd>{composition.referenceSourcePath ?? "Manual BPM"}</dd></div>
+                          {composition.basePlaylistName ? (
+                            <div><dt>Base playlist</dt><dd>{composition.basePlaylistName}</dd></div>
+                          ) : null}
+                          <div><dt>Timing source</dt><dd>{composition.referenceSourcePath ?? composition.referenceTitle}</dd></div>
                           <div><dt>Strategy</dt><dd>{composition.strategy}</dd></div>
                           <div><dt>Plan path</dt><dd>{composition.exportPath ?? "Pending"}</dd></div>
                         </dl>

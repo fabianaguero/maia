@@ -2,6 +2,7 @@ import { Loader2, Music, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { fetchSongMetadata, type SongMetadata } from "../../../api/musicMetadata";
 import type { LibraryTrack } from "../../../types/library";
+import { getTrackSourcePath } from "../../../utils/track";
 
 interface SongMetadataPanelProps {
   track: LibraryTrack;
@@ -20,11 +21,13 @@ export function SongMetadataPanel({ track }: SongMetadataPanelProps) {
       setError(null);
 
       try {
-        // Extract artist and title from track filename or metadata
-        const filename = track.title || track.sourcePath.split("/").pop() || "";
+        // Prefer persisted track tags before falling back to filename parsing.
+        const taggedTitle = track.tags.title.trim();
+        const taggedArtist = track.tags.artist?.trim();
+        const filename = taggedTitle || getTrackSourcePath(track).split("/").pop() || "";
         const titleMatch = filename.match(/^([^-]+)(?:\s*-\s*(.+))?/);
-        const title = titleMatch?.[1]?.trim() || filename;
-        const artist = titleMatch?.[2]?.trim() || "Unknown Artist";
+        const title = taggedTitle || titleMatch?.[1]?.trim() || filename;
+        const artist = taggedArtist || titleMatch?.[2]?.trim() || "Unknown Artist";
 
         const data = await fetchSongMetadata(title, artist, {
           sources: ["musicbrainz"],
@@ -52,7 +55,7 @@ export function SongMetadataPanel({ track }: SongMetadataPanelProps) {
     return () => {
       active = false;
     };
-  }, [track.title, track.sourcePath]);
+  }, [track.tags.title, track.tags.artist, track.file.sourcePath]);
 
   return (
     <div className="panel analyzer-panel song-metadata-panel">

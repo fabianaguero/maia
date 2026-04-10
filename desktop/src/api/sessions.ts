@@ -12,6 +12,8 @@ export interface PersistedSession {
   sourceKind: string | null;
   trackId: string | null;
   trackTitle: string | null;
+  playlistId: string | null;
+  playlistName: string | null;
   adapterKind: string;
   mode: "live" | "play";
   status: "active" | "paused" | "stopped";
@@ -29,6 +31,7 @@ export interface CreateSessionInput {
   label?: string;
   sourceId?: string;
   trackId?: string;
+  playlistId?: string;
   adapterKind: string;
   mode: "live" | "play";
 }
@@ -113,6 +116,37 @@ export interface SessionEvent {
   warningsJson: string;
 }
 
+export interface SessionBookmark {
+  id: number;
+  sessionId: string;
+  replayWindowIndex: number;
+  eventIndex: number | null;
+  label: string;
+  note: string;
+  bookmarkTag: string | null;
+  suggestedStyleProfileId: string | null;
+  suggestedMutationProfileId: string | null;
+  trackId: string | null;
+  trackTitle: string | null;
+  trackSecond: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpsertSessionBookmarkInput {
+  sessionId: string;
+  replayWindowIndex: number;
+  eventIndex?: number | null;
+  label: string;
+  note: string;
+  bookmarkTag?: string | null;
+  suggestedStyleProfileId?: string | null;
+  suggestedMutationProfileId?: string | null;
+  trackId?: string | null;
+  trackTitle?: string | null;
+  trackSecond?: number | null;
+}
+
 export interface InsertSessionEventInput {
   sessionId: string;
   pollIndex: number;
@@ -145,6 +179,37 @@ export async function listSessionEvents(
     return await invoke<SessionEvent[]>("list_session_events", { sessionId });
   } catch (error) {
     if (isTauriUnavailable(error)) return [];
+    throw error;
+  }
+}
+
+export async function upsertSessionBookmark(
+  input: UpsertSessionBookmarkInput,
+): Promise<SessionBookmark | null> {
+  try {
+    return await invoke<SessionBookmark>("upsert_session_bookmark", { input });
+  } catch (error) {
+    if (isTauriUnavailable(error)) return null;
+    throw error;
+  }
+}
+
+export async function listSessionBookmarks(
+  sessionId: string,
+): Promise<SessionBookmark[]> {
+  try {
+    return await invoke<SessionBookmark[]>("list_session_bookmarks", { sessionId });
+  } catch (error) {
+    if (isTauriUnavailable(error)) return [];
+    throw error;
+  }
+}
+
+export async function deleteSessionBookmark(id: number): Promise<boolean> {
+  try {
+    return await invoke<boolean>("delete_session_bookmark", { id });
+  } catch (error) {
+    if (isTauriUnavailable(error)) return false;
     throw error;
   }
 }

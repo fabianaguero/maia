@@ -5,6 +5,14 @@ import type {
   LiveLogCue,
 } from "../../../types/library";
 import {
+  resolveMutationProfile,
+  resolveStyleProfile,
+} from "../../../config/liveProfiles";
+import type {
+  MutationProfileOption,
+  StyleProfileOption,
+} from "../../../types/music";
+import {
   resolveArrangementSections,
   resolveCuePoints,
   resolveRenderPreview,
@@ -52,11 +60,11 @@ function suggestPresetFromBpm(bpm: number | null): string {
 export function deriveReferenceAnchor(track: LibraryTrack): ReferenceAnchor {
   return {
     trackId: track.id,
-    trackTitle: track.title,
-    musicStyleId: track.musicStyleId || null,
-    bpm: track.bpm ?? null,
-    energyLevel: waveformEnergy(track.waveformBins),
-    suggestedPresetId: suggestPresetFromBpm(track.bpm ?? null),
+    trackTitle: track.tags.title,
+    musicStyleId: track.tags.musicStyleId || null,
+    bpm: track.analysis.bpm ?? null,
+    energyLevel: waveformEnergy(track.analysis.waveformBins),
+    suggestedPresetId: suggestPresetFromBpm(track.analysis.bpm ?? null),
   };
 }
 
@@ -197,6 +205,8 @@ export interface LiveSonificationRoute {
 export interface ResolvedLiveSonificationScene {
   baseAsset: BaseAssetRecord | null;
   composition: CompositionResultRecord | null;
+  styleProfile: StyleProfileOption;
+  mutationProfile: MutationProfileOption;
   genreId: string;
   genreLabel: string;
   categoryId: string;
@@ -580,7 +590,7 @@ const SEQUENCER_PRESETS: Record<string, SequencerPreset> = {
   },
 };
 
-const BALANCED_PRESET: SequencerPreset = {
+  const BALANCED_PRESET: SequencerPreset = {
   label: "Balanced",
   descriptor: "All severity levels at natural gain spread with even spacing",
   maxCuesPerWindow: 8,
@@ -595,6 +605,39 @@ const BALANCED_PRESET: SequencerPreset = {
 
 function fallbackSequencerPreset(presetId: string | null | undefined): SequencerPreset {
   return SEQUENCER_PRESETS[presetId ?? ""] ?? SEQUENCER_PRESETS["balanced"] ?? BALANCED_PRESET;
+}
+
+function withMutationPreset(
+  preset: SequencerPreset,
+  mutationProfile: MutationProfileOption,
+): SequencerPreset {
+  const density = Math.max(0.45, mutationProfile.cueDensityMultiplier);
+  const spacing = Math.max(0.4, mutationProfile.cueSpacingMultiplier);
+
+  return {
+    ...preset,
+    maxCuesPerWindow: Math.max(
+      3,
+      Math.round(preset.maxCuesPerWindow * density),
+    ),
+    scheduleGapMs: Math.max(22, Math.round(preset.scheduleGapMs * spacing)),
+    infoGainMultiplier: Number(
+      (preset.infoGainMultiplier * mutationProfile.routeGainMultiplier).toFixed(2),
+    ),
+    warnGainMultiplier: Number(
+      (preset.warnGainMultiplier * mutationProfile.routeGainMultiplier).toFixed(2),
+    ),
+    errorGainMultiplier: Number(
+      (preset.errorGainMultiplier * mutationProfile.routeGainMultiplier).toFixed(2),
+    ),
+    anomalyGainMultiplier: Number(
+      (
+        preset.anomalyGainMultiplier *
+        mutationProfile.routeGainMultiplier *
+        mutationProfile.anomalyBoostMultiplier
+      ).toFixed(2),
+    ),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -692,71 +735,73 @@ function joinManagedPath(rootPath: string, relativeEntry: string): string {
   return `${trimmedRoot}${separator}${normalizedEntry}`;
 }
 
-function resolveSceneSampleSources(baseAsset: BaseAssetRecord | null): {
+function resolveSceneSampleSources(
+  baseAsset: BaseAssetRecord | null,
+  composition: CompositionResultRecord | null,
+): {
   sources: Array<{ path: string; label: string }>;
   mode: "single-sample" | "multi-sample" | "synth";
   detail: string;
 } {
-  if (!baseAsset) {
-    return {
-      sources: [],
-      mode: "synth",
-      detail: "No base asset selected, so live cues stay on internal synthesis.",
-    };
-  }
-
-  if (baseAsset.storagePath.startsWith("browser-fallback://")) {
-    return {
-      sources: [],
-      mode: "synth",
-      detail:
-        "Browser fallback cannot expose a managed on-disk sample, so live cues stay on internal synthesis.",
-    };
-  }
-
-  if (baseAsset.sourceKind === "file" && isPlayableAudioPath(baseAsset.storagePath)) {
-    return {
-      sources: [{ path: baseAsset.storagePath, label: baseAsset.title }],
-      mode: "single-sample",
-      detail: "Live cues can trigger the managed base-asset file directly.",
-    };
-  }
-
-  if (baseAsset.sourceKind === "directory") {
-    const playableEntries = [
-      ...metricPlayableAudioEntries(baseAsset),
-      ...metricPreviewEntries(baseAsset),
-    ].filter((entry, index, entries) => isPlayableAudioPath(entry) && entries.indexOf(entry) === index);
-
-    if (playableEntries.length > 0) {
-      const sources = playableEntries.slice(0, 4).map((entry) => ({
-        path: joinManagedPath(baseAsset.storagePath, entry),
-        label: entry,
-      }));
-
-      if (sources.length === 1) {
-        return {
-          sources,
-          mode: "single-sample",
-          detail:
-            "Live cues use the only playable entry exposed by the managed base-asset folder.",
-        };
-      }
-
+  // --- 1. Base-asset file ---
+  if (baseAsset && !baseAsset.storagePath.startsWith("browser-fallback://")) {
+    if (baseAsset.sourceKind === "file" && isPlayableAudioPath(baseAsset.storagePath)) {
       return {
-        sources,
-        mode: "multi-sample",
-        detail:
-          "Live cues distribute across multiple playable entries from the managed base-asset folder.",
+        sources: [{ path: baseAsset.storagePath, label: baseAsset.title }],
+        mode: "single-sample",
+        detail: "Live cues trigger the managed base-asset file directly.",
       };
     }
+
+    if (baseAsset.sourceKind === "directory") {
+      const playableEntries = [
+        ...metricPlayableAudioEntries(baseAsset),
+        ...metricPreviewEntries(baseAsset),
+      ].filter(
+        (entry, index, entries) =>
+          isPlayableAudioPath(entry) && entries.indexOf(entry) === index,
+      );
+
+      if (playableEntries.length > 0) {
+        const sources = playableEntries.slice(0, 4).map((entry) => ({
+          path: joinManagedPath(baseAsset.storagePath, entry),
+          label: entry,
+        }));
+
+        return {
+          sources,
+          mode: sources.length === 1 ? "single-sample" : "multi-sample",
+          detail:
+            sources.length === 1
+              ? "Live cues use the only playable entry from the managed base-asset folder."
+              : "Live cues distribute across multiple playable entries from the managed base-asset folder.",
+        };
+      }
+    }
+  }
+
+  // --- 2. Composition preview WAV (hybrid mixer path) ---
+  // When a composition is selected and its preview .wav exists on disk,
+  // use it as the scene's sample source so live cues morph against the
+  // rendered composition audio rather than raw synthesis only.
+  if (
+    composition?.previewAudioPath &&
+    !composition.previewAudioPath.startsWith("browser-fallback://") &&
+    isPlayableAudioPath(composition.previewAudioPath)
+  ) {
+    return {
+      sources: [{ path: composition.previewAudioPath, label: composition.title }],
+      mode: "single-sample",
+      detail:
+        "Live cues trigger the composition preview WAV — hybrid mixer mode.",
+    };
   }
 
   return {
     sources: [],
     mode: "synth",
     detail:
-      "The selected base asset does not expose a playable managed audio file, so live cues stay on internal synthesis.",
+      "No playable managed audio found; live cues stay on internal synthesis.",
   };
 }
 
@@ -805,26 +850,32 @@ function routeKeyForCue(cue: LiveLogCue): SceneRouteKey {
 export function resolveLiveSonificationScene(
   baseAsset: BaseAssetRecord | null,
   composition: CompositionResultRecord | null,
-  genreId?: string | null,
-  presetId?: string | null,
+  styleProfileId?: string | null,
+  mutationProfileId?: string | null,
   referenceAnchor?: ReferenceAnchor | null,
 ): ResolvedLiveSonificationScene {
+  const styleProfile = resolveStyleProfile(styleProfileId);
+  const mutationProfile = resolveMutationProfile(mutationProfileId);
   // If an anchor track is set, its music style overrides the genre selector
   // when the style IDs match a known genre profile; otherwise fall back to
   // whatever the user selected.
   const resolvedGenreId =
     (referenceAnchor?.musicStyleId?.trim() && GENRE_PROFILES[referenceAnchor.musicStyleId])
       ? referenceAnchor.musicStyleId
-      : (genreId?.trim() || "house");
+      : styleProfile.genreId;
 
   // Preset: anchor suggestion wins if user left it on "balanced" (default),
   // otherwise the explicit user choice stays.
   const resolvedPresetId =
-    referenceAnchor && (presetId === "balanced" || !presetId)
+    referenceAnchor &&
+    (styleProfile.presetId === "balanced" || !styleProfile.presetId)
       ? referenceAnchor.suggestedPresetId
-      : (presetId?.trim() || "balanced");
+      : styleProfile.presetId;
 
-  const preset = fallbackSequencerPreset(resolvedPresetId);
+  const preset = withMutationPreset(
+    fallbackSequencerPreset(resolvedPresetId),
+    mutationProfile,
+  );
   const genreProfile = fallbackGenreProfile(resolvedGenreId);
   const categoryId =
     baseAsset?.categoryId ??
@@ -839,7 +890,7 @@ export function resolveLiveSonificationScene(
   const categoryProfile = fallbackCategoryProfile(categoryId);
   const strategyProfile = fallbackStrategyProfile(strategy);
   const renderPreview = composition ? resolveRenderPreview(composition) : null;
-  const sampleSource = resolveSceneSampleSources(baseAsset);
+  const sampleSource = resolveSceneSampleSources(baseAsset, composition);
   const sections = composition ? resolveArrangementSections(composition) : [];
   const cuePoints = composition ? resolveCuePoints(composition) : [];
   const foundationStem = renderPreview?.stems.find((stem) => stem.role === "foundation")
@@ -939,15 +990,17 @@ export function resolveLiveSonificationScene(
   }));
 
   const anchorSuffix = referenceAnchor
-    ? ` · anchored to ${referenceAnchor.trackTitle}${referenceAnchor.bpm ? ` @ ${referenceAnchor.bpm.toFixed(0)} BPM` : ""}`
+    ? ` · based on ${referenceAnchor.trackTitle}${referenceAnchor.bpm ? ` @ ${referenceAnchor.bpm.toFixed(0)} BPM` : ""}`
     : "";
   const summary = composition
-    ? `${genreProfile.label} · ${preset.label} — ${categoryProfile.descriptor} with ${strategyProfile.descriptor}, using ${composition.title} as structure overlay.${anchorSuffix}`
-    : `${genreProfile.label} · ${preset.label} — ${genreProfile.descriptor} · ${baseAsset?.title ?? categoryLabel}.${anchorSuffix}`;
+    ? `${styleProfile.label} / ${mutationProfile.label} — ${genreProfile.label} · ${preset.label}, ${categoryProfile.descriptor} with ${strategyProfile.descriptor}, using ${composition.title} as structure overlay.${anchorSuffix}`
+    : `${styleProfile.label} / ${mutationProfile.label} — ${genreProfile.label} · ${preset.label}, ${genreProfile.descriptor} · ${baseAsset?.title ?? categoryLabel}.${anchorSuffix}`;
 
   return {
     baseAsset,
     composition,
+    styleProfile,
+    mutationProfile,
     genreId: resolvedGenreId,
     genreLabel: genreProfile.label,
     categoryId,
@@ -1000,6 +1053,7 @@ export function routeCueThroughScene(
     strategyProfile.noteMultiplier *
     genreProfile.noteMultiplier *
     route.noteMultiplier *
+    scene.mutationProfile.noteMotionMultiplier *
     indexOffsetMultiplier *
     (componentRoute?.noteMultiplier ?? 1.0);
   const durationMs =
@@ -1037,6 +1091,9 @@ export function routeCueThroughScene(
     route.gainScale *
     presetGainMultiplier *
     anchorEnergyGain *
+    (routeKey === "anomaly"
+      ? scene.mutationProfile.anomalyBoostMultiplier
+      : scene.mutationProfile.routeGainMultiplier) *
     (override?.gainMult ?? 1.0);
   const pan =
     componentRoute && knownComponents && knownComponents.length > 1
@@ -1129,11 +1186,31 @@ const ARRANGEMENT_VOICE_MAP: Record<string, VoiceDef[]> = {
  */
 export function resolveArrangementVoices(
   cues: readonly RoutedLiveCue[],
+  arrangementDepth: MutationProfileOption["arrangementDepth"] = "full",
 ): ArrangementVoice[] {
   const voices: ArrangementVoice[] = [];
   for (const cue of cues) {
-    const defs: VoiceDef[] = ARRANGEMENT_VOICE_MAP[cue.routeKey] ?? ARRANGEMENT_VOICE_MAP.info ?? [];
-    for (const def of defs) {
+    const defs: VoiceDef[] =
+      ARRANGEMENT_VOICE_MAP[cue.routeKey] ?? ARRANGEMENT_VOICE_MAP.info ?? [];
+    const limitedDefs =
+      arrangementDepth === "minimal"
+        ? (() => {
+            const foundationDefs = defs.filter((def) => def.track === "foundation");
+            return foundationDefs.length > 0 ? foundationDefs.slice(0, 1) : defs.slice(0, 1);
+          })()
+        : arrangementDepth === "stacked"
+          ? [
+              ...defs,
+              {
+                track: cue.routeKey === "info" ? "motion" : "accent",
+                panOffset: cue.routeKey === "info" ? 0.16 : -0.16,
+                noteMultiplier: cue.routeKey === "info" ? 1.245 : 2.51,
+                gainMultiplier: cue.routeKey === "info" ? 0.28 : 0.22,
+                timeOffsetMs: cue.routeKey === "info" ? 16 : 28,
+              } satisfies VoiceDef,
+            ]
+          : defs;
+    for (const def of limitedDefs) {
       voices.push({ cue, ...def });
     }
   }

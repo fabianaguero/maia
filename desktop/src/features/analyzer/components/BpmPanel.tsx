@@ -1,4 +1,5 @@
 import type { LibraryTrack } from "../../../types/library";
+import { describeTrackStorage } from "../../../utils/track";
 
 interface BpmPanelProps {
   track: LibraryTrack;
@@ -28,20 +29,23 @@ function formatAnalysisMode(analysisMode: string): string {
     .join(" ");
 }
 
-function describeStorage(track: LibraryTrack): string {
-  if (!track.storagePath) {
-    return "Original/demo path";
+function formatPercent(value: number | null): string {
+  if (typeof value !== "number") {
+    return "Pending";
   }
 
-  if (track.storagePath.startsWith("browser-fallback://")) {
-    return "Simulated snapshot";
+  return `${Math.round(value * 100)}%`;
+}
+
+function formatStructuralPatterns(track: LibraryTrack): string {
+  if (track.analysis.structuralPatterns.length === 0) {
+    return "Pending";
   }
 
-  if (track.storagePath === track.sourcePath) {
-    return "Legacy/original path";
-  }
-
-  return "Managed snapshot";
+  return track.analysis.structuralPatterns
+    .slice(0, 3)
+    .map((pattern) => pattern.label)
+    .join(", ");
 }
 
 export function BpmPanel({ track }: BpmPanelProps) {
@@ -59,31 +63,47 @@ export function BpmPanel({ track }: BpmPanelProps) {
       <div className="metric-grid">
         <div>
           <span>Detected BPM</span>
-          <strong>{track.bpm ? Math.round(track.bpm) : "Pending"}</strong>
+          <strong>{track.analysis.bpm ? Math.round(track.analysis.bpm) : "Pending"}</strong>
         </div>
         <div>
           <span>Confidence</span>
-          <strong>{Math.round(track.bpmConfidence * 100)}%</strong>
+          <strong>{Math.round(track.analysis.bpmConfidence * 100)}%</strong>
         </div>
         <div>
           <span>Duration</span>
-          <strong>{formatDuration(track.durationSeconds)}</strong>
+          <strong>{formatDuration(track.analysis.durationSeconds)}</strong>
         </div>
         <div>
           <span>Track format</span>
-          <strong>{track.fileExtension}</strong>
+          <strong>{track.file.fileExtension}</strong>
         </div>
         <div>
           <span>Music style</span>
-          <strong>{track.musicStyleLabel}</strong>
+          <strong>{track.tags.musicStyleLabel}</strong>
+        </div>
+        <div>
+          <span>Key</span>
+          <strong>{track.analysis.keySignature ?? "Pending"}</strong>
+        </div>
+        <div>
+          <span>Energy</span>
+          <strong>{formatPercent(track.analysis.energyLevel)}</strong>
+        </div>
+        <div>
+          <span>Danceability</span>
+          <strong>{formatPercent(track.analysis.danceability)}</strong>
         </div>
         <div>
           <span>Analysis mode</span>
-          <strong>{formatAnalysisMode(track.analysisMode)}</strong>
+          <strong>{formatAnalysisMode(track.analysis.analysisMode)}</strong>
         </div>
         <div>
           <span>Storage</span>
-          <strong>{describeStorage(track)}</strong>
+          <strong>{describeTrackStorage(track)}</strong>
+        </div>
+        <div>
+          <span>Structure cues</span>
+          <strong>{formatStructuralPatterns(track)}</strong>
         </div>
       </div>
     </section>

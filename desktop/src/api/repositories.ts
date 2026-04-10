@@ -1,5 +1,5 @@
-import { invoke } from "@tauri-apps/api/core";
 import { getLogger } from "../utils/logger";
+import { invokeOrFallback } from "./tauri";
 
 const log = getLogger("API.Repos");
 
@@ -17,100 +17,61 @@ import {
   pollMockLogStream,
 } from "./mockRepositories";
 
-function isNativeBridgeUnavailable(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    /tauri|__TAURI_INTERNALS__|ipc|native bridge/i.test(error.message)
-  );
-}
-
 export async function listRepositories(): Promise<RepositoryAnalysis[]> {
-  try {
-    return await invoke<RepositoryAnalysis[]>("list_repositories");
-  } catch (error) {
-    if (isNativeBridgeUnavailable(error)) {
-      return listMockRepositories();
-    }
-    throw error;
-  }
+  return invokeOrFallback("list_repositories", undefined, () => listMockRepositories());
 }
 
 export async function importRepository(
   input: ImportRepositoryInput,
 ): Promise<RepositoryAnalysis> {
-  try {
-    return await invoke<RepositoryAnalysis>("import_repository", { input });
-  } catch (error) {
-    if (isNativeBridgeUnavailable(error)) {
-      return importMockRepository(input);
-    }
-    throw error;
-  }
+  return invokeOrFallback(
+    "import_repository",
+    { input },
+    () => importMockRepository(input),
+  );
 }
 
 export async function pickRepositoryDirectory(
   initialPath?: string,
 ): Promise<string | null> {
-  try {
-    return await invoke<string | null>("pick_repository_directory", {
-      initialPath: initialPath?.trim() || undefined,
-    });
-  } catch (error) {
-    if (isNativeBridgeUnavailable(error)) {
-      return null;
-    }
-
-    throw error;
-  }
+  return invokeOrFallback(
+    "pick_repository_directory",
+    { initialPath: initialPath?.trim() || undefined },
+    () => null,
+  );
 }
 
 export async function pickRepositoryFile(
   initialPath?: string,
 ): Promise<string | null> {
-  try {
-    return await invoke<string | null>("pick_repository_file", {
-      initialPath: initialPath?.trim() || undefined,
-    });
-  } catch (error) {
-    if (isNativeBridgeUnavailable(error)) {
-      return null;
-    }
-
-    throw error;
-  }
+  return invokeOrFallback(
+    "pick_repository_file",
+    { initialPath: initialPath?.trim() || undefined },
+    () => null,
+  );
 }
 
 export async function pickExportSavePath(
   defaultName: string,
 ): Promise<string | null> {
-  try {
-    return await invoke<string | null>("pick_export_save_path", { defaultName });
-  } catch (error) {
-    if (isNativeBridgeUnavailable(error)) {
-      return null;
-    }
-
-    throw error;
-  }
+  return invokeOrFallback("pick_export_save_path", { defaultName }, () => null);
 }
 
 export async function exportCompositionFile(
   sourcePath: string,
   destPath: string,
 ): Promise<string> {
-  return invoke<string>("export_composition_file", { sourcePath, destPath });
+  return invokeOrFallback(
+    "export_composition_file",
+    { sourcePath, destPath },
+    () => {
+      throw new Error("Composition export requires the native desktop shell.");
+    },
+  );
 }
 
 export async function pickStemsExportDirectory(): Promise<string | null> {
-  try {
-    return await invoke<string | null>("pick_stems_export_directory");
-  } catch (error) {
-    if (isNativeBridgeUnavailable(error)) {
-      return null;
-    }
-
-    throw error;
-  }
+  return invokeOrFallback("pick_stems_export_directory", undefined, () => null);
 }
 
 export interface StemExportResult {
@@ -135,9 +96,8 @@ export async function exportCompositionStems(
   compositionId: string,
   destDir: string,
 ): Promise<ExportStemsResponse> {
-  return invoke<ExportStemsResponse>("export_composition_stems", {
-    compositionId,
-    destDir,
+  return invokeOrFallback("export_composition_stems", { compositionId, destDir }, () => {
+    throw new Error("Stem export requires the native desktop shell.");
   });
 }
 
@@ -147,17 +107,17 @@ export async function pollLogStream(
 ): Promise<LiveLogStreamUpdate> {
   log.trace("pollLogStream path=%s cursor=%s", sourcePath, cursor);
   try {
-    const result = await invoke<LiveLogStreamUpdate>("poll_log_stream", {
-      sourcePath,
-      cursor,
-    });
+    const result = await invokeOrFallback(
+      "poll_log_stream",
+      { sourcePath, cursor },
+      () => {
+        log.debug("pollLogStream fallback to mock");
+        return pollMockLogStream(sourcePath, cursor);
+      },
+    );
     log.debug("pollLogStream → hasData=%s lines=%d cues=%d", result.hasData, result.lineCount, result.sonificationCues.length);
     return result;
   } catch (error) {
-    if (isNativeBridgeUnavailable(error)) {
-      log.debug("pollLogStream fallback to mock");
-      return pollMockLogStream(sourcePath, cursor);
-    }
     log.error("pollLogStream failed:", error);
     throw error;
   }
@@ -167,7 +127,9 @@ export async function startStreamSession(
   input: StartSessionInput,
 ): Promise<StreamSessionRecord> {
   log.info("startStreamSession id=%s adapter=%s source=%s", input.sessionId, input.adapterKind, input.source);
-  const result = await invoke<StreamSessionRecord>("start_stream_session", { input });
+  const result = await invokeOrFallback("start_stream_session", { input }, () => {
+    throw new Error("Stream sessions require the native desktop shell.");
+  });
   log.info("startStreamSession → session created");
   return result;
 }
@@ -175,65 +137,64 @@ export async function startStreamSession(
 export async function stopStreamSession(
   sessionId: string,
 ): Promise<boolean> {
-  return invoke<boolean>("stop_stream_session", { sessionId });
+  return invokeOrFallback("stop_stream_session", { sessionId }, () => false);
 }
 
 export async function listStreamSessions(): Promise<StreamSessionRecord[]> {
-  return invoke<StreamSessionRecord[]>("list_stream_sessions");
+  return invokeOrFallback("list_stream_sessions", undefined, () => []);
 }
 
 export async function pollStreamSession(
   sessionId: string,
 ): Promise<StreamSessionPollResult> {
   log.trace("pollStreamSession id=%s", sessionId);
-  const result = await invoke<StreamSessionPollResult>("poll_stream_session", { sessionId });
+  const result = await invokeOrFallback<StreamSessionPollResult>(
+    "poll_stream_session",
+    { sessionId },
+    () => {
+      throw new Error("Stream sessions require the native desktop shell.");
+    },
+  );
   log.debug("pollStreamSession → hasData=%s lines=%d cues=%d", result.hasData, result.lineCount, result.sonificationCues.length);
   return result;
 }
 
 /**
- * Feed a raw chunk of newline-delimited log text into a session ring buffer and
- * return the accumulated analysis.  Used by the WebSocket and HTTP-poll adapters
- * which manage their own connections on the JS side.
+ * Feed a raw chunk of newline-delimited log text into the native transient
+ * session buffer and return analysis for that chunk. Used by the WebSocket and
+ * HTTP-poll adapters, which manage their own connections on the JS side.
  *
- * If `chunk` is empty the ring buffer is not updated, but `session_poll` is
- * still called so callers always get the current accumulated state.
+ * If `chunk` is empty the native session is left unchanged and a waiting
+ * result is returned.
  */
 export async function ingestStreamChunk(
   sessionId: string,
   chunk: string,
 ): Promise<StreamSessionPollResult> {
   log.trace("ingestStreamChunk id=%s chunkLen=%d", sessionId, chunk.length);
-  const result = await invoke<StreamSessionPollResult>("ingest_stream_chunk", { sessionId, chunk });
+  const result = await invokeOrFallback<StreamSessionPollResult>(
+    "ingest_stream_chunk",
+    { sessionId, chunk },
+    () => {
+      throw new Error("Stream sessions require the native desktop shell.");
+    },
+  );
   log.debug("ingestStreamChunk → hasData=%s lines=%d cues=%d", result.hasData, result.lineCount, result.sonificationCues.length);
   return result;
 }
 
 export async function readAudioBytes(path: string): Promise<string> {
-  return invoke<string>("read_audio_bytes", { path });
+  return invokeOrFallback("read_audio_bytes", { path }, () => {
+    throw new Error("Audio byte reads require the native desktop shell.");
+  });
 }
 
 export async function checkRepositoryExists(sourcePath: string): Promise<boolean> {
-  try {
-    return await invoke<boolean>("check_file_exists", { path: sourcePath });
-  } catch (error) {
-    if (isNativeBridgeUnavailable(error)) {
-      return true; // Mock: assume exists
-    }
-    throw error;
-  }
+  return invokeOrFallback("check_file_exists", { path: sourcePath }, () => true);
 }
 
 export async function deleteRepository(repositoryId: string): Promise<void> {
-  try {
-    await invoke<void>("delete_repository", { repositoryId });
-  } catch (error) {
-    if (isNativeBridgeUnavailable(error)) {
-      // Mock: just log it
-      console.log("Mock delete repository:", repositoryId);
-      return;
-    }
-
-    throw error;
-  }
+  return invokeOrFallback("delete_repository", { repositoryId }, () => {
+    console.log("Mock delete repository:", repositoryId);
+  });
 }

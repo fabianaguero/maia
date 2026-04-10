@@ -1,14 +1,18 @@
 import { Activity } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type {
   AnalyzerViewMode,
   BaseAssetRecord,
+  BaseTrackPlaylist,
   LibraryTrack,
   RepositoryAnalysis,
+  UpdateTrackAnalysisInput,
+  UpdateTrackPerformanceInput,
 } from "../../types/library";
 import { formatShortDate } from "../../utils/date";
 import { BaseAssetMetricsPanel } from "../analyzer/components/BaseAssetMetricsPanel";
 import { BaseAssetOverviewPanel } from "../analyzer/components/BaseAssetOverviewPanel";
+import { BeatGridEditorPanel } from "../analyzer/components/BeatGridEditorPanel";
 import { BpmCurvePanel } from "../analyzer/components/BpmCurvePanel";
 import { BpmPanel } from "../analyzer/components/BpmPanel";
 import { LiveLogMonitorPanel } from "../analyzer/components/LiveLogMonitorPanel";
@@ -17,10 +21,31 @@ import { RepositoryMetricsPanel } from "../analyzer/components/RepositoryMetrics
 import { RepositoryOverviewPanel } from "../analyzer/components/RepositoryOverviewPanel";
 import { RepoStatusPanel } from "../analyzer/components/RepoStatusPanel";
 import { SongMetadataPanel } from "../analyzer/components/SongMetadataPanel";
+import { TrackPerformancePanel } from "../analyzer/components/TrackPerformancePanel";
 import { TrackPlaybackPanel } from "../analyzer/components/TrackPlaybackPanel";
+import { TrackOriginalComparePanel } from "../analyzer/components/TrackOriginalComparePanel";
 import { WaveformPlaceholder } from "../analyzer/components/WaveformPlaceholder";
 import { useT } from "../../i18n/I18nContext";
 import { useMonitor } from "../monitor/MonitorContext";
+import {
+  createAnchoredBeatGridUpdate,
+  isEditableBpm,
+  type BeatGridPhraseRange,
+} from "../../utils/beatGrid";
+import {
+  resolveTrackPlacementSecond,
+  moveTrackSavedLoop,
+  setTrackCuePointSecond,
+  setTrackSavedLoopBoundary,
+  getTrackSourcePath,
+  getTrackStoragePath,
+  getTrackTitle,
+  getTrackWaveformRegions,
+  getTrackWaveformCues,
+  hasUsableBeatGrid,
+  type TrackCompareAuditionPoint,
+} from "../../utils/track";
+import type { ManagedAudioCueRequest } from "../analyzer/components/ManagedAudioPlayer";
 
 function formatAnalysisMode(analysisMode: string): string {
   return analysisMode
@@ -35,6 +60,7 @@ interface InspectScreenProps {
   repository: RepositoryAnalysis | null;
   baseAsset: BaseAssetRecord | null;
   availableTracks: LibraryTrack[];
+  availablePlaylists: BaseTrackPlaylist[];
   availableRepositories: RepositoryAnalysis[];
   availableBaseAssets: BaseAssetRecord[];
   mode: AnalyzerViewMode;
@@ -45,6 +71,15 @@ interface InspectScreenProps {
   onSelectBaseAsset: (id: string) => void;
   onGoLibrary: () => void;
   onGoCompose: () => void;
+  onUpdateTrackPerformance: (
+    trackId: string,
+    input: UpdateTrackPerformanceInput,
+  ) => Promise<void>;
+  onUpdateTrackAnalysis: (
+    trackId: string,
+    input: UpdateTrackAnalysisInput,
+  ) => Promise<void>;
+  trackMutating: boolean;
 }
 
 export function InspectScreen({
@@ -52,6 +87,7 @@ export function InspectScreen({
   repository,
   baseAsset,
   availableTracks,
+  availablePlaylists,
   availableRepositories,
   availableBaseAssets,
   mode,
@@ -62,10 +98,33 @@ export function InspectScreen({
   onSelectBaseAsset,
   onGoLibrary,
   onGoCompose,
+  onUpdateTrackPerformance,
+  onUpdateTrackAnalysis,
+  trackMutating,
 }: InspectScreenProps) {
   const t = useT();
   const monitor = useMonitor();
   const [currentTime, setCurrentTime] = useState(0);
+  const [selectedPhraseRange, setSelectedPhraseRange] =
+    useState<BeatGridPhraseRange | null>(null);
+  const [compareCueRequest, setCompareCueRequest] =
+    useState<ManagedAudioCueRequest | null>(null);
+  const [activeCompareAuditionId, setActiveCompareAuditionId] =
+    useState<TrackCompareAuditionPoint["id"] | null>(null);
+  const [activeCompareAuditionLabel, setActiveCompareAuditionLabel] =
+    useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedPhraseRange(null);
+    setCompareCueRequest(null);
+    setActiveCompareAuditionId(null);
+    setActiveCompareAuditionLabel(null);
+  }, [
+    track?.id,
+    track?.analysis.beatGrid.length,
+    track?.analysis.beatGrid[0]?.second,
+    track?.analysis.durationSeconds,
+  ]);
 
   const hasAnyAsset =
     availableTracks.length > 0 ||
@@ -115,7 +174,7 @@ export function InspectScreen({
             className="context-select"
           >
             {availableTracks.map((t) => (
-              <option key={t.id} value={t.id}>{t.title}</option>
+              <option key={t.id} value={t.id}>{getTrackTitle(t)}</option>
             ))}
           </select>
         )}
@@ -179,26 +238,105 @@ export function InspectScreen({
       );
     }
 
+    const editableTrackBpm = isEditableBpm(track.analysis.bpm)
+      ? track.analysis.bpm
+      : null;
+    const waveformEditableCues = [
+      ...(track.performance.mainCueSecond !== null
+        ? [
+            {
+              id: "main-cue",
+              second: track.performance.mainCueSecond,
+              label: "Main",
+              kind: "main" as const,
+              color: track.performance.color,
+            },
+          ]
+        : []),
+      ...track.performance.hotCues.map((cue) => ({
+        id: cue.id,
+        second: cue.second,
+        label: cue.label,
+        kind: cue.kind,
+        color: cue.color,
+      })),
+      ...track.performance.memoryCues.map((cue) => ({
+        id: cue.id,
+        second: cue.second,
+        label: cue.label,
+        kind: cue.kind,
+        color: cue.color,
+      })),
+    ];
+    const quantizeWaveformEdits = hasUsableBeatGrid(track.analysis.beatGrid);
+
+    const handleMoveWaveformCue = (
+      cue: {
+        id: string;
+        second: number;
+        label: string;
+        kind: "main" | "hot" | "memory";
+      },
+      second: number,
+    ) => {
+      if (cue.kind === "main") {
+        return void onUpdateTrackPerformance(track.id, {
+          mainCueSecond: resolveTrackPlacementSecond(
+            second,
+            track.analysis.durationSeconds,
+            track.analysis.beatGrid,
+            quantizeWaveformEdits,
+          ),
+        });
+      }
+
+      const cueCollection =
+        cue.kind === "hot"
+          ? track.performance.hotCues
+          : track.performance.memoryCues;
+      const nextCues = setTrackCuePointSecond(cueCollection, cue.id, second, {
+        durationSeconds: track.analysis.durationSeconds,
+        beatGrid: track.analysis.beatGrid,
+        quantizeEnabled: quantizeWaveformEdits,
+      });
+
+      return void onUpdateTrackPerformance(track.id, {
+        [cue.kind === "hot" ? "hotCues" : "memoryCues"]: nextCues,
+      });
+    };
+
+    const handleCompareAudition = (point: TrackCompareAuditionPoint) => {
+      setCurrentTime(point.second);
+      monitor.seekGuideTrack(point.second);
+      setActiveCompareAuditionId(point.id);
+      setActiveCompareAuditionLabel(point.label);
+      setCompareCueRequest((previous) => ({
+        id: (previous?.id ?? 0) + 1,
+        second: point.second,
+        autoplay: true,
+      }));
+    };
+
     return (
       <section className="screen">
         <header className="screen-header">
           <div>
             <p className="eyebrow">{t.inspect.title}</p>
-            <h2>{track.title}</h2>
+            <h2>{track.tags.title}</h2>
             <p className="support-copy">{t.inspect.copy}</p>
           </div>
           <div className="screen-summary">
             <div className="summary-pill">
               <span>Status</span>
-              <strong>{track.analyzerStatus}</strong>
+              <strong>{track.analysis.analyzerStatus}</strong>
             </div>
             <div className="summary-pill">
               <span>Style</span>
-              <strong>{track.musicStyleLabel}</strong>
+              <strong>{track.tags.musicStyleLabel}</strong>
             </div>
             <div className="summary-pill">
               <span>Imported</span>
-              <strong>{formatShortDate(track.importedAt)}</strong>
+              <strong>{formatShortDate(track.analysis.importedAt)}</strong>
             </div>
           </div>
         </header>
@@ -206,43 +344,126 @@ export function InspectScreen({
 
         <div className="analyzer-deck">
           <WaveformPlaceholder
-            bins={track.waveformBins}
-            beatGrid={track.beatGrid}
-            durationSeconds={track.durationSeconds}
-            hotCues={track.visualization?.hotCues}
+            bins={track.analysis.waveformBins}
+            beatGrid={track.analysis.beatGrid}
+            durationSeconds={track.analysis.durationSeconds}
+            hotCues={getTrackWaveformCues(track)}
+            regions={getTrackWaveformRegions(track)}
+            editableCues={waveformEditableCues}
+            editableLoops={track.performance.savedLoops}
             currentTime={currentTime}
             hero
             onSeek={monitor.seekGuideTrack}
             analysisProgress={monitor.playbackProgress}
+            canEditBeatGrid={
+              !trackMutating &&
+              !track.performance.gridLock &&
+              editableTrackBpm !== null &&
+              track.analysis.durationSeconds !== null
+            }
+            onSetDownbeatAtSecond={
+              editableTrackBpm !== null
+                ? (second) =>
+                    void onUpdateTrackAnalysis(
+                      track.id,
+                      createAnchoredBeatGridUpdate(
+                        editableTrackBpm,
+                        track.analysis.durationSeconds,
+                        second,
+                      ),
+                    )
+                : undefined
+            }
+            canSelectPhrase={hasUsableBeatGrid(track.analysis.beatGrid)}
+            selectedPhraseRange={selectedPhraseRange}
+            onSelectPhraseRange={setSelectedPhraseRange}
+            canEditPerformance={!trackMutating}
+            onMoveCue={handleMoveWaveformCue}
+            onNudgeCue={handleMoveWaveformCue}
+            onMoveLoopBoundary={(loopId, boundary, second) =>
+              void onUpdateTrackPerformance(track.id, {
+                savedLoops: setTrackSavedLoopBoundary(
+                  track.performance.savedLoops,
+                  loopId,
+                  boundary,
+                  second,
+                  {
+                    bpm: editableTrackBpm,
+                    durationSeconds: track.analysis.durationSeconds,
+                    beatGrid: track.analysis.beatGrid,
+                    quantizeEnabled: quantizeWaveformEdits,
+                  },
+                ),
+              })
+            }
+            onMoveLoop={(loopId, second) =>
+              void onUpdateTrackPerformance(track.id, {
+                savedLoops: moveTrackSavedLoop(
+                  track.performance.savedLoops,
+                  loopId,
+                  second,
+                  {
+                    durationSeconds: track.analysis.durationSeconds,
+                    beatGrid: track.analysis.beatGrid,
+                    quantizeEnabled: quantizeWaveformEdits,
+                  },
+                ),
+              })
+            }
           />
-          <TrackPlaybackPanel track={track} onTimeUpdate={setCurrentTime} />
+          <TrackOriginalComparePanel
+            track={track}
+            currentTime={currentTime}
+            onSeek={monitor.seekGuideTrack}
+            onAudition={handleCompareAudition}
+            activeAuditionId={activeCompareAuditionId}
+          />
+          <TrackPlaybackPanel
+            track={track}
+            onTimeUpdate={setCurrentTime}
+            cueRequest={compareCueRequest}
+            auditionLabel={activeCompareAuditionLabel}
+          />
         </div>
 
         <div className="analyzer-layout">
           <div className="analyzer-main-stack">
             <BpmCurvePanel
-              bpmCurve={track.bpmCurve}
-              fallbackBpm={track.bpm}
-              durationSeconds={track.durationSeconds}
+              bpmCurve={track.analysis.bpmCurve}
+              fallbackBpm={track.analysis.bpm}
+              durationSeconds={track.analysis.durationSeconds}
             />
           </div>
           <div className="analyzer-sidebar">
             <BpmPanel track={track} />
+            <BeatGridEditorPanel
+              track={track}
+              busy={trackMutating}
+              currentTime={currentTime}
+              onUpdateAnalysis={(input) => onUpdateTrackAnalysis(track.id, input)}
+            />
+            <TrackPerformancePanel
+              track={track}
+              busy={trackMutating}
+              currentTime={currentTime}
+              selectedPhraseRange={selectedPhraseRange}
+              onUpdatePerformance={(input) => onUpdateTrackPerformance(track.id, input)}
+            />
             <RepoStatusPanel track={track} analyzerLabel={analyzerLabel} />
             <SongMetadataPanel track={track} />
             <section className="panel metric-panel">
               <details className="panel-collapsible">
                 <summary className="panel-collapsible-summary">Notes &amp; metadata</summary>
                 <div className="panel-collapsible-body">
-                  {track.notes.length > 0 && (
+                  {track.analysis.notes.length > 0 && (
                     <ul className="stack-list note-list">
-                      {track.notes.map((note) => <li key={note}>{note}</li>)}
+                      {track.analysis.notes.map((note) => <li key={note}>{note}</li>)}
                     </ul>
                   )}
                   <dl className="meta-list compact-meta">
-                    <div><dt>Analysis mode</dt><dd>{formatAnalysisMode(track.analysisMode)}</dd></div>
-                    <div><dt>Source path</dt><dd>{track.sourcePath}</dd></div>
-                    <div><dt>Storage path</dt><dd>{track.storagePath ?? "No snapshot"}</dd></div>
+                    <div><dt>Analysis mode</dt><dd>{formatAnalysisMode(track.analysis.analysisMode)}</dd></div>
+                    <div><dt>Source path</dt><dd>{getTrackSourcePath(track)}</dd></div>
+                    <div><dt>Storage path</dt><dd>{getTrackStoragePath(track) ?? "No snapshot"}</dd></div>
                   </dl>
                 </div>
               </details>
@@ -312,6 +533,7 @@ export function InspectScreen({
                   preferredBaseAssetId={baseAsset?.id}
                   preferredCompositionId={undefined}
                   availableTracks={availableTracks}
+                  availablePlaylists={availablePlaylists}
                 />
               </>
             ) : null}
@@ -373,7 +595,7 @@ export function InspectScreen({
           </div>
           <div className="summary-pill">
             <span>Reusable</span>
-            <strong>{baseAsset.reusable ? "Yes" : "Reference only"}</strong>
+            <strong>{baseAsset.reusable ? "Yes" : "Single-use"}</strong>
           </div>
           <div className="summary-pill">
             <span>Imported</span>

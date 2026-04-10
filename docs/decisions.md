@@ -1,12 +1,39 @@
 # Decisions
 
+## 2026-04-09
+
+### Business decisions
+- Maia's primary product line is auditory monitoring: teams should be able to monitor servers, logs, streams, repos, or scanned files mainly by hearing them.
+- The core listening mode should be background-safe and pleasant, not just a sequence of alerts or abstract cues.
+- The chosen track or playlist is the musical bed that defines listener preference and fatigue profile.
+- The desktop app is the control surface; the longer-term target is a background music-server workflow for teams.
+
+### Technical decisions
+- Product messaging and UX should optimize for "monitor without looking" before adding more visual-dashboard behavior.
+- Replay feedback (bookmarks, tags, notes) should improve future mixes and session defaults instead of remaining passive notes only.
+- Source adapters should be treated as first-class signal inputs under one audible-monitoring model: live stream, file tail, repository scan, file scan, or session replay.
+- Live stream session state should live in Rust `SessionRegistry`, not inside Python process memory. File/process/`journald` followers are owned natively; WebSocket/HTTP-poll feed chunks into the same Rust runtime through `ingest_stream_chunk`; the Python analyzer stays stateless and analyzes one chunk per request.
+
+## 2026-04-08
+
+### Business decisions
+- Maia's musical base can be a single imported track or a playlist blended from multiple imported tracks.
+- Repositories, logs, streams, and parsed source patterns should be heard as alterations over that selected base, not as an entirely disconnected audio layer.
+- Imported tracks are therefore not just support material for calibration; they can be the main audible frame that the rest of the product mutates.
+
+### Technical decisions
+- The only product app source of truth is now `desktop/` with its native backend in `desktop/src-tauri/`.
+- The only analyzer runtime source of truth is now `analyzer/src/maia_analyzer/`; the legacy analyzer files at the root of `analyzer/` were removed.
+- The legacy root Tauri/Web app was removed to avoid editing the wrong product surface. `site/` remains as the landing and is not part of the desktop runtime.
+- Useful track-analysis functionality from the old analyzer was ported into the active path before cleanup: key signature, energy level, danceability, and lightweight structural cues now flow through the desktop track metadata.
+
 ## 2026-04-04
 
 ### Business decisions
 - Maia's primary product value is software sonification: code and logs should become listenable musical/aural signals, not just visual metrics.
 - Teams should eventually be able to monitor a live log stream and hear anomalous events as distinct sounds or musical changes without staring at a dashboard.
 - Before true live streaming exists, Maia should already support importing a real local log file and deriving audible/visual signal structure from it.
-- Imported tracks are supporting reference material for calibration, comparison, and UX familiarity; they are not the core business output.
+- Imported tracks can act as the audible base lane for the product, while source-derived signals provide the mutations, contrast, and variation layer.
 - Reusable base assets are the sonic vocabulary Maia will use to express code/log events, tension, drift, and anomalies.
 - Track intake now requires an explicit music-style choice before import.
 - The style list is curated for MVP instead of user free-text so the library stays consistent for DJs and future reusable-base workflows.
@@ -68,7 +95,7 @@
 - Multi-sample mapping is still lightweight: Maia currently chooses one sample per route, not per-component or per-pattern sequencing.
 - Source of truth for base asset categories: `desktop/src/config/base-asset-categories.json`.
 - Genre profiles are defined in `desktop/src/config/music-styles.json` with BPM ranges, per-severity waveform types, and gain/duration/pitch multipliers; `liveSonificationScene.ts` resolves those profiles at runtime into a `ResolvedLiveSonificationScene`, keeping genre logic in desktop config rather than in the Python analyzer. Genre selection changes the sonification feel (instrumental palette), not the composition pipeline or the entity model.
-- Stream sessions now cover sources beyond local growing log files: `stream.py` defines a session ring buffer and a process adapter; `main.rs` exposes four Tauri commands (`start_stream_session`, `stop_stream_session`, `list_stream_sessions`, `poll_stream_session`) backed by a `SessionRegistry` in `Arc<Mutex>` state; the `LiveLogMonitorPanel` adapter selector lets the operator switch between the local-file tail and a spawned-process adapter inside the same session UI. Session ring buffers are transient and scoped to the active screen; they do not survive app navigation. Always-on background monitoring outside an open session is intentionally deferred.
+- Stream sessions now cover sources beyond local growing log files: `main.rs` owns the shared transient session runtime in `SessionRegistry`, exposes `start_stream_session`, `stop_stream_session`, `list_stream_sessions`, `poll_stream_session`, and `ingest_stream_chunk`, and `LiveLogMonitorPanel` can switch between file, process, WebSocket, HTTP-poll, and `journald` adapters inside the same session UI. File/process/`journald` follow loops live natively in Rust, while WebSocket/HTTP-poll feed chunks from JS into the same runtime. Session buffers remain transient, but the runtime itself now lives in app-level `MonitorContext`, so active monitoring survives screen navigation inside the running desktop app. Always-on monitoring outside the desktop process is still deferred.
 - Source of truth for base asset categories: `desktop/src/config/base-asset-categories.json`.
 - Base asset imports now accept both files and directories, with the selected category and reusable flag flowing through the analyzer JSON contract.
 - Base asset analyzer intake returns checksum, entry count, extension breakdown, and preview entries so the desktop shell can render a meaningful reusable-asset inspector without another analysis pass.
@@ -87,16 +114,17 @@
 - Tauri and browser fallback now share the same `CompositionResultRecord` shape, including waveform bins, beat grid, BPM curve, strategy, and reference metadata.
 - Composition planning currently depends on existing stored base assets and track/repository BPM records; the new live log-tail monitor is a runtime cue layer, not yet a full continuous composition engine or generalized stream adapter layer.
 
-- The recommended build order after the current MVP is now explicit: first harden the shipped local-first workflow, then broaden the signal sources, and only after that push into richer rendering and export. In practice, this means prioritizing test coverage and contract reliability first, broader stream adapters second, always-on monitoring third, richer sonification behavior fourth, full export/bounce fifth, and additional format or catalog coverage last. This sequencing keeps Maia aligned with its current product truth: repositories, local logs, and session-based streams are already real; generalized external integrations and production-grade rendering remain the next expansion layer.
+- The recommended build order after the current MVP is now explicit: first extend the shipped app-level monitor into a true background music-server mode, then broaden external adapters further, then deepen sonification behavior on top of the now-stable session runtime, and only after that push into richer rendering and export. In practice, this now means prioritizing headless/background runtime first, Kafka/Loki-class adapters second, richer sonification behavior third, fuller bounce/export fourth, and additional format or catalog coverage last. This sequencing keeps Maia aligned with its current product truth: repositories, local logs, replay-default persistence, cleaned analyzer baseline, and app-level monitored streams are already real; generalized external integrations and production-grade rendering remain the next expansion layer.
 
 ## 2026-04-05
 
 ### Technical decisions
 - The reference anchor can now be a multi-track reference playlist. `blendAnchors` derives a single composite anchor from N tracks: BPM by median of non-null values (robust to tempo outliers), energy by arithmetic mean, and `musicStyleId` by mode (most-frequent id). A single-track input is a passthrough with `trackId = "playlist-blend"` to keep the return type uniform. The playlist is ordered and reorderable (↑/↓ buttons in the pill strip).
 - The `LiveSonificationScenePanel` shows a "Blend style" row only when the active anchor's `trackId === "playlist-blend"`, surfacing the blended `musicStyleId` without ambiguity.
-- The reference playlist, selected genre, and selected preset are persisted to `localStorage` under key `maia.monitor-prefs.<repoId>`. Each repo gets its own saved settings. The `useState` initializer reads `loadMonitorPrefs(repository.id)` on first render so state is pre-populated without an effect round-trip. The persist effect (`useEffect(saveMonitorPrefs, [repo, playlistIds, genre, preset])`) writes on every change. On repo switch, the existing reset effect now calls `loadMonitorPrefs` for the new repo id instead of zero-filling.
+- `MonitorPrefs` now persist `basePlaylist`, `selectedStyleProfileId`, and `selectedMutationProfileId` to `localStorage` under key `maia.monitor-prefs.<repoId>`. Each repo gets its own saved settings. The `useState` initializer reads `loadMonitorPrefs(repository.id)` on first render so state is pre-populated without an effect round-trip. The persist effect writes on every change, and `loadMonitorPrefs` migrates the older `referencePlaylistIds` / `selectedGenreId` / `selectedPresetId` shape forward when encountered. On repo switch, the existing reset effect calls `loadMonitorPrefs` for the new repo id instead of zero-filling.
+- Applying a replay-feedback recommendation now persists the suggested style/mutation pair immediately into `MonitorPrefs`, so future sessions for the same repo start from the chosen carry-forward mix even when the recommendation matches the already-loaded scene.
 - A stray orphan `</select>` element was present in the toolbar JSX. Removed; no behaviour change.
-- The updated priority order for the next feature: **always-on background monitoring** first, then broader stream adapters, then test coverage consolidation, then dense multi-track arrangement, then export/bounce UI. This order was chosen because always-on monitoring unlocks the core product promise (hear your system without babysitting the analyzer screen) more directly than test hygiene does, and it builds on the existing `SessionRegistry` + ring-buffer infrastructure without requiring a new data model.
+- The updated priority order for the next feature: **background music-server mode / headless runtime** first, then external adapters beyond the current file/process/WebSocket/HTTP-poll/journald set, then richer sonification behavior on top of the now-stable session runtime, and then fuller export/bounce UI. This order reflects that app-level always-on monitoring, replay-default persistence, analyzer baseline cleanup, and Rust-owned transient stream sessions are already shipped; the remaining gap is making that runtime survive outside the foreground app and expanding the adapter surface before adding more musical depth.
 
 ## 07. Aesthetic Mapping for Live Sonification (Presets)
 **Date:** 2026-04-05

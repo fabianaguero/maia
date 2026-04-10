@@ -23,7 +23,9 @@ venv/
 
 # Test coverage
 .coverage
+coverage.xml
 htmlcov/
+desktop/coverage/
 .pytest_cache/
 
 # IDE

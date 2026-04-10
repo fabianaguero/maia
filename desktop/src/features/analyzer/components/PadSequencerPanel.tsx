@@ -4,6 +4,13 @@ import type { ArrangementTrack, ArrangementVoice } from "./liveSonificationScene
 const STEPS = 16;
 const TRACKS: ArrangementTrack[] = ["foundation", "motion", "accent"];
 
+// Probability cycle values for right-click (%)
+const PROB_CYCLE = [100, 75, 50, 25] as const;
+type ProbValue = (typeof PROB_CYCLE)[number];
+
+// Grid of probabilities per [track][step], default 100 = always fire
+type ProbGrid = ProbValue[][];
+
 // Default 16-step seed patterns per severity, derived from ARRANGEMENT_VOICE_MAP.
 // info  → foundation on downbeats (steps 0,4,8,12)
 // warn  → foundation + motion on off-beats
@@ -47,6 +54,10 @@ function emptyGrid(): PatternGrid {
   return TRACKS.map(() => Array<boolean>(STEPS).fill(false));
 }
 
+function emptyProbGrid(): ProbGrid {
+  return TRACKS.map(() => Array<ProbValue>(STEPS).fill(100));
+}
+
 function seedFromVoices(voices: ArrangementVoice[]): PatternGrid {
   // Build a hot set of tracks from the last N voices and fill the dominant seed
   const trackHits = new Set(voices.map((v) => v.cue.routeKey));
@@ -62,17 +73,30 @@ function seedFromVoices(voices: ArrangementVoice[]): PatternGrid {
 interface PadSequencerPanelProps {
   bpm: number;
   recentVoices: ArrangementVoice[];
+  onStepFire?: (firings: Array<{ track: ArrangementTrack; step: number; humanizeOffsetMs: number }>) => void;
 }
 
-export function PadSequencerPanel({ bpm, recentVoices }: PadSequencerPanelProps) {
+export function PadSequencerPanel({ bpm, recentVoices, onStepFire }: PadSequencerPanelProps) {
   const [grid, setGrid] = useState<PatternGrid>(emptyGrid);
+  const [probGrid, setProbGrid] = useState<ProbGrid>(emptyProbGrid);
+  const [humanizeMs, setHumanizeMs] = useState(0);
   const [activeStep, setActiveStep] = useState<number>(-1);
   const [playing, setPlaying] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Keep a ref to the current grid so the setInterval closure always reads fresh data
+  const gridRef = useRef<PatternGrid>(grid);
+  useEffect(() => { gridRef.current = grid; }, [grid]);
+  const probGridRef = useRef<ProbGrid>(probGrid);
+  useEffect(() => { probGridRef.current = probGrid; }, [probGrid]);
+  const humanizeMsRef = useRef(humanizeMs);
+  useEffect(() => { humanizeMsRef.current = humanizeMs; }, [humanizeMs]);
+  // Keep a ref to onStepFire to avoid re-creating the interval on every render
+  const stepFireRef = useRef(onStepFire);
+  useEffect(() => { stepFireRef.current = onStepFire; }, [onStepFire]);
 
   const stepMs = bpm > 0 ? (60_000 / bpm) / 4 : 150; // 16th note duration in ms
 
-  // Advance playhead
+  // Advance playhead and fire audio callback on active steps
   useEffect(() => {
     if (!playing) {
       setActiveStep(-1);
@@ -85,7 +109,27 @@ export function PadSequencerPanel({ bpm, recentVoices }: PadSequencerPanelProps)
 
     let step = 0;
     intervalRef.current = setInterval(() => {
-      setActiveStep(step % STEPS);
+      const currentStep = step % STEPS;
+      setActiveStep(currentStep);
+      const fire = stepFireRef.current;
+      if (fire) {
+        const firings: Array<{ track: ArrangementTrack; step: number; humanizeOffsetMs: number }> = [];
+        const currentGrid = gridRef.current;
+        const currentProb = probGridRef.current;
+        const hms = humanizeMsRef.current;
+        for (let i = 0; i < TRACKS.length; i++) {
+          if (currentGrid[i]?.[currentStep]) {
+            const prob = currentProb[i]?.[currentStep] ?? 100;
+            if (Math.random() * 100 < prob) {
+              const offset = hms > 0 ? (Math.random() * 2 - 1) * hms : 0;
+              firings.push({ track: TRACKS[i], step: currentStep, humanizeOffsetMs: offset });
+            }
+          }
+        }
+        if (firings.length > 0) {
+          fire(firings);
+        }
+      }
       step++;
     }, stepMs);
 
@@ -105,12 +149,25 @@ export function PadSequencerPanel({ bpm, recentVoices }: PadSequencerPanelProps)
     });
   }, []);
 
+  const cycleProbability = useCallback((trackIdx: number, stepIdx: number) => {
+    setProbGrid((prev) => {
+      const next = prev.map((row) => [...row]) as ProbGrid;
+      const current = next[trackIdx]?.[stepIdx] ?? 100;
+      const currentIndex = PROB_CYCLE.indexOf(current as ProbValue);
+      const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % PROB_CYCLE.length;
+      next[trackIdx][stepIdx] = PROB_CYCLE[nextIndex] ?? 100;
+      return next;
+    });
+  }, []);
+
   const handleFillFromScene = useCallback(() => {
     setGrid(seedFromVoices(recentVoices));
+    setProbGrid(emptyProbGrid());
   }, [recentVoices]);
 
   const handleClear = useCallback(() => {
     setGrid(emptyGrid());
+    setProbGrid(emptyProbGrid());
   }, []);
 
   const effectiveBpm = bpm > 0 ? bpm : 120;
@@ -144,8 +201,23 @@ export function PadSequencerPanel({ bpm, recentVoices }: PadSequencerPanelProps)
           >
             Clear
           </button>
+          <label className="pad-seq-humanize-label" title="Humanize: randomises each hit timing ±N ms for a looser groove">
+            Humanize
+            <input
+              type="range"
+              min={0}
+              max={50}
+              step={5}
+              value={humanizeMs}
+              onChange={(e) => setHumanizeMs(Number(e.target.value))}
+              className="pad-seq-humanize-range"
+            />
+            <span className="pad-seq-humanize-value">{humanizeMs > 0 ? `±${humanizeMs}ms` : "off"}</span>
+          </label>
         </div>
       </div>
+
+      <p className="pad-seq-hint">Left-click to toggle · Right-click to cycle probability (100 → 75 → 50 → 25%)</p>
 
       <div className="pad-sequencer-grid">
         {/* Step index ruler */}
@@ -168,6 +240,8 @@ export function PadSequencerPanel({ bpm, recentVoices }: PadSequencerPanelProps)
             {Array.from({ length: STEPS }, (_, stepIdx) => {
               const isOn = grid[trackIdx][stepIdx];
               const isCurrent = activeStep === stepIdx;
+              const prob = probGrid[trackIdx]?.[stepIdx] ?? 100;
+              const isDimmed = isOn && prob < 100;
               return (
                 <button
                   key={stepIdx}
@@ -176,13 +250,24 @@ export function PadSequencerPanel({ bpm, recentVoices }: PadSequencerPanelProps)
                     isOn ? "pad-seq-step--on" : "",
                     isCurrent ? "pad-seq-step--current" : "",
                     stepIdx % 4 === 0 ? "pad-seq-step--beat" : "",
+                    isDimmed ? `pad-seq-step--prob${prob}` : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
+                  style={isDimmed ? { opacity: prob / 100 } : undefined}
                   onClick={() => toggleStep(trackIdx, stepIdx)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    if (isOn) cycleProbability(trackIdx, stepIdx);
+                  }}
                   aria-pressed={isOn}
-                  aria-label={`${track} step ${stepIdx + 1}`}
-                />
+                  aria-label={`${track} step ${stepIdx + 1}${isOn && prob < 100 ? ` (${prob}%)` : ""}`}
+                  title={isOn ? (prob < 100 ? `${prob}% probability — right-click to cycle` : "Right-click to set probability") : "Left-click to enable"}
+                >
+                  {isOn && prob < 100 ? (
+                    <span className="pad-seq-step-prob">{prob}</span>
+                  ) : null}
+                </button>
               );
             })}
           </div>

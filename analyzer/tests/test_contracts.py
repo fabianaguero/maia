@@ -139,6 +139,9 @@ def test_handle_request_health_ok():
     assert "analyzerVersion" in payload
     assert "health" in payload["supportedActions"]
     assert isinstance(payload["supportedTrackFormats"], list)
+    assert isinstance(payload["presets"], list)
+    assert payload["presets"]
+    assert {"id", "label", "description", "palette"} <= set(payload["presets"][0].keys())
 
 
 def test_handle_request_health_bad_version_returns_error():

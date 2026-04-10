@@ -1,23 +1,23 @@
 export const en = {
   workspace: "Maia Studio",
-  workspaceCopy: "Import · Inspect · Compose",
-  tagline: "Import → Inspect → Compose",
+  workspaceCopy: "Library · Deck · Booth",
+  tagline: "Library → Analyze → Perform",
   nav: {
     library: {
       label: "Library",
-      description: "Import tracks, logs, and base assets",
+      description: "Crates, source imports, and base material",
     },
     session: {
       label: "Monitor",
-      description: "Live tail & playback sessions",
+      description: "Live booth and reactive playback",
     },
     inspect: {
       label: "Analyze",
-      description: "Deep analysis & waveform detail",
+      description: "Waveform, cues, and detail deck",
     },
     compose: {
       label: "Compose",
-      description: "Build and export compositions",
+      description: "Arrangement and render deck",
     },
   },
   sidebar: {
@@ -46,7 +46,7 @@ export const en = {
   },
   compose: {
     title: "Compose",
-    copy: "Combine a base asset with a track or log reference to generate an arrangement plan.",
+    copy: "Combine a base asset with a base track and an optional code/log structure source to generate an arrangement plan.",
   },
   session: {
     title: "Sessions",

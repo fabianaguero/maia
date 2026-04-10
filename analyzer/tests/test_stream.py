@@ -5,6 +5,7 @@ snapshots, stop/eviction, and session_poll via handle_request.
 """
 from __future__ import annotations
 
+import json
 import pytest
 
 from maia_analyzer import stream as stream_mod
@@ -212,3 +213,59 @@ def test_session_poll_with_data_returns_musical_asset():
     asset = payload["musicalAsset"]
     assert asset["assetType"] == "repo_analysis"
     assert asset["suggestedBpm"] is not None
+
+
+# ---------------------------------------------------------------------------
+# journald stream adapter
+# ---------------------------------------------------------------------------
+
+
+def test_journald_json_line_ingested_as_log_event():
+    """journald JSON output lines (journalctl -o json) should be accepted as normal log lines."""
+    sid = "jd-1"
+    get_or_create_session(sid, "process", "journalctl -f -o json")
+    journald_line = json.dumps({
+        "__REALTIME_TIMESTAMP": "1712650000000000",
+        "PRIORITY": "3",
+        "SYSLOG_IDENTIFIER": "nginx",
+        "MESSAGE": "connect() failed (111: Connection refused)",
+        "_SYSTEMD_UNIT": "nginx.service",
+    })
+    ingest_lines(sid, [journald_line])
+    snap = session_snapshot(sid)
+    assert snap is not None
+    assert len(snap["ringBuffer"]) == 1
+
+
+def test_journald_session_poll_returns_valid_payload():
+    """A session seeded with journald JSON lines should produce a valid session_poll response."""
+    sid = "jd-2"
+    get_or_create_session(sid, "process", "journalctl -f -o json")
+    # Simulate a mix of priorities: 3=error, 4=warning, 6=info
+    lines = [
+        json.dumps({"PRIORITY": str(p), "MESSAGE": f"msg {p}", "SYSLOG_IDENTIFIER": "app"})
+        for p in [3, 4, 6, 6, 6]
+    ]
+    ingest_lines(sid, lines)
+    # Verify ring buffer was populated (5 lines)
+    snap = session_snapshot(sid)
+    assert snap is not None
+    assert len(snap["ringBuffer"]) == 5
+    # Verify session_poll produces a valid musical asset
+    result = handle_request({
+        "contractVersion": CONTRACT_VERSION,
+        "requestId": "jd-poll-1",
+        "action": "session_poll",
+        "payload": {"sessionId": sid},
+    })
+    assert result["status"] == "ok"
+    assert result["payload"]["hasData"] is True
+
+
+def test_journald_adapter_kind_stored_on_session():
+    """journald routes through the 'process' adapter kind; source string retains the command."""
+    sid = "jd-3"
+    source = "journalctl -f -o json --no-pager -u nginx.service"
+    session = get_or_create_session(sid, "process", source)
+    assert session.adapter_kind == "process"
+    assert "journalctl" in session.source

@@ -43,7 +43,7 @@ export function BaseAssetMetricsPanel({
         </div>
         <div>
           <span>Reusable</span>
-          <strong>{baseAsset.reusable ? "Yes" : "Reference only"}</strong>
+          <strong>{baseAsset.reusable ? "Yes" : "Single-use"}</strong>
         </div>
         <div>
           <span>Source kind</span>

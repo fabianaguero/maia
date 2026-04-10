@@ -30,9 +30,9 @@ export function LiveSonificationScenePanel({
           <h2>Sonification scene</h2>
           <p className="support-copy">
             Choose the reusable base vocabulary and optional composition overlay that color the
-            live log monitor. Maia keeps the runtime scene transient, without adding another core
-            persisted entity, and triggers a real managed sample when the selected base asset
-            exposes one.
+            live log monitor around the selected base track or playlist. Maia keeps the runtime
+            scene transient, without adding another core persisted entity, and triggers a real
+            managed sample when the selected base asset exposes one.
           </p>
         </div>
       </div>
@@ -76,6 +76,20 @@ export function LiveSonificationScenePanel({
 
       <div className="metric-grid top-spaced">
         <div>
+          <span>Style profile</span>
+          <strong>{scene.styleProfile.label}</strong>
+        </div>
+        <div>
+          <span>Mutation profile</span>
+          <strong>{scene.mutationProfile.label}</strong>
+        </div>
+        <div>
+          <span>Playlist blend</span>
+          <strong>
+            {scene.styleProfile.transitionFeel} · {scene.styleProfile.playlistCrossfadeSeconds.toFixed(1)}s
+          </strong>
+        </div>
+        <div>
           <span>Genre</span>
           <strong>{scene.genreLabel}</strong>
         </div>
@@ -92,7 +106,7 @@ export function LiveSonificationScenePanel({
           <strong>{scene.strategy}</strong>
         </div>
         <div>
-          <span>Reference</span>
+          <span>Scene source</span>
           <strong>{scene.referenceTitle}</strong>
         </div>
         <div>
@@ -124,11 +138,11 @@ export function LiveSonificationScenePanel({
         {scene.referenceAnchor ? (
           <>
             <div>
-              <span>Anchor track</span>
+              <span>Base track</span>
               <strong>{scene.referenceAnchor.trackTitle}</strong>
             </div>
             <div>
-              <span>Anchor BPM</span>
+              <span>Base BPM</span>
               <strong>
                 {scene.referenceAnchor.bpm !== null
                   ? `${scene.referenceAnchor.bpm.toFixed(0)} BPM`
@@ -136,12 +150,12 @@ export function LiveSonificationScenePanel({
               </strong>
             </div>
             <div>
-              <span>Anchor energy</span>
+              <span>Base energy</span>
               <strong>{(scene.referenceAnchor.energyLevel * 100).toFixed(0)} %</strong>
             </div>
             {scene.referenceAnchor.trackId === "playlist-blend" ? (
               <div>
-                <span>Blend style</span>
+                <span>Base blend style</span>
                 <strong>{scene.referenceAnchor.musicStyleId ?? "—"}</strong>
               </div>
             ) : null}
@@ -150,13 +164,19 @@ export function LiveSonificationScenePanel({
       </div>
 
       <div className="audio-path-card top-spaced">
-        <span>Preset</span>
+        <span>Runtime pattern</span>
         <strong>{scene.preset.descriptor}</strong>
+        <small>{scene.styleProfile.description}</small>
       </div>
 
       <div className="render-master-card top-spaced">
         <span>Scene summary</span>
         <strong>{scene.summary}</strong>
+      </div>
+
+      <div className="audio-path-card top-spaced">
+        <span>Mutation behavior</span>
+        <strong>{scene.mutationProfile.description}</strong>
       </div>
 
       <div className="audio-path-card top-spaced">
@@ -177,7 +197,7 @@ export function LiveSonificationScenePanel({
           <h2>Live routing</h2>
           <p className="support-copy">
             Severity and anomaly levels map to deterministic stems, sections, and cue labels from
-            the active scene.
+            the active scene, while the selected base track or playlist stays as the musical frame.
           </p>
         </div>
       </div>

@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from maia_analyzer.treesitter import (
+    analyze_java_sources,
     analyze_go_sources,
     analyze_python_sources,
     analyze_rust_sources,
@@ -292,6 +293,23 @@ func main() {
 }
 """
 
+JAVA_SOURCE = b"""\
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import javax.inject.Inject;
+
+@Path("/health")
+public class HealthResource {
+    @Inject
+    private HealthService healthService;
+
+    @GET
+    public String health() {
+        return "ok";
+    }
+}
+"""
+
 
 def test_analyze_go_returns_enabled(tmp_path):
     f = tmp_path / "main.go"
@@ -327,6 +345,22 @@ def test_analyze_go_goroutine_count(tmp_path):
 def test_analyze_go_empty_list():
     result = analyze_go_sources([])
     assert result["fileCount"] == 0
+
+
+def test_analyze_java_import_counts(tmp_path):
+    f = tmp_path / "HealthResource.java"
+    f.write_bytes(JAVA_SOURCE)
+    result = analyze_java_sources([f])
+    assert result["enabled"] is True
+    assert result["jakartaImportCount"] >= 2
+    assert result["javaxImportCount"] >= 1
+
+
+def test_analyze_java_empty_list_has_zero_import_counts():
+    result = analyze_java_sources([])
+    assert result["fileCount"] == 0
+    assert result["jakartaImportCount"] == 0
+    assert result["javaxImportCount"] == 0
 
 
 # ---------------------------------------------------------------------------

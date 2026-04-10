@@ -12,6 +12,7 @@ import { getLogger } from "../../../utils/logger";
 const log = getLogger("LiveMonitor");
 
 import type {
+  BaseTrackPlaylist,
   BaseAssetRecord,
   CompositionResultRecord,
   LibraryTrack,
@@ -22,10 +23,49 @@ import type {
   StartSessionInput,
   StreamAdapterKind,
 } from "../../../types/library";
+import type { SessionBookmark } from "../../../api/sessions";
+import { ReplayFeedbackSummaryCard } from "../../../components/ReplayFeedbackSummaryCard";
+import { useReplayBookmarks } from "../../../hooks/useReplayBookmarks";
+import { useReplayFeedbackRecommendation } from "../../../hooks/useReplayFeedbackRecommendation";
+import { resolvePlaylistTracks } from "../../../utils/playlist";
+import { resolveNextPlaylistIndex } from "../../../utils/playlistRuntime";
+import type { PlaylistTransitionPlan } from "../../../utils/playlistTransition";
+import {
+  resolvePhraseAlignedTransitionDelayMs,
+  resolvePlaylistStartPlan,
+  resolvePlaylistTransitionPlan,
+} from "../../../utils/playlistTransition";
+import { getTrackTitle, resolvePlayableTrackPath } from "../../../utils/track";
+import {
+  deriveLiveMutationExplanations,
+  type LiveMutationExplanation,
+  toLiveMutationVisualizationCues,
+} from "../../../utils/liveMutationExplainability";
+import { resolveReplayProgressForWindow } from "../../../utils/replay";
+import {
+  createBasePlaylist,
+  loadMonitorPrefs,
+  persistReplayFeedbackRecommendation,
+  saveMonitorPrefs,
+} from "../../../utils/monitorPrefs";
+import {
+  getStreamAdapterDescription,
+  getStreamAdapterLabel,
+} from "../../../utils/streamAdapter";
 import { useMonitor } from "../../monitor/MonitorContext";
-import { musicStyleCatalog } from "../../../config/musicStyles";
+import {
+  DEFAULT_MUTATION_PROFILE_ID,
+  DEFAULT_STYLE_PROFILE_ID,
+  MUTATION_PROFILES,
+  STYLE_PROFILES,
+  resolveMutationProfile,
+  resolveStyleProfile,
+} from "../../../config/liveProfiles";
 import { LiveSonificationScenePanel } from "./LiveSonificationScenePanel";
 import { ComponentRoutingPanel } from "./ComponentRoutingPanel";
+import { LiveMonitorMutationTracePanel } from "./LiveMonitorMutationTracePanel";
+import { LiveMonitorReplayBookmarksCard } from "./LiveMonitorReplayBookmarksCard";
+import { LiveMonitorReplayTimelineCard } from "./LiveMonitorReplayTimelineCard";
 import { PadSequencerPanel } from "./PadSequencerPanel";
 import {
   blendAnchors,
@@ -34,17 +74,49 @@ import {
   resolveLiveSonificationScene,
   resolveArrangementVoices,
   routeCueThroughScene,
+  type ArrangementTrack,
   type ArrangementVoice,
   type ComponentOverride,
   type RoutedLiveCue,
 } from "./liveSonificationScene";
+import {
+  renderCuesToWav,
+  renderBounceWav,
+  BOUNCE_WINDOW_S,
+  MAX_BOUNCE_WINDOWS,
+} from "./wavRenderer";
 
 const MAX_RECENT_CUES = 8;
 const MAX_RECENT_MARKERS = 6;
 const MAX_RECENT_WARNINGS = 4;
+const MAX_RECENT_EXPLANATIONS = 6;
+
+// Sequencer: note config per arrangement track (kick / snare / hat)
+const SEQ_TRACK_CONFIG: Record<
+  ArrangementTrack,
+  { noteHz: number; waveform: OscillatorType; gainFactor: number; durationMs: number }
+> = {
+  foundation: { noteHz: 80,   waveform: "square",   gainFactor: 0.22, durationMs: 115 },
+  motion:     { noteHz: 280,  waveform: "triangle",  gainFactor: 0.14, durationMs: 75  },
+  accent:     { noteHz: 1800, waveform: "sine",      gainFactor: 0.08, durationMs: 40  },
+};
+const BACKGROUND_FADE_IN_SECONDS = 0.9;
 
 type AudioEngineStatus = "idle" | "ready" | "unsupported" | "error";
 type SampleEngineStatus = "unavailable" | "loading" | "ready" | "error";
+
+interface BackgroundDeckState {
+  source: AudioBufferSourceNode;
+  gain: GainNode;
+  trackId: string;
+  trackIndex: number;
+  startedAtContextTime: number;
+  bufferDurationSec: number;
+  durationSec: number;
+  entrySecond: number;
+  playbackRate: number;
+  looping: boolean;
+}
 
 interface LiveLogMonitorPanelProps {
   repository: RepositoryAnalysis;
@@ -53,6 +125,7 @@ interface LiveLogMonitorPanelProps {
   preferredBaseAssetId?: string | null;
   preferredCompositionId?: string | null;
   availableTracks: LibraryTrack[];
+  availablePlaylists: BaseTrackPlaylist[];
 }
 
 function toMessage(error: unknown): string {
@@ -72,94 +145,8 @@ function createAudioContext(): AudioContext | null {
 }
 
 // ---------------------------------------------------------------------------
-// WAV-based audio renderer — bypasses WebAudio destination entirely.
-// Renders cues to a PCM buffer, wraps in a WAV blob, plays via <audio>.
-// Needed because WebKitGTK may silently swallow AudioContext.destination output.
+// WAV renderer is in wavRenderer.ts (imported above).
 // ---------------------------------------------------------------------------
-
-const RENDER_SAMPLE_RATE = 44100;
-
-function renderCuesToWav(cues: RoutedLiveCue[], masterGain: number): Blob | null {
-  if (cues.length === 0) return null;
-
-  // Fixed window: render only 600ms (one poll interval), not each cue's full duration.
-  // This prevents huge buffer allocations when many long cues are queued.
-  const windowDuration = 0.6; // 600ms matches POLL_INTERVAL_MS
-  const totalSamples = Math.ceil(RENDER_SAMPLE_RATE * windowDuration);
-  const mixBuffer = new Float32Array(totalSamples);
-
-  // Render cues in parallel: each cue contributes to the same buffer simultaneously
-  // This is ~O(totalSamples × numCues), but no longer than O(26460 × 32) = 846k iterations
-  // which can execute in ~8-10ms on modern hardware. Still acceptable for real-time.
-  for (let i = 0; i < totalSamples; i++) {
-    const t = i / RENDER_SAMPLE_RATE;
-
-    for (const cue of cues) {
-      const dur = Math.max(0.08, cue.durationMs / 1000);
-      if (t > dur) continue; // Skip if outside cue duration
-
-      const freq = cue.noteHz;
-      const gain = Math.min(0.5, cue.gain);
-
-      // Envelope: quick attack (20ms), sustain, exponential release
-      const attackEnd = 0.02;
-      const releaseStart = dur * 0.7;
-      let env = 1;
-      if (t < attackEnd) env = t / attackEnd;
-      else if (t > releaseStart) env = Math.max(0, 1 - (t - releaseStart) / (dur - releaseStart));
-
-      // Waveform generation
-      let sample: number;
-      switch (cue.waveform) {
-        case "square":
-          sample = Math.sin(2 * Math.PI * freq * t) > 0 ? 1 : -1;
-          break;
-        case "sawtooth":
-          sample = 2 * ((freq * t) % 1) - 1;
-          break;
-        case "triangle": {
-          const phase = (freq * t) % 1;
-          sample = 4 * Math.abs(phase - 0.5) - 1;
-          break;
-        }
-        default: // sine
-          sample = Math.sin(2 * Math.PI * freq * t);
-      }
-
-      mixBuffer[i] += sample * gain * env;
-    }
-  }
-
-  // Clamp and apply master gain
-  const numSamples = mixBuffer.length;
-  const wavBuffer = new ArrayBuffer(44 + numSamples * 2);
-  const view = new DataView(wavBuffer);
-
-  // WAV header
-  const writeStr = (offset: number, str: string) => {
-    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
-  };
-  writeStr(0, "RIFF");
-  view.setUint32(4, 36 + numSamples * 2, true);
-  writeStr(8, "WAVE");
-  writeStr(12, "fmt ");
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, RENDER_SAMPLE_RATE, true);
-  view.setUint32(28, RENDER_SAMPLE_RATE * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeStr(36, "data");
-  view.setUint32(40, numSamples * 2, true);
-
-  for (let i = 0; i < numSamples; i++) {
-    const clamped = Math.max(-1, Math.min(1, mixBuffer[i] * masterGain));
-    view.setInt16(44 + i * 2, clamped * 32767, true);
-  }
-
-  return new Blob([wavBuffer], { type: "audio/wav" });
-}
 
 function playWavBlob(blob: Blob): void {
   const url = URL.createObjectURL(blob);
@@ -206,29 +193,6 @@ function preferredCompositionId(
   }
 
   return "";
-}
-
-interface MonitorPrefs {
-  referencePlaylistIds: string[];
-  selectedGenreId: string;
-  selectedPresetId: string;
-}
-
-function loadMonitorPrefs(repoId: string): MonitorPrefs | null {
-  try {
-    const raw = localStorage.getItem(`maia.monitor-prefs.${repoId}`);
-    return raw ? (JSON.parse(raw) as MonitorPrefs) : null;
-  } catch {
-    return null;
-  }
-}
-
-function saveMonitorPrefs(repoId: string, prefs: MonitorPrefs): void {
-  try {
-    localStorage.setItem(`maia.monitor-prefs.${repoId}`, JSON.stringify(prefs));
-  } catch {
-    // ignore quota / private-browsing storage errors
-  }
 }
 
 function scheduleCue(context: AudioContext, cue: RoutedLiveCue, startAt: number, destination: AudioNode): void {
@@ -338,6 +302,24 @@ function formatConfidence(confidence: number): string {
 
 function formatFrequency(noteHz: number): string {
   return `${Math.round(noteHz)} Hz`;
+}
+
+function resolveBackgroundTrackSecond(
+  context: AudioContext | null,
+  deck: BackgroundDeckState | null,
+): number | null {
+  if (!context || !deck) {
+    return null;
+  }
+
+  const elapsedSeconds = Math.max(0, context.currentTime - deck.startedAtContextTime);
+  const rawSecond = deck.entrySecond + elapsedSeconds * deck.playbackRate;
+
+  if (deck.looping && deck.bufferDurationSec > 0) {
+    return Number((rawSecond % deck.bufferDurationSec).toFixed(3));
+  }
+
+  return Number(Math.min(deck.bufferDurationSec, rawSecond).toFixed(3));
 }
 
 function levelCount(levelCounts: Record<string, number>, level: string): number {
@@ -558,7 +540,10 @@ function LiveWaveformCanvas({
   );
 }
 
-function statusLabel(liveEnabled: boolean): string {
+function statusLabel(liveEnabled: boolean, replayActive: boolean): string {
+  if (replayActive) {
+    return "Replay";
+  }
   return liveEnabled ? "Live" : "Stopped";
 }
 
@@ -585,13 +570,26 @@ export function LiveLogMonitorPanel({
   preferredBaseAssetId: preferredBaseAssetIdProp,
   preferredCompositionId: preferredCompositionIdProp,
   availableTracks,
+  availablePlaylists,
 }: LiveLogMonitorPanelProps) {
   const monitor = useMonitor();
   // Session is live for THIS repo when the global monitor owns it
   const liveEnabled = monitor.session?.repoId === repository.id;
+  const replayActive = liveEnabled && monitor.isPlayback;
+  const playbackPercent =
+    typeof monitor.playbackProgress === "number"
+      ? Math.max(0, Math.min(100, Math.round(monitor.playbackProgress * 100)))
+      : null;
+  const playbackWindowLabel =
+    replayActive &&
+    monitor.playbackEventIndex !== null &&
+    monitor.playbackEventCount !== null
+      ? `${monitor.playbackEventIndex}/${monitor.playbackEventCount}`
+      : null;
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const masterGainRef = useRef<GainNode | null>(null);
+  const backgroundGainRef = useRef<GainNode | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sampleBuffersRef = useRef(new Map<string, AudioBuffer>());
   const [masterVolume, setMasterVolume] = useState(0.8);
@@ -599,22 +597,32 @@ export function LiveLogMonitorPanel({
   const [processCommand, setProcessCommand] = useState("");
   const [wsUrl, setWsUrl] = useState("ws://");
   const [httpUrl, setHttpUrl] = useState("http://");
-  const [selectedGenreId, setSelectedGenreId] = useState(
-    () => loadMonitorPrefs(repository.id)?.selectedGenreId ?? musicStyleCatalog.defaultTrackMusicStyleId,
+  const [journaldUnit, setJournaldUnit] = useState("");
+  const [selectedStyleProfileId, setSelectedStyleProfileId] = useState(
+    () => loadMonitorPrefs(repository.id)?.selectedStyleProfileId ?? DEFAULT_STYLE_PROFILE_ID,
   );
-  const [selectedPresetId, setSelectedPresetId] = useState(
-    () => loadMonitorPrefs(repository.id)?.selectedPresetId ?? "balanced",
+  const [selectedMutationProfileId, setSelectedMutationProfileId] = useState(
+    () => loadMonitorPrefs(repository.id)?.selectedMutationProfileId ?? DEFAULT_MUTATION_PROFILE_ID,
   );
-  const [referencePlaylistIds, setReferencePlaylistIds] = useState<string[]>(
-    () => loadMonitorPrefs(repository.id)?.referencePlaylistIds ?? [],
+  const [basePlaylist, setBasePlaylist] = useState<BaseTrackPlaylist | null>(
+    () => loadMonitorPrefs(repository.id)?.basePlaylist ?? createBasePlaylist([]),
   );
   const [pendingAddTrackId, setPendingAddTrackId] = useState("");
+  const [pendingLoadPlaylistId, setPendingLoadPlaylistId] = useState("");
   const beatClockRef = useRef<BeatClock | null>(null);
   const beatLooperRef = useRef<BeatLooperState | null>(null);
-  const backgroundAudioRef = useRef<AudioBufferSourceNode | null>(null);
+  const backgroundDeckRef = useRef<BackgroundDeckState | null>(null);
+  const backgroundTransitionTimerRef = useRef<number | null>(null);
+  const backgroundBufferCacheRef = useRef(new Map<string, Promise<AudioBuffer>>());
   const filterNodeRef = useRef<BiquadFilterNode | null>(null);
   const [beatClockBpm, setBeatClockBpm] = useState<number | null>(null);
+  // Bounce buffer: accumulates voiced cues per poll window (not state — no re-render)
+  const bounceCuesRef = useRef<RoutedLiveCue[][]>([]);
+  const [bounceWindowCount, setBounceWindowCount] = useState(0);
   const [beatLooperActive, setBeatLooperActive] = useState(false);
+  const [backgroundNowPlayingId, setBackgroundNowPlayingId] = useState<string | null>(null);
+  const [backgroundTransitionPlan, setBackgroundTransitionPlan] =
+    useState<PlaylistTransitionPlan | null>(null);
   const knownComponentsRef = useRef<string[]>([]);
   const [knownComponents, setKnownComponents] = useState<string[]>([]);
   const [componentOverrides, setComponentOverrides] = useState<Map<string, ComponentOverride>>(
@@ -634,6 +642,11 @@ export function LiveLogMonitorPanel({
   const [recentCues, setRecentCues] = useState<RoutedLiveCue[]>([]);
   const [recentVoices, setRecentVoices] = useState<ArrangementVoice[]>([]);
   const [recentMarkers, setRecentMarkers] = useState<LiveLogMarker[]>([]);
+  const [recentExplanations, setRecentExplanations] = useState<
+    LiveMutationExplanation[]
+  >([]);
+  const [selectedExplanationId, setSelectedExplanationId] = useState<string | null>(null);
+  const [backgroundPlayheadSecond, setBackgroundPlayheadSecond] = useState<number>(0);
   const [recentWarnings, setRecentWarnings] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
@@ -642,7 +655,83 @@ export function LiveLogMonitorPanel({
     availableBaseAssets.find((entry) => entry.id === sceneBaseAssetId) ?? null;
   const selectedSceneComposition =
     availableCompositions.find((entry) => entry.id === sceneCompositionId) ?? null;
-  const playlistAnchors = referencePlaylistIds
+  const selectedStyleProfile = resolveStyleProfile(selectedStyleProfileId);
+  const selectedMutationProfile = resolveMutationProfile(selectedMutationProfileId);
+  const playableBaseTracks = resolvePlaylistTracks(basePlaylist, availableTracks).filter((track) =>
+    Boolean(resolvePlayableTrackPath(track)),
+  );
+  const playableBaseTrackIdsKey = playableBaseTracks.map((track) => track.id).join("|");
+  const backgroundNowPlayingTrack =
+    backgroundNowPlayingId
+      ? availableTracks.find((track) => track.id === backgroundNowPlayingId) ?? null
+      : null;
+  const backgroundTransitionNextTrack =
+    backgroundTransitionPlan?.nextTrackId
+      ? availableTracks.find((track) => track.id === backgroundTransitionPlan.nextTrackId) ?? null
+      : null;
+  const traceWaveformTrack = backgroundNowPlayingTrack ?? playableBaseTracks[0] ?? null;
+  const traceWaveformExplanations = traceWaveformTrack
+    ? recentExplanations.filter(
+        (explanation) =>
+          explanation.trackId === traceWaveformTrack.id &&
+          typeof explanation.trackSecond === "number",
+      )
+    : [];
+  const selectedTraceExplanation =
+    traceWaveformExplanations.find((explanation) => explanation.id === selectedExplanationId) ??
+    null;
+  const traceWaveformCues = toLiveMutationVisualizationCues(traceWaveformExplanations);
+  const replaySessionId = replayActive ? monitor.session?.persistedSessionId ?? null : null;
+  const currentReplayExplanation =
+    replayActive && monitor.playbackEventIndex !== null
+      ? (selectedTraceExplanation?.replayWindowIndex === monitor.playbackEventIndex
+          ? selectedTraceExplanation
+          : recentExplanations.find(
+              (explanation) => explanation.replayWindowIndex === monitor.playbackEventIndex,
+            )) ?? null
+      : null;
+  const {
+    sortedSessionBookmarks,
+    activeReplayBookmark,
+    bookmarkLabelDraft,
+    setBookmarkLabelDraft,
+    bookmarkNoteDraft,
+    setBookmarkNoteDraft,
+    bookmarkTagDraft,
+    setBookmarkTagDraft,
+    bookmarkStyleProfileIdDraft,
+    setBookmarkStyleProfileIdDraft,
+    bookmarkMutationProfileIdDraft,
+    setBookmarkMutationProfileIdDraft,
+    bookmarkBusy,
+    bookmarkError,
+    captureCurrentScene,
+    saveReplayBookmark,
+    deleteReplayBookmark,
+  } = useReplayBookmarks({
+    replaySessionId,
+    replayActive,
+    replayWindowIndex: monitor.playbackEventIndex,
+    selectedStyleProfileId,
+    selectedMutationProfileId,
+    currentReplayExplanation: currentReplayExplanation
+      ? {
+          eventIndex: currentReplayExplanation.eventIndex,
+          trackId: currentReplayExplanation.trackId,
+          trackTitle: currentReplayExplanation.trackTitle,
+          trackSecond: currentReplayExplanation.trackSecond,
+        }
+      : null,
+    fallbackTrackId: traceWaveformTrack?.id ?? null,
+    fallbackTrackTitle: traceWaveformTrack ? getTrackTitle(traceWaveformTrack) : null,
+    fallbackTrackSecond:
+      typeof backgroundPlayheadSecond === "number" ? backgroundPlayheadSecond : null,
+  });
+  const replayFeedbackRecommendation = useReplayFeedbackRecommendation(sortedSessionBookmarks, {
+    currentStyleProfileId: selectedStyleProfileId,
+    currentMutationProfileId: selectedMutationProfileId,
+  });
+  const playlistAnchors = (basePlaylist?.trackIds ?? [])
     .map((id) => availableTracks.find((t) => t.id === id))
     .filter((t): t is LibraryTrack => t !== undefined)
     .map(deriveReferenceAnchor);
@@ -651,10 +740,49 @@ export function LiveLogMonitorPanel({
   const scene = resolveLiveSonificationScene(
     selectedSceneBaseAsset,
     selectedSceneComposition,
-    selectedGenreId,
-    selectedPresetId,
+    selectedStyleProfileId,
+    selectedMutationProfileId,
     referenceAnchor,
   );
+  const baseTrackCount = basePlaylist?.trackIds.length ?? 0;
+  const hasBaseListeningBed = baseTrackCount > 0;
+  const trimmedProcessCommand = processCommand.trim();
+  const trimmedWsUrl = wsUrl.trim();
+  const trimmedHttpUrl = httpUrl.trim();
+  const trimmedJournaldUnit = journaldUnit.trim();
+  const adapterConfigured =
+    adapterKind === "process"
+      ? trimmedProcessCommand.length > 0
+      : adapterKind === "websocket"
+        ? trimmedWsUrl.length > 0 && trimmedWsUrl !== "ws://"
+        : adapterKind === "http-poll"
+          ? trimmedHttpUrl.length > 0 && trimmedHttpUrl !== "http://"
+          : true;
+  const activeAdapterKind = monitor.session?.repoId === repository.id
+    ? monitor.session?.adapterKind ?? adapterKind
+    : adapterKind;
+  const activeAdapterLabel = getStreamAdapterLabel(activeAdapterKind);
+  const adapterDescription = getStreamAdapterDescription(adapterKind);
+  const adapterTarget =
+    adapterKind === "process"
+      ? trimmedProcessCommand || "Command not configured yet."
+      : adapterKind === "websocket"
+        ? trimmedWsUrl || "WebSocket URL required."
+        : adapterKind === "http-poll"
+          ? trimmedHttpUrl || "HTTP URL required."
+          : adapterKind === "journald"
+            ? trimmedJournaldUnit
+              ? `Unit filter: ${trimmedJournaldUnit}`
+              : "Following all local systemd units."
+            : repository.sourcePath;
+  const cueEnginePreviewLabel =
+    sampleStatus === "ready"
+      ? scene.sampleSourceCount > 1
+        ? "Base sample pack"
+        : "Base sample"
+      : sampleStatus === "loading"
+        ? "Loading sample"
+        : "Internal synth";
 
   useEffect(() => {
     if (
@@ -776,6 +904,9 @@ export function LiveLogMonitorPanel({
     setRecentCues([]);
     setRecentVoices([]);
     setRecentMarkers([]);
+    setRecentExplanations([]);
+    setSelectedExplanationId(null);
+    setBackgroundPlayheadSecond(0);
     setRecentWarnings([]);
     setError(null);
     knownComponentsRef.current = [];
@@ -786,17 +917,30 @@ export function LiveLogMonitorPanel({
       preferredCompositionId(availableCompositions, preferredCompositionIdProp),
     );
     const nextPrefs = loadMonitorPrefs(repository.id);
-    setReferencePlaylistIds(nextPrefs?.referencePlaylistIds ?? []);
-    setSelectedGenreId(nextPrefs?.selectedGenreId ?? musicStyleCatalog.defaultTrackMusicStyleId);
-    setSelectedPresetId(nextPrefs?.selectedPresetId ?? "balanced");
+    setBasePlaylist(nextPrefs?.basePlaylist ?? createBasePlaylist([]));
+    setSelectedStyleProfileId(
+      nextPrefs?.selectedStyleProfileId ?? DEFAULT_STYLE_PROFILE_ID,
+    );
+    setSelectedMutationProfileId(
+      nextPrefs?.selectedMutationProfileId ?? DEFAULT_MUTATION_PROFILE_ID,
+    );
     setPendingAddTrackId("");
+    setPendingLoadPlaylistId("");
     beatClockRef.current = null;
     setBeatClockBpm(null);
+    setBackgroundNowPlayingId(null);
+    setBackgroundTransitionPlan(null);
     stopBeatLooper(beatLooperRef);
     setBeatLooperActive(false);
-  }, [repository.id]);useEffect(() => {
-    saveMonitorPrefs(repository.id, { referencePlaylistIds, selectedGenreId, selectedPresetId });
-  }, [repository.id, referencePlaylistIds, selectedGenreId, selectedPresetId]);
+  }, [repository.id]);
+
+  useEffect(() => {
+    saveMonitorPrefs(repository.id, {
+      basePlaylist,
+      selectedStyleProfileId,
+      selectedMutationProfileId,
+    });
+  }, [repository.id, basePlaylist, selectedStyleProfileId, selectedMutationProfileId]);
 
   // Keep master gain in sync with the volume slider
   useEffect(() => {
@@ -807,6 +951,27 @@ export function LiveLogMonitorPanel({
       );
     }
   }, [masterVolume]);
+
+  useEffect(() => {
+    const context = audioContextRef.current;
+    if (!context) {
+      return;
+    }
+
+    if (backgroundGainRef.current) {
+      backgroundGainRef.current.gain.setValueAtTime(
+        selectedStyleProfile.backgroundGain,
+        context.currentTime,
+      );
+    }
+
+    if (filterNodeRef.current) {
+      filterNodeRef.current.frequency.setValueAtTime(
+        selectedStyleProfile.filterCeilingHz,
+        context.currentTime,
+      );
+    }
+  }, [selectedStyleProfile.backgroundGain, selectedStyleProfile.filterCeilingHz]);
 
   const ensureAudioReady = useEffectEvent(async (): Promise<AudioContext | null> => {
     if (!audioContextRef.current) {
@@ -851,58 +1016,367 @@ export function LiveLogMonitorPanel({
     }
   });
 
-  const ensureBackgroundAudio = useEffectEvent(async (context: AudioContext) => {
-    if (backgroundAudioRef.current || referencePlaylistIds.length === 0) {
+  const clearBackgroundTransition = useCallback(() => {
+    if (backgroundTransitionTimerRef.current !== null) {
+      window.clearTimeout(backgroundTransitionTimerRef.current);
+      backgroundTransitionTimerRef.current = null;
+    }
+  }, []);
+
+  const stopBackgroundDeck = useEffectEvent((fadeOutSeconds = 0.18) => {
+    clearBackgroundTransition();
+
+    const context = audioContextRef.current;
+    const deck = backgroundDeckRef.current;
+    if (!context || !deck) {
+      backgroundDeckRef.current = null;
+      setBackgroundNowPlayingId(null);
+      setBackgroundTransitionPlan(null);
       return;
     }
 
-    const trackId = referencePlaylistIds[0];
-    const track = availableTracks.find((t) => t.id === trackId);
-    if (!track) return;
-
-    // Use convertFileSrc + fetch instead of readAudioBytes (base64 IPC) to avoid
-    // blocking the main thread with a large synchronous atob + charCodeAt loop.
-    const audioPath = track.storagePath ?? track.sourcePath;
-    const url = isTauri() ? convertFileSrc(audioPath) : null;
-    if (!url) return;
-
+    const now = context.currentTime;
+    deck.gain.gain.cancelScheduledValues(now);
+    deck.gain.gain.setValueAtTime(Math.max(0.0001, deck.gain.gain.value), now);
+    deck.gain.gain.linearRampToValueAtTime(0.0001, now + fadeOutSeconds);
     try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status} fetching guide track`);
-      }
-      const arrayBuffer = await response.arrayBuffer();
-      const audioBuffer = await context.decodeAudioData(arrayBuffer);
+      deck.source.stop(now + fadeOutSeconds + 0.06);
+    } catch {
+      // ignore stop races
+    }
 
-      const source = context.createBufferSource();
-      source.buffer = audioBuffer;
-      source.loop = true;
+    backgroundDeckRef.current = null;
+    setBackgroundNowPlayingId(null);
+    setBackgroundTransitionPlan(null);
+  });
 
+  const ensureBackgroundBus = useEffectEvent((context: AudioContext) => {
+    let createdFilter = false;
+    let createdGain = false;
+
+    if (!filterNodeRef.current) {
       const filter = context.createBiquadFilter();
       filter.type = "lowpass";
-      filter.frequency.setValueAtTime(22000, context.currentTime);
+      filter.frequency.setValueAtTime(
+        selectedStyleProfile.filterCeilingHz,
+        context.currentTime,
+      );
       filterNodeRef.current = filter;
+      createdFilter = true;
+    }
 
-      source.connect(filter);
-      filter.connect(masterGainRef.current ?? context.destination);
+    if (!backgroundGainRef.current) {
+      const backgroundGain = context.createGain();
+      backgroundGain.gain.setValueAtTime(
+        selectedStyleProfile.backgroundGain,
+        context.currentTime,
+      );
+      backgroundGain.connect(masterGainRef.current ?? context.destination);
+      backgroundGainRef.current = backgroundGain;
+      createdGain = true;
+    }
 
-      source.start(0);
-      backgroundAudioRef.current = source;
-    } catch (err) {
-      setRecentWarnings((c) => [`Failed to start guide track: ${toMessage(err)}`, ...c]);
+    if ((createdFilter || createdGain) && filterNodeRef.current && backgroundGainRef.current) {
+      filterNodeRef.current.connect(backgroundGainRef.current);
     }
   });
+
+  const loadBackgroundBuffer = useEffectEvent(
+    async (context: AudioContext, track: LibraryTrack): Promise<AudioBuffer | null> => {
+      const audioPath = resolvePlayableTrackPath(track);
+      if (!audioPath) {
+        return null;
+      }
+
+      const url = isTauri() ? convertFileSrc(audioPath) : null;
+      if (!url) {
+        return null;
+      }
+
+      let cached = backgroundBufferCacheRef.current.get(audioPath);
+      if (!cached) {
+        cached = (async () => {
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status} fetching guide track`);
+          }
+          const arrayBuffer = await response.arrayBuffer();
+          return context.decodeAudioData(arrayBuffer);
+        })();
+        backgroundBufferCacheRef.current.set(audioPath, cached);
+      }
+
+      try {
+        return await cached;
+      } catch (error) {
+        backgroundBufferCacheRef.current.delete(audioPath);
+        throw error;
+      }
+    },
+  );
+
+  const scheduleBackgroundTransition = useEffectEvent(
+    (context: AudioContext, deck: BackgroundDeckState) => {
+      clearBackgroundTransition();
+
+      if (playableBaseTracks.length <= 1) {
+        setBackgroundTransitionPlan(null);
+        return;
+      }
+
+      const currentTrack = playableBaseTracks[deck.trackIndex] ?? null;
+      const nextIndex = resolveNextPlaylistIndex(
+        deck.trackIndex,
+        playableBaseTracks.length,
+      );
+      if (!currentTrack || nextIndex === null) {
+        setBackgroundTransitionPlan(null);
+        return;
+      }
+
+      const nextTrack = playableBaseTracks[nextIndex] ?? null;
+      if (!nextTrack) {
+        setBackgroundTransitionPlan(null);
+        return;
+      }
+
+      const transitionPlan = resolvePlaylistTransitionPlan(currentTrack, nextTrack, {
+        styleProfile: {
+          playlistCrossfadeSeconds: selectedStyleProfile.playlistCrossfadeSeconds,
+          transitionFeel: selectedStyleProfile.transitionFeel,
+        },
+        mutationProfile: {
+          transitionTightness: selectedMutationProfile.transitionTightness,
+        },
+      });
+      setBackgroundTransitionPlan(transitionPlan);
+
+      const delayMs = resolvePhraseAlignedTransitionDelayMs({
+        track: currentTrack,
+        entrySecond: deck.entrySecond,
+        playbackRate: deck.playbackRate,
+        crossfadeSeconds: transitionPlan.crossfadeSeconds,
+        phraseSpanBeats: transitionPlan.phraseSpanBeats,
+        fallbackDurationSeconds: deck.durationSec,
+      });
+
+      backgroundTransitionTimerRef.current = window.setTimeout(() => {
+        void startBackgroundDeck(context, nextIndex, transitionPlan);
+      }, delayMs);
+    },
+  );
+
+  const startBackgroundDeck = useEffectEvent(
+    async (
+      context: AudioContext,
+      trackIndex: number,
+      transitionPlan?: PlaylistTransitionPlan | null,
+    ) => {
+      const track = playableBaseTracks[trackIndex] ?? null;
+      if (!track) {
+        return;
+      }
+
+      try {
+        ensureBackgroundBus(context);
+        const filter = filterNodeRef.current;
+        if (!filter) {
+          return;
+        }
+
+        const buffer = await loadBackgroundBuffer(context, track);
+        if (!buffer) {
+          return;
+        }
+
+        const previousDeck = backgroundDeckRef.current;
+        const startAt = context.currentTime + 0.02;
+        const nextTransitionPlan =
+          transitionPlan ??
+          (playableBaseTracks.length > 1
+            ? resolvePlaylistStartPlan(track, {
+                styleProfile: {
+                  playlistCrossfadeSeconds: selectedStyleProfile.playlistCrossfadeSeconds,
+                  transitionFeel: selectedStyleProfile.transitionFeel,
+                },
+              })
+            : resolvePlaylistStartPlan(track, {
+                styleProfile: {
+                  playlistCrossfadeSeconds: BACKGROUND_FADE_IN_SECONDS,
+                  transitionFeel: "steady",
+                },
+              }));
+        const fadeSeconds =
+          playableBaseTracks.length > 1
+            ? Math.max(0.4, nextTransitionPlan.crossfadeSeconds)
+            : BACKGROUND_FADE_IN_SECONDS;
+        const targetGain = selectedStyleProfile.backgroundGain;
+        const entrySecond =
+          playableBaseTracks.length > 1
+            ? Math.min(
+                nextTransitionPlan.entrySecond,
+                Math.max(0, buffer.duration - 0.25),
+              )
+            : 0;
+        const playbackRate =
+          playableBaseTracks.length > 1
+            ? nextTransitionPlan.tempoRatio
+            : 1;
+
+        const source = context.createBufferSource();
+        source.buffer = buffer;
+        source.loop = playableBaseTracks.length === 1;
+        source.playbackRate.setValueAtTime(playbackRate, startAt);
+
+        const trackGain = context.createGain();
+        trackGain.gain.setValueAtTime(0.0001, startAt);
+
+        source.connect(trackGain);
+        trackGain.connect(filter);
+        source.start(startAt, entrySecond);
+        trackGain.gain.linearRampToValueAtTime(targetGain, startAt + fadeSeconds);
+
+        if (previousDeck) {
+          previousDeck.gain.gain.cancelScheduledValues(startAt);
+          previousDeck.gain.gain.setValueAtTime(
+            Math.max(0.0001, previousDeck.gain.gain.value),
+            startAt,
+          );
+          previousDeck.gain.gain.linearRampToValueAtTime(
+            0.0001,
+            startAt + fadeSeconds,
+          );
+          try {
+            previousDeck.source.stop(startAt + fadeSeconds + 0.08);
+          } catch {
+            // ignore stop races
+          }
+        }
+
+        const nextDeck: BackgroundDeckState = {
+          source,
+          gain: trackGain,
+          trackId: track.id,
+          trackIndex,
+          startedAtContextTime: startAt,
+          bufferDurationSec: buffer.duration,
+          durationSec: Math.max(0.25, (buffer.duration - entrySecond) / playbackRate),
+          entrySecond,
+          playbackRate,
+          looping: playableBaseTracks.length === 1,
+        };
+
+        backgroundDeckRef.current = nextDeck;
+        setBackgroundNowPlayingId(track.id);
+        setBackgroundTransitionPlan(
+          transitionPlan && transitionPlan.nextTrackId === track.id ? transitionPlan : null,
+        );
+        setBackgroundPlayheadSecond(entrySecond);
+        scheduleBackgroundTransition(context, nextDeck);
+      } catch (err) {
+        setRecentWarnings((current) => [
+          `Failed to start guide track: ${toMessage(err)}`,
+          ...current,
+        ].slice(0, MAX_RECENT_WARNINGS));
+      }
+    },
+  );
+
+  const ensureBackgroundAudio = useEffectEvent(async (context: AudioContext) => {
+    if (backgroundDeckRef.current || playableBaseTracks.length === 0) {
+      return;
+    }
+    await startBackgroundDeck(context, 0);
+  });
+
+  useEffect(() => {
+    if (!liveEnabled) {
+      return;
+    }
+
+    const context = audioContextRef.current;
+    if (!context || context.state !== "running") {
+      return;
+    }
+
+    const currentDeck = backgroundDeckRef.current;
+    if (playableBaseTracks.length === 0) {
+      stopBackgroundDeck();
+      return;
+    }
+
+    if (playableBaseTracks.length === 1) {
+      const onlyTrack = playableBaseTracks[0];
+      if (
+        !currentDeck ||
+        currentDeck.trackId !== onlyTrack.id ||
+        currentDeck.source.loop !== true
+      ) {
+        stopBackgroundDeck(0.1);
+        void startBackgroundDeck(context, 0);
+      } else {
+        setBackgroundNowPlayingId(onlyTrack.id);
+        setBackgroundTransitionPlan(null);
+      }
+      return;
+    }
+
+    if (!currentDeck) {
+      void startBackgroundDeck(context, 0);
+      return;
+    }
+
+    const currentIndex = playableBaseTracks.findIndex(
+      (track) => track.id === currentDeck.trackId,
+    );
+    if (currentIndex === -1) {
+      stopBackgroundDeck(0.1);
+      void startBackgroundDeck(context, 0);
+      return;
+    }
+
+    const syncedDeck = { ...currentDeck, trackIndex: currentIndex };
+    backgroundDeckRef.current = syncedDeck;
+    setBackgroundNowPlayingId(currentDeck.trackId);
+    scheduleBackgroundTransition(context, syncedDeck);
+  }, [
+    liveEnabled,
+    playableBaseTrackIdsKey,
+    scheduleBackgroundTransition,
+    startBackgroundDeck,
+    stopBackgroundDeck,
+  ]);
 
   const applyLogModulation = useEffectEvent((update: LiveLogStreamUpdate) => {
     const context = audioContextRef.current;
     const filter = filterNodeRef.current;
+    const backgroundGain = backgroundGainRef.current;
     if (!context || !filter) return;
 
     const hasCritical = update.anomalyCount > 0 || (update.levelCounts["ERROR"] ?? 0) > 0;
+    const targetFloorHz = Math.max(
+      220,
+      selectedStyleProfile.filterBaseHz / Math.max(1, selectedMutationProfile.filterSweepMultiplier),
+    );
+    const duckedGain = Math.max(
+      0.12,
+      selectedStyleProfile.backgroundGain - selectedMutationProfile.backgroundDucking,
+    );
     if (hasCritical) {
-      // "Underwater" effect on error
-      filter.frequency.exponentialRampToValueAtTime(350, context.currentTime + 0.1);
-      filter.frequency.exponentialRampToValueAtTime(22000, context.currentTime + 1.2);
+      filter.frequency.exponentialRampToValueAtTime(targetFloorHz, context.currentTime + 0.1);
+      filter.frequency.exponentialRampToValueAtTime(
+        selectedStyleProfile.filterCeilingHz,
+        context.currentTime + 1.2,
+      );
+      if (backgroundGain) {
+        backgroundGain.gain.cancelScheduledValues(context.currentTime);
+        backgroundGain.gain.setValueAtTime(backgroundGain.gain.value, context.currentTime);
+        backgroundGain.gain.linearRampToValueAtTime(duckedGain, context.currentTime + 0.08);
+        backgroundGain.gain.linearRampToValueAtTime(
+          selectedStyleProfile.backgroundGain,
+          context.currentTime + 1.15,
+        );
+      }
     }
   });
 
@@ -914,7 +1388,10 @@ export function LiveLogMonitorPanel({
     const cappedCues = cues.slice(0, preset.maxCuesPerWindow);
 
     // Expand each cue into arrangement voices
-    const voices = resolveArrangementVoices(cappedCues);
+    const voices = resolveArrangementVoices(
+      cappedCues,
+      scene.mutationProfile.arrangementDepth,
+    );
     const voicedCues: RoutedLiveCue[] = voices.map((voice) => ({
       ...voice.cue,
       noteHz: Number((voice.cue.noteHz * voice.noteMultiplier).toFixed(2)),
@@ -931,6 +1408,15 @@ export function LiveLogMonitorPanel({
       playWavBlob(wavBlob);
     } else {
       log.warn("renderCuesToWav returned null for %d voiced cues", voicedCues.length);
+    }
+
+    // ── Accumulate voiced cues for full mix bounce ──
+    if (voicedCues.length > 0) {
+      bounceCuesRef.current = [
+        ...bounceCuesRef.current,
+        voicedCues,
+      ].slice(-MAX_BOUNCE_WINDOWS);
+      setBounceWindowCount(bounceCuesRef.current.length);
     }
 
     // ── Feed AnalyserNode for waveform visualization ──
@@ -1002,6 +1488,23 @@ export function LiveLogMonitorPanel({
     const routedCues = update.sonificationCues.map((cue, index) =>
       routeCueThroughScene(cue, scene, index, knownComponentsRef.current, componentOverrides),
     );
+    const currentDeck = backgroundDeckRef.current;
+    const currentTrackSecond = resolveBackgroundTrackSecond(audioContextRef.current, currentDeck);
+    const currentTrack =
+      currentDeck
+        ? availableTracks.find((track) => track.id === currentDeck.trackId) ?? null
+        : null;
+    const nextExplanations = deriveLiveMutationExplanations(
+      routedCues,
+      update.anomalyMarkers,
+      {
+        limit: MAX_RECENT_EXPLANATIONS,
+        replayWindowIndex: update.replayWindowIndex ?? null,
+        trackId: currentTrack?.id ?? null,
+        trackTitle: currentTrack ? getTrackTitle(currentTrack) : null,
+        trackSecond: currentTrackSecond,
+      },
+    );
 
     startTransition(() => {
       setLastUpdate(update);
@@ -1019,7 +1522,24 @@ export function LiveLogMonitorPanel({
         ...update.anomalyMarkers.slice().reverse(),
         ...current,
       ].slice(0, MAX_RECENT_MARKERS));
-      setRecentVoices(resolveArrangementVoices(routedCues).slice(0, 12));
+      setRecentExplanations((current) => [
+        ...nextExplanations.slice().reverse(),
+        ...current,
+      ].slice(0, MAX_RECENT_EXPLANATIONS));
+      if (typeof currentTrackSecond === "number") {
+        setBackgroundPlayheadSecond(currentTrackSecond);
+      }
+      if (nextExplanations[0]) {
+        setSelectedExplanationId((current) =>
+          monitor.isPlayback ? nextExplanations[0]!.id : current ?? nextExplanations[0]!.id,
+        );
+      }
+      setRecentVoices(
+        resolveArrangementVoices(
+          routedCues,
+          scene.mutationProfile.arrangementDepth,
+        ).slice(0, 12),
+      );
     });
 
     if (update.hasData) {
@@ -1067,8 +1587,13 @@ export function LiveLogMonitorPanel({
     setRecentCues([]);
     setRecentVoices([]);
     setRecentMarkers([]);
+    setRecentExplanations([]);
+    setSelectedExplanationId(null);
+    setBackgroundPlayheadSecond(0);
     setError(null);
     setIsStarting(true);
+    bounceCuesRef.current = [];
+    setBounceWindowCount(0);
 
     // Prime the AudioContext BEFORE any other async operation so the browser
     // still recognises this as a trusted user gesture. WebKit requires
@@ -1136,6 +1661,15 @@ export function LiveLogMonitorPanel({
         label: repository.title,
         httpUrl: trimmedHttpUrl,
       };
+    } else if (adapterKind === "journald") {
+      // journaldUnit is the optional systemd unit filter — empty means follow all units
+      const unit = journaldUnit.trim();
+      input = {
+        sessionId,
+        adapterKind: "journald",
+        source: unit || "system",
+        label: unit ? `journald: ${unit}` : "journald: all units",
+      };
     } else {
       input = {
         sessionId,
@@ -1145,7 +1679,12 @@ export function LiveLogMonitorPanel({
       };
     }
 
-    await monitor.startSession(repository, input);
+    const started = await monitor.startSession(repository, input);
+    if (!started) {
+      throw new Error(
+        "Maia could not start the selected live source in the current runtime.",
+      );
+    }
 
     // AudioContext was already created above — just read the ref
     const anchorBpm = referenceAnchor?.bpm ?? null;
@@ -1178,16 +1717,22 @@ export function LiveLogMonitorPanel({
 
   function handleStop() {
     void monitor.stopSession();
+    setRecentExplanations([]);
+    setSelectedExplanationId(null);
+    setBackgroundPlayheadSecond(0);
     beatClockRef.current = null;
     setBeatClockBpm(null);
     stopBeatLooper(beatLooperRef);
     setBeatLooperActive(false);
-
-    if (backgroundAudioRef.current) {
-      try { backgroundAudioRef.current.stop(); } catch {}
-      backgroundAudioRef.current = null;
+    stopBackgroundDeck();
+    if (backgroundGainRef.current) {
+      backgroundGainRef.current.disconnect();
+      backgroundGainRef.current = null;
     }
-    filterNodeRef.current = null;
+    if (filterNodeRef.current) {
+      filterNodeRef.current.disconnect();
+      filterNodeRef.current = null;
+    }
 
     if (masterGainRef.current) {
       masterGainRef.current.disconnect();
@@ -1199,6 +1744,121 @@ export function LiveLogMonitorPanel({
     }
   }
 
+  function handleBounce() {
+    const windows = bounceCuesRef.current;
+    if (windows.length === 0) return;
+    const blob = renderBounceWav(windows, masterVolume);
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const durationS = (windows.length * BOUNCE_WINDOW_S).toFixed(0);
+    a.href = url;
+    a.download = `maia-bounce-${repository.title.replace(/[^a-z0-9]/gi, "_")}-${durationS}s.wav`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+
+  function handleApplyBookmarkSuggestion(bookmark: SessionBookmark) {
+    if (bookmark.suggestedStyleProfileId) {
+      setSelectedStyleProfileId(bookmark.suggestedStyleProfileId);
+    }
+
+    if (bookmark.suggestedMutationProfileId) {
+      setSelectedMutationProfileId(bookmark.suggestedMutationProfileId);
+    }
+  }
+
+  function handleApplyReplayFeedbackRecommendation() {
+    if (!replayFeedbackRecommendation) {
+      return;
+    }
+
+    const nextPrefs = persistReplayFeedbackRecommendation(
+      repository.id,
+      {
+        basePlaylist,
+        selectedStyleProfileId,
+        selectedMutationProfileId,
+      },
+      replayFeedbackRecommendation,
+    );
+
+    setSelectedStyleProfileId(nextPrefs.selectedStyleProfileId);
+    setSelectedMutationProfileId(nextPrefs.selectedMutationProfileId);
+  }
+
+  const handleSequencerStepFire = useEffectEvent(
+    (firings: Array<{ track: ArrangementTrack; step: number; humanizeOffsetMs: number }>) => {
+      // Group firings by their delay bucket (0 = immediate, otherwise setTimeout)
+      const immediate: typeof firings = [];
+      const deferred: typeof firings = [];
+      for (const f of firings) {
+        if (f.humanizeOffsetMs <= 4) immediate.push(f);
+        else deferred.push(f);
+      }
+
+      function playFirings(batch: typeof firings) {
+        const cues: RoutedLiveCue[] = batch.map(({ track }, i) => {
+          const cfg = SEQ_TRACK_CONFIG[track];
+          return {
+            id: `seq-${track}-${i}`,
+            eventIndex: i,
+            level: "info" as const,
+            component: "",
+            excerpt: "",
+            noteHz: cfg.noteHz,
+            durationMs: cfg.durationMs,
+            gain: cfg.gainFactor,
+            waveform: cfg.waveform,
+            accent: "none" as const,
+            pan: 0,
+            routeKey: "info" as const,
+            routeLabel: track,
+            stemLabel: "",
+            sectionLabel: "",
+            focus: "",
+            samplePath: null,
+            sampleLabel: null,
+          };
+        });
+        const blob = renderCuesToWav(cues, masterVolume);
+        if (blob) playWavBlob(blob);
+      }
+
+      if (immediate.length > 0) playFirings(immediate);
+
+      // Each deferred firing gets its own timed WAV render so the offset is audible
+      for (const f of deferred) {
+        const delay = f.humanizeOffsetMs;
+        setTimeout(() => playFirings([f]), delay);
+      }
+    },
+  );
+
+  function handleJumpToBookmark(bookmark: SessionBookmark) {
+    if (monitor.playbackEventCount === null) {
+      return;
+    }
+
+    monitor.pausePlayback();
+    monitor.seekPlaybackProgress(
+      resolveReplayProgressForWindow(
+        bookmark.replayWindowIndex,
+        monitor.playbackEventCount,
+      ),
+    );
+
+    const bookmarkExplanation = recentExplanations.find(
+      (explanation) => explanation.replayWindowIndex === bookmark.replayWindowIndex,
+    );
+    if (bookmarkExplanation) {
+      setSelectedExplanationId(bookmarkExplanation.id);
+    }
+    if (typeof bookmark.trackSecond === "number") {
+      setBackgroundPlayheadSecond(bookmark.trackSecond);
+    }
+  }
+
   const currentLevelCounts = lastUpdate?.levelCounts ?? {};
 
   if (!expanded && !liveEnabled) {
@@ -1206,11 +1866,20 @@ export function LiveLogMonitorPanel({
       <section className="panel live-monitor-cta">
         <div className="live-monitor-cta-content">
           <div>
-            <h2>Live log monitor</h2>
-            <p className="support-copy">Sonify this log file in real time — maps new log lines to musical cues via Web Audio.</p>
+            <h2>Live monitor deck</h2>
+            <p className="support-copy">
+              Choose a listening bed, pick a live feed, and let Maia turn this
+              source into a background-safe monitoring mix.
+            </p>
+            <small className="monitor-cta-meta">
+              {hasBaseListeningBed
+                ? `${baseTrackCount} base track${baseTrackCount === 1 ? "" : "s"} armed`
+                : "No base playlist armed yet"}
+              {` · ${selectedStyleProfile.label} · ${selectedMutationProfile.label}`}
+            </small>
           </div>
           <button type="button" className="action" onClick={() => setExpanded(true)}>
-            Set up live session
+            Open monitor deck
           </button>
         </div>
       </section>
@@ -1221,116 +1890,401 @@ export function LiveLogMonitorPanel({
     <section className="panel waveform-panel">
       <div className="panel-header">
         <div>
-          <h2>Live log monitor</h2>
+          <h2>Live monitor deck</h2>
           <p className="support-copy">
-            Polls the log file, maps new lines to musical cues, and plays them with Web Audio.
+            {replayActive
+              ? "Replays a saved session through the same mutation engine so the team can revisit how the source bent the base groove."
+              : "Listens to a live feed, bends the selected listening bed, and keeps new operational windows audible through Web Audio."}
           </p>
         </div>
         <div className="live-log-toolbar">
           <span className={`live-log-badge ${liveEnabled ? "live" : "idle"}`}>
-            {statusLabel(liveEnabled)}
+            {statusLabel(liveEnabled, replayActive)}
           </span>
-          {!liveEnabled ? (
-            <>
-              <select
-                className="compact-select"
-                value={selectedGenreId}
-                onChange={(e) => setSelectedGenreId(e.target.value)}
-                title="Instrumental genre — shapes oscillator palette, pitch register, and dynamics"
-              >
-                {musicStyleCatalog.musicStyles.map((style) => (
-                  <option key={style.id} value={style.id}>
-                    {style.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="compact-select"
-                value={selectedPresetId}
-                onChange={(e) => setSelectedPresetId(e.target.value)}
-                title="Sequencer preset — controls cue density, gain spread, and scheduling mode"
-              >
-                <option value="sparse">Sparse</option>
-                <option value="balanced">Balanced</option>
-                <option value="cascade">Cascade</option>
-                <option value="beat-locked">Beat-locked</option>
-              </select>
-              {availableTracks.length > 0 ? (
-                <>
-                  <select
-                    className="compact-select"
-                    value={pendingAddTrackId}
-                    onChange={(e) => setPendingAddTrackId(e.target.value)}
-                    title="Pick a track to add to the reference playlist"
-                  >
-                    <option value="">Add reference track…</option>
-                    {availableTracks
-                      .filter((t) => !referencePlaylistIds.includes(t.id))
-                      .map((track) => (
-                        <option key={track.id} value={track.id}>
-                          {track.title}
-                          {track.bpm !== null ? ` · ${track.bpm.toFixed(0)} BPM` : ""}
-                        </option>
-                      ))}
-                  </select>
-                  <button
-                    type="button"
-                    className="compact-action"
-                    disabled={!pendingAddTrackId}
-                    onClick={() => {
-                      if (!pendingAddTrackId) {
-                        return;
-                      }
-                      setReferencePlaylistIds((ids) =>
-                        ids.includes(pendingAddTrackId) ? ids : [...ids, pendingAddTrackId],
-                      );
-                      setPendingAddTrackId("");
-                    }}
-                  >
-                    + Add
-                  </button>
-                </>
-              ) : null}
-              <select
-                className="compact-select"
-                value={adapterKind}
-                onChange={(e) => setAdapterKind(e.target.value as StreamAdapterKind)}
-              >
-                <option value="file">File tail</option>
-                <option value="process">Process stdout</option>
-                <option value="websocket">WebSocket</option>
-                <option value="http-poll">HTTP poll</option>
-              </select>
-              {adapterKind === "websocket" ? (
-                <input
-                  className="compact-input compact-input--url"
-                  placeholder="ws://host:port/path"
-                  value={wsUrl}
-                  onChange={(e) => setWsUrl(e.target.value)}
-                  aria-label="WebSocket URL"
-                />
-              ) : adapterKind === "http-poll" ? (
-                <input
-                  className="compact-input compact-input--url"
-                  placeholder="http://host:port/logs/stream"
-                  value={httpUrl}
-                  onChange={(e) => setHttpUrl(e.target.value)}
-                  aria-label="HTTP poll URL"
-                />
-              ) : null}
-            </>
-          ) : null}
+          <span className="live-log-badge">{activeAdapterLabel}</span>
           {liveEnabled ? (
             <button type="button" className="secondary-action" onClick={handleStop}>
-              Stop live tail
+              {replayActive ? "Exit replay" : "Stop monitor"}
             </button>
-          ) : (
-            <button type="button" className="action" disabled={isStarting} onClick={() => void handleStart()}>
-              {isStarting ? <><span className="spin-ring" aria-hidden="true" /> Starting...</> : "Start live tail"}
+          ) : null}
+          {bounceWindowCount > 0 ? (
+            <button
+              type="button"
+              className="secondary-action"
+              onClick={handleBounce}
+              title={`Bounce ${(bounceWindowCount * BOUNCE_WINDOW_S).toFixed(0)}s of session audio to WAV`}
+            >
+              ↓ Bounce {(bounceWindowCount * BOUNCE_WINDOW_S).toFixed(0)}s
             </button>
-          )}
+          ) : null}
         </div>
       </div>
+
+      {!liveEnabled ? (
+        <>
+          <div className="workflow-strip" aria-hidden="true">
+            <div className="workflow-step-wrap">
+              <span className={`workflow-step${hasBaseListeningBed ? " active" : ""}`}>
+                Base Bed
+              </span>
+              <span className="workflow-arrow">→</span>
+            </div>
+            <div className="workflow-step-wrap">
+              <span className={`workflow-step${adapterConfigured ? " active" : ""}`}>
+                Source Feed
+              </span>
+              <span className="workflow-arrow">→</span>
+            </div>
+            <div className="workflow-step-wrap">
+              <span className="workflow-step active">Scene</span>
+              <span className="workflow-arrow">→</span>
+            </div>
+            <div className="workflow-step-wrap">
+              <span className="workflow-step">Run</span>
+            </div>
+          </div>
+
+          <div className="monitor-setup-grid">
+            <div className="audio-path-card monitor-setup-card">
+              <span>1. Base listening bed</span>
+              <strong>{basePlaylist?.name ?? "Base playlist"}</strong>
+              <p className="support-copy">
+                Use a stable track or playlist so the monitor stays musical and
+                low-fatigue during long sessions.
+              </p>
+              <div className="monitor-setup-stack">
+                <input
+                  type="text"
+                  value={basePlaylist?.name ?? ""}
+                  onChange={(event) =>
+                    setBasePlaylist((current) =>
+                      current
+                        ? {
+                            ...current,
+                            name: event.target.value,
+                            updatedAt: new Date().toISOString(),
+                          }
+                        : createBasePlaylist([], event.target.value || "Base playlist"),
+                    )
+                  }
+                  placeholder="Name this base playlist"
+                  aria-label="Base playlist name"
+                />
+                {availableTracks.length > 0 ? (
+                  <div className="monitor-setup-row">
+                    <select
+                      className="compact-select"
+                      value={pendingAddTrackId}
+                      onChange={(e) => setPendingAddTrackId(e.target.value)}
+                      title="Pick a track to add to the base playlist"
+                    >
+                      <option value="">Add base track…</option>
+                      {availableTracks
+                        .filter((t) => !(basePlaylist?.trackIds ?? []).includes(t.id))
+                        .map((track) => (
+                          <option key={track.id} value={track.id}>
+                            {getTrackTitle(track)}
+                            {track.analysis.bpm !== null ? ` · ${track.analysis.bpm.toFixed(0)} BPM` : ""}
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="compact-action"
+                      disabled={!pendingAddTrackId}
+                      onClick={() => {
+                        if (!pendingAddTrackId) {
+                          return;
+                        }
+                        setBasePlaylist((current) => {
+                          const nextTrackIds = current?.trackIds ?? [];
+                          if (nextTrackIds.includes(pendingAddTrackId)) {
+                            return current;
+                          }
+
+                          if (current) {
+                            return {
+                              ...current,
+                              trackIds: [...current.trackIds, pendingAddTrackId],
+                              updatedAt: new Date().toISOString(),
+                            };
+                          }
+
+                          return createBasePlaylist([pendingAddTrackId]);
+                        });
+                        setPendingAddTrackId("");
+                      }}
+                    >
+                      + Add
+                    </button>
+                  </div>
+                ) : null}
+                {availablePlaylists.length > 0 ? (
+                  <div className="monitor-setup-row">
+                    <select
+                      className="compact-select"
+                      value={pendingLoadPlaylistId}
+                      onChange={(e) => setPendingLoadPlaylistId(e.target.value)}
+                      title="Load a saved base playlist from the library"
+                    >
+                      <option value="">Load saved playlist…</option>
+                      {availablePlaylists.map((playlist) => (
+                        <option key={playlist.id} value={playlist.id}>
+                          {playlist.name} · {playlist.trackIds.length} tracks
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="compact-action"
+                      disabled={!pendingLoadPlaylistId}
+                      onClick={() => {
+                        const nextPlaylist =
+                          availablePlaylists.find((playlist) => playlist.id === pendingLoadPlaylistId) ?? null;
+                        if (!nextPlaylist) {
+                          return;
+                        }
+                        setBasePlaylist({
+                          ...nextPlaylist,
+                          trackIds: nextPlaylist.trackIds.filter((trackId) =>
+                            availableTracks.some((track) => track.id === trackId),
+                          ),
+                        });
+                      }}
+                    >
+                      Load
+                    </button>
+                  </div>
+                ) : null}
+                {hasBaseListeningBed ? (
+                  <div className="pill-strip">
+                    {basePlaylist?.trackIds.map((id, idx) => {
+                      const track = availableTracks.find((t) => t.id === id);
+                      if (!track) {
+                        return null;
+                      }
+                      return (
+                        <span key={id} className="pill-removable">
+                          <button
+                            type="button"
+                            className="pill-reorder"
+                            aria-label={`Move ${getTrackTitle(track)} up`}
+                            disabled={idx === 0}
+                            onClick={() =>
+                              setBasePlaylist((current) => {
+                                if (!current) {
+                                  return current;
+                                }
+                                const next = [...current.trackIds];
+                                [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                                return {
+                                  ...current,
+                                  trackIds: next,
+                                  updatedAt: new Date().toISOString(),
+                                };
+                              })
+                            }
+                          >
+                            ↑
+                          </button>
+                          {getTrackTitle(track)}
+                          {track.analysis.bpm !== null ? ` · ${track.analysis.bpm.toFixed(0)} BPM` : ""}
+                          <button
+                            type="button"
+                            className="pill-reorder"
+                            aria-label={`Move ${getTrackTitle(track)} down`}
+                            disabled={idx === (basePlaylist?.trackIds.length ?? 0) - 1}
+                            onClick={() =>
+                              setBasePlaylist((current) => {
+                                if (!current) {
+                                  return current;
+                                }
+                                const next = [...current.trackIds];
+                                [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+                                return {
+                                  ...current,
+                                  trackIds: next,
+                                  updatedAt: new Date().toISOString(),
+                                };
+                              })
+                            }
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`Remove ${getTrackTitle(track)} from base playlist`}
+                            onClick={() =>
+                              setBasePlaylist((current) =>
+                                current
+                                  ? {
+                                      ...current,
+                                      trackIds: current.trackIds.filter((trackId) => trackId !== id),
+                                      updatedAt: new Date().toISOString(),
+                                    }
+                                  : current,
+                              )
+                            }
+                          >
+                            ×
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="monitor-empty-hint">
+                    Add at least one track if you want the monitor to behave like
+                    Maia's intended familiar listening bed instead of pure cue synthesis.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="audio-path-card monitor-setup-card">
+              <span>2. Signal feed</span>
+              <strong>{getStreamAdapterLabel(adapterKind)}</strong>
+              <p className="support-copy">{adapterDescription}</p>
+              <div className="monitor-setup-stack">
+                <select
+                  className="compact-select"
+                  value={adapterKind}
+                  onChange={(e) => setAdapterKind(e.target.value as StreamAdapterKind)}
+                >
+                  <option value="file">File tail</option>
+                  <option value="process">Process stdout</option>
+                  <option value="websocket">WebSocket</option>
+                  <option value="http-poll">HTTP poll</option>
+                  <option value="journald">journald (systemd)</option>
+                </select>
+                {adapterKind === "process" ? (
+                  <input
+                    className="compact-input"
+                    type="text"
+                    placeholder="e.g. tail -f /var/log/syslog"
+                    value={processCommand}
+                    onChange={(e) => setProcessCommand(e.target.value)}
+                    aria-label="Process command"
+                  />
+                ) : adapterKind === "websocket" ? (
+                  <input
+                    className="compact-input compact-input--url"
+                    placeholder="ws://host:port/path"
+                    value={wsUrl}
+                    onChange={(e) => setWsUrl(e.target.value)}
+                    aria-label="WebSocket URL"
+                  />
+                ) : adapterKind === "http-poll" ? (
+                  <input
+                    className="compact-input compact-input--url"
+                    placeholder="http://host:port/logs/stream"
+                    value={httpUrl}
+                    onChange={(e) => setHttpUrl(e.target.value)}
+                    aria-label="HTTP poll URL"
+                  />
+                ) : adapterKind === "journald" ? (
+                  <input
+                    className="compact-input"
+                    placeholder="Unit filter, e.g. nginx.service (blank = all)"
+                    value={journaldUnit}
+                    onChange={(e) => setJournaldUnit(e.target.value)}
+                    aria-label="journald unit filter"
+                  />
+                ) : null}
+                <div className="monitor-source-summary">
+                  <small>Target</small>
+                  <strong>{adapterTarget}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="audio-path-card monitor-setup-card">
+              <span>3. Scene and launch</span>
+              <strong>
+                {selectedStyleProfile.label} · {selectedMutationProfile.label}
+              </strong>
+              <p className="support-copy">
+                {selectedStyleProfile.description} {selectedMutationProfile.description}
+              </p>
+              <div className="monitor-setup-stack">
+                <select
+                  className="compact-select"
+                  value={selectedStyleProfileId}
+                  onChange={(e) => setSelectedStyleProfileId(e.target.value)}
+                  title="Style profile — sets the base musical character for background listening"
+                >
+                  {STYLE_PROFILES.map((profile) => (
+                    <option key={profile.id} value={profile.id}>
+                      {profile.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="compact-select"
+                  value={selectedMutationProfileId}
+                  onChange={(e) => setSelectedMutationProfileId(e.target.value)}
+                  title="Mutation profile — controls how hard logs and repo activity deform the base track"
+                >
+                  {MUTATION_PROFILES.map((profile) => (
+                    <option key={profile.id} value={profile.id}>
+                      {profile.label}
+                    </option>
+                  ))}
+                </select>
+                <ul className="monitor-readiness-list">
+                  <li className="monitor-readiness-item">
+                    <span>Base bed</span>
+                    <strong className={`monitor-readiness-state${hasBaseListeningBed ? " ready" : ""}`}>
+                      {hasBaseListeningBed
+                        ? `${baseTrackCount} track${baseTrackCount === 1 ? "" : "s"} armed`
+                        : "Recommended"}
+                    </strong>
+                  </li>
+                  <li className="monitor-readiness-item">
+                    <span>Source feed</span>
+                    <strong className={`monitor-readiness-state${adapterConfigured ? " ready" : ""}`}>
+                      {adapterConfigured ? "Ready" : "Needs config"}
+                    </strong>
+                  </li>
+                  <li className="monitor-readiness-item">
+                    <span>Cue engine</span>
+                    <strong className="monitor-readiness-state ready">
+                      {cueEnginePreviewLabel}
+                    </strong>
+                  </li>
+                </ul>
+                {!hasBaseListeningBed ? (
+                  <p className="monitor-empty-hint">
+                    Maia can still run synth-only, but the intended product flow
+                    is a chosen track or playlist as the stable listening bed.
+                  </p>
+                ) : null}
+                <div className="monitor-launch-row">
+                  <button
+                    type="button"
+                    className="action"
+                    disabled={isStarting || !adapterConfigured}
+                    onClick={() => void handleStart()}
+                  >
+                    {isStarting ? (
+                      <>
+                        <span className="spin-ring" aria-hidden="true" /> Starting...
+                      </>
+                    ) : (
+                      "Start monitor"
+                    )}
+                  </button>
+                  <small>
+                    {adapterConfigured
+                      ? `Feed target: ${adapterTarget}`
+                      : "Configure the selected feed before starting."}
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : null}
 
       {error && (
         <div style={{ padding: "8px 16px", background: "rgba(255,0,0,0.1)", border: "1px solid #f44", borderRadius: "4px", margin: "10px", color: "#f44", fontSize: "0.85rem" }}>
@@ -1338,105 +2292,171 @@ export function LiveLogMonitorPanel({
         </div>
       )}
 
-      {referencePlaylistIds.length > 0 ? (
-        <div className="pill-strip top-spaced">
-          {referencePlaylistIds.map((id, idx) => {
+      {liveEnabled && (basePlaylist?.trackIds.length ?? 0) > 0 ? (
+        <>
+        <div className="audio-path-card top-spaced">
+          <span>Base playlist</span>
+          <strong>{basePlaylist?.name ?? "Base playlist"}</strong>
+          {liveEnabled && backgroundNowPlayingTrack ? (
+            <small>
+              Now playing: {getTrackTitle(backgroundNowPlayingTrack)}
+              {backgroundNowPlayingTrack.analysis.bpm !== null
+                ? ` · ${backgroundNowPlayingTrack.analysis.bpm.toFixed(0)} BPM`
+                : ""}
+            </small>
+          ) : null}
+          {liveEnabled && backgroundTransitionPlan && backgroundTransitionNextTrack ? (
+            <small>
+              Up next: {getTrackTitle(backgroundTransitionNextTrack)} · {backgroundTransitionPlan.summary}
+            </small>
+          ) : null}
+          <p className="support-copy top-spaced">
+            {selectedStyleProfile.description} {selectedMutationProfile.description}
+          </p>
+        </div>
+
+        <p className="support-copy top-spaced">Base playlist</p>
+        <div className="pill-strip">
+          {basePlaylist?.trackIds.map((id) => {
             const track = availableTracks.find((t) => t.id === id);
             if (!track) {
               return null;
             }
             return (
-              <span key={id} className="pill-removable">
-                <button
-                  type="button"
-                  className="pill-reorder"
-                  aria-label={`Move ${track.title} up`}
-                  disabled={idx === 0}
-                  onClick={() =>
-                    setReferencePlaylistIds((ids) => {
-                      const next = [...ids];
-                      [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
-                      return next;
-                    })
-                  }
-                >
-                  ↑
-                </button>
-                {track.title}
-                {track.bpm !== null ? ` · ${track.bpm.toFixed(0)} BPM` : ""}
-                <button
-                  type="button"
-                  className="pill-reorder"
-                  aria-label={`Move ${track.title} down`}
-                  disabled={idx === referencePlaylistIds.length - 1}
-                  onClick={() =>
-                    setReferencePlaylistIds((ids) => {
-                      const next = [...ids];
-                      [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
-                      return next;
-                    })
-                  }
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Remove ${track.title} from reference playlist`}
-                  onClick={() =>
-                    setReferencePlaylistIds((ids) => ids.filter((i) => i !== id))
-                  }
-                >
-                  ×
-                </button>
+              <span key={id}>
+                {getTrackTitle(track)}
+                {track.analysis.bpm !== null ? ` · ${track.analysis.bpm.toFixed(0)} BPM` : ""}
               </span>
             );
           })}
         </div>
-      ) : null}
-
-      {!liveEnabled && adapterKind === "process" ? (
-        <div className="audio-path-card top-spaced">
-          <label htmlFor="process-command">Process command</label>
-          <input
-            id="process-command"
-            type="text"
-            placeholder="e.g. tail -f /var/log/syslog"
-            value={processCommand}
-            onChange={(e) => setProcessCommand(e.target.value)}
-          />
-        </div>
+        </>
       ) : null}
 
       {liveEnabled && monitor.session ? (
-        <div className="audio-path-card">
-          <span>Session</span>
-          <strong>{monitor.session.sessionId}</strong>
-          {monitor.session.pollMode === "direct" ? (
-            <em> (fallback — direct file poll)</em>
-          ) : monitor.session.pollMode === "websocket" ? (
-            <em> · WebSocket — {monitor.session.sourcePath}</em>
-          ) : monitor.session.pollMode === "http-poll" ? (
-            <em> · HTTP poll — {monitor.session.sourcePath}</em>
+        <div className={`audio-path-card${replayActive ? " audio-path-card--replay" : ""}`}>
+          <span>{replayActive ? "Replay session" : "Session"}</span>
+          <strong>{monitor.session.repoTitle}</strong>
+          <small>
+            {replayActive
+              ? `Stored source replay · ${monitor.session.sourcePath}`
+              : monitor.session.pollMode === "direct"
+                ? "Fallback — direct file poll"
+                : monitor.session.pollMode === "websocket"
+                  ? `${getStreamAdapterLabel("websocket")} · ${monitor.session.sourcePath}`
+                  : monitor.session.pollMode === "http-poll"
+                    ? `${getStreamAdapterLabel("http-poll")} · ${monitor.session.sourcePath}`
+                    : `${getStreamAdapterLabel(monitor.session.adapterKind)} · ${monitor.session.sourcePath}`}
+          </small>
+          {replayActive && playbackPercent !== null ? (
+            <div
+              className="monitor-progress-track"
+              role="progressbar"
+              aria-label="Replay progress"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={playbackPercent}
+            >
+              <span style={{ width: `${playbackPercent}%` }} />
+            </div>
+          ) : null}
+          {replayActive && playbackPercent !== null ? (
+            <small>
+              {playbackPercent}% complete · {monitor.metrics.windowCount} windows replayed
+            </small>
           ) : null}
         </div>
+      ) : null}
+
+      {replayActive &&
+      monitor.playbackProgress !== null &&
+      monitor.playbackEventCount !== null ? (
+        <LiveMonitorReplayTimelineCard
+          playbackProgress={monitor.playbackProgress}
+          playbackPercent={playbackPercent ?? 0}
+          playbackWindowLabel={playbackWindowLabel}
+          isPlaybackPaused={monitor.isPlaybackPaused}
+          playbackEventCount={monitor.playbackEventCount}
+          onStepWindow={(direction) => monitor.stepPlaybackWindow(direction)}
+          onTogglePause={() =>
+            monitor.isPlaybackPaused ? monitor.resumePlayback() : monitor.pausePlayback()
+          }
+          onSeekProgress={(progress) => monitor.seekPlaybackProgress(progress)}
+        />
+      ) : null}
+
+      {replayActive &&
+      replaySessionId &&
+      monitor.playbackEventIndex !== null ? (
+        <LiveMonitorReplayBookmarksCard
+          replayWindowIndex={monitor.playbackEventIndex}
+          activeReplayBookmark={activeReplayBookmark}
+          sortedSessionBookmarks={sortedSessionBookmarks}
+          playbackEventCount={monitor.playbackEventCount}
+          bookmarkLabelDraft={bookmarkLabelDraft}
+          bookmarkNoteDraft={bookmarkNoteDraft}
+          bookmarkTagDraft={bookmarkTagDraft}
+          bookmarkStyleProfileIdDraft={bookmarkStyleProfileIdDraft}
+          bookmarkMutationProfileIdDraft={bookmarkMutationProfileIdDraft}
+          bookmarkBusy={bookmarkBusy}
+          bookmarkError={bookmarkError}
+          onBookmarkLabelChange={(event) => setBookmarkLabelDraft(event.target.value)}
+          onBookmarkNoteChange={(event) => setBookmarkNoteDraft(event.target.value)}
+          onBookmarkTagToggle={(tagId) =>
+            setBookmarkTagDraft((current) => (current === tagId ? null : tagId))
+          }
+          onBookmarkStyleProfileChange={(event) =>
+            setBookmarkStyleProfileIdDraft(event.target.value || null)
+          }
+          onBookmarkMutationProfileChange={(event) =>
+            setBookmarkMutationProfileIdDraft(event.target.value || null)
+          }
+          onCaptureCurrentScene={captureCurrentScene}
+          onSaveBookmark={() => void saveReplayBookmark()}
+          onDeleteCurrentBookmark={() => {
+            if (!activeReplayBookmark) {
+              return;
+            }
+            void deleteReplayBookmark(activeReplayBookmark);
+          }}
+          onJumpToBookmark={handleJumpToBookmark}
+          onApplyBookmarkSuggestion={handleApplyBookmarkSuggestion}
+          onDeleteBookmark={(bookmark) => void deleteReplayBookmark(bookmark)}
+        />
+      ) : null}
+
+      {replayActive && replayFeedbackRecommendation ? (
+        <ReplayFeedbackSummaryCard
+          recommendation={replayFeedbackRecommendation}
+          className="audio-path-card--replay top-spaced"
+          actionLabel={
+            replayFeedbackRecommendation.isAligned
+              ? "Scene already aligned"
+              : "Apply feedback mix"
+          }
+          actionDisabled={replayFeedbackRecommendation.isAligned}
+          onApply={handleApplyReplayFeedbackRecommendation}
+        />
       ) : null}
 
       <div className="metric-grid">
         <div>
           <span>Mode</span>
           <strong>
-            {adapterKind === "process"
-              ? "Process stdout"
-              : adapterKind === "websocket"
-                ? "WebSocket"
-                : adapterKind === "http-poll"
-                  ? "HTTP poll"
-                  : "File tail"}
+            {replayActive ? "Session replay" : activeAdapterLabel}
           </strong>
         </div>
         <div>
           <span>Audio</span>
           <strong>{audioLabel(audioStatus, liveEnabled)}</strong>
+        </div>
+        <div>
+          <span>Style profile</span>
+          <strong>{selectedStyleProfile.label}</strong>
+        </div>
+        <div>
+          <span>Mutation</span>
+          <strong>{selectedMutationProfile.label}</strong>
         </div>
         <div>
           <span>Cue engine</span>
@@ -1452,7 +2472,11 @@ export function LiveLogMonitorPanel({
         </div>
         <div>
           <span>Windows heard</span>
-          <strong>{monitor.metrics.windowCount}</strong>
+          <strong>
+            {replayActive && playbackWindowLabel
+              ? playbackWindowLabel
+              : monitor.metrics.windowCount}
+          </strong>
         </div>
         <div>
           <span>Cues emitted</span>
@@ -1552,7 +2576,7 @@ export function LiveLogMonitorPanel({
       </div>
 
       <div className="audio-path-card top-spaced">
-        <span>Live source path</span>
+        <span>{replayActive ? "Replay source path" : "Live source path"}</span>
         <strong>{repository.sourcePath}</strong>
       </div>
 
@@ -1592,9 +2616,9 @@ export function LiveLogMonitorPanel({
           <LiveWaveformCanvas
             analyserRef={analyserRef}
             active={liveEnabled}
-            accentColor={selectedGenreId === "tropical-house" ? "#ef7f45" : "#21b4b8"}
+            accentColor={scene.genreId === "tropical-house" ? "#ef7f45" : "#21b4b8"}
           />
-          <div className={`live-scrolling-wave ${selectedGenreId === "tropical-house" ? "tropical-theme" : ""}`}>
+          <div className={`live-scrolling-wave ${scene.genreId === "tropical-house" ? "tropical-theme" : ""}`}>
             {recentCues.map((cue, idx) => (
               <div
                 key={`${cue.id}-${idx}`}
@@ -1679,6 +2703,38 @@ export function LiveLogMonitorPanel({
               </div>
             </>
           ) : null}
+
+          <LiveMonitorMutationTracePanel
+            replayActive={replayActive}
+            playbackEventIndex={monitor.playbackEventIndex}
+            traceWaveformTrack={traceWaveformTrack}
+            traceWaveformExplanations={traceWaveformExplanations}
+            traceWaveformCues={traceWaveformCues}
+            traceWaveformCurrentTime={
+              selectedTraceExplanation?.trackSecond ?? backgroundPlayheadSecond
+            }
+            recentExplanations={recentExplanations}
+            selectedExplanationId={selectedExplanationId}
+            onSelectExplanation={(explanation) => {
+              if (
+                replayActive &&
+                explanation.replayWindowIndex !== null &&
+                monitor.playbackEventCount !== null
+              ) {
+                monitor.pausePlayback();
+                monitor.seekPlaybackProgress(
+                  resolveReplayProgressForWindow(
+                    explanation.replayWindowIndex,
+                    monitor.playbackEventCount,
+                  ),
+                );
+              }
+              setSelectedExplanationId(explanation.id);
+              if (typeof explanation.trackSecond === "number") {
+                setBackgroundPlayheadSecond(explanation.trackSecond);
+              }
+            }}
+          />
         </>
       ) : (
         <div className="empty-state top-spaced">
@@ -1737,6 +2793,7 @@ export function LiveLogMonitorPanel({
       <PadSequencerPanel
         bpm={beatClockBpm ?? repository.suggestedBpm ?? 120}
         recentVoices={recentVoices}
+        onStepFire={handleSequencerStepFire}
       />
 
       <div className="panel-header compact top-spaced">

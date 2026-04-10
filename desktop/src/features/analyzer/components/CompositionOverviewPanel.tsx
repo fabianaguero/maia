@@ -24,7 +24,7 @@ export function CompositionOverviewPanel({
         <div>
           <h2>Composition overview</h2>
           <p className="support-copy">
-            Local arrangement plan derived from the selected reusable base and timing reference.
+            Local arrangement plan derived from the selected reusable base, musical base, and timing source.
           </p>
         </div>
       </div>
@@ -42,7 +42,7 @@ export function CompositionOverviewPanel({
           <dd>{composition.baseAssetTitle}</dd>
         </div>
         <div>
-          <dt>Reference</dt>
+          <dt>Timing source</dt>
           <dd>{composition.referenceTitle}</dd>
         </div>
         <div>

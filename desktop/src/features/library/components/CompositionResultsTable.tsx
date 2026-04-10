@@ -1,6 +1,22 @@
 import type { CompositionResultRecord } from "../../../types/library";
 import { formatShortDateTime } from "../../../utils/date";
 
+function formatTimingSourceType(referenceType: CompositionResultRecord["referenceType"]): string {
+  if (referenceType === "track") {
+    return "base track";
+  }
+
+  if (referenceType === "playlist") {
+    return "base playlist";
+  }
+
+  if (referenceType === "repo") {
+    return "structure source";
+  }
+
+  return "manual bpm";
+}
+
 interface CompositionResultsTableProps {
   compositions: CompositionResultRecord[];
   selectedCompositionId: string | null;
@@ -21,7 +37,7 @@ export function CompositionResultsTable({
           <tr>
             <th>Composition</th>
             <th>Base asset</th>
-            <th>Reference</th>
+            <th>Timing source</th>
             <th>Target BPM</th>
             <th>Strategy</th>
             <th>Status</th>
@@ -49,7 +65,7 @@ export function CompositionResultsTable({
                 </td>
                 <td>
                   <strong>{composition.referenceTitle}</strong>
-                  <small>{composition.referenceType}</small>
+                  <small>{formatTimingSourceType(composition.referenceType)}</small>
                 </td>
                 <td>{composition.targetBpm.toFixed(0)}</td>
                 <td>{composition.strategy}</td>

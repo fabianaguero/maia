@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useMonitor } from "../features/monitor/MonitorContext";
 import type { LiveLogCue, LiveLogStreamUpdate, LibraryTrack } from "../types/library";
+import { getTrackTitle, resolvePlayableTrackPath } from "../utils/track";
 
 // ---------------------------------------------------------------------------
 // Rekordbox-style scrolling waveform bar — always visible while monitoring.
@@ -218,40 +219,56 @@ export function MonitorWaveformBar({ tracks = [] }: MonitorWaveformBarProps) {
     };
   }, [draw]);
 
+  const hasSession = !!monitor.session;
+
   return (
-    <div className="monitor-waveform-bar">
+    <div className={`monitor-waveform-bar${hasSession ? " monitor-waveform-bar--active" : ""}`}>
+      {hasSession && (
+        <div className="monitor-waveform-label">
+          <span className="monitor-waveform-dot" />
+          <span className="monitor-waveform-label-text">
+            {monitor.isPlayback ? "PLAYBACK" : "LIVE MONITOR"}
+          </span>
+          <span className="monitor-waveform-label-session">
+            {monitor.session!.repoTitle}
+          </span>
+        </div>
+      )}
       <canvas
         ref={canvasRef}
         className="monitor-waveform-canvas"
       />
-      <div className="monitor-waveform-controls">
-        {tracks.length > 0 && (
-          <select
-            className="monitor-track-select"
-            value={monitor.guideTrackPath ?? ""}
-            onChange={(e) => {
-              const val = e.target.value;
-              monitor.setGuideTrack(val || null);
-            }}
-          >
-            <option value="">♪ Synth</option>
-            {tracks.map((t) => (
-              <option key={t.id} value={t.storagePath ?? t.sourcePath}>
-                {t.title}
-              </option>
-            ))}
-          </select>
-        )}
-        {monitor.guideTrackPath && !monitor.guideTrackReady && (
-          <span className="monitor-waveform-loading">Loading…</span>
-        )}
-        {monitor.session && (
-          <div className="monitor-waveform-badge">
-            <span className="monitor-waveform-dot" />
-            {monitor.isPlayback ? "PLAYBACK" : "LIVE"}
-          </div>
-        )}
-      </div>
+      {hasSession && (
+        <div className="monitor-waveform-controls">
+          {tracks.length > 0 && (
+            <select
+              className="monitor-track-select"
+              value={monitor.guideTrackPath ?? ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                monitor.setGuideTrack(val || null);
+              }}
+            >
+              <option value="">♪ Synth</option>
+              {tracks
+                .map((track) => ({
+                  id: track.id,
+                  title: getTrackTitle(track),
+                  path: resolvePlayableTrackPath(track),
+                }))
+                .filter((track) => track.path)
+                .map((track) => (
+                  <option key={track.id} value={track.path ?? ""}>
+                    {track.title}
+                  </option>
+                ))}
+            </select>
+          )}
+          {monitor.guideTrackPath && !monitor.guideTrackReady && (
+            <span className="monitor-waveform-loading">Loading…</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

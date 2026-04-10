@@ -286,16 +286,16 @@ function derivedRenderPreview(composition: CompositionResultRecord): RenderPrevi
       label:
         referenceType === "repo"
           ? "Structural glue"
-          : referenceType === "track"
-            ? "Reference groove glue"
+          : referenceType === "track" || referenceType === "playlist"
+            ? "Base groove glue"
             : "Tempo guide glue",
       role: "glue",
       source: referenceType === "manual" ? "manual" : "reference",
       focus:
         referenceType === "repo"
-          ? "translate reference pacing into arrangement density"
-          : referenceType === "track"
-            ? "keep section changes aligned with the imported groove"
+          ? "translate structure pacing into arrangement density"
+          : referenceType === "track" || referenceType === "playlist"
+            ? "keep section changes aligned with the base groove"
             : "stabilize the typed tempo through each section boundary",
       gainDb: -11,
       pan: 0,

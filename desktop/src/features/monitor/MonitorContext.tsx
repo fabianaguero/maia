@@ -27,6 +27,7 @@ import {
   insertSessionEvent,
   listSessionEvents,
 } from "../../api/sessions";
+import type { SessionEvent } from "../../api/sessions";
 import type {
   LiveLogStreamUpdate,
   LiveLogCue,
@@ -35,6 +36,12 @@ import type {
   StreamAdapterKind,
   StreamSessionPollResult,
 } from "../../types/library";
+import {
+  buildReplayCumulativeMetrics,
+  resolveReplayProgressForWindow,
+  resolveReplayTargetIndex,
+  resolveSteppedReplayIndex,
+} from "../../utils/replay";
 
 const POLL_INTERVAL_MS = 600;
 const RENDER_SAMPLE_RATE = 44100;
@@ -375,12 +382,23 @@ interface MonitorContextValue {
   guideTrackPath: string | null;
   /** Progress of playback session (0-1 when isPlayback=true, null otherwise). */
   playbackProgress: number | null;
+  /** True when replay is paused on the current window. */
+  isPlaybackPaused: boolean;
+  /** 1-based replay window position while playback is active. */
+  playbackEventIndex: number | null;
+  /** Total replay windows available for the active playback session. */
+  playbackEventCount: number | null;
   /** Total duration of guide track in seconds, or null if no track loaded. */
   guideTrackDurationSec: number | null;
   /**
    * Load a guide track from disk.  Pass null to clear and fall back to synth.
    */
   setGuideTrack: (path: string | null) => void;
+  /**
+   * Load a rotating queue of guide tracks.  Maia advances to the next track
+   * whenever the current one reaches the end during live monitoring.
+   */
+  setGuideTrackPlaylist: (paths: string[]) => void;
   /**
    * Seek the guide track to a specific time (seconds).
    */
@@ -402,10 +420,23 @@ interface MonitorContextValue {
    * through the same listener pipeline at 600ms intervals.
    */
   playbackSession: (
-    sessionId: string,
-    label: string,
-    sourcePath: string,
+    input: {
+      sessionId: string;
+      label: string;
+      sourcePath: string;
+      repoId?: string | null;
+    },
   ) => Promise<boolean>;
+  /** Jump to a percentage within the active replay timeline. */
+  seekPlaybackProgress: (progress: number) => void;
+  /** Jump to a specific 1-based replay window within the active replay timeline. */
+  seekPlaybackWindow: (replayWindowIndex: number) => void;
+  /** Pause the active replay without losing current position. */
+  pausePlayback: () => void;
+  /** Resume the active replay from the current position. */
+  resumePlayback: () => void;
+  /** Move one replay window backward/forward and pause there. */
+  stepPlaybackWindow: (direction: -1 | 1) => void;
   /**
    * Register a listener that receives every LiveLogStreamUpdate emitted by the
    * background poll loop.  Returns an unsubscribe function.
@@ -435,6 +466,9 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
   const [guideTrackReady, setGuideTrackReady] = useState(false);
   const [guideTrackPath, setGuideTrackPathState] = useState<string | null>(null);
   const [playbackProgress, setPlaybackProgress] = useState<number | null>(null);
+  const [isPlaybackPaused, setIsPlaybackPaused] = useState(false);
+  const [playbackEventIndex, setPlaybackEventIndex] = useState<number | null>(null);
+  const [playbackEventCount, setPlaybackEventCount] = useState<number | null>(null);
   const [guideTrackDurationSec, setGuideTrackDurationSec] = useState<number | null>(null);
 
   // Refs that survive across re-renders without causing them
@@ -450,6 +484,16 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
   const guideTrackFinishedRef = useRef(false);
   /** Direct-mode cursor (browser fallback path only). */
   const directCursorRef = useRef<number | undefined>(undefined);
+  /** Cached replay event list for playback + scrubbing. */
+  const replayEventsRef = useRef<SessionEvent[]>([]);
+  /** Prefix-sum metrics for replay windows. */
+  const replayMetricsRef = useRef<MonitorMetrics[]>([
+    { windowCount: 0, processedLines: 0, totalAnomalies: 0 },
+  ]);
+  /** Next replay event index to emit. */
+  const replayIndexRef = useRef(0);
+  /** Mirror of playback pause state for callbacks/timers. */
+  const playbackPausedRef = useRef(false);
   /** Consecutive empty-window count for direct mode — reset cursor after N to loop static files. */
   const emptyWindowsRef = useRef(0);
   /** WebSocket instance for the "websocket" poll mode. */
@@ -466,6 +510,8 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
   // -------------------------------------------------------------------------
 
   const guideTrackPathRef = useRef<string | null>(null);
+  const guideTrackQueueRef = useRef<string[]>([]);
+  const guideTrackQueueIndexRef = useRef(0);
 
   const seekGuideTrack = useCallback((second: number) => {
     if (!guideTrackRef.current) return;
@@ -475,7 +521,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
     log.info(`guide track seek to ${second.toFixed(2)}s (sample ${guideTrackCursorRef.current.current})`);
   }, []);
 
-  const setGuideTrack = useCallback((path: string | null) => {
+  const loadGuideTrackPath = useCallback((path: string | null) => {
     // Skip if path hasn't changed
     if (guideTrackPathRef.current === path) {
       return;
@@ -495,6 +541,8 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
     log.info(`loading guide track: ${path}`);
     setGuideTrackPathState(path);
     setGuideTrackReady(false);
+    guideTrackRef.current = null;
+    guideTrackCursorRef.current.current = 0;
     guideTrackFinishedRef.current = false;  // Reset finished flag for new track
     decodeAudioFile(path)
       .then((pcm) => {
@@ -509,6 +557,37 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
         setGuideTrackPathState(null);
       });
   }, []);
+
+  const setGuideTrack = useCallback((path: string | null) => {
+    guideTrackQueueRef.current = path ? [path] : [];
+    guideTrackQueueIndexRef.current = 0;
+    loadGuideTrackPath(path);
+  }, [loadGuideTrackPath]);
+
+  const setGuideTrackPlaylist = useCallback((paths: string[]) => {
+    const queue = paths
+      .map((path) => path.trim())
+      .filter((path, index, all) => path.length > 0 && all.indexOf(path) === index);
+
+    guideTrackQueueRef.current = queue;
+    guideTrackQueueIndexRef.current = 0;
+    loadGuideTrackPath(queue[0] ?? null);
+  }, [loadGuideTrackPath]);
+
+  const advanceGuideTrack = useCallback((): boolean => {
+    const queue = guideTrackQueueRef.current;
+    if (queue.length === 0) {
+      return false;
+    }
+
+    const nextIndex =
+      queue.length === 1
+        ? 0
+        : (guideTrackQueueIndexRef.current + 1) % queue.length;
+    guideTrackQueueIndexRef.current = nextIndex;
+    loadGuideTrackPath(queue[nextIndex] ?? null);
+    return Boolean(queue[nextIndex]);
+  }, [loadGuideTrackPath]);
 
   const stopPolling = useCallback(() => {
     activeRef.current = false;
@@ -538,15 +617,90 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const emitUpdate = useCallback((update: LiveLogStreamUpdate) => {
+  const resetReplayTelemetry = useCallback(() => {
+    replayEventsRef.current = [];
+    replayMetricsRef.current = [{ windowCount: 0, processedLines: 0, totalAnomalies: 0 }];
+    replayIndexRef.current = 0;
+    playbackPausedRef.current = false;
+    setPlaybackProgress(null);
+    setIsPlaybackPaused(false);
+    setPlaybackEventIndex(null);
+    setPlaybackEventCount(null);
+  }, []);
+
+  const syncReplayTelemetry = useCallback((processedEvents: number) => {
+    const total = replayEventsRef.current.length;
+    const clampedProcessed = Math.max(0, Math.min(processedEvents, total));
+
+    setPlaybackEventCount(total > 0 ? total : null);
+    setPlaybackEventIndex(total > 0 ? clampedProcessed : null);
+    setPlaybackProgress(total > 0 ? clampedProcessed / total : null);
+    setMetrics(
+      replayMetricsRef.current[clampedProcessed] ?? {
+        windowCount: 0,
+        processedLines: 0,
+        totalAnomalies: 0,
+      },
+    );
+  }, []);
+
+  const buildReplayUpdate = useCallback(
+    (
+      event: SessionEvent,
+      sourcePath: string,
+      replayWindowIndex?: number | null,
+    ): LiveLogStreamUpdate => ({
+      sourcePath,
+      fromOffset: event.fromOffset,
+      toOffset: event.toOffset,
+      replayWindowIndex: replayWindowIndex ?? null,
+      hasData: true,
+      summary: event.summary,
+      suggestedBpm: event.suggestedBpm,
+      confidence: event.confidence,
+      dominantLevel: event.dominantLevel,
+      lineCount: event.lineCount,
+      anomalyCount: event.anomalyCount,
+      levelCounts: JSON.parse(event.levelCountsJson),
+      anomalyMarkers: JSON.parse(event.anomalyMarkersJson),
+      topComponents: JSON.parse(event.topComponentsJson),
+      sonificationCues: JSON.parse(event.sonificationCuesJson),
+      warnings: JSON.parse(event.warningsJson),
+    }),
+    [],
+  );
+
+  const syncGuideTrackToReplayProgress = useCallback((progress: number) => {
+    const pcm = guideTrackRef.current;
+    if (!pcm) {
+      return;
+    }
+
+    const clamped = Math.max(0, Math.min(1, progress));
+    guideTrackCursorRef.current.current = Math.max(
+      0,
+      Math.min(pcm.samples.length - 1, Math.floor(clamped * pcm.samples.length)),
+    );
+    guideTrackFinishedRef.current = false;
+  }, []);
+
+  const emitUpdate = useCallback((update: LiveLogStreamUpdate, options?: {
+    accumulateMetrics?: boolean;
+    persistPlaybackEvent?: boolean;
+  }) => {
+    const accumulateMetrics = options?.accumulateMetrics ?? true;
+    const persistPlaybackEvent = options?.persistPlaybackEvent ?? true;
+
     if (update.hasData) {
       log.info("poll hasData=true lines=%d anomalies=%d cues=%d bpm=%s", update.lineCount, update.anomalyCount, update.sonificationCues.length, update.suggestedBpm);
       log.debug("dominantLevel=%s topComponents=%d warnings=%d", update.dominantLevel, update.topComponents.length, update.warnings.length);
-      setMetrics((prev) => ({
-        windowCount: prev.windowCount + 1,
-        processedLines: prev.processedLines + update.lineCount,
-        totalAnomalies: prev.totalAnomalies + update.anomalyCount,
-      }));
+      if (accumulateMetrics) {
+        setMetrics((prev) => ({
+          windowCount: prev.windowCount + 1,
+          processedLines: prev.processedLines + update.lineCount,
+          totalAnomalies: prev.totalAnomalies + update.anomalyCount,
+        }));
+      }
 
       // Sonify: guide track (real audio) or synth fallback
       if (update.sonificationCues.length > 0 || guideTrackRef.current) {
@@ -563,10 +717,13 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
             update.suggestedBpm,
           );
           if (wav === null) {
-            // Track reached end — stop playback
-            guideTrackFinishedRef.current = true;
-            log.info("guide track reached end — playback finished");
-            stopPolling();
+            const advanced = advanceGuideTrack();
+            if (!advanced) {
+              guideTrackFinishedRef.current = true;
+              log.info("guide track reached end — no next track queued");
+            } else {
+              log.info("guide track reached end — advancing playlist queue");
+            }
           } else {
             log.info("guide track slice → WAV size=%d bytes", wav.size);
           }
@@ -587,7 +744,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
 
       // Persist cursor + stats for stream sessions
       const persisted = sessionRef.current?.persistedSessionId;
-      if (persisted) {
+      if (persisted && persistPlaybackEvent) {
         void updatePersistedSessionCursor(
           persisted,
           update.toOffset,
@@ -740,7 +897,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
 
       if (input.adapterKind === "websocket") {
         pollMode = "websocket";
-        // Register the session in Tauri/Python (supplies the ring buffer)
+        // Register the native session before the JS-managed WebSocket starts
         try {
           await startStreamSession(input);
         } catch {
@@ -777,12 +934,16 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
         httpUrlRef.current = input.httpUrl ?? input.source;
 
       } else {
-        // File and process adapters: use direct stateless file polling.
-        // The Python analyzer runs as a one-shot subprocess per request, so
-        // session ring-buffer state is lost between calls. The stateless
-        // poll_log_stream path reads and analyses each new chunk independently
-        // and is reliable. startStreamSession is intentionally skipped here.
-        pollMode = "direct";
+        try {
+          await startStreamSession(input);
+          pollMode = "session";
+        } catch {
+          if (input.adapterKind !== "file") {
+            return false;
+          }
+          // Browser/demo fallback keeps the legacy direct file-tail path.
+          pollMode = "direct";
+        }
       }
 
       directCursorRef.current = undefined;
@@ -794,7 +955,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
         persistedSessionId: persistedSessionId ?? null,
         repoId: repo.id,
         repoTitle: repo.title,
-        sourcePath: repo.sourcePath,
+        sourcePath: input.source,
         adapterKind: input.adapterKind,
         pollMode,
         startedAt: Date.now(),
@@ -808,23 +969,109 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       sessionRef.current = newSession;
       setSession(newSession);
       setIsPlayback(false);
+      resetReplayTelemetry();
       setMetrics({ windowCount: 0, processedLines: 0, totalAnomalies: 0 });
       activeRef.current = true;
-      log.info("session started id=%s mode=%s adapter=%s path=%s", newSession.sessionId, pollMode, input.adapterKind, repo.sourcePath);
+      log.info("session started id=%s mode=%s adapter=%s path=%s", newSession.sessionId, pollMode, input.adapterKind, newSession.sourcePath);
       void doPoll();
 
       return true;
     },
-    [stopPolling, doPoll],
+    [stopPolling, doPoll, resetReplayTelemetry],
   );
 
   // -------------------------------------------------------------------------
   // Playback — replay stored session events through the listener pipeline
   // -------------------------------------------------------------------------
 
+  const dispatchReplayEventAtIndex = useCallback(
+    (eventIndex: number, options?: { syncGuideTrack?: boolean }) => {
+      const events = replayEventsRef.current;
+      if (events.length === 0) {
+        return false;
+      }
+
+      const clampedIndex = Math.max(0, Math.min(eventIndex, events.length - 1));
+      const event = events[clampedIndex]!;
+      replayIndexRef.current = clampedIndex + 1;
+
+      if (options?.syncGuideTrack) {
+        syncGuideTrackToReplayProgress((clampedIndex + 1) / events.length);
+      }
+
+      syncReplayTelemetry(clampedIndex + 1);
+      emitUpdate(
+        buildReplayUpdate(
+          event,
+          sessionRef.current?.sourcePath ?? event.sessionId,
+          clampedIndex + 1,
+        ),
+        {
+        accumulateMetrics: false,
+        persistPlaybackEvent: false,
+        },
+      );
+
+      return true;
+    },
+    [buildReplayUpdate, emitUpdate, syncGuideTrackToReplayProgress, syncReplayTelemetry],
+  );
+
+  const replayTick = useCallback(() => {
+    if (!activeRef.current || playbackPausedRef.current) {
+      return;
+    }
+
+    const events = replayEventsRef.current;
+    const idx = replayIndexRef.current;
+
+    if (idx >= events.length) {
+      if (guideTrackRef.current && !guideTrackFinishedRef.current) {
+        const wav = sliceGuideTrackBar(
+          guideTrackRef.current,
+          guideTrackCursorRef.current,
+          [],
+          0.8,
+          null,
+        );
+        if (wav === null) {
+          guideTrackFinishedRef.current = true;
+          log.info("playback finished — guide track reached end after %d events", idx);
+          activeRef.current = false;
+          return;
+        }
+        pollTimerRef.current = window.setTimeout(replayTick, POLL_INTERVAL_MS);
+        return;
+      }
+
+      log.info("playback finished after %d events", idx);
+      activeRef.current = false;
+      return;
+    }
+
+    const ok = dispatchReplayEventAtIndex(idx);
+    if (!ok) {
+      activeRef.current = false;
+      return;
+    }
+
+    log.info("playback event %d/%d", idx + 1, events.length);
+    pollTimerRef.current = window.setTimeout(replayTick, POLL_INTERVAL_MS);
+  }, [dispatchReplayEventAtIndex]);
+
   const playbackSession = useCallback(
-    async (sessionId: string, label: string, sourcePath: string): Promise<boolean> => {
-      log.info("playbackSession id=%s label=%s path=%s", sessionId, label, sourcePath);
+    async ({
+      sessionId,
+      label,
+      sourcePath,
+      repoId,
+    }: {
+      sessionId: string;
+      label: string;
+      sourcePath: string;
+      repoId?: string | null;
+    }): Promise<boolean> => {
+      log.info("playbackSession id=%s label=%s path=%s repoId=%s", sessionId, label, sourcePath, repoId);
       // Stop any existing session first
       if (sessionRef.current) {
         stopPolling();
@@ -838,7 +1085,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       const playbackSessionObj: ActiveMonitorSession = {
         sessionId: `playback_${sessionId}`,
         persistedSessionId: sessionId,
-        repoId: sessionId,
+        repoId: repoId ?? sessionId,
         repoTitle: label,
         sourcePath,
         adapterKind: "file",
@@ -849,79 +1096,109 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       sessionRef.current = playbackSessionObj;
       setSession(playbackSessionObj);
       setIsPlayback(true);
+      playbackPausedRef.current = false;
+      setIsPlaybackPaused(false);
+      replayEventsRef.current = events;
+      replayMetricsRef.current = buildReplayCumulativeMetrics(events);
+      replayIndexRef.current = 0;
+      syncReplayTelemetry(0);
       setMetrics({ windowCount: 0, processedLines: 0, totalAnomalies: 0 });
       activeRef.current = true;
 
-      // Replay events one by one at POLL_INTERVAL_MS
-      let idx = 0;
-      const replayNext = () => {
-        if (!activeRef.current) return;
-
-        // Update playback progress (0-1)
-        const progress = events.length > 0 ? Math.min(1, idx / events.length) : 0;
-        setPlaybackProgress(progress);
-
-        if (idx >= events.length) {
-          // Events finished, but allow guide track to continue in silence
-          if (guideTrackRef.current && !guideTrackFinishedRef.current) {
-            // Continue playing guide track without sonification
-            const wav = sliceGuideTrackBar(
-              guideTrackRef.current,
-              guideTrackCursorRef.current,
-              [], // No cues — silent
-              0.8,
-              null,
-            );
-            if (wav === null) {
-              // Track reached end
-              guideTrackFinishedRef.current = true;
-              log.info("playback finished — guide track reached end after %d events", idx);
-              activeRef.current = false;
-              return;
-            }
-            // Continue looping without sonification
-            pollTimerRef.current = window.setTimeout(replayNext, POLL_INTERVAL_MS);
-            return;
-          }
-
-          // No guide track, playback fully finished
-          log.info("playback finished after %d events", idx);
-          activeRef.current = false;
-          return;
-        }
-
-        const evt = events[idx++];
-        const update: LiveLogStreamUpdate = {
-          sourcePath,
-          fromOffset: evt.fromOffset,
-          toOffset: evt.toOffset,
-          hasData: true,
-          summary: evt.summary,
-          suggestedBpm: evt.suggestedBpm,
-          confidence: evt.confidence,
-          dominantLevel: evt.dominantLevel,
-          lineCount: evt.lineCount,
-          anomalyCount: evt.anomalyCount,
-          levelCounts: JSON.parse(evt.levelCountsJson),
-          anomalyMarkers: JSON.parse(evt.anomalyMarkersJson),
-          topComponents: JSON.parse(evt.topComponentsJson),
-          sonificationCues: JSON.parse(evt.sonificationCuesJson),
-          warnings: JSON.parse(evt.warningsJson),
-        };
-
-        log.info("playback event %d/%d lines=%d cues=%d bpm=%s", idx, events.length, update.lineCount, update.sonificationCues.length, update.suggestedBpm);
-
-        // Use emitUpdate so WAV sonification fires
-        emitUpdate(update);
-
-        pollTimerRef.current = window.setTimeout(replayNext, POLL_INTERVAL_MS);
-      };
-
-      replayNext();
+      replayTick();
       return true;
     },
-    [stopPolling],
+    [stopPolling, replayTick, syncReplayTelemetry],
   );
+
+  const seekPlaybackProgress = useCallback((progress: number) => {
+    if (!isPlayback || replayEventsRef.current.length === 0) {
+      return;
+    }
+
+    if (pollTimerRef.current !== null) {
+      window.clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+
+    const targetIndex = resolveReplayTargetIndex(progress, replayEventsRef.current.length);
+    activeRef.current = true;
+    guideTrackFinishedRef.current = false;
+    const ok = dispatchReplayEventAtIndex(targetIndex, { syncGuideTrack: true });
+    if (!ok) {
+      return;
+    }
+
+    if (activeRef.current && !playbackPausedRef.current) {
+      pollTimerRef.current = window.setTimeout(replayTick, POLL_INTERVAL_MS);
+    }
+  }, [dispatchReplayEventAtIndex, isPlayback, replayTick]);
+
+  const seekPlaybackWindow = useCallback((replayWindowIndex: number) => {
+    if (!isPlayback || replayEventsRef.current.length === 0) {
+      return;
+    }
+
+    seekPlaybackProgress(
+      resolveReplayProgressForWindow(
+        replayWindowIndex,
+        replayEventsRef.current.length,
+      ),
+    );
+  }, [isPlayback, seekPlaybackProgress]);
+
+  const pausePlayback = useCallback(() => {
+    if (!isPlayback) {
+      return;
+    }
+
+    if (pollTimerRef.current !== null) {
+      window.clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+    playbackPausedRef.current = true;
+    activeRef.current = false;
+    setIsPlaybackPaused(true);
+  }, [isPlayback]);
+
+  const resumePlayback = useCallback(() => {
+    if (!isPlayback || replayEventsRef.current.length === 0) {
+      return;
+    }
+
+    if (pollTimerRef.current !== null) {
+      window.clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+
+    playbackPausedRef.current = false;
+    activeRef.current = true;
+    setIsPlaybackPaused(false);
+    pollTimerRef.current = window.setTimeout(replayTick, POLL_INTERVAL_MS);
+  }, [isPlayback, replayTick]);
+
+  const stepPlaybackWindow = useCallback((direction: -1 | 1) => {
+    if (!isPlayback || replayEventsRef.current.length === 0) {
+      return;
+    }
+
+    if (pollTimerRef.current !== null) {
+      window.clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+
+    playbackPausedRef.current = true;
+    activeRef.current = false;
+    setIsPlaybackPaused(true);
+    guideTrackFinishedRef.current = false;
+
+    const targetIndex = resolveSteppedReplayIndex(
+      replayIndexRef.current,
+      replayEventsRef.current.length,
+      direction,
+    );
+    void dispatchReplayEventAtIndex(targetIndex, { syncGuideTrack: true });
+  }, [dispatchReplayEventAtIndex, isPlayback]);
 
   const stopSession = useCallback(async (): Promise<void> => {
     const current = sessionRef.current;
@@ -933,6 +1210,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
     emptyWindowsRef.current = 0;
     setSession(null);
     setIsPlayback(false);
+    resetReplayTelemetry();
     setMetrics({ windowCount: 0, processedLines: 0, totalAnomalies: 0 });
 
     // During playback we don't touch persisted status or stream sessions
@@ -950,7 +1228,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
         // best-effort
       }
     }
-  }, [stopPolling, isPlayback]);
+  }, [stopPolling, isPlayback, resetReplayTelemetry]);
 
   const subscribe = useCallback((listener: StreamListener): (() => void) => {
     listenersRef.current.add(listener);
@@ -966,30 +1244,48 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       session,
       metrics,
       isPlayback,
+      isPlaybackPaused,
       guideTrackReady,
       guideTrackPath,
       setGuideTrack,
+      setGuideTrackPlaylist,
       seekGuideTrack,
       startSession,
       stopSession,
       playbackSession,
+      seekPlaybackProgress,
+      seekPlaybackWindow,
+      pausePlayback,
+      resumePlayback,
+      stepPlaybackWindow,
       subscribe,
       playbackProgress,
+      playbackEventIndex,
+      playbackEventCount,
       guideTrackDurationSec,
     }),
     [
       session,
       metrics,
       isPlayback,
+      isPlaybackPaused,
       guideTrackReady,
       guideTrackPath,
       setGuideTrack,
+      setGuideTrackPlaylist,
       seekGuideTrack,
       startSession,
       stopSession,
       playbackSession,
+      seekPlaybackProgress,
+      seekPlaybackWindow,
+      pausePlayback,
+      resumePlayback,
+      stepPlaybackWindow,
       subscribe,
       playbackProgress,
+      playbackEventIndex,
+      playbackEventCount,
       guideTrackDurationSec,
     ],
   );
