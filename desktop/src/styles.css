@@ -1117,3 +1117,136 @@ code {
 .no-scroll {
   overflow: hidden;
 }
+
+/* ========================================
+   7. FORM & ACTION ELEMENTS (Ported from old styles)
+   ======================================== */
+
+.field {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.field label {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: var(--font-label);
+}
+
+.field-hint {
+  font-size: var(--font-label);
+  color: var(--text-muted);
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+}
+
+.checkbox-field input {
+  width: auto;
+  height: 18px;
+}
+
+.checkbox-field span {
+  color: inherit;
+}
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration-base) ease;
+  background: linear-gradient(135deg, var(--color-accent), var(--color-gold));
+  color: var(--bg-dark);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    opacity: 0.9;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.action-secondary {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.action-secondary:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.compact-action {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  font-size: var(--font-label);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration-base) ease;
+
+  &:hover:not(:disabled) {
+    border-color: var(--color-accent);
+    background: rgba(72, 215, 255, 0.1);
+    color: var(--text-primary);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &.danger {
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  &.danger:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.5);
+  }
+
+}
+
+.compact-action--bg {
+  background: rgba(255, 255, 255, 0.06);
+
+  &:hover:not(:disabled) {
+    background: rgba(72, 215, 255, 0.15);
+  }
+}
+
+.empty-state {
+  padding: var(--space-lg);
+  text-align: center;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed var(--border-soft);
+
+  p {
+    margin: 0;
+    color: var(--text-secondary);
+  }
+
+  &.top-spaced {
+    margin-top: var(--space-lg);
+  }
+}
+
+.top-spaced {
+  margin-top: var(--space-lg);
+}
