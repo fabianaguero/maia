@@ -741,18 +741,23 @@ code {
   flex-shrink: 0;
   padding: var(--space-lg);
   border-bottom: 1px solid var(--border-soft);
-  background: var(--bg-surface);
+  background: linear-gradient(
+    180deg,
+    rgba(18, 23, 31, 0.5) 0%,
+    rgba(12, 17, 23, 0.3) 100%
+  );
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-  height: clamp(140px, 28vh, 240px);
+  height: clamp(120px, 26vh, 220px);
 }
 
 .waveform-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  font-size: var(--font-secondary);
+  align-items: flex-start;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
 }
 
 .waveform-label {
@@ -760,14 +765,18 @@ code {
   letter-spacing: 0.1em;
   color: var(--text-muted);
   font-weight: 600;
+  font-size: 10px;
+  margin: 0;
 }
 
 .waveform-track-title {
-  font-size: var(--font-body);
-  font-weight: 600;
+  font-size: clamp(14px, 2.5vw, 18px);
+  font-weight: 700;
   font-family: "Space Grotesk", system-ui, sans-serif;
   color: var(--text-primary);
-  margin-top: var(--space-xs);
+  margin: 4px 0 0 0;
+  line-height: 1.3;
+  word-break: break-word;
 }
 
 .waveform-container {

@@ -507,27 +507,29 @@ function AppContent() {
           </div>
         </header>
 
-        <section className="waveform-section">
-          <div className="waveform-header">
-            <div>
-              <p className="waveform-label">Now Playing</p>
-              <h3 className="waveform-track-title">{selectedItemTitle ?? "No track loaded"}</h3>
-            </div>
-            <div className="status-pills">
-              <div className="status-pill">
-                <span>{screenLabel}</span>
-                <strong>{detailDeckLabel}</strong>
+        {selectedItemTitle && (
+          <section className="waveform-section">
+            <div className="waveform-header">
+              <div>
+                <p className="waveform-label">Now Playing</p>
+                <h3 className="waveform-track-title">{selectedItemTitle}</h3>
               </div>
-              {monitor.session && (
-                <div className="status-pill status-pill--live">
-                  <span>Live</span>
-                  <strong>{monitor.metrics.totalAnomalies} anomalies</strong>
+              <div className="status-pills">
+                <div className="status-pill">
+                  <span>{screenLabel}</span>
+                  <strong>{detailDeckLabel}</strong>
                 </div>
-              )}
+                {monitor.session && (
+                  <div className="status-pill status-pill--live">
+                    <span>Live</span>
+                    <strong>{monitor.metrics.totalAnomalies} anomalies</strong>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-          <MonitorWaveformBar tracks={library.tracks} />
-        </section>
+            <MonitorWaveformBar tracks={library.tracks} />
+          </section>
+        )}
 
       <section className="app-main">
         <AppSidebar
