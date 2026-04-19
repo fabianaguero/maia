@@ -105,7 +105,6 @@ export function AppSidebar({
   return (
     <aside className="sidebar panel role-based-sidebar">
       <div className="sidebar-brand">
-        <span className="sidebar-kicker">MAIA Hybrid System</span>
         <img
           src="/assets/branding/maia-wordmark-site.png"
           alt="MAIA"

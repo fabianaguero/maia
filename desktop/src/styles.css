@@ -203,6 +203,8 @@ code {
   overflow: hidden;
   min-height: 0;
   align-items: stretch;
+  opacity: 1;
+  transition: opacity var(--duration-base) ease;
 }
 
 @media (max-width: 640px) {
@@ -4684,4 +4686,14 @@ dd {
   font-size: var(--font-secondary);
   color: var(--text-secondary);
   margin: 0;
+}
+
+/* ========================================
+   MODE TRANSITION (smooth fade)
+   ======================================== */
+
+.opacity-transition {
+  opacity: 0;
+  transition: opacity var(--duration-short) ease;
+  pointer-events: none;
 }

@@ -14,6 +14,7 @@ import { useMonitor } from "./features/monitor/MonitorContext";
 import { UserModeProvider, useUserMode } from "./features/simple/UserModeContext";
 import { SimpleModeWizard } from "./features/simple/SimpleModeWizard";
 import { SimpleModeLibraryView } from "./features/simple/SimpleModeLibraryView";
+import { useModeTransition } from "./features/simple/ModeTransition";
 import { useSessions } from "./hooks/useSessions";
 import { useBaseAssets } from "./hooks/useBaseAssets";
 import { useCompositionResults } from "./hooks/useCompositionResults";
@@ -69,6 +70,7 @@ export default function App() {
 function AppContent() {
   const { notify } = useNotify();
   const { userMode } = useUserMode();
+  const { isTransitioning } = useModeTransition();
   const [manifest, setManifest] = useState<BootstrapManifest | null>(null);
   const [health, setHealth] = useState<AnalyzerResponse | null>(null);
   const [booting, setBooting] = useState(true);
@@ -602,7 +604,7 @@ function AppContent() {
           </section>
         )}
 
-      <section className={`app-main role--${pillar}`}>
+      <section className={`app-main role--${pillar} ${isTransitioning ? "opacity-transition" : ""}`} key={`${userMode}-${pillar}`}>
         <AppSidebar
           currentPillar={effectivePillar}
           onPillarChange={(p) => {
