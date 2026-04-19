@@ -305,6 +305,13 @@ code {
   text-transform: uppercase;
 }
 
+.topbar-simple-title {
+  font-size: var(--font-title-sm);
+  color: var(--text-primary);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
 .topbar-controls {
   display: flex;
   gap: var(--space-xs);

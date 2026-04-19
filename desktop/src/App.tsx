@@ -550,14 +550,21 @@ function AppContent() {
       <main className="app-shell">
         <header className="topbar">
           <div className="topbar-brand">
-            <img
-              src="/assets/branding/maia-wordmark-site.png"
-              alt="MAIA"
-              className="topbar-wordmark"
-            />
-            <div className="topbar-copy">
-              <span className="topbar-subtitle">{t.workspace}</span>
-            </div>
+            {userMode === "expert" && (
+              <img
+                src="/assets/branding/maia-wordmark-site.png"
+                alt="MAIA"
+                className="topbar-wordmark"
+              />
+            )}
+            {userMode === "simple" && (
+              <span className="topbar-simple-title">{t.workspace}</span>
+            )}
+            {userMode === "expert" && (
+              <div className="topbar-copy">
+                <span className="topbar-subtitle">{t.workspace}</span>
+              </div>
+            )}
           </div>
 
           <div className="topbar-controls">
