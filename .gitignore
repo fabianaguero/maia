@@ -34,3 +34,4 @@ desktop/coverage/
 
 # Build artifacts
 *.zip
+.gstack/
