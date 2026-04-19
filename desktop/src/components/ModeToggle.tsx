@@ -1,6 +1,5 @@
 import { useUserMode } from "../features/simple/UserModeContext";
 import { User, Sliders } from "lucide-react";
-import "../styles/ModeToggle.css";
 
 export function ModeToggle() {
   const { userMode, setUserMode } = useUserMode();
