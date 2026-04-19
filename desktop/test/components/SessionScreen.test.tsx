@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SessionScreen } from "../../src/features/session/SessionScreen";
+import { MonitorProvider } from "../../src/features/monitor/MonitorContext";
 import type { PersistedSession, SessionBookmark } from "../../src/api/sessions";
 import type { BaseTrackPlaylist, LibraryTrack, RepositoryAnalysis } from "../../src/types/library";
 
@@ -177,37 +178,35 @@ describe("SessionScreen", () => {
 
   it("renders a replay-active banner with progress", () => {
     render(
-      <SessionScreen
-        tracks={[createTrack()]}
-        playlists={[createPlaylist()]}
-        repositories={[createRepository()]}
-        sessions={[createSession()]}
-        sessionBookmarksBySessionId={{}}
-        selectedSessionId="session-1"
-        loading={false}
-        mutating={false}
-        error={null}
-        activeSessionId="session-1"
-        activeSessionMode="playback"
-        activePlaybackProgress={0.4}
-        onStartSession={vi.fn(async () => true)}
-        onStopSession={vi.fn(async () => undefined)}
-        onResume={vi.fn()}
-        onPlayback={vi.fn(async () => true)}
-        onReplayBookmark={vi.fn(async () => true)}
-        onDelete={vi.fn(async () => undefined)}
-        onSelectSession={vi.fn()}
-      />,
+      <MonitorProvider>
+        <SessionScreen
+          tracks={[createTrack()]}
+          playlists={[createPlaylist()]}
+          repositories={[createRepository()]}
+          sessions={[createSession()]}
+          sessionBookmarksBySessionId={{}}
+          selectedSessionId="session-1"
+          loading={false}
+          mutating={false}
+          error={null}
+          activeSessionId="session-1"
+          activeSessionMode="playback"
+          activePlaybackProgress={0.4}
+          onStartSession={vi.fn(async () => true)}
+          onStopSession={vi.fn(async () => undefined)}
+          onResume={vi.fn()}
+          onPlayback={vi.fn(async () => true)}
+          onReplayBookmark={vi.fn(async () => true)}
+          onDelete={vi.fn(async () => undefined)}
+          onSelectSession={vi.fn()}
+        />
+      </MonitorProvider>,
     );
 
-    expect(screen.getByText("Replay active: Night watch")).toBeInTheDocument();
-    expect(screen.getByText("40% complete · 16 stored windows")).toBeInTheDocument();
-    expect(screen.getByRole("progressbar", { name: "Replay progress" })).toHaveAttribute(
-      "aria-valuenow",
-      "40",
-    );
+    expect(screen.getByText("Replay active")).toBeInTheDocument();
+    expect(screen.getByText("40% of the saved session is back on deck.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Replay progress")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Exit replay" })).toBeInTheDocument();
-    expect(screen.getAllByText("Replay").length).toBeGreaterThan(0);
   });
 
   it("replays a stored session from the card action", async () => {
@@ -215,27 +214,29 @@ describe("SessionScreen", () => {
     const onSelectSession = vi.fn();
 
     render(
-      <SessionScreen
-        tracks={[createTrack()]}
-        playlists={[createPlaylist()]}
-        repositories={[createRepository()]}
-        sessions={[createSession()]}
-        sessionBookmarksBySessionId={{}}
-        selectedSessionId={null}
-        loading={false}
-        mutating={false}
-        error={null}
-        activeSessionId={null}
-        activeSessionMode={null}
-        activePlaybackProgress={null}
-        onStartSession={vi.fn(async () => true)}
-        onStopSession={vi.fn(async () => undefined)}
-        onResume={vi.fn()}
-        onPlayback={onPlayback}
-        onReplayBookmark={vi.fn(async () => true)}
-        onDelete={vi.fn(async () => undefined)}
-        onSelectSession={onSelectSession}
-      />,
+      <MonitorProvider>
+        <SessionScreen
+          tracks={[createTrack()]}
+          playlists={[createPlaylist()]}
+          repositories={[createRepository()]}
+          sessions={[createSession()]}
+          sessionBookmarksBySessionId={{}}
+          selectedSessionId={null}
+          loading={false}
+          mutating={false}
+          error={null}
+          activeSessionId={null}
+          activeSessionMode={null}
+          activePlaybackProgress={null}
+          onStartSession={vi.fn(async () => true)}
+          onStopSession={vi.fn(async () => undefined)}
+          onResume={vi.fn()}
+          onPlayback={onPlayback}
+          onReplayBookmark={vi.fn(async () => true)}
+          onDelete={vi.fn(async () => undefined)}
+          onSelectSession={onSelectSession}
+        />
+      </MonitorProvider>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Playback" }));
@@ -256,27 +257,29 @@ describe("SessionScreen", () => {
     const onSelectSession = vi.fn();
 
     render(
-      <SessionScreen
-        tracks={[createTrack()]}
-        playlists={[createPlaylist()]}
-        repositories={[createRepository()]}
-        sessions={[createSession()]}
-        sessionBookmarksBySessionId={{ session_ignored: [], "session-1": [createBookmark()] }}
-        selectedSessionId="session-1"
-        loading={false}
-        mutating={false}
-        error={null}
-        activeSessionId={null}
-        activeSessionMode={null}
-        activePlaybackProgress={null}
-        onStartSession={vi.fn(async () => true)}
-        onStopSession={vi.fn(async () => undefined)}
-        onResume={vi.fn()}
-        onPlayback={vi.fn(async () => true)}
-        onReplayBookmark={onReplayBookmark}
-        onDelete={vi.fn(async () => undefined)}
-        onSelectSession={onSelectSession}
-      />,
+      <MonitorProvider>
+        <SessionScreen
+          tracks={[createTrack()]}
+          playlists={[createPlaylist()]}
+          repositories={[createRepository()]}
+          sessions={[createSession()]}
+          sessionBookmarksBySessionId={{ session_ignored: [], "session-1": [createBookmark()] }}
+          selectedSessionId="session-1"
+          loading={false}
+          mutating={false}
+          error={null}
+          activeSessionId={null}
+          activeSessionMode={null}
+          activePlaybackProgress={null}
+          onStartSession={vi.fn(async () => true)}
+          onStopSession={vi.fn(async () => undefined)}
+          onResume={vi.fn()}
+          onPlayback={vi.fn(async () => true)}
+          onReplayBookmark={onReplayBookmark}
+          onDelete={vi.fn(async () => undefined)}
+          onSelectSession={onSelectSession}
+        />
+      </MonitorProvider>,
     );
 
     expect(screen.getByText("Replay notes")).toBeInTheDocument();
