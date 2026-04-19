@@ -10,7 +10,7 @@ interface Session {
 }
 
 export function SimpleMonitorScreen() {
-  const [isListening, setIsListening] = useState(false);
+  const [isListening, setIsListening] = useState(true);
   const [selectedSource, setSelectedSource] = useState("payments-api");
   const [selectedSound, setSelectedSound] = useState("Eurythmics - Sweet Dreams");
 
