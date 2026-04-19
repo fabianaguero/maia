@@ -1,7 +1,7 @@
 import type { AppTranslations } from "./en";
 
 export const es: AppTranslations = {
-  workspace: "Maia Studio",
+  workspace: "Maia",
   workspaceCopy: "Biblioteca · Deck · Booth",
   tagline: "Biblioteca → Analizar → Performear",
   nav: {

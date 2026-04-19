@@ -4537,20 +4537,23 @@ dd {
   max-width: 900px;
 }
 
-.simple-library-header {
+/* Unified library header for both simple and expert modes */
+.library-header {
   border-bottom: 1px solid var(--border-soft);
   padding-bottom: var(--space-xl);
+  margin-bottom: var(--space-xl);
 }
 
-.simple-library-header h2 {
+.library-title {
   font-size: var(--font-title-lg);
   color: var(--text-primary);
-  margin-bottom: var(--space-sm);
+  margin: 0 0 var(--space-sm) 0;
 }
 
-.simple-library-header p {
+.library-subtitle {
   color: var(--text-secondary);
   font-size: var(--font-body);
+  margin: 0;
 }
 
 .simple-library-section {

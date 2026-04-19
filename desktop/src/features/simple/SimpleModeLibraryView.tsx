@@ -40,9 +40,9 @@ export function SimpleModeLibraryView({
 
   return (
     <div className="simple-library-view">
-      <div className="simple-library-header">
-        <h2>{t.simpleMode.nav.files}</h2>
-        <p>Select a log source and start monitoring</p>
+      <div className="library-header">
+        <h2 className="library-title">{t.simpleMode.nav.files}</h2>
+        <p className="library-subtitle">Select a log source and start monitoring</p>
       </div>
 
       <section className="simple-library-section">

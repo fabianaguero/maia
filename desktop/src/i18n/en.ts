@@ -1,5 +1,5 @@
 export const en = {
-  workspace: "Maia Studio",
+  workspace: "Maia",
   workspaceCopy: "Library · Deck · Booth",
   tagline: "Library → Analyze → Perform",
   nav: {
