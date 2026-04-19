@@ -578,7 +578,7 @@ function AppContent() {
           </div>
         </header>
 
-        {selectedItemTitle && selectedItemTitle.trim() && (
+        {selectedItemTitle && selectedItemTitle.trim() && userMode === "expert" && (
           <section className="waveform-section">
             <div className="waveform-header">
               <div>
@@ -674,7 +674,9 @@ function AppContent() {
             onSelectRepository={(repositoryId) => {
               repositories.setSelectedRepositoryId(repositoryId);
             }}
-            onStartMonitoring={async (repoId) => {
+            onImportRepository={handleImportRepository}
+            onImportBaseAsset={handleImportBaseAsset}
+            onStartMonitoring={(repoId) => {
               const repo = repositories.repositories.find((r) => r.id === repoId);
               if (!repo) return;
               setPillar("perform");
