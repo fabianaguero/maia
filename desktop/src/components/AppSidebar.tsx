@@ -112,6 +112,7 @@ export function AppSidebar({
           className="sidebar-wordmark"
         />
         <p className="sidebar-tagline">{t.tagline}</p>
+        <ModeToggle />
       </div>
 
       <nav className="nav-stack role-stack" aria-label="Professional Roles">
@@ -210,7 +211,6 @@ export function AppSidebar({
       <div className="sidebar-footer">
         <span className="sidebar-footer-kicker">Selected Focus</span>
         <strong className="sidebar-footer-title">{selectedItemTitle ?? "None"}</strong>
-        <ModeToggle />
       </div>
     </aside>
   );

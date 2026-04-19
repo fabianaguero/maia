@@ -13,6 +13,7 @@ import { SessionScreen } from "./features/session/SessionScreen";
 import { useMonitor } from "./features/monitor/MonitorContext";
 import { UserModeProvider, useUserMode } from "./features/simple/UserModeContext";
 import { SimpleModeWizard } from "./features/simple/SimpleModeWizard";
+import { SimpleModeLibraryView } from "./features/simple/SimpleModeLibraryView";
 import { useSessions } from "./hooks/useSessions";
 import { useBaseAssets } from "./hooks/useBaseAssets";
 import { useCompositionResults } from "./hooks/useCompositionResults";
@@ -661,7 +662,28 @@ function AppContent() {
           />
         )}
 
-        {effectivePillar === "curate" && effectiveScreen === "library" && (
+        {effectivePillar === "curate" &&
+          effectiveScreen === "library" &&
+          userMode === "simple" &&
+          repositories.repositories.length > 0 && (
+          <SimpleModeLibraryView
+            tracks={library.tracks}
+            repositories={repositories.repositories}
+            baseAssets={baseAssets.baseAssets}
+            selectedRepositoryId={repositories.selectedRepositoryId}
+            onSelectRepository={(repositoryId) => {
+              repositories.setSelectedRepositoryId(repositoryId);
+            }}
+            onStartMonitoring={async (repoId) => {
+              const repo = repositories.repositories.find((r) => r.id === repoId);
+              if (!repo) return;
+              setPillar("perform");
+              setScreen("session");
+            }}
+          />
+        )}
+
+        {(effectivePillar === "curate" && effectiveScreen === "library" && userMode === "expert") && (
           <LibraryScreen
             tracks={library.tracks}
             playlists={library.playlists}
