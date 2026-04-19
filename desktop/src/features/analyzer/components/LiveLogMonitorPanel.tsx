@@ -90,6 +90,9 @@ const MAX_RECENT_CUES = 8;
 const MAX_RECENT_MARKERS = 6;
 const MAX_RECENT_WARNINGS = 4;
 const MAX_RECENT_EXPLANATIONS = 6;
+const MAX_PARSED_LINES = 5;
+const MAX_ANOMALY_SOURCE_LINES = 6;
+const MAX_SYNC_TAIL_LINES = 60;
 
 // Sequencer: note config per arrangement track (kick / snare / hat)
 const SEQ_TRACK_CONFIG: Record<
@@ -148,22 +151,61 @@ function createAudioContext(): AudioContext | null {
 // WAV renderer is in wavRenderer.ts (imported above).
 // ---------------------------------------------------------------------------
 
-function playWavBlob(blob: Blob): void {
+const activeBlobAudioElements = new Set<HTMLAudioElement>();
+
+function setBlobAudioVolume(volume: number): void {
+  const nextVolume = Math.max(0, Math.min(1, volume));
+  activeBlobAudioElements.forEach((audio) => {
+    audio.volume = nextVolume;
+  });
+}
+
+function stopManagedBlobAudio(): void {
+  activeBlobAudioElements.forEach((audio) => {
+    audio.pause();
+    audio.currentTime = 0;
+  });
+  activeBlobAudioElements.clear();
+}
+
+function playManagedWavBlob(blob: Blob, volume: number): void {
   const url = URL.createObjectURL(blob);
   const audio = new Audio(url);
-  audio.volume = 1.0;
+  audio.volume = Math.max(0, Math.min(1, volume));
+  activeBlobAudioElements.add(audio);
+
+  const cleanup = () => {
+    activeBlobAudioElements.delete(audio);
+    URL.revokeObjectURL(url);
+  };
+
+  audio.addEventListener("ended", cleanup, { once: true });
   audio.play()
-    .catch((err) => console.warn("[Maia Audio] WAV playback failed:", err))
-    .finally(() => {
-      audio.addEventListener("ended", () => URL.revokeObjectURL(url), { once: true });
-      // Safety cleanup in case "ended" never fires
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    .catch((err) => {
+      console.warn("[Maia Audio] WAV playback failed:", err);
+      cleanup();
     });
+
+  setTimeout(() => {
+    if (activeBlobAudioElements.has(audio)) {
+      activeBlobAudioElements.delete(audio);
+      URL.revokeObjectURL(url);
+    }
+  }, 5000);
 }
 
 function resolveManagedAudioSource(audioPath: string | null): string | null {
-  if (!audioPath || audioPath.startsWith("browser-fallback://") || !isTauri()) {
-    return null;
+  if (!audioPath) return null;
+  
+  // Allow browser fallback paths or remote URLs directly
+  if (audioPath.startsWith("browser-fallback://") || audioPath.startsWith("http")) {
+    return audioPath.replace("browser-fallback://", ""); // Strip prefix if needed
+  }
+
+  if (!isTauri()) {
+    // In web mode, we can only resolve relative paths or URLs. 
+    // If it's an absolute disk path, we can't resolve it unless it's served.
+    return audioPath.startsWith("/") ? audioPath : `./${audioPath}`;
   }
 
   try {
@@ -324,6 +366,120 @@ function resolveBackgroundTrackSecond(
 
 function levelCount(levelCounts: Record<string, number>, level: string): number {
   return levelCounts[level] ?? 0;
+}
+
+type ParsedLineTone = "error" | "warn" | "anomaly" | "info";
+
+function resolveParsedLineTone(line: string, markers: LiveLogMarker[]): ParsedLineTone {
+  const normalizedLine = line.trim().toLowerCase();
+  const matchesMarker = markers.some((marker) => {
+    const excerpt = marker.excerpt.trim().toLowerCase();
+    return Boolean(excerpt) && (normalizedLine.includes(excerpt) || excerpt.includes(normalizedLine));
+  });
+
+  if (matchesMarker || /\banomaly|drift|spike|budget\b/i.test(line)) {
+    return "anomaly";
+  }
+  if (/\berror|fatal|exception|panic|failed|refused|critical\b/i.test(line)) {
+    return "error";
+  }
+  if (/\bwarn|warning|timeout|retry|latency|slow|throttle\b/i.test(line)) {
+    return "warn";
+  }
+  return "info";
+}
+
+function parsedLineToneLabel(tone: ParsedLineTone): string {
+  if (tone === "anomaly") {
+    return "ANOM";
+  }
+
+  return tone.toUpperCase();
+}
+
+interface AnomalySourceRow {
+  sourcePath: string;
+  component: string;
+  level: string;
+  line: string;
+  tone: ParsedLineTone;
+}
+interface SyncTailRow {
+  id: string;
+  windowId: string;
+  sourcePath: string;
+  component: string;
+  level: string;
+  line: string;
+  tone: ParsedLineTone;
+}
+
+function resolveAnomalySourceRows(update: LiveLogStreamUpdate | null): AnomalySourceRow[] {
+  if (!update) {
+    return [];
+  }
+
+  const rows: AnomalySourceRow[] = [];
+  const seen = new Set<string>();
+
+  for (const marker of update.anomalyMarkers) {
+    const line = marker.excerpt.trim();
+    if (!line) {
+      continue;
+    }
+    const key = line.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    rows.push({
+      sourcePath: update.sourcePath,
+      component: marker.component || "stream",
+      level: marker.level || "anomaly",
+      line,
+      tone: resolveParsedLineTone(line, update.anomalyMarkers),
+    });
+    if (rows.length >= MAX_ANOMALY_SOURCE_LINES) {
+      return rows;
+    }
+  }
+
+  for (const parsedLine of update.parsedLines) {
+    const line = parsedLine.trim();
+    if (!line) {
+      continue;
+    }
+    const tone = resolveParsedLineTone(line, update.anomalyMarkers);
+    if (tone === "info") {
+      continue;
+    }
+    const key = line.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    rows.push({
+      sourcePath: update.sourcePath,
+      component: "stream",
+      level: tone,
+      line,
+      tone,
+    });
+    if (rows.length >= MAX_ANOMALY_SOURCE_LINES) {
+      break;
+    }
+  }
+
+  return rows;
+}
+function resolveTailComponent(line: string, markers: LiveLogMarker[]): string {
+  const normalized = line.trim().toLowerCase();
+  const marker = markers.find((entry) => {
+    const excerpt = entry.excerpt.trim().toLowerCase();
+    return Boolean(excerpt) && (normalized.includes(excerpt) || excerpt.includes(normalized));
+  });
+
+  return marker?.component || "stream";
 }
 
 // ---------------------------------------------------------------------------
@@ -532,7 +688,7 @@ function LiveWaveformCanvas({
       className="live-waveform-canvas"
       style={{
         width: "100%",
-        height: "160px",
+        height: "128px",
         borderRadius: "14px",
         display: "block",
       }}
@@ -592,7 +748,9 @@ export function LiveLogMonitorPanel({
   const backgroundGainRef = useRef<GainNode | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sampleBuffersRef = useRef(new Map<string, AudioBuffer>());
-  const [masterVolume, setMasterVolume] = useState(0.8);
+  const [masterVolume, setMasterVolume] = useState(
+    () => loadMonitorPrefs(repository.id)?.masterVolume ?? 0.45,
+  );
   const [adapterKind, setAdapterKind] = useState<StreamAdapterKind>("file");
   const [processCommand, setProcessCommand] = useState("");
   const [wsUrl, setWsUrl] = useState("ws://");
@@ -651,6 +809,10 @@ export function LiveLogMonitorPanel({
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [syncTailRows, setSyncTailRows] = useState<SyncTailRow[]>([]);
+  const [activeTailWindowId, setActiveTailWindowId] = useState<string | null>(null);
+  const syncTailListRef = useRef<HTMLDivElement | null>(null);
+  const previousAudibleVolumeRef = useRef(masterVolume > 0 ? masterVolume : 0.45);
   const selectedSceneBaseAsset =
     availableBaseAssets.find((entry) => entry.id === sceneBaseAssetId) ?? null;
   const selectedSceneComposition =
@@ -776,13 +938,17 @@ export function LiveLogMonitorPanel({
               : "Following all local systemd units."
             : repository.sourcePath;
   const cueEnginePreviewLabel =
-    sampleStatus === "ready"
-      ? scene.sampleSourceCount > 1
-        ? "Base sample pack"
-        : "Base sample"
-      : sampleStatus === "loading"
-        ? "Loading sample"
-        : "Internal synth";
+    hasBaseListeningBed
+      ? sampleStatus === "ready"
+        ? "Guide-track modulation + samples"
+        : "Guide-track modulation"
+      : sampleStatus === "ready"
+        ? scene.sampleSourceCount > 1
+          ? "Base sample pack"
+          : "Base sample"
+        : sampleStatus === "loading"
+          ? "Loading sample"
+          : "Internal synth";
 
   useEffect(() => {
     if (
@@ -811,11 +977,18 @@ export function LiveLogMonitorPanel({
   // Close AudioContext on unmount — the background poll loop lives in MonitorContext
   useEffect(() => {
     return () => {
+      stopManagedBlobAudio();
       if (audioContextRef.current) {
         void audioContextRef.current.close();
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (replayActive) {
+      stopManagedBlobAudio();
+    }
+  }, [replayActive]);
 
   useEffect(() => {
     const sampleSources = scene.sampleSources;
@@ -908,6 +1081,8 @@ export function LiveLogMonitorPanel({
     setSelectedExplanationId(null);
     setBackgroundPlayheadSecond(0);
     setRecentWarnings([]);
+    setSyncTailRows([]);
+    setActiveTailWindowId(null);
     setError(null);
     knownComponentsRef.current = [];
     setKnownComponents([]);
@@ -924,6 +1099,7 @@ export function LiveLogMonitorPanel({
     setSelectedMutationProfileId(
       nextPrefs?.selectedMutationProfileId ?? DEFAULT_MUTATION_PROFILE_ID,
     );
+    setMasterVolume(nextPrefs?.masterVolume ?? 0.45);
     setPendingAddTrackId("");
     setPendingLoadPlaylistId("");
     beatClockRef.current = null;
@@ -939,8 +1115,9 @@ export function LiveLogMonitorPanel({
       basePlaylist,
       selectedStyleProfileId,
       selectedMutationProfileId,
+      masterVolume,
     });
-  }, [repository.id, basePlaylist, selectedStyleProfileId, selectedMutationProfileId]);
+  }, [repository.id, basePlaylist, selectedStyleProfileId, selectedMutationProfileId, masterVolume]);
 
   // Keep master gain in sync with the volume slider
   useEffect(() => {
@@ -949,6 +1126,21 @@ export function LiveLogMonitorPanel({
         masterVolume,
         audioContextRef.current?.currentTime ?? 0,
       );
+    }
+    setBlobAudioVolume(masterVolume);
+  }, [masterVolume]);
+
+  useEffect(() => {
+    const el = syncTailListRef.current;
+    if (!el) {
+      return;
+    }
+    el.scrollTop = el.scrollHeight;
+  }, [syncTailRows.length]);
+
+  useEffect(() => {
+    if (masterVolume > 0.001) {
+      previousAudibleVolumeRef.current = masterVolume;
     }
   }, [masterVolume]);
 
@@ -974,47 +1166,62 @@ export function LiveLogMonitorPanel({
   }, [selectedStyleProfile.backgroundGain, selectedStyleProfile.filterCeilingHz]);
 
   const ensureAudioReady = useEffectEvent(async (): Promise<AudioContext | null> => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = createAudioContext();
-    }
-
-    if (!audioContextRef.current) {
-      setAudioStatus("unsupported");
-      return null;
-    }
-
-    // Create master gain node once, routed: everything → masterGain → analyser → destination
-    if (!masterGainRef.current) {
-      const gain = audioContextRef.current.createGain();
-      gain.gain.value = masterVolume;
-
-      const analyser = audioContextRef.current.createAnalyser();
-      analyser.fftSize = 2048;
-      analyser.smoothingTimeConstant = 0.7;
-      analyserRef.current = analyser;
-
-      gain.connect(analyser);
-      analyser.connect(audioContextRef.current.destination);
-      masterGainRef.current = gain;
-    }
-
     try {
-      if (audioContextRef.current.state === "suspended") {
-        await audioContextRef.current.resume();
+      if (!audioContextRef.current) {
+        audioContextRef.current = createAudioContext();
       }
-      // Double-check — some WebKit builds need a second resume
-      if (audioContextRef.current.state !== "running") {
-        await audioContextRef.current.resume();
+
+      const ctx = audioContextRef.current;
+      if (!ctx) {
+        setAudioStatus("unsupported");
+        return null;
       }
-      console.info(`[Maia Audio] context state=${audioContextRef.current.state}, sampleRate=${audioContextRef.current.sampleRate}`);
-      setAudioStatus(audioContextRef.current.state === "running" ? "ready" : "error");
-      return audioContextRef.current;
+
+      if (ctx.state === "suspended") {
+        log.info("Resuming AudioContext from suspended state...");
+        await ctx.resume();
+      }
+      
+      if (ctx.state === "running") {
+        setAudioStatus("ready");
+      }
+      
+      return ctx;
     } catch (err) {
-      console.error("[Maia Audio] Failed to resume AudioContext", err);
+      log.error("Failed to ensure audio ready", err);
       setAudioStatus("error");
       return null;
     }
   });
+
+  useEffect(() => {
+    const initAudio = async () => {
+      const ctx = await ensureAudioReady();
+      if (!ctx) return;
+
+      // Create master gain node once, routed: everything → masterGain → analyser → destination
+      if (!masterGainRef.current) {
+        const gain = ctx.createGain();
+        gain.gain.value = masterVolume;
+
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 2048;
+        analyser.smoothingTimeConstant = 0.7;
+        analyserRef.current = analyser;
+
+        gain.connect(analyser);
+        analyser.connect(ctx.destination);
+        masterGainRef.current = gain;
+      }
+    };
+
+    if (liveEnabled || replayActive) {
+      void initAudio();
+    }
+  }, [liveEnabled, replayActive, ensureAudioReady, masterVolume]);
+
+  const getAudioContext = useCallback(() => audioContextRef.current, []);
+
 
   const clearBackgroundTransition = useCallback(() => {
     if (backgroundTransitionTimerRef.current !== null) {
@@ -1384,6 +1591,8 @@ export function LiveLogMonitorPanel({
     log.info("playWithCurrentEngine cues=%d bpm=%s vol=%s", cues.length, liveBpm, masterVolume);
     if (cues.length === 0) { log.debug("playWithCurrentEngine — skipped (0 cues)"); return; }
 
+    const preferGuideTrackMutation = playableBaseTracks.length > 0;
+
     const preset = scene.preset;
     const cappedCues = cues.slice(0, preset.maxCuesPerWindow);
 
@@ -1399,15 +1608,50 @@ export function LiveLogMonitorPanel({
       pan: clampPan(voice.cue.pan + voice.panOffset),
     }));
 
-    // ── Primary audio output: render to WAV and play via <audio> element ──
-    // WebKitGTK on Linux silently swallows OscillatorNode → destination output,
-    // so we render cues to a PCM buffer and play through an HTMLAudioElement.
-    const wavBlob = renderCuesToWav(voicedCues, masterVolume);
-    if (wavBlob) {
-      log.info("WAV blob rendered size=%d voices=%d — playing", wavBlob.size, voicedCues.length);
-      playWavBlob(wavBlob);
-    } else {
-      log.warn("renderCuesToWav returned null for %d voiced cues", voicedCues.length);
+    const audibleVoiceEntries = voices
+      .map((voice, index) => {
+        const voicedCue = voicedCues[index];
+        if (!voicedCue) {
+          return null;
+        }
+
+        if (preferGuideTrackMutation && voicedCue.routeKey === "info" && voicedCue.accent !== "anomaly") {
+          return null;
+        }
+
+        return {
+          voice,
+          voicedCue: preferGuideTrackMutation
+            ? {
+                ...voicedCue,
+                noteHz: Number((voicedCue.noteHz * 0.5).toFixed(2)),
+                gain: Number(Math.min(0.08, Math.max(0.004, voicedCue.gain * 0.2)).toFixed(3)),
+                waveform: voicedCue.accent === "anomaly" ? "triangle" : voicedCue.waveform,
+              }
+            : voicedCue,
+        };
+      })
+      .filter((entry): entry is { voice: ArrangementVoice; voicedCue: RoutedLiveCue } => entry !== null);
+    const audibleVoicedCues = audibleVoiceEntries.map((entry) => entry.voicedCue);
+
+    // When a guide/base track is armed, keep the cue layer restrained so the
+    // listener hears the source track being modulated instead of a second synth track.
+    if (audibleVoicedCues.length > 0) {
+      const wavBlob = renderCuesToWav(audibleVoicedCues, 1);
+      if (wavBlob) {
+        log.info(
+          "WAV blob rendered size=%d voices=%d audibleVoices=%d — playing",
+          wavBlob.size,
+          voicedCues.length,
+          audibleVoicedCues.length,
+        );
+        playManagedWavBlob(
+          wavBlob,
+          preferGuideTrackMutation ? Math.min(0.22, masterVolume * 0.5) : masterVolume,
+        );
+      } else {
+        log.warn("renderCuesToWav returned null for %d audible cues", audibleVoicedCues.length);
+      }
     }
 
     // ── Accumulate voiced cues for full mix bounce ──
@@ -1437,11 +1681,11 @@ export function LiveLogMonitorPanel({
         ? 60 / activeBpm! / Math.max(1, preset.rhythmDivision / 4)
         : preset.scheduleGapMs / 1000;
 
-      for (let i = 0; i < voices.length; i++) {
-        const voice = voices[i];
+      for (const entry of audibleVoiceEntries) {
+        const voice = entry.voice;
         const cuePriority = cappedCues.indexOf(voice.cue);
         const cueStartAt = firstCueAt + cuePriority * gapSeconds + voice.timeOffsetMs / 1000;
-        const voicedCue = voicedCues[i];
+        const voicedCue = entry.voicedCue;
         const sampleBuffer =
           sampleStatus === "ready" && voice.cue.samplePath && voice.track === "foundation"
             ? sampleBuffersRef.current.get(voice.cue.samplePath) ?? null
@@ -1511,11 +1755,46 @@ export function LiveLogMonitorPanel({
       setRecentWarnings(update.warnings.slice(0, MAX_RECENT_WARNINGS));
       setError(null);
 
-      if (!update.hasData) return;
+      if (!update.hasData) {
+        setLastUpdate(update);
+        return;
+      }
+
+      const windowId = `${update.fromOffset}-${update.toOffset}-${update.replayWindowIndex ?? "live"}`;
+      const nextTailRows = (update.parsedLines || [])
+        .filter((line) => line.trim().length > 0)
+        .slice(-MAX_PARSED_LINES)
+        .map((line, index) => {
+          const tone = resolveParsedLineTone(line, update.anomalyMarkers);
+          const component = resolveTailComponent(line, update.anomalyMarkers);
+          const level = tone === "anomaly" ? "anomaly" : tone;
+          return {
+            id: `${windowId}-${index}`,
+            windowId,
+            sourcePath: update.sourcePath,
+            component,
+            level,
+            line,
+            tone,
+          } satisfies SyncTailRow;
+        });
+
+      if (nextTailRows.length > 0) {
+        setSyncTailRows((current) => [...current, ...nextTailRows].slice(-MAX_SYNC_TAIL_LINES));
+      }
+      setActiveTailWindowId(windowId);
+
+      // Extract the most relevant log line for synchronized wave overlay
+      const primaryLine = update.parsedLines?.[update.parsedLines.length - 1] || "";
+
+      if (replayActive) return;
 
       setEmittedCueCount((current) => current + routedCues.length);
       setRecentCues((current) => [
-        ...routedCues.slice().reverse(),
+        ...routedCues.slice().reverse().map(cue => ({
+          ...cue,
+          logLine: primaryLine // Attach the log line to the cue for synchronized rendering
+        })),
         ...current,
       ].slice(0, MAX_RECENT_CUES));
       setRecentMarkers((current) => [
@@ -1542,7 +1821,7 @@ export function LiveLogMonitorPanel({
       );
     });
 
-    if (update.hasData) {
+    if (update.hasData && !replayActive) {
       // Auto-seed beat clock from the first live BPM; re-sync on >12% drift
       const liveBpmVal = update.suggestedBpm;
       if (typeof liveBpmVal === "number" && liveBpmVal > 0) {
@@ -1590,6 +1869,8 @@ export function LiveLogMonitorPanel({
     setRecentExplanations([]);
     setSelectedExplanationId(null);
     setBackgroundPlayheadSecond(0);
+    setSyncTailRows([]);
+    setActiveTailWindowId(null);
     setError(null);
     setIsStarting(true);
     bounceCuesRef.current = [];
@@ -1598,20 +1879,7 @@ export function LiveLogMonitorPanel({
     // Prime the AudioContext BEFORE any other async operation so the browser
     // still recognises this as a trusted user gesture. WebKit requires
     // new AudioContext() / resume() to be called during a user interaction.
-    const ctx0 = await ensureAudioReady();
-
-    // Play a short confirmation beep via WAV blob (WebAudio destination is
-    // unreliable on WebKitGTK / Linux)
-    {
-      const confirmCue: RoutedLiveCue = {
-        id: "confirm", component: "", level: "info", excerpt: "", noteHz: 880,
-        durationMs: 200, gain: 0.15, eventIndex: 0, accent: "none",
-        waveform: "sine", pan: 0, routeKey: "info", routeLabel: "",
-        stemLabel: "", sectionLabel: "", focus: "", samplePath: null, sampleLabel: null,
-      };
-      const blob = renderCuesToWav([confirmCue], 1.0);
-      if (blob) playWavBlob(blob);
-    }
+    await ensureAudioReady();
 
     const sessionId = `sess-${repository.id}-${Date.now()}`;
 
@@ -1676,6 +1944,7 @@ export function LiveLogMonitorPanel({
         adapterKind: "file",
         source: repository.sourcePath,
         label: repository.title,
+        startFromBeginning: true,
       };
     }
 
@@ -1738,6 +2007,8 @@ export function LiveLogMonitorPanel({
       masterGainRef.current.disconnect();
       masterGainRef.current = null;
     }
+    setBlobAudioVolume(0);
+    stopManagedBlobAudio();
     if (analyserRef.current) {
       analyserRef.current.disconnect();
       analyserRef.current = null;
@@ -1821,8 +2092,8 @@ export function LiveLogMonitorPanel({
             sampleLabel: null,
           };
         });
-        const blob = renderCuesToWav(cues, masterVolume);
-        if (blob) playWavBlob(blob);
+        const blob = renderCuesToWav(cues, 1);
+        if (blob) playManagedWavBlob(blob, Math.min(0.18, masterVolume * 0.4));
       }
 
       if (immediate.length > 0) playFirings(immediate);
@@ -1859,7 +2130,29 @@ export function LiveLogMonitorPanel({
     }
   }
 
+  const handleSetMasterVolume = useCallback((nextVolume: number) => {
+    setMasterVolume(Math.max(0, Math.min(1, nextVolume)));
+  }, []);
+
+  const handleToggleMute = useCallback(() => {
+    setMasterVolume((current) => {
+      if (current <= 0.001) {
+        return previousAudibleVolumeRef.current > 0.001
+          ? previousAudibleVolumeRef.current
+          : 0.45;
+      }
+
+      previousAudibleVolumeRef.current = current;
+      return 0;
+    });
+  }, []);
+
   const currentLevelCounts = lastUpdate?.levelCounts ?? {};
+  const parsedLines = lastUpdate?.parsedLines.slice(-MAX_PARSED_LINES) ?? [];
+  const anomalySourceRows = resolveAnomalySourceRows(lastUpdate);
+  const waveAnomalyMarkers = recentMarkers.slice(0, 4);
+  const liveSourceLabel = lastUpdate?.sourcePath ?? repository.sourcePath;
+  const recentSyncTailRows = syncTailRows.slice(-MAX_SYNC_TAIL_LINES);
 
   if (!expanded && !liveEnabled) {
     return (
@@ -1902,6 +2195,14 @@ export function LiveLogMonitorPanel({
             {statusLabel(liveEnabled, replayActive)}
           </span>
           <span className="live-log-badge">{activeAdapterLabel}</span>
+          <span 
+            className={`live-log-badge ${audioStatus === "ready" ? "ready" : "warn"}`}
+            title={audioStatus === "ready" ? "Audio engine active" : "Audio blocked or errored. Click Start to resume."}
+            onClick={() => void ensureAudioReady()}
+            style={{ cursor: "pointer" }}
+          >
+            {audioStatus === "ready" ? "Audio: ON" : "Audio: BLOCKED"}
+          </span>
           {liveEnabled ? (
             <button type="button" className="secondary-action" onClick={handleStop}>
               {replayActive ? "Exit replay" : "Stop monitor"}
@@ -2518,61 +2819,39 @@ export function LiveLogMonitorPanel({
           max={1}
           step={0.01}
           value={masterVolume}
-          onChange={(e) => setMasterVolume(Number(e.target.value))}
+          onChange={(e) => handleSetMasterVolume(Number(e.target.value))}
           aria-label="Master volume"
         />
-        <button
-          type="button"
-          className="action secondary"
-          style={{ marginTop: 8, fontSize: "0.78rem" }}
-          onClick={() => {
-            // Generate a simple WAV tone and play it via <audio> element
-            // This bypasses Web Audio API entirely
-            const sampleRate = 44100;
-            const duration = 0.5;
-            const freq = 440;
-            const numSamples = Math.floor(sampleRate * duration);
-            const buffer = new ArrayBuffer(44 + numSamples * 2);
-            const view = new DataView(buffer);
-
-            // WAV header
-            const writeStr = (offset: number, str: string) => {
-              for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
-            };
-            writeStr(0, "RIFF");
-            view.setUint32(4, 36 + numSamples * 2, true);
-            writeStr(8, "WAVE");
-            writeStr(12, "fmt ");
-            view.setUint32(16, 16, true);
-            view.setUint16(20, 1, true); // PCM
-            view.setUint16(22, 1, true); // mono
-            view.setUint32(24, sampleRate, true);
-            view.setUint32(28, sampleRate * 2, true);
-            view.setUint16(32, 2, true);
-            view.setUint16(34, 16, true); // 16-bit
-            writeStr(36, "data");
-            view.setUint32(40, numSamples * 2, true);
-
-            // Generate sine wave samples
-            for (let i = 0; i < numSamples; i++) {
-              const t = i / sampleRate;
-              const envelope = Math.min(1, t * 20) * Math.max(0, 1 - t / duration);
-              const sample = Math.sin(2 * Math.PI * freq * t) * 0.5 * envelope;
-              view.setInt16(44 + i * 2, sample * 32767, true);
-            }
-
-            const blob = new Blob([buffer], { type: "audio/wav" });
-            const url = URL.createObjectURL(blob);
-            const audio = new Audio(url);
-            audio.volume = 1.0;
-            audio.play()
-              .then(() => console.info("[Maia] WAV test tone playing via <audio> element"))
-              .catch((err) => console.error("[Maia] WAV test tone failed:", err))
-              .finally(() => setTimeout(() => URL.revokeObjectURL(url), 2000));
-          }}
-        >
-          🔊 Test tone
-        </button>
+        <div className="monitor-volume-actions">
+          <button
+            type="button"
+            className="secondary-action"
+            onClick={handleToggleMute}
+          >
+            {masterVolume <= 0.001 ? "Unmute" : "Mute"}
+          </button>
+          <button
+            type="button"
+            className="secondary-action"
+            onClick={() => handleSetMasterVolume(0.2)}
+          >
+            20%
+          </button>
+          <button
+            type="button"
+            className="secondary-action"
+            onClick={() => handleSetMasterVolume(0.4)}
+          >
+            40%
+          </button>
+          <button
+            type="button"
+            className="secondary-action"
+            onClick={() => handleSetMasterVolume(0.6)}
+          >
+            60%
+          </button>
+        </div>
       </div>
 
       <div className="audio-path-card top-spaced">
@@ -2622,16 +2901,134 @@ export function LiveLogMonitorPanel({
             {recentCues.map((cue, idx) => (
               <div
                 key={`${cue.id}-${idx}`}
-                className={`live-wave-bar ${cue.routeKey}`}
+                className={`live-wave-bar ${cue.routeKey}${cue.accent === "anomaly" ? " is-anomaly" : ""}`}
+                title={`${cue.component} · ${cue.excerpt}`}
                 style={{
-                  "--bar-height": `${Math.max(10, cue.gain * 250)}px`,
-                  "--bar-opacity": Math.max(0.2, 1 - idx / MAX_RECENT_CUES),
+                  "--bar-height": `${cue.accent === "anomaly" ? Math.max(60, cue.gain * 400) : Math.max(10, cue.gain * 220)}px`,
+                  "--bar-opacity": Math.max(0.3, 1 - idx / MAX_RECENT_CUES),
                 } as any}
               />
             ))}
             {recentCues.length === 0 && (
               <div className="live-wave-placeholder">Awaiting system pulse…</div>
             )}
+          </div>
+          <div className="monitor-recent-horizontal-tail">
+            {recentCues.map((cue, idx) => (
+              <div 
+                key={`tail-${cue.id}-${idx}`} 
+                className={`monitor-horizontal-tail-cell is-${cue.routeKey}`}
+                style={{ 
+                  "--cell-opacity": Math.max(0.3, 1 - idx / MAX_RECENT_CUES) 
+                } as any}
+              >
+                {cue.logLine ? (
+                  <div className="monitor-horizontal-tail-text">
+                    <span className="tail-component">[{cue.component}]</span> {cue.logLine}
+                  </div>
+                ) : (
+                  <div className="monitor-horizontal-tail-empty">IDLE</div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="live-wave-anomaly-strip">
+            <div className="monitor-parsed-lines-head">
+              <span>Wave anomaly markers</span>
+              <strong>{waveAnomalyMarkers.length}/4</strong>
+            </div>
+            {waveAnomalyMarkers.length > 0 ? (
+              <div className="live-wave-anomaly-chip-list">
+                {waveAnomalyMarkers.map((marker, index) => (
+                  <div key={`${marker.eventIndex}-${index}`} className="live-wave-anomaly-chip">
+                    <span className="live-wave-anomaly-chip-level">{marker.level.toUpperCase()}</span>
+                    <span className="live-wave-anomaly-chip-component">{marker.component}</span>
+                    <code className="live-wave-anomaly-chip-excerpt">{marker.excerpt}</code>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="monitor-empty-hint">No anomaly markers in the latest windows.</p>
+            )}
+          </div>
+          <div className="audio-path-card">
+            <span>Wave source stream</span>
+            <strong>{liveSourceLabel}</strong>
+          </div>
+          <div className="monitor-lines-under-wave">
+            <div className="monitor-parsed-lines">
+              <div className="monitor-parsed-lines-head">
+                <span>Stream tail sync</span>
+                <strong>
+                  {recentSyncTailRows.length}/{MAX_SYNC_TAIL_LINES} lines
+                </strong>
+              </div>
+              <div
+                ref={syncTailListRef}
+                className="monitor-parsed-lines-list monitor-sync-tail-list"
+                role="list"
+                aria-label="Synchronized stream tail lines"
+              >
+                {recentSyncTailRows.length > 0 ? recentSyncTailRows.map((row, index) => (
+                  <div
+                    key={row.id}
+                    className={`monitor-parsed-line is-${row.tone}${row.windowId === activeTailWindowId ? " is-current-window" : ""}`}
+                    role="listitem"
+                  >
+                    <span className="monitor-parsed-line-index">{String(index + 1).padStart(2, "0")}</span>
+                    <span className="monitor-parsed-line-tone">{row.level.toUpperCase()}</span>
+                    <code className="monitor-parsed-line-code">
+                      [{row.component}] {row.line}
+                      {`\n`}
+                      <span className="monitor-anomaly-source-path">{row.sourcePath}</span>
+                    </code>
+                  </div>
+                )) : (
+                  <div className="monitor-parsed-line is-empty" role="listitem">
+                    <span className="monitor-parsed-line-index">--</span>
+                    <span className="monitor-parsed-line-tone">IDLE</span>
+                    <code className="monitor-parsed-line-code">
+                      Waiting for synchronized stream lines from live/replay updates...
+                    </code>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="monitor-anomaly-source-lines">
+              <div className="monitor-parsed-lines-head">
+                <span>Anomaly source lines</span>
+                <strong>
+                  {anomalySourceRows.length}/{MAX_ANOMALY_SOURCE_LINES}
+                </strong>
+              </div>
+              {anomalySourceRows.length > 0 ? (
+                <div className="monitor-parsed-lines-list" role="list" aria-label="Anomaly source lines">
+                  {anomalySourceRows.map((row, index) => (
+                    <div
+                      key={`${lastUpdate.fromOffset}-${index}-${row.level}`}
+                      className={`monitor-parsed-line is-${row.tone}`}
+                      role="listitem"
+                    >
+                      <span className="monitor-parsed-line-index">{String(index + 1).padStart(2, "0")}</span>
+                      <span className="monitor-parsed-line-tone">{row.level.toUpperCase()}</span>
+                      <code className="monitor-parsed-line-code">
+                        [{row.component}] {row.line}
+                        {`\n`}
+                        <span className="monitor-anomaly-source-path">{row.sourcePath}</span>
+                      </code>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="monitor-parsed-line is-empty">
+                  <span className="monitor-parsed-line-index">--</span>
+                  <span className="monitor-parsed-line-tone">IDLE</span>
+                  <code className="monitor-parsed-line-code">
+                    No anomaly-producing stream line in this window yet.
+                  </code>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       ) : null}

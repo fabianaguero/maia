@@ -21,6 +21,23 @@ export const es: AppTranslations = {
       label: "Componer",
       description: "Deck de arreglo y render",
     },
+    pillars: {
+      perform: {
+        label: "PERFORM",
+        description: "El Deck: sonificación en vivo y monitor",
+        lane: "A01",
+      },
+      design: {
+        label: "DESIGN",
+        description: "El Studio: audio semántico y presets",
+        lane: "B02",
+      },
+      curate: {
+        label: "CURATE",
+        description: "El Crate: biblioteca y administración",
+        lane: "C03",
+      },
+    },
   },
   sidebar: {
     selected: "Seleccionado",

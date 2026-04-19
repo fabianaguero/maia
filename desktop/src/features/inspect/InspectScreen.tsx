@@ -113,6 +113,7 @@ export function InspectScreen({
     useState<TrackCompareAuditionPoint["id"] | null>(null);
   const [activeCompareAuditionLabel, setActiveCompareAuditionLabel] =
     useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"overview" | "grid" | "performance" | "metadata">("overview");
 
   useEffect(() => {
     setSelectedPhraseRange(null);
@@ -435,39 +436,124 @@ export function InspectScreen({
             />
           </div>
           <div className="analyzer-sidebar">
-            <BpmPanel track={track} />
-            <BeatGridEditorPanel
-              track={track}
-              busy={trackMutating}
-              currentTime={currentTime}
-              onUpdateAnalysis={(input) => onUpdateTrackAnalysis(track.id, input)}
-            />
-            <TrackPerformancePanel
-              track={track}
-              busy={trackMutating}
-              currentTime={currentTime}
-              selectedPhraseRange={selectedPhraseRange}
-              onUpdatePerformance={(input) => onUpdateTrackPerformance(track.id, input)}
-            />
-            <RepoStatusPanel track={track} analyzerLabel={analyzerLabel} />
-            <SongMetadataPanel track={track} />
-            <section className="panel metric-panel">
-              <details className="panel-collapsible">
-                <summary className="panel-collapsible-summary">Notes &amp; metadata</summary>
-                <div className="panel-collapsible-body">
-                  {track.analysis.notes.length > 0 && (
-                    <ul className="stack-list note-list">
-                      {track.analysis.notes.map((note) => <li key={note}>{note}</li>)}
-                    </ul>
-                  )}
-                  <dl className="meta-list compact-meta">
-                    <div><dt>Analysis mode</dt><dd>{formatAnalysisMode(track.analysis.analysisMode)}</dd></div>
-                    <div><dt>Source path</dt><dd>{getTrackSourcePath(track)}</dd></div>
-                    <div><dt>Storage path</dt><dd>{getTrackStoragePath(track) ?? "No snapshot"}</dd></div>
-                  </dl>
-                </div>
-              </details>
-            </section>
+            <div className="inspect-tabs">
+              <ul className="inspect-tab-list" role="tablist">
+                <li role="presentation">
+                  <button
+                    role="tab"
+                    aria-selected={activeTab === "overview"}
+                    aria-controls="tab-overview"
+                    className="inspect-tab-button"
+                    onClick={() => setActiveTab("overview")}
+                  >
+                    Overview
+                  </button>
+                </li>
+                <li role="presentation">
+                  <button
+                    role="tab"
+                    aria-selected={activeTab === "grid"}
+                    aria-controls="tab-grid"
+                    className="inspect-tab-button"
+                    onClick={() => setActiveTab("grid")}
+                  >
+                    Beat Grid
+                  </button>
+                </li>
+                <li role="presentation">
+                  <button
+                    role="tab"
+                    aria-selected={activeTab === "performance"}
+                    aria-controls="tab-performance"
+                    className="inspect-tab-button"
+                    onClick={() => setActiveTab("performance")}
+                  >
+                    Performance
+                  </button>
+                </li>
+                <li role="presentation">
+                  <button
+                    role="tab"
+                    aria-selected={activeTab === "metadata"}
+                    aria-controls="tab-metadata"
+                    className="inspect-tab-button"
+                    onClick={() => setActiveTab("metadata")}
+                  >
+                    Details
+                  </button>
+                </li>
+              </ul>
+
+              {/* Overview Tab */}
+              <section
+                id="tab-overview"
+                role="tabpanel"
+                aria-hidden={activeTab !== "overview"}
+                className="inspect-tab-content"
+              >
+                <BpmPanel track={track} />
+                <RepoStatusPanel track={track} analyzerLabel={analyzerLabel} />
+              </section>
+
+              {/* Beat Grid Tab */}
+              <section
+                id="tab-grid"
+                role="tabpanel"
+                aria-hidden={activeTab !== "grid"}
+                className="inspect-tab-content"
+              >
+                <BeatGridEditorPanel
+                  track={track}
+                  busy={trackMutating}
+                  currentTime={currentTime}
+                  onUpdateAnalysis={(input) => onUpdateTrackAnalysis(track.id, input)}
+                />
+              </section>
+
+              {/* Performance Tab */}
+              <section
+                id="tab-performance"
+                role="tabpanel"
+                aria-hidden={activeTab !== "performance"}
+                className="inspect-tab-content"
+              >
+                <TrackPerformancePanel
+                  track={track}
+                  busy={trackMutating}
+                  currentTime={currentTime}
+                  selectedPhraseRange={selectedPhraseRange}
+                  onUpdatePerformance={(input) => onUpdateTrackPerformance(track.id, input)}
+                />
+              </section>
+
+              {/* Metadata Tab */}
+              <section
+                id="tab-metadata"
+                role="tabpanel"
+                aria-hidden={activeTab !== "metadata"}
+                className="inspect-tab-content"
+              >
+                <SongMetadataPanel track={track} />
+                <section className="panel metric-panel">
+                  <details className="panel-collapsible">
+                    <summary className="panel-collapsible-summary">Notes &amp; analysis</summary>
+                    <div className="panel-collapsible-body">
+                      {track.analysis.notes.length > 0 && (
+                        <ul className="stack-list note-list">
+                          {track.analysis.notes.map((note) => <li key={note}>{note}</li>)}
+                        </ul>
+                      )}
+                      <dl className="meta-list compact-meta">
+                        <div><dt>Analysis mode</dt><dd>{formatAnalysisMode(track.analysis.analysisMode)}</dd></div>
+                        <div><dt>Source path</dt><dd>{getTrackSourcePath(track)}</dd></div>
+                        <div><dt>Storage path</dt><dd>{getTrackStoragePath(track) ?? "No snapshot"}</dd></div>
+                      </dl>
+                    </div>
+                  </details>
+                </section>
+              </section>
+            </div>
+
             <div className="inspect-compose-cta">
               <p className="support-copy">Ready to build a composition using this track?</p>
               <button type="button" className="action" onClick={onGoCompose}>

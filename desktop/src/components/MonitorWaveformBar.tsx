@@ -1,105 +1,167 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useMonitor } from "../features/monitor/MonitorContext";
 import type { LiveLogCue, LiveLogStreamUpdate, LibraryTrack } from "../types/library";
 import { getTrackTitle, resolvePlayableTrackPath } from "../utils/track";
 
 // ---------------------------------------------------------------------------
-// Rekordbox-style scrolling waveform bar — always visible while monitoring.
-// Shows colored frequency columns scrolling left like a DJ waveform display.
-// Colors: blue=low, cyan=mid, white=high, red=anomaly accents.
+// Monitor Pro v5: Real-Time Kinetic Engine
+// Fixed "fake tail" repetition using offset tracking and burst processing.
 // ---------------------------------------------------------------------------
 
-/** One column of the scrolling waveform history */
-interface WaveColumn {
-  lowEnergy: number;   // 0-1
-  midEnergy: number;   // 0-1
-  highEnergy: number;  // 0-1
-  anomalyHeat: number; // 0-1
-  bpm: number | null;
-  cueCount: number;
+interface WaveMetrics {
+  low: number;
+  mid: number;
+  high: number;
 }
 
-const HISTORY_SIZE = 300;
-const BAR_WIDTH = 3;
-const BAR_GAP = 1;
+interface WaveColumn {
+  source: WaveMetrics;
+  processed: WaveMetrics;
+  anomalyHeat: number;
+  logLine: string | null;
+}
 
-function cueToEnergy(cues: LiveLogCue[], update: LiveLogStreamUpdate): { low: number; mid: number; high: number } {
-  if (cues.length === 0) return { low: 0, mid: 0, high: 0 };
-  // Derive energy from log-level distribution — more musically meaningful
+interface HUDLine {
+  id: string; 
+  content: string;
+  heat: number;
+  timestamp: number;
+}
+
+const HISTORY_SIZE = 400;
+const BAR_WIDTH = 2; 
+
+function resolveSourceMetrics(update: LiveLogStreamUpdate): WaveMetrics {
+  const total = update.lineCount;
+  if (total === 0) return { low: 0, mid: 0, high: 0 };
+
   const lc = update.levelCounts || {};
-  const total = Math.max(1, update.lineCount);
-  const errorRatio = ((lc.error || 0) + (lc.warn || 0)) / total;
-  const infoRatio = (lc.info || 0) / total;
-  const traceRatio = ((lc.trace || 0) + (lc.debug || 0) + (lc.unknown || 0)) / total;
-
-  // Anomalies boost all bands
-  const anomBoost = Math.min(0.4, (update.anomalyCount / total) * 2);
-  // Gain-weighted average from cues
-  const avgGain = cues.reduce((s, c) => s + c.gain, 0) / cues.length;
-  const gainFactor = Math.min(1, avgGain * 4);
-
+  // Hyper-sensitive normalization: divisor 80 + Square Root boost
+  const normalizedVolume = Math.min(1, Math.sqrt(total / 80));
+  const voiceFloor = 0.15; // Ensure CH A is never totally flat if data is flowing
+  
+  const errorWeight = ((lc.error || 0) + (lc.warn || 0)) / total;
+  
   return {
-    low: Math.min(1, (errorRatio * 3 + anomBoost) * gainFactor + 0.15),
-    mid: Math.min(1, (infoRatio * 3 + 0.2) * gainFactor + 0.1),
-    high: Math.min(1, (traceRatio * 2 + 0.1) * gainFactor + 0.05),
+    low: Math.min(1, voiceFloor + errorWeight * 2.0 + normalizedVolume * 0.4),
+    mid: Math.min(1, voiceFloor + normalizedVolume * 0.7),
+    high: Math.min(1, voiceFloor + Math.random() * 0.1 + normalizedVolume * 0.3),
   };
 }
 
-interface MonitorWaveformBarProps {
-  tracks?: LibraryTrack[];
+function resolveProcessedMetrics(cues: LiveLogCue[], update: LiveLogStreamUpdate): WaveMetrics {
+  if ((!cues || cues.length === 0) && update.anomalyMarkers.length === 0) {
+    return { low: 0, mid: 0, high: 0 };
+  }
+
+  const anomalySignal = update.anomalyMarkers.length > 0 ? 0.3 + (update.anomalyMarkers.length * 0.15) : 0;
+  const avgGain = (cues || []).reduce((s, c) => s + c.gain, 0) / Math.max(1, cues?.length || 0);
+  // Boost weight of normal "voice" sonification (gainFactor)
+  const gainFactor = Math.min(1, avgGain * 2.2);
+  
+  return {
+    low: Math.min(1, (anomalySignal * 1.2) + gainFactor * 0.4 + 0.1),
+    mid: Math.min(1, gainFactor * 0.9 + 0.15),
+    high: Math.min(1, gainFactor * 0.6 + 0.1),
+  };
 }
 
-export function MonitorWaveformBar({ tracks = [] }: MonitorWaveformBarProps) {
+export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] }) {
   const monitor = useMonitor();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const historyRef = useRef<WaveColumn[]>([]);
   const animRef = useRef<number>(0);
-  const activeRef = useRef(false);
+  const [hudLines, setHudLines] = useState<HUDLine[]>([]);
+  const lastOffsetRef = useRef<number>(-1);
+  const hasSession = !!monitor.session;
 
-  // Stable ref to subscribe — avoids re-subscribing every render
-  const subscribeRef = useRef(monitor.subscribe);
-  subscribeRef.current = monitor.subscribe;
-
-  const pushColumn = useCallback((update: LiveLogStreamUpdate) => {
-    if (!update.hasData) return;
-    const energy = cueToEnergy(update.sonificationCues, update);
-    const anomalyRatio = update.anomalyCount / Math.max(1, update.lineCount);
-    const col: WaveColumn = {
-      lowEnergy: energy.low,
-      midEnergy: energy.mid,
-      highEnergy: energy.high,
-      anomalyHeat: Math.min(1, anomalyRatio * 3),
-      bpm: update.suggestedBpm,
-      cueCount: update.sonificationCues.length,
-    };
-    historyRef.current.push(col);
-    if (historyRef.current.length > HISTORY_SIZE) {
-      historyRef.current = historyRef.current.slice(-HISTORY_SIZE);
+  useEffect(() => {
+    if (!hasSession) {
+      historyRef.current = [];
+      setHudLines([]);
+      lastOffsetRef.current = -1;
+      return;
     }
-  }, []);
 
-  // Subscribe once on mount — stable listener, no churn
-  useEffect(() => {
-    return subscribeRef.current(pushColumn);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pushColumn]);
+    const unsubscribe = monitor.subscribe((update) => {
+      if (!update) return;
 
-  // Track active state
-  useEffect(() => {
-    activeRef.current = !!monitor.session;
-  }, [monitor.session]);
+      const sourceMetrics = resolveSourceMetrics(update);
+      const processedMetrics = resolveProcessedMetrics(update.sonificationCues || [], update);
+      const heat = Math.min(1, update.anomalyMarkers.length * 0.4);
+      
+      // Ensure AudioContext is alive when data flows
+      if (update.hasData && monitor.audioContext?.state === "suspended") {
+        void monitor.resumeAudio();
+      }
 
-  // Render loop
+      // REAL TAIL LOGIC: Only add lines if offset has progressed or if it's a replay event
+      const isNewData = monitor.isPlayback || (update.toOffset > lastOffsetRef.current);
+      
+      if (isNewData) {
+        const newLines: HUDLine[] = [];
+        
+        // Process bursts (all new parsed lines)
+        if (update.parsedLines && update.parsedLines.length > 0) {
+          update.parsedLines.forEach((content, i) => {
+            newLines.push({
+              id: `${update.toOffset}-${i}-${Math.random()}`,
+              content,
+              heat,
+              timestamp: Date.now()
+            });
+          });
+        } 
+        // Fallback for anomalies if no raw lines but new offset
+        else if (update.anomalyMarkers && update.anomalyMarkers.length > 0) {
+           update.anomalyMarkers.forEach((marker, i) => {
+             newLines.push({
+               id: `anomaly-${update.toOffset}-${i}`,
+               content: `[ANOMALY] ${marker.component}: ${marker.excerpt}`,
+               heat: 0.8,
+               timestamp: Date.now()
+             });
+           });
+        }
+        // Fallback for buffer activity
+        else if (update.lineCount > 0 && !monitor.isPlayback) {
+           newLines.push({
+             id: `burst-${update.toOffset}`,
+             content: `>> Ingesting telemetry burst: ${update.lineCount} lines`,
+             heat: 0.2,
+             timestamp: Date.now()
+           });
+        }
+
+        if (newLines.length > 0) {
+          setHudLines(prev => [...newLines.reverse(), ...prev].slice(0, 8)); // Showing up to 8 real lines
+        }
+        
+        lastOffsetRef.current = update.toOffset;
+      }
+
+      historyRef.current.push({
+        source: sourceMetrics,
+        processed: processedMetrics,
+        anomalyHeat: heat,
+        logLine: update.parsedLines?.[0] || null,
+      });
+      if (historyRef.current.length > HISTORY_SIZE) historyRef.current.shift();
+    });
+
+    return () => unsubscribe();
+  }, [hasSession, monitor, monitor.subscribe]);
+
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const w = rect.width;
-    const h = rect.height;
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (w <= 0 || h <= 0) return;
+
     const dpr = window.devicePixelRatio || 1;
     if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(h * dpr)) {
       canvas.width = Math.floor(w * dpr);
@@ -107,166 +169,169 @@ export function MonitorWaveformBar({ tracks = [] }: MonitorWaveformBarProps) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
-    // Background
     ctx.clearRect(0, 0, w, h);
-    const bg = ctx.createLinearGradient(0, 0, 0, h);
-    bg.addColorStop(0, "rgba(0, 0, 0, 0.85)");
-    bg.addColorStop(1, "rgba(0, 0, 0, 0.95)");
-    ctx.fillStyle = bg;
+    ctx.fillStyle = "#010204";
     ctx.fillRect(0, 0, w, h);
 
-    // Center line
-    const centerY = h / 2;
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.06)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, centerY);
-    ctx.lineTo(w, centerY);
-    ctx.stroke();
-
+    const halfH = h / 2;
+    const trackH = halfH * 0.85;
     const history = historyRef.current;
     if (history.length === 0) {
-      // Idle state — draw "waiting" text
-      ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
-      ctx.font = "11px -apple-system, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("▸ Waiting for signal", w / 2, centerY + 4);
       animRef.current = requestAnimationFrame(draw);
       return;
     }
 
-    // Draw columns right-to-left (newest at right, scrolling left)
-    const colW = BAR_WIDTH + BAR_GAP;
+    const colW = BAR_WIDTH;
     const maxCols = Math.floor(w / colW);
     const startIdx = Math.max(0, history.length - maxCols);
 
-    for (let i = startIdx; i < history.length; i++) {
-      const col = history[i];
-      const x = w - (history.length - i) * colW;
-      if (x < -colW) continue;
-
-      // Each column: 3 bands drawn from center outward (mirror)
-      // Low = bottom (blue), Mid = middle (cyan/green), High = top (white/magenta)
-      const lowH = col.lowEnergy * (centerY * 0.9);
-      const midH = col.midEnergy * (centerY * 0.7);
-      const highH = col.highEnergy * (centerY * 0.5);
-
-      // Anomaly glow
-      if (col.anomalyHeat > 0.1) {
-        const glowAlpha = col.anomalyHeat * 0.3;
-        ctx.fillStyle = `rgba(255, 50, 50, ${glowAlpha})`;
-        ctx.fillRect(x - 1, 0, BAR_WIDTH + 2, h);
+    const drawFilledWave = (
+      metricsKey: 'source' | 'processed', 
+      centerY: number, 
+      colors: { outline: string; fill: string }
+    ) => {
+      // 1. ANOMALY GLOW
+      for (let i = startIdx; i < history.length; i++) {
+        const col = history[i];
+        if (col.anomalyHeat > 0.05) {
+          const x = w - (history.length - i) * colW;
+          ctx.fillStyle = `rgba(255, 30, 80, ${col.anomalyHeat * 0.1})`;
+          ctx.fillRect(x, centerY - halfH/2, colW, halfH); 
+        }
       }
 
-      // Low frequencies — blue, from center down
-      const lowAlpha = 0.4 + col.lowEnergy * 0.6;
-      ctx.fillStyle = `rgba(30, 90, 255, ${lowAlpha})`;
-      ctx.fillRect(x, centerY, BAR_WIDTH, lowH);
-      ctx.fillRect(x, centerY - lowH, BAR_WIDTH, lowH);
+      // 2. FILLED BODY
+      const drawBody = (subKey: keyof WaveMetrics, alpha: number) => {
+        ctx.beginPath();
+        const jitterFreq = Date.now() / 60;
+        for (let i = startIdx; i < history.length; i++) {
+          const col = history[i];
+          const x = w - (history.length - i) * colW;
+          const jitter = (Math.sin(jitterFreq + i) * 0.5) * (col[metricsKey] as WaveMetrics)[subKey];
+          const val = (col[metricsKey] as WaveMetrics)[subKey] * (trackH / 2) + jitter;
+          if (i === startIdx) ctx.moveTo(x, centerY - Math.max(2, val));
+          else ctx.lineTo(x, centerY - Math.max(2, val));
+        }
+        for (let i = history.length - 1; i >= startIdx; i--) {
+          const col = history[i];
+          const x = w - (history.length - i) * colW;
+          const jitter = (Math.cos(jitterFreq + i) * 0.5) * (col[metricsKey] as WaveMetrics)[subKey];
+          const val = (col[metricsKey] as WaveMetrics)[subKey] * (trackH / 2) + jitter;
+          ctx.lineTo(x, centerY + Math.max(2, val));
+        }
+        ctx.closePath();
+        ctx.fillStyle = colors.fill.replace("1)", `${alpha})`);
+        ctx.fill();
+        ctx.strokeStyle = colors.outline.replace("1)", `${alpha + 0.3})`);
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      };
 
-      // Mid frequencies — cyan/teal, layered
-      const midAlpha = 0.3 + col.midEnergy * 0.7;
-      ctx.fillStyle = `rgba(33, 200, 200, ${midAlpha})`;
-      ctx.fillRect(x, centerY, BAR_WIDTH, midH);
-      ctx.fillRect(x, centerY - midH, BAR_WIDTH, midH);
+      if (metricsKey === 'source') {
+        drawBody('low', 0.5);
+      } else {
+        drawBody('low', 0.7);
+        drawBody('mid', 0.4);
+      }
+    };
 
-      // High frequencies — white/bright, top layer
-      const hiAlpha = 0.3 + col.highEnergy * 0.7;
-      ctx.fillStyle = `rgba(240, 240, 255, ${hiAlpha})`;
-      ctx.fillRect(x, centerY, BAR_WIDTH, highH);
-      ctx.fillRect(x, centerY - highH, BAR_WIDTH, highH);
-    }
+    drawFilledWave('source', halfH / 2, { outline: "rgba(120, 130, 180, 1)", fill: "rgba(70, 80, 110, 1)" });
+    drawFilledWave('processed', halfH + halfH / 2, { outline: "rgba(70, 230, 255, 1)", fill: "rgba(35, 90, 160, 1)" });
 
-    // Playhead line (bright vertical line at the right edge)
-    if (history.length > 0) {
-      const playX = w - colW;
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(playX + BAR_WIDTH + 2, 0);
-      ctx.lineTo(playX + BAR_WIDTH + 2, h);
-      ctx.stroke();
+    // SCANLINE
+    const scanX = (Date.now() / 20) % (w * 1.2) - (w / 5);
+    const grad = ctx.createLinearGradient(scanX, 0, scanX + 60, 0);
+    grad.addColorStop(0, "rgba(255, 255, 255, 0)");
+    grad.addColorStop(0.5, "rgba(255, 255, 255, 0.03)");
+    grad.addColorStop(1, "rgba(255, 255, 255, 0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(scanX, 0, 60, h);
 
-      // Glow on playhead
-      ctx.shadowColor = "#21b4b8";
-      ctx.shadowBlur = 6;
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    }
-
-    // BPM overlay (top-right)
-    const lastCol = history[history.length - 1];
-    if (lastCol.bpm) {
-      ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
-      ctx.font = "bold 13px -apple-system, 'SF Mono', monospace";
-      ctx.textAlign = "right";
-      ctx.fillText(`${lastCol.bpm} BPM`, w - 12, 18);
-    }
-
-    // Cue count (top-left)
-    ctx.fillStyle = "rgba(33, 180, 184, 0.5)";
-    ctx.font = "11px -apple-system, sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText(`${lastCol.cueCount} cues`, 12, 18);
+    // PLAYHEAD 
+    const playX = w - 1;
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+    ctx.shadowColor = "rgba(100, 200, 255, 0.5)";
+    ctx.shadowBlur = 8;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(playX, 0); ctx.lineTo(playX, h);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
 
     animRef.current = requestAnimationFrame(draw);
   }, []);
 
   useEffect(() => {
     animRef.current = requestAnimationFrame(draw);
-    return () => {
-      if (animRef.current) cancelAnimationFrame(animRef.current);
-    };
+    return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
   }, [draw]);
-
-  const hasSession = !!monitor.session;
 
   return (
     <div className={`monitor-waveform-bar${hasSession ? " monitor-waveform-bar--active" : ""}`}>
       {hasSession && (
-        <div className="monitor-waveform-label">
-          <span className="monitor-waveform-dot" />
-          <span className="monitor-waveform-label-text">
-            {monitor.isPlayback ? "PLAYBACK" : "LIVE MONITOR"}
-          </span>
-          <span className="monitor-waveform-label-session">
-            {monitor.session!.repoTitle}
-          </span>
+        <div className="monitor-waveform-label monitor-pro-header">
+           <div className="header-status-group">
+            <span className="monitor-waveform-dot heartbeat" />
+            <span className="monitor-waveform-label-text">
+              {monitor.isPlayback ? "SESSION REPLAY" : "LIVE SIGNAL ENGINE"}
+            </span>
+            <span className="monitor-waveform-label-session" title={monitor.session!.sourcePath}>
+              {monitor.session!.repoTitle}
+            </span>
+          </div>
+
+          <div className="monitor-header-controls">
+            <label className="header-controls-label">LISTENING BED</label>
+            <select
+              className="monitor-track-select monitor-track-select--header"
+              value={monitor.guideTrackPath ?? ""}
+              onChange={(e) => monitor.setGuideTrack(e.target.value || null)}
+            >
+              <option value="">None (Maia Synth Only)</option>
+              {tracks.filter(t => !!resolvePlayableTrackPath(t)).map((track) => (
+                <option key={track.id} value={resolvePlayableTrackPath(track) ?? ""}>
+                  {getTrackTitle(track)}
+                </option>
+              ))}
+            </select>
+            {monitor.audioContext?.state === "suspended" && (
+              <button 
+                className="resume-audio-btn" 
+                onClick={() => void monitor.resumeAudio()}
+                title="Resume Audio Engine"
+              >
+                ⏵ ENABLE AUDIO
+              </button>
+            )}
+          </div>
         </div>
       )}
-      <canvas
-        ref={canvasRef}
-        className="monitor-waveform-canvas"
-      />
+      <div className="monitor-waveform-wave-area compact-mode">
+        <canvas ref={canvasRef} className="monitor-waveform-canvas" />
+        <div className="wave-track-labels">
+          <div className="track-label-lcd">
+            <span className="lcd-tag">CH A</span>
+            <span className="lcd-title">RAW TELEMETRY</span>
+          </div>
+          <div className="track-label-lcd">
+            <span className="lcd-tag">CH B</span>
+            <span className="lcd-title">SONIFIED MAPPING</span>
+          </div>
+        </div>
+      </div>
+
       {hasSession && (
-        <div className="monitor-waveform-controls">
-          {tracks.length > 0 && (
-            <select
-              className="monitor-track-select"
-              value={monitor.guideTrackPath ?? ""}
-              onChange={(e) => {
-                const val = e.target.value;
-                monitor.setGuideTrack(val || null);
-              }}
+        <div className="monitor-waveform-tail-hud compact kinetic-tail real-tail">
+          {hudLines.map((line) => (
+            <div 
+              key={line.id} 
+              className={`monitor-waveform-tail-line${line.heat > 0.3 ? " is-anomaly" : ""}`}
             >
-              <option value="">♪ Synth</option>
-              {tracks
-                .map((track) => ({
-                  id: track.id,
-                  title: getTrackTitle(track),
-                  path: resolvePlayableTrackPath(track),
-                }))
-                .filter((track) => track.path)
-                .map((track) => (
-                  <option key={track.id} value={track.path ?? ""}>
-                    {track.title}
-                  </option>
-                ))}
-            </select>
-          )}
-          {monitor.guideTrackPath && !monitor.guideTrackReady && (
-            <span className="monitor-waveform-loading">Loading…</span>
-          )}
+              <span className="line-bullet">⏵</span>
+              <span className="line-content">{line.content}</span>
+            </div>
+          ))}
+          {hudLines.length === 0 && <div className="hud-placeholder">Waiting for telemetry stream...</div>}
         </div>
       )}
     </div>

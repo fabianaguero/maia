@@ -138,6 +138,7 @@ export interface SessionEvent {
   anomalyMarkersJson: string;
   topComponentsJson: string;
   sonificationCuesJson: string;
+  parsedLinesJson: string;
   warningsJson: string;
 }
 
@@ -187,6 +188,7 @@ export interface InsertSessionEventInput {
   anomalyMarkersJson: string;
   topComponentsJson: string;
   sonificationCuesJson: string;
+  parsedLinesJson: string;
   warningsJson: string;
 }
 

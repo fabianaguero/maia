@@ -3,8 +3,14 @@ import { startTransition, useEffect, useState } from "react";
 import { importBaseAsset, listBaseAssets } from "../api/baseAssets";
 import type { BaseAssetRecord, ImportBaseAssetInput } from "../types/library";
 
-function toMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Unexpected base asset failure.";
+function toMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === "string" && error.trim()) {
+    return error;
+  }
+  return fallback;
 }
 
 function sortBaseAssets(baseAssets: BaseAssetRecord[]): BaseAssetRecord[] {
@@ -48,9 +54,9 @@ export function useBaseAssets() {
         if (!active) {
           return;
         }
-
+  
         startTransition(() => {
-          setError(toMessage(nextError));
+          setError(toMessage(nextError, "Unexpected base asset failure."));
           setLoading(false);
         });
       }
@@ -85,7 +91,7 @@ export function useBaseAssets() {
       return nextBaseAsset;
     } catch (nextError) {
       startTransition(() => {
-        setError(toMessage(nextError));
+        setError(toMessage(nextError, "Unexpected base asset failure."));
       });
       return null;
     } finally {

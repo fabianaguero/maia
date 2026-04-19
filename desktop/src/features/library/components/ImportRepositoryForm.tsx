@@ -1,15 +1,10 @@
-import { FolderOpen, GitBranch, ScrollText } from "lucide-react";
+import { FolderOpen, GitBranch, ScrollText, Globe } from "lucide-react";
 import type { FormEvent } from "react";
 import { useState } from "react";
 
-import {
-  pickRepositoryDirectory,
-  pickRepositoryFile,
-} from "../../../api/repositories";
-import type {
-  ImportRepositoryInput,
-  RepositorySourceKind,
-} from "../../../types/library";
+import { pickRepositoryDirectory, pickRepositoryFile } from "../../../api/repositories";
+import type { ImportRepositoryInput, RepositorySourceKind } from "../../../types/library";
+import { Web3Spinner } from "../../../components/Web3Spinner";
 
 interface ImportRepositoryFormProps {
   busy: boolean;
@@ -21,21 +16,25 @@ const importModes: Array<{
   id: RepositorySourceKind;
   label: string;
   help: string;
+  icon: typeof FolderOpen;
 }> = [
   {
     id: "directory",
-    label: "Code project",
-    help: "Import a local project directory into a managed Maia snapshot.",
+    label: "Project Folder",
+    help: "Import a local directory into a managed Maia snapshot.",
+    icon: FolderOpen,
   },
   {
     id: "file",
-    label: "Log file",
-    help: "Import a local log file and derive a musical/operational signal profile.",
+    label: "Log File",
+    help: "Import a local log file for operational signal analysis.",
+    icon: ScrollText,
   },
   {
     id: "url",
-    label: "GitHub URL",
-    help: "Register a remote repo reference for metadata-only intake.",
+    label: "GitHub Repo",
+    help: "Register a remote repository for metadata-only intake.",
+    icon: GitBranch,
   },
 ];
 
@@ -121,106 +120,109 @@ export function ImportRepositoryForm({
   }
 
   return (
-    <form className="import-form" onSubmit={(event) => void handleSubmit(event)}>
-      <div className="panel-header compact">
-        <div>
+    <form className="import-form maia-pro-form" onSubmit={(event) => void handleSubmit(event)}>
+      <Web3Spinner visible={busy} label="Ingesting Telemetry Source..." />
+      <div className="form-intro">
           <h2>Import code or logs</h2>
           <p className="support-copy">
-            Accept a local project directory, a local log file, or a GitHub URL to start code/log
-            signal intake.
+            Select a source type to begin operational telemetry intake.
           </p>
-        </div>
       </div>
 
-      <div className="mode-toggle" role="tablist" aria-label="Repository import type">
-        {importModes.map((mode) => (
-          <button
-            key={mode.id}
-            type="button"
-            className={`toggle-chip${mode.id === sourceKind ? " active" : ""}`}
-            onClick={() => setSourceKind(mode.id)}
-          >
-            <span>{mode.label}</span>
-            <small>{mode.help}</small>
-          </button>
-        ))}
+      <div className="source-card-grid" role="tablist" aria-label="Repository import type">
+        {importModes.map((mode) => {
+          const Icon = mode.icon;
+          const active = mode.id === sourceKind;
+          return (
+            <button
+              key={mode.id}
+              type="button"
+              className={`source-card ${active ? "active" : ""}`}
+              onClick={() => setSourceKind(mode.id)}
+            >
+              <div className="source-card-icon">
+                <Icon size={24} />
+              </div>
+              <div className="source-card-content">
+                <strong>{mode.label}</strong>
+                <p>{mode.help}</p>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
-      <label className="field">
-        <span>
-          {sourceKind === "directory"
-            ? "Project path"
-            : sourceKind === "file"
-              ? "Log file path"
-              : "GitHub URL"}
-        </span>
-        <input
-          value={sourcePath}
-          onChange={(event) => setSourcePath(event.target.value)}
-          placeholder={
-            sourceKind === "directory"
-              ? "/home/faguero/dev/maia"
+      <div className="form-fields-section">
+        <label className="field maia-field">
+          <span className="field-label">
+            {sourceKind === "directory"
+              ? "Local Project Path"
               : sourceKind === "file"
-                ? "~/logs/app.log"
-              : "https://github.com/fabianaguero/maia"
-          }
-        />
-      </label>
+                ? "Source Log Path"
+                : "GitHub Repository URL"}
+          </span>
+          <div className="field-input-wrapper">
+            <input
+              value={sourcePath}
+              className="maia-input"
+              onChange={(event) => setSourcePath(event.target.value)}
+              placeholder={
+                sourceKind === "directory"
+                  ? "/home/dev/project"
+                  : sourceKind === "file"
+                    ? "/var/log/app.log"
+                  : "https://github.com/..."
+              }
+            />
+            {sourceKind === "directory" && (
+                <button
+                  type="button"
+                  className="input-inline-action"
+                  disabled={busy || pickerBusy}
+                  onClick={() => void handleBrowseDirectory()}
+                >
+                   {pickerBusy ? "..." : <FolderOpen size={16} />}
+                </button>
+            )}
+            {sourceKind === "file" && (
+                <button
+                  type="button"
+                  className="input-inline-action"
+                  disabled={busy || pickerBusy}
+                  onClick={() => void handleBrowseFile()}
+                >
+                   {pickerBusy ? "..." : <ScrollText size={16} />}
+                </button>
+            )}
+          </div>
+        </label>
 
-      {sourceKind === "directory" ? (
-        <p className="field-hint">
-          Browse uses the native Linux folder picker when the desktop shell is
-          available. In Tauri, Maia snapshots the selected directory before analysis.
-        </p>
+        <label className="field maia-field">
+          <span className="field-label">Target session label (Optional)</span>
+          <input
+            value={label}
+            className="maia-input"
+            onChange={(event) => setLabel(event.target.value)}
+            placeholder="maia-session-01"
+          />
+        </label>
+      </div>
+
+      {error ? (
+        <div className="form-notice error">
+           <span>{error}</span>
+        </div>
       ) : null}
 
-      {sourceKind === "file" ? (
-        <p className="field-hint">
-          Browse uses the native file picker when the desktop shell is available. In Tauri, Maia
-          snapshots the selected log file for baseline analysis, then the analyzer screen can also
-          run a live internal tail against the original file as it grows.
-        </p>
-      ) : null}
-
-      <label className="field">
-        <span>Optional label</span>
-        <input
-          value={label}
-          onChange={(event) => setLabel(event.target.value)}
-          placeholder="maia workspace"
-        />
-      </label>
-
-      {error ? <p className="inline-error">{error}</p> : null}
-
-      <div className="form-actions">
-        {sourceKind === "directory" ? (
-          <button
-            type="button"
-            className="secondary-action"
-            disabled={busy || pickerBusy}
-            onClick={() => void handleBrowseDirectory()}
-          >
-            {pickerBusy ? <><span className="spin-ring" aria-hidden="true" /> Browsing...</> : <><FolderOpen size={14} /> Browse folder</>}
-          </button>
-        ) : null}
-        {sourceKind === "file" ? (
-          <button
-            type="button"
-            className="secondary-action"
-            disabled={busy || pickerBusy}
-            onClick={() => void handleBrowseFile()}
-          >
-            {pickerBusy ? <><span className="spin-ring" aria-hidden="true" /> Browsing...</> : <><ScrollText size={14} /> Browse log file</>}
-          </button>
-        ) : null}
-        <button type="submit" className="action" disabled={busy}>
-          {busy ? <><span className="spin-ring" aria-hidden="true" /> Analyzing...</> : <><GitBranch size={14} /> Import source</>}
+      <div className="form-actions-footer">
+        <button type="submit" className="action primary-launch-btn" disabled={busy}>
+          {busy ? <><span className="spin-ring" aria-hidden="true" /> Analyzing...</> : <><GitBranch size={16} /> Start Ingestion</>}
         </button>
-        {defaultDirectoryPath ? (
+        
+        {defaultDirectoryPath && (
           <button
             type="button"
-            className="secondary-action"
+            className="secondary-action glass-btn"
             disabled={busy}
             onClick={() => {
               setSourceKind("directory");
@@ -229,7 +231,7 @@ export function ImportRepositoryForm({
           >
             Use current workspace
           </button>
-        ) : null}
+        )}
       </div>
     </form>
   );

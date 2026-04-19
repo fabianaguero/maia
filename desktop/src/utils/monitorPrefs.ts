@@ -10,6 +10,7 @@ export interface MonitorPrefs {
   basePlaylist: BaseTrackPlaylist | null;
   selectedStyleProfileId: string;
   selectedMutationProfileId: string;
+  masterVolume?: number;
 }
 
 function normalizeBasePlaylist(
@@ -88,6 +89,11 @@ export function loadMonitorPrefs(repoId: string): MonitorPrefs | null {
           parsed.selectedMutationProfileId
             ? parsed.selectedMutationProfileId
             : DEFAULT_MUTATION_PROFILE_ID,
+        masterVolume:
+          typeof parsed.masterVolume === "number" &&
+          Number.isFinite(parsed.masterVolume)
+            ? Math.max(0, Math.min(1, parsed.masterVolume))
+            : undefined,
       };
     }
 
@@ -108,6 +114,11 @@ export function loadMonitorPrefs(repoId: string): MonitorPrefs | null {
         ),
         selectedStyleProfileId: migratedStyleProfileId,
         selectedMutationProfileId: DEFAULT_MUTATION_PROFILE_ID,
+        masterVolume:
+          typeof parsed.masterVolume === "number" &&
+          Number.isFinite(parsed.masterVolume)
+            ? Math.max(0, Math.min(1, parsed.masterVolume))
+            : undefined,
       };
     }
 

@@ -1,5 +1,6 @@
-import { invoke, isTauri } from "@tauri-apps/api/core";
+import { isTauri } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { invokeOrFallback } from "../../../api/tauri";
 
 type PlaybackState = "idle" | "loading" | "ready" | "playing" | "error" | "unavailable";
 
@@ -139,9 +140,11 @@ export function ManagedAudioPlayer({
     let cancelled = false;
     let cleanupListeners: (() => void) | null = null;
 
-    const loadPromise = isTauri()
-      ? invoke<string>("read_audio_bytes", { path: audioPath })
-      : Promise.reject(new Error("Audio playback not available in this environment"));
+    const loadPromise = invokeOrFallback<string>(
+      "read_audio_bytes",
+      { path: audioPath },
+      () => Promise.reject(new Error("Audio playback not available: desktop shell required"))
+    );
 
     loadPromise
       .then((b64) => {
@@ -197,6 +200,7 @@ export function ManagedAudioPlayer({
 
         audio.pause();
         audio.currentTime = 0;
+        audio.volume = volume;  // Ensure volume is set before loading
         audio.src = url;
         audio.load();
         setBlobReady(true);
@@ -355,6 +359,16 @@ export function ManagedAudioPlayer({
         </div>
         <div className="render-audio-volume">
           <span>Vol</span>
+          <div className="volume-bars">
+            {Array.from({ length: 10 }, (_, i) => (
+              <div
+                key={i}
+                className={`volume-bar${volume > i / 10 ? " active" : ""}`}
+                style={{ opacity: volume > i / 10 ? 1 : 0.2 }}
+                aria-hidden="true"
+              />
+            ))}
+          </div>
           <input
             type="range"
             className="volume-slider"

@@ -306,6 +306,28 @@ function createLiveWindowCues(markers: LiveLogMarker[], seed: number, windowInde
   ];
 }
 
+function createLiveWindowParsedLines(
+  markers: LiveLogMarker[],
+  components: LiveLogComponentCount[],
+  seed: number,
+  windowIndex: number,
+): string[] {
+  const focusComponent = components[0]?.component ?? "tail-reader";
+  const detailComponent = components[1]?.component ?? "scheduler";
+  const anomalyExcerpt = markers[0]?.excerpt ?? "No anomaly marker raised in this window.";
+  const severity = markers.some((marker) => marker.level === "error") ? "error" : "warn";
+  const latencyMs = 40 + ((seed + windowIndex * 17) % 180);
+  const queueDepth = 2 + ((seed + windowIndex * 13) % 21);
+
+  return [
+    `${new Date(Date.UTC(2026, 3, 12, 18, (windowIndex * 3) % 60, (seed + windowIndex) % 60)).toISOString()} info ${focusComponent} window=${windowIndex + 1} cursor=${windowIndex * 512}`,
+    `${new Date(Date.UTC(2026, 3, 12, 18, (windowIndex * 3) % 60, ((seed + windowIndex) % 60) + 1)).toISOString()} debug ${detailComponent} latency_ms=${latencyMs} queue_depth=${queueDepth}`,
+    `${new Date(Date.UTC(2026, 3, 12, 18, (windowIndex * 3) % 60, ((seed + windowIndex) % 60) + 2)).toISOString()} ${severity} ${focusComponent} ${anomalyExcerpt}`,
+    `${new Date(Date.UTC(2026, 3, 12, 18, (windowIndex * 3) % 60, ((seed + windowIndex) % 60) + 3)).toISOString()} info sonifier cues=${markers.length + 3} accent=${markers.length > 0 ? "anomaly" : "steady"}`,
+    `${new Date(Date.UTC(2026, 3, 12, 18, (windowIndex * 3) % 60, ((seed + windowIndex) % 60) + 4)).toISOString()} trace renderer window_summary=\"chunk ${windowIndex + 1} mapped to reactive output\"`,
+  ];
+}
+
 export async function listMockRepositories(): Promise<RepositoryAnalysis[]> {
   return readRepositories().sort((left, right) =>
     right.importedAt.localeCompare(left.importedAt),
@@ -324,6 +346,7 @@ export async function importMockRepository(
 export async function pollMockLogStream(
   sourcePath: string,
   cursor?: number,
+  _maxBytes?: number,
 ): Promise<LiveLogStreamUpdate> {
   const seed = stableHash(sourcePath);
   const fromOffset = cursor ?? 0;
@@ -334,6 +357,12 @@ export async function pollMockLogStream(
   const anomalyMarkers = createLiveWindowMarkers(seed, windowIndex);
   const topComponents = createLiveWindowComponents(seed, windowIndex);
   const sonificationCues = createLiveWindowCues(anomalyMarkers, seed, windowIndex);
+  const parsedLines = createLiveWindowParsedLines(
+    anomalyMarkers,
+    topComponents,
+    seed,
+    windowIndex,
+  );
   const lineCount = Object.values(levelCounts).reduce((sum, count) => sum + count, 0);
   const anomalyCount = anomalyMarkers.length;
   const dominantLevel =
@@ -354,6 +383,7 @@ export async function pollMockLogStream(
     anomalyMarkers,
     topComponents,
     sonificationCues,
+    parsedLines,
     warnings: [
       "Browser fallback is simulating live tail windows locally.",
       "Open the Tauri runtime to poll a real growing log file from disk.",

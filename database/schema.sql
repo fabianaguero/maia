@@ -150,6 +150,7 @@ CREATE TABLE IF NOT EXISTS session_events (
   anomaly_markers_json TEXT NOT NULL DEFAULT '[]',
   top_components_json TEXT NOT NULL DEFAULT '[]',
   sonification_cues_json TEXT NOT NULL DEFAULT '[]',
+  parsed_lines_json TEXT NOT NULL DEFAULT '[]',
   warnings_json TEXT NOT NULL DEFAULT '[]'
 );
 

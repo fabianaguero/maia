@@ -31,6 +31,12 @@ export async function importRepository(
   );
 }
 
+export async function discoverRepositoryLogs(
+  path: string,
+): Promise<string[]> {
+  return invokeOrFallback("discover_repository_logs", { path }, () => []);
+}
+
 export async function pickRepositoryDirectory(
   initialPath?: string,
 ): Promise<string | null> {
@@ -104,15 +110,16 @@ export async function exportCompositionStems(
 export async function pollLogStream(
   sourcePath: string,
   cursor?: number,
+  maxBytes?: number,
 ): Promise<LiveLogStreamUpdate> {
-  log.trace("pollLogStream path=%s cursor=%s", sourcePath, cursor);
+  log.trace("pollLogStream path=%s cursor=%s maxBytes=%s", sourcePath, cursor, maxBytes);
   try {
     const result = await invokeOrFallback(
       "poll_log_stream",
-      { sourcePath, cursor },
+      { sourcePath, cursor, maxBytes },
       () => {
         log.debug("pollLogStream fallback to mock");
-        return pollMockLogStream(sourcePath, cursor);
+        return pollMockLogStream(sourcePath, cursor, maxBytes);
       },
     );
     log.debug("pollLogStream → hasData=%s lines=%d cues=%d", result.hasData, result.lineCount, result.sonificationCues.length);

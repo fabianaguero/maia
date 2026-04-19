@@ -48,7 +48,7 @@ describe("desktop analyzer bridge", () => {
     invokeMock.mockResolvedValue(manifest);
 
     await expect(loadBootstrapManifest()).resolves.toEqual(manifest);
-    expect(invokeMock).toHaveBeenCalledWith("bootstrap_manifest");
+    expect(invokeMock).toHaveBeenCalledWith("bootstrap_manifest", undefined);
   });
 
   it("falls back to a frontend-only manifest when the native bridge is unavailable", async () => {
@@ -61,7 +61,7 @@ describe("desktop analyzer bridge", () => {
     expect(manifest.runtimeMode).toBe("frontend-only");
     expect(manifest.persistenceMode).toBe("local-storage-fallback");
     expect(manifest.analyzerEntrypoint).toBe("mock-analyzer");
-    expect(invokeMock).toHaveBeenCalledWith("bootstrap_manifest");
+    expect(invokeMock).toHaveBeenCalledWith("bootstrap_manifest", undefined);
   });
 
   it("rethrows bootstrap errors unrelated to the native bridge", async () => {
@@ -88,7 +88,7 @@ describe("desktop analyzer bridge", () => {
   });
 
   it("returns a typed analyzer error for non-health requests without Tauri", async () => {
-    invokeMock.mockRejectedValue(new Error("native runtime unavailable"));
+    invokeMock.mockRejectedValue(new Error("Tauri native bridge not available"));
 
     const response = await runAnalyzerRequest(
       createAnalyzeTrackRequest("/tmp/demo.wav"),
@@ -100,7 +100,7 @@ describe("desktop analyzer bridge", () => {
       status: "error",
       error: {
         code: "tauri_unavailable",
-        message: "native runtime unavailable",
+        message: "Tauri native bridge not available",
       },
       warnings: [
         "The React shell is running without the native bridge. Analyzer requests require Tauri.",

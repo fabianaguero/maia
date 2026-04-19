@@ -1,0 +1,19 @@
+[Unit]
+Description=Paperclip
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=faguero
+WorkingDirectory=/home/faguero/modernash/paperclip
+Environment=HOME=/home/faguero
+Environment=PAPERCLIP_HOME=/home/faguero/.paperclip
+Environment=PAPERCLIP_INSTANCE_ID=default
+Environment=PATH=/home/faguero/.local/bin:/home/faguero/.nvm/versions/node/v20.3.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin
+ExecStart=/home/faguero/.nvm/versions/node/v20.3.0/bin/pnpm paperclipai run --instance default
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

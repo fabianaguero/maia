@@ -13,8 +13,14 @@ import type {
   RepositoryAnalysis,
 } from "../types/library";
 
-function toMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Unexpected repository failure.";
+function toMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === "string" && error.trim()) {
+    return error;
+  }
+  return fallback;
 }
 
 function sortRepositories(
@@ -62,7 +68,7 @@ export function useRepositories() {
         }
 
         startTransition(() => {
-          setError(toMessage(nextError));
+          setError(toMessage(nextError, "Unexpected repository failure."));
           setLoading(false);
         });
       }
@@ -104,7 +110,7 @@ export function useRepositories() {
       return nextRepository;
     } catch (nextError) {
       startTransition(() => {
-        setError(toMessage(nextError));
+        setError(toMessage(nextError, "Unexpected repository failure."));
       });
       return null;
     } finally {
@@ -180,7 +186,7 @@ export function useRepositories() {
       return nextRepository;
     } catch (nextError) {
       startTransition(() => {
-        setError(toMessage(nextError));
+        setError(toMessage(nextError, "Unexpected repository failure."));
       });
       return null;
     } finally {
@@ -203,7 +209,7 @@ export function useRepositories() {
       return true;
     } catch (nextError) {
       startTransition(() => {
-        setError(toMessage(nextError));
+        setError(toMessage(nextError, "Unexpected repository failure."));
       });
       return false;
     }

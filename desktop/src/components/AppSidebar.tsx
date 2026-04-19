@@ -1,20 +1,19 @@
-import { Activity, AudioWaveform, Radio, Library } from "lucide-react";
+import { Activity, AudioWaveform, Library, LayoutGrid } from "lucide-react";
 import type React from "react";
 import type { ActiveMonitorSession, MonitorMetrics } from "../features/monitor/MonitorContext";
 import { useT } from "../i18n/I18nContext";
-import type { AppScreen } from "../types/library";
+import type { AppPillar } from "../types/library";
 import { getStreamAdapterLabel } from "../utils/streamAdapter";
 
-const SCREEN_ICONS: Record<AppScreen, React.ReactNode> = {
-  library: <Library size={15} />,
-  session: <Radio size={15} />,
-  inspect: <Activity size={15} />,
-  compose: <AudioWaveform size={15} />,
+const PILLAR_ICONS: Record<AppPillar, React.ReactNode> = {
+  perform: <Activity size={18} />,
+  design: <AudioWaveform size={18} />,
+  curate: <Library size={18} />,
 };
 
 interface AppSidebarProps {
-  currentScreen: AppScreen;
-  onScreenChange: (screen: AppScreen) => void;
+  currentPillar: AppPillar;
+  onPillarChange: (pillar: AppPillar) => void;
   trackCount: number;
   repositoryCount: number;
   baseAssetCount: number;
@@ -28,8 +27,8 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({
-  currentScreen,
-  onScreenChange,
+  currentPillar,
+  onPillarChange,
   trackCount,
   repositoryCount,
   baseAssetCount,
@@ -42,38 +41,31 @@ export function AppSidebar({
   onHideToBackground,
 }: AppSidebarProps) {
   const t = useT();
+  
   const navigationItems = [
     {
-      id: "library" as AppScreen,
-      label: t.nav.library.label,
-      description: t.nav.library.description,
-      lane: "A01",
-      detail: `${trackCount + repositoryCount + baseAssetCount} assets cued`,
+      id: "perform" as AppPillar,
+      label: t.nav.pillars.perform.label,
+      description: t.nav.pillars.perform.description,
+      lane: t.nav.pillars.perform.lane,
+      detail: monitorSession ? "Engine Active" : "Standby",
     },
     {
-      id: "session" as AppScreen,
-      label: t.nav.session.label,
-      description: t.nav.session.description,
-      lane: "LIVE",
-      detail: monitorSession
-        ? `${monitorMetrics.windowCount} windows in flight`
-        : "Booth idle",
+      id: "design" as AppPillar,
+      label: t.nav.pillars.design.label,
+      description: t.nav.pillars.design.description,
+      lane: t.nav.pillars.design.lane,
+      detail: `${compositionCount} arrangements cued`,
     },
     {
-      id: "inspect" as AppScreen,
-      label: t.nav.inspect.label,
-      description: t.nav.inspect.description,
-      lane: "B02",
-      detail: selectedItemTitle ? "Loaded on detail deck" : "No cue loaded",
-    },
-    {
-      id: "compose" as AppScreen,
-      label: t.nav.compose.label,
-      description: t.nav.compose.description,
-      lane: "C03",
-      detail: `${compositionCount} arrangement renders`,
+      id: "curate" as AppPillar,
+      label: t.nav.pillars.curate.label,
+      description: t.nav.pillars.curate.description,
+      lane: t.nav.pillars.curate.lane,
+      detail: `${trackCount + repositoryCount} assets in vault`,
     },
   ];
+
   const uptimeSeconds = monitorSession
     ? Math.floor((Date.now() - monitorSession.startedAt) / 1000)
     : 0;
@@ -86,39 +78,35 @@ export function AppSidebar({
     : null;
 
   return (
-    <aside className="sidebar panel">
+    <aside className="sidebar panel role-based-sidebar">
       <div className="sidebar-brand">
-        <span className="sidebar-kicker">Hybrid Booth Browser</span>
+        <span className="sidebar-kicker">MAIA Hybrid System</span>
         <img
           src="/assets/branding/maia-wordmark-site.png"
           alt="MAIA"
           className="sidebar-wordmark"
         />
-        <p>{t.tagline}</p>
+        <p className="sidebar-tagline">{t.tagline}</p>
       </div>
 
-      <nav className="nav-stack" aria-label="Main screens">
-        {navigationItems.map((item, index) => {
-          const active = item.id === currentScreen;
-          const isMonitor = item.id === "session";
-
+      <nav className="nav-stack role-stack" aria-label="Professional Roles">
+        {navigationItems.map((item) => {
+          const active = item.id === currentPillar;
           return (
-            <div key={item.id}>
-              {isMonitor && index > 0 && <div className="nav-separator" />}
-              <button
-                type="button"
-                className={`nav-button${active ? " active" : ""}${isMonitor ? " nav-button--monitor" : ""}`}
-                onClick={() => onScreenChange(item.id)}
-              >
-                <span className="nav-lane">{item.lane}</span>
-                <span className="nav-icon-shell">{SCREEN_ICONS[item.id]}</span>
-                <span className="nav-copy">
-                  <span className="nav-title">{item.label}</span>
-                  <small>{item.description}</small>
-                </span>
-                <strong className="nav-detail">{item.detail}</strong>
-              </button>
-            </div>
+            <button
+              key={item.id}
+              type="button"
+              className={`nav-button nav-pillar-button ${active ? "active" : ""}`}
+              onClick={() => onPillarChange(item.id)}
+            >
+              <span className="nav-lane">{item.lane}</span>
+              <span className="nav-icon-shell">{PILLAR_ICONS[item.id]}</span>
+              <span className="nav-copy">
+                <span className="nav-title">{item.label}</span>
+                <small>{item.description}</small>
+              </span>
+              <strong className="nav-detail">{item.detail}</strong>
+            </button>
           );
         })}
       </nav>
@@ -127,7 +115,7 @@ export function AppSidebar({
         <div className="monitor-status-card">
           <div className="monitor-status-header">
             <span className="monitor-pulse" aria-hidden="true" />
-            <span className="monitor-status-label">Live monitor</span>
+            <span className="monitor-status-label">Engine Live</span>
             <span className="monitor-mode-badge">
               {monitorAdapterLabel}
             </span>
@@ -136,8 +124,6 @@ export function AppSidebar({
             {monitorSession.repoTitle}
           </p>
           <div className="monitor-metrics">
-            <span>{monitorMetrics.windowCount} windows</span>
-            <span>·</span>
             <span>{monitorMetrics.totalAnomalies} anomalies</span>
             <span>·</span>
             <span>{uptimeLabel}</span>
@@ -148,15 +134,7 @@ export function AppSidebar({
               className="compact-action"
               onClick={onOpenMonitoredRepo}
             >
-              Open
-            </button>
-            <button
-              type="button"
-              className="compact-action compact-action--bg"
-              title="Hide the window and keep monitoring in the background"
-              onClick={onHideToBackground}
-            >
-              Hide
+              Inspect
             </button>
             <button
               type="button"
@@ -172,30 +150,21 @@ export function AppSidebar({
       <div className="sidebar-meta">
         <div className="sidebar-stat">
           <small className="sidebar-stat-code">TRK</small>
-          <span>{t.sidebar.tracks}</span>
           <strong>{trackCount}</strong>
         </div>
         <div className="sidebar-stat">
           <small className="sidebar-stat-code">SRC</small>
-          <span>{t.sidebar.codeLogs}</span>
           <strong>{repositoryCount}</strong>
         </div>
         <div className="sidebar-stat">
           <small className="sidebar-stat-code">BAS</small>
-          <span>{t.sidebar.bases}</span>
           <strong>{baseAssetCount}</strong>
-        </div>
-        <div className="sidebar-stat">
-          <small className="sidebar-stat-code">RND</small>
-          <span>{t.sidebar.comps}</span>
-          <strong>{compositionCount}</strong>
         </div>
       </div>
 
       <div className="sidebar-footer">
-        <span className="sidebar-footer-kicker">Loaded deck</span>
-        <span>{t.sidebar.selected}</span>
-        <strong>{selectedItemTitle ?? t.sidebar.noAsset}</strong>
+        <span className="sidebar-footer-kicker">Selected Focus</span>
+        <strong className="sidebar-footer-title">{selectedItemTitle ?? "None"}</strong>
       </div>
     </aside>
   );

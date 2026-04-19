@@ -4,8 +4,8 @@ type InvokeArgs = Record<string, unknown> | undefined;
 
 // Safe wrapper around invoke that handles non-Tauri environments
 export async function invoke<T>(command: string, args?: InvokeArgs): Promise<T> {
-  if (!tauriInvoke) {
-    throw new Error("Tauri runtime not available");
+  if (!hasNativeBridge()) {
+    throw new Error("Tauri native bridge not available");
   }
   return tauriInvoke<T>(command, args);
 }
@@ -21,7 +21,7 @@ type TauriWindow = Window & {
 export function isNativeBridgeUnavailable(error: unknown): boolean {
   return (
     error instanceof Error &&
-    /tauri|__TAURI_INTERNALS__|ipc|native bridge/i.test(error.message)
+    /tauri|__TAURI_INTERNALS__|ipc|native bridge|Cannot read|Cannot access/i.test(error.message)
   );
 }
 

@@ -236,6 +236,8 @@ export interface RoutedLiveCue extends LiveLogCue {
   focus: string;
   samplePath: string | null;
   sampleLabel: string | null;
+  /** Optional log line text for synchronized visual overlays */
+  logLine?: string;
 }
 
 const CATEGORY_PROFILES: Record<string, CategoryProfile> = {

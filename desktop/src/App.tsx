@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 
 import { loadBootstrapManifest, runAnalyzerRequest } from "./api/analyzer";
+import { discoverRepositoryLogs } from "./api/repositories";
 import type { PersistedSession } from "./api/sessions";
 import { AppSidebar } from "./components/AppSidebar";
 import { ComposeScreen } from "./features/compose/ComposeScreen";
@@ -32,6 +33,7 @@ import { resolvePlayableTrackPath } from "./utils/track";
 import type {
   AnalyzerViewMode,
   AppScreen,
+  AppPillar,
   SaveBaseTrackPlaylistInput,
   ImportCompositionInput,
   ImportBaseAssetInput,
@@ -65,6 +67,7 @@ function AppContent() {
   const [health, setHealth] = useState<AnalyzerResponse | null>(null);
   const [booting, setBooting] = useState(true);
   const [screen, setScreen] = useState<AppScreen>("library");
+  const [pillar, setPillar] = useState<AppPillar>("curate");
   const [analysisMode, setAnalysisMode] = useState<AnalyzerViewMode>("track");
   const [isDark, setIsDark] = useState(true);
   const [lang, setLang] = useState<"en" | "es">("en");
@@ -153,12 +156,39 @@ function AppContent() {
     library.setSelectedTrackId(null);
   }
 
+  function primeMonitorGuideTrack(draft?: {
+    trackId?: string;
+    playlistId?: string;
+  }) {
+    if (draft?.playlistId) {
+      const playlist =
+        library.playlists.find((entry) => entry.id === draft.playlistId) ?? null;
+      const queue = resolvePlaylistTracks(playlist, library.tracks)
+        .map((track) => resolvePlayableTrackPath(track))
+        .filter((path): path is string => Boolean(path));
+      monitor.setGuideTrackPlaylist(queue);
+      return;
+    }
+
+    if (draft?.trackId) {
+      const track = library.tracks.find((entry) => entry.id === draft.trackId) ?? null;
+      monitor.setGuideTrack(track ? resolvePlayableTrackPath(track) : null);
+      return;
+    }
+
+    monitor.setGuideTrack(null);
+  }
+
   async function startReplaySession(
     session: PersistedSession,
     replayWindowIndex?: number,
   ): Promise<boolean> {
     sessions.setSelectedSessionId(session.id);
     armSessionMusicalBase({
+      trackId: session.trackId ?? undefined,
+      playlistId: session.playlistId ?? undefined,
+    });
+    primeMonitorGuideTrack({
       trackId: session.trackId ?? undefined,
       playlistId: session.playlistId ?? undefined,
     });
@@ -272,7 +302,27 @@ function AppContent() {
     try {
       const nextRepository = await repositories.importRepositorySource(input);
       if (nextRepository) {
-        notify("success", "Repository connected", `${nextRepository.title} analysis is ready.`);
+        let msg = `${nextRepository.title} connected.`;
+
+        // Log Discovery v5.3: Automatically scan and import logs from directory
+        if (input.sourceKind === "directory") {
+          const discovered = await discoverRepositoryLogs(input.sourcePath);
+          if (discovered.length > 0) {
+            // Import discovered logs in background
+            for (const logPath of discovered) {
+              const fileName = logPath.split("/").pop() || logPath;
+              // We don't wait for each one's analysis, just register them
+              void repositories.importRepositorySource({
+                sourceKind: "file",
+                sourcePath: logPath,
+                label: fileName,
+              });
+            }
+            msg = `${nextRepository.title} connected. Rescued ${discovered.length} logs.`;
+          }
+        }
+
+        notify("success", "Repository connected", msg);
         setNewlyImportedId(nextRepository.id);
         setTimeout(() => setNewlyImportedId(null), 3000);
         setAnalysisMode("repo");
@@ -433,6 +483,7 @@ function AppContent() {
     repositories.setSelectedRepositoryId(session.repoId);
     setAnalysisMode("repo");
     setScreen("inspect");
+    setPillar("curate");
   }
 
   const analyzerLabel = isHealthResponse(health)
@@ -531,10 +582,15 @@ function AppContent() {
           </section>
         )}
 
-      <section className="app-main">
+      <section className={`app-main role--${pillar}`}>
         <AppSidebar
-          currentScreen={screen}
-          onScreenChange={setScreen}
+          currentPillar={pillar}
+          onPillarChange={(p) => {
+            setPillar(p);
+            if (p === "perform") setScreen("session");
+            if (p === "design") setScreen("compose");
+            if (p === "curate") setScreen("library");
+          }}
           trackCount={library.tracks.length}
           repositoryCount={repositories.repositories.length}
           baseAssetCount={baseAssets.baseAssets.length}
@@ -560,7 +616,7 @@ function AppContent() {
           </section>
         ) : null}
 
-        {screen === "library" && (
+        {pillar === "curate" && screen === "library" && (
           <LibraryScreen
             tracks={library.tracks}
             playlists={library.playlists}
@@ -613,7 +669,7 @@ function AppContent() {
           />
         )}
 
-        {screen === "inspect" && (
+        {pillar === "curate" && screen === "inspect" && (
           <InspectScreen
             track={library.selectedTrack}
             repository={repositories.selectedRepository}
@@ -636,7 +692,7 @@ function AppContent() {
           />
         )}
 
-        {screen === "compose" && (
+        {pillar === "design" && (
           <ComposeScreen
             composition={compositions.selectedComposition}
             compositions={compositions.compositions}
@@ -652,7 +708,7 @@ function AppContent() {
           />
         )}
 
-        {screen === "session" && (
+        {pillar === "perform" && (
           <SessionScreen
             tracks={library.tracks}
             playlists={library.playlists}
@@ -675,6 +731,10 @@ function AppContent() {
             onStartSession={async (input, persistedSessionId, draft) => {
               sessions.clearError();
               armSessionMusicalBase({
+                trackId: draft?.trackId,
+                playlistId: draft?.playlistId,
+              });
+              primeMonitorGuideTrack({
                 trackId: draft?.trackId,
                 playlistId: draft?.playlistId,
               });

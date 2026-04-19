@@ -1,6 +1,8 @@
 import {
   Play,
   Pause,
+  SkipBack,
+  SkipForward,
   Trash2,
   Plus,
   Activity,
@@ -9,10 +11,12 @@ import {
   AlertCircle,
   Radio,
 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   BaseTrackPlaylist,
   LibraryTrack,
+  LiveLogStreamUpdate,
   RepositoryAnalysis,
   StartSessionInput,
   StreamAdapterKind,
@@ -25,7 +29,9 @@ import { resolveReplayBookmarkTagLabel } from "../../config/replayBookmarks";
 import { resolveMutationProfile, resolveStyleProfile } from "../../config/liveProfiles";
 import { useReplayFeedbackRecommendation } from "../../hooks/useReplayFeedbackRecommendation";
 import { getPlaylistMedianBpm } from "../../utils/playlist";
-import { getTrackTitle } from "../../utils/track";
+import { getTrackTitle, resolvePlayableTrackPath } from "../../utils/track";
+import { useMonitor } from "../monitor/MonitorContext";
+import { getStreamAdapterLabel } from "../../utils/streamAdapter";
 
 interface SessionStartDraft {
   sourceId?: string;
@@ -65,6 +71,141 @@ interface SessionScreenProps {
 type QuickSessionMode = "log" | "repo";
 type SessionBaseMode = "track" | "playlist";
 
+function formatMonitorConfidence(value: number | null | undefined): string {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "—";
+  }
+
+  return `${Math.round(value * 100)}%`;
+}
+
+function formatMonitorLevel(level: string | null | undefined): string {
+  if (!level) {
+    return "Awaiting input";
+  }
+
+  return level
+    .split(/[-_ ]+/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+}
+
+function resolveModeLabel(mode: QuickSessionMode): string {
+  return mode === "log" ? "Log file" : "Repository";
+}
+
+function resolveBaseDetails(
+  session: PersistedSession | null,
+  tracks: LibraryTrack[],
+  playlists: BaseTrackPlaylist[],
+): { label: string | null; detail: string | null } {
+  if (!session) {
+    return { label: null, detail: null };
+  }
+
+  if (session.playlistId) {
+    const playlist = playlists.find((entry) => entry.id === session.playlistId) ?? null;
+    const label = playlist?.name ?? session.playlistName ?? null;
+    const medianBpm = playlist ? getPlaylistMedianBpm(playlist, tracks) : null;
+
+    return {
+      label,
+      detail: playlist
+        ? `${playlist.trackIds.length} tracks · median ${medianBpm?.toFixed(0) ?? "?"} BPM`
+        : null,
+    };
+  }
+
+  if (session.trackId) {
+    const track = tracks.find((entry) => entry.id === session.trackId) ?? null;
+    const label = track ? getTrackTitle(track) : session.trackTitle ?? null;
+
+    return {
+      label,
+      detail:
+        typeof track?.analysis.bpm === "number"
+          ? `${track.analysis.bpm.toFixed(0)} BPM`
+          : null,
+    };
+  }
+
+  return { label: null, detail: null };
+}
+
+function resolveSourceDetails(
+  session: PersistedSession | null,
+  repositories: RepositoryAnalysis[],
+): { label: string | null; path: string | null } {
+  if (!session) {
+    return { label: null, path: null };
+  }
+
+  const repository =
+    (session.sourceId
+      ? repositories.find((entry) => entry.id === session.sourceId)
+      : null) ??
+    repositories.find(
+      (entry) => session.sourcePath !== null && entry.sourcePath === session.sourcePath,
+    ) ??
+    null;
+
+  return {
+    label: repository?.title ?? session.sourceTitle ?? null,
+    path: repository?.sourcePath ?? session.sourcePath ?? null,
+  };
+}
+
+function resolveSessionBedPath(
+  session: PersistedSession | null,
+  tracks: LibraryTrack[],
+  playlists: BaseTrackPlaylist[],
+): string | null {
+  if (!session) {
+    return null;
+  }
+
+  if (session.playlistId) {
+    const playlist = playlists.find((entry) => entry.id === session.playlistId) ?? null;
+    if (!playlist) {
+      return null;
+    }
+
+    for (const trackId of playlist.trackIds) {
+      const track = tracks.find((entry) => entry.id === trackId) ?? null;
+      const path = track ? resolvePlayableTrackPath(track) : null;
+      if (path) {
+        return path;
+      }
+    }
+
+    return null;
+  }
+
+  if (!session.trackId) {
+    return null;
+  }
+
+  const track = tracks.find((entry) => entry.id === session.trackId) ?? null;
+  return track ? resolvePlayableTrackPath(track) : null;
+}
+
+function resolveSessionBedUrl(path: string | null): string | null {
+  if (!path) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+
+  if (isTauri()) {
+    return convertFileSrc(path);
+  }
+
+  return null;
+}
+
 export function SessionScreen({
   tracks,
   playlists,
@@ -87,6 +228,7 @@ export function SessionScreen({
   onSelectSession,
 }: SessionScreenProps) {
   const t = useT();
+  const monitor = useMonitor();
   const [mode, setMode] = useState<QuickSessionMode>("log");
   const [baseMode, setBaseMode] = useState<SessionBaseMode>(
     tracks.length > 0 ? "track" : "playlist",
@@ -97,6 +239,10 @@ export function SessionScreen({
   const [sessionLabel, setSessionLabel] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [latestUpdate, setLatestUpdate] = useState<LiveLogStreamUpdate | null>(null);
+  const [directPath, setDirectPath] = useState("");
+  const [isDirectLoading, setIsDirectLoading] = useState(false);
+  const boothBedAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const logSources = useMemo(
     () => repositories.filter((entry) => entry.sourceKind === "file"),
@@ -117,6 +263,14 @@ export function SessionScreen({
     baseMode === "playlist"
       ? selectedPlaylist?.name ?? null
       : selectedTrack?.tags.title ?? null;
+  const selectedBaseDetail =
+    baseMode === "playlist"
+      ? selectedPlaylist
+        ? `${selectedPlaylist.trackIds.length} tracks · median ${selectedPlaylistBpm?.toFixed(0) ?? "?"} BPM`
+        : null
+      : selectedTrack
+        ? `${selectedTrack.analysis.bpm?.toFixed(0) ?? "?"} BPM`
+        : null;
 
   const handleCreateSession = useCallback(async () => {
     try {
@@ -148,12 +302,20 @@ export function SessionScreen({
         return;
       }
 
+      if (source.sourceKind !== "file") {
+        setCreateError(
+          "Live booth sessions currently support file-backed feeds only. Repository folders stay selectable in the UI, but need a dedicated live adapter before they can run.",
+        );
+        return;
+      }
+
       const sessionId = `session_${Date.now()}`;
       const input: StartSessionInput = {
         sessionId,
         adapterKind: "file" as StreamAdapterKind,
         source: source.sourcePath,
         label: sessionLabel || source.title,
+        startFromBeginning: true,
       };
 
       const success = await onStartSession(input, sessionId, {
@@ -184,6 +346,35 @@ export function SessionScreen({
     selectedTrackId,
     sessionLabel,
   ]);
+
+  const handleDirectLaunch = useCallback(async () => {
+    if (!directPath.trim()) return;
+    try {
+      setIsDirectLoading(true);
+      setCreateError(null);
+
+      const input: StartSessionInput = {
+        sessionId: `direct_${Date.now()}`,
+        adapterKind: directPath.startsWith("ws") ? "websocket" : "file",
+        source: directPath.trim(),
+        label: directPath.split("/").pop() || "Direct Feed",
+        startFromBeginning: !directPath.startsWith("ws"),
+      };
+
+      const success = await onStartSession(input, input.sessionId, {
+        trackId: selectedTrackId ?? undefined,
+        playlistId: selectedPlaylistId ?? undefined,
+      });
+
+      if (success) {
+        setDirectPath("");
+      }
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : "Direct launch failed");
+    } finally {
+      setIsDirectLoading(false);
+    }
+  }, [directPath, onStartSession, selectedTrackId, selectedPlaylistId]);
 
   const handleResumeSession = useCallback(
     async (sessionId: string) => {
@@ -228,6 +419,66 @@ export function SessionScreen({
   );
 
   const activeSession = sessions.find((session) => session.id === activeSessionId);
+  const playbackActive = activeSessionMode === "playback" && Boolean(activeSession);
+  const liveMonitorActive = Boolean(monitor.session) && !playbackActive;
+  const activeBedUrl = resolveSessionBedUrl(
+    liveMonitorActive && !playbackActive
+      ? resolveSessionBedPath(activeSession ?? null, tracks, playlists)
+      : null,
+  );
+
+  useEffect(() => {
+    setLatestUpdate(null);
+  }, [monitor.session?.sessionId]);
+
+  useEffect(() => {
+    return monitor.subscribe((update) => {
+      setLatestUpdate(update);
+    });
+  }, [monitor.subscribe]);
+
+  useEffect(() => {
+    return () => {
+      const audio = boothBedAudioRef.current;
+      if (!audio) {
+        return;
+      }
+      audio.pause();
+      audio.src = "";
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof Audio === "undefined") {
+      return;
+    }
+
+    let audio = boothBedAudioRef.current;
+    if (!audio) {
+      audio = new Audio();
+      audio.loop = true;
+      audio.preload = "auto";
+      audio.volume = 0.2;
+      boothBedAudioRef.current = audio;
+    }
+
+    if (!activeBedUrl) {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.src = "";
+      return;
+    }
+
+    if (audio.src !== activeBedUrl) {
+      audio.pause();
+      audio.src = activeBedUrl;
+      audio.currentTime = 0;
+    }
+
+    void audio.play().catch(() => {
+      // Ignore autoplay failures; the next button interaction will retry.
+    });
+  }, [activeBedUrl]);
   const selectedSession =
     sessions.find((session) => session.id === selectedSessionId) ??
     activeSession ??
@@ -239,11 +490,132 @@ export function SessionScreen({
   const selectedSessionReplayFeedbackRecommendation = useReplayFeedbackRecommendation(
     selectedSessionBookmarks,
   );
-  const playbackActive = activeSessionMode === "playback" && Boolean(activeSession);
   const playbackPercent =
     typeof activePlaybackProgress === "number"
       ? Math.max(0, Math.min(100, Math.round(activePlaybackProgress * 100)))
       : null;
+  const readyToRun =
+    Boolean(selectedSourceId) &&
+    Boolean(baseMode === "track" ? selectedTrackId : selectedPlaylistId);
+  const activeBaseDetails = resolveBaseDetails(activeSession ?? null, tracks, playlists);
+  const selectedSessionBaseDetails = resolveBaseDetails(selectedSession, tracks, playlists);
+  const activeSourceDetails = resolveSourceDetails(activeSession ?? null, repositories);
+  const selectedSessionSourceDetails = resolveSourceDetails(selectedSession, repositories);
+  const boothSourceLabel = liveMonitorActive
+    ? activeSourceDetails.label ?? monitor.session?.repoTitle ?? null
+    : selectedSource?.title ?? selectedSessionSourceDetails.label;
+  const boothSourcePath = liveMonitorActive
+    ? activeSourceDetails.path ?? monitor.session?.sourcePath ?? null
+    : selectedSource?.sourcePath ?? selectedSessionSourceDetails.path;
+  const boothBaseLabel = liveMonitorActive
+    ? activeBaseDetails.label ?? null
+    : selectedBaseLabel ?? selectedSessionBaseDetails.label;
+  const boothBaseDetail = liveMonitorActive
+    ? activeBaseDetails.detail
+    : selectedBaseDetail ?? selectedSessionBaseDetails.detail;
+  const boothAdapterLabel = monitor.session
+    ? getStreamAdapterLabel(monitor.session.adapterKind)
+    : resolveModeLabel(mode);
+  const boothSignalBpm =
+    latestUpdate?.suggestedBpm ??
+    (liveMonitorActive ? activeSession?.lastBpm ?? null : selectedSource?.suggestedBpm ?? null);
+  const boothState = playbackActive
+    ? monitor.isPlaybackPaused
+      ? { tone: "replay", label: "Replay paused" }
+      : { tone: "replay", label: "Replay active" }
+    : liveMonitorActive
+      ? latestUpdate?.hasData
+        ? { tone: "live", label: "Live hot" }
+        : { tone: "armed", label: "Listening" }
+      : readyToRun
+        ? { tone: "armed", label: "Booth armed" }
+        : { tone: "idle", label: "Booth idle" };
+  const boothHeadline = playbackActive
+    ? activeSession?.label || "Replay deck"
+    : liveMonitorActive
+      ? activeSession?.label || monitor.session?.repoTitle || "Live monitor"
+      : boothSourceLabel || "Arm a live monitor";
+  const boothSummary = playbackActive
+    ? latestUpdate?.summary ||
+      `${playbackPercent ?? 0}% of the saved session is back on deck.`
+    : liveMonitorActive
+      ? latestUpdate?.hasData
+        ? latestUpdate.summary
+        : "Maia is waiting for the next live window from the selected source."
+      : readyToRun
+        ? "Base bed and source feed are armed. Start the booth to begin capturing live windows."
+        : "Choose a musical bed and a source feed to turn this lane into a live booth.";
+  const levelCountEntries = Object.entries(latestUpdate?.levelCounts ?? {}).filter(
+    ([, count]) => count > 0,
+  );
+  const topComponents = latestUpdate?.topComponents.slice(0, 5) ?? [];
+  const warningItems = latestUpdate?.warnings.slice(0, 4) ?? [];
+  const anomalyMarkers = latestUpdate?.anomalyMarkers.slice(0, 4) ?? [];
+  const boothStats = playbackActive
+    ? [
+        {
+          label: "Replay",
+          value: `${monitor.playbackEventIndex ?? 0}/${monitor.playbackEventCount ?? activeSession?.totalPolls ?? 0}`,
+          helper: "windows",
+        },
+        {
+          label: "Progress",
+          value: `${playbackPercent ?? 0}%`,
+          helper: "complete",
+        },
+        {
+          label: "Stored lines",
+          value: `${activeSession?.totalLines ?? 0}`,
+          helper: "captured",
+        },
+        {
+          label: "Stored anomalies",
+          value: `${activeSession?.totalAnomalies ?? 0}`,
+          helper: "saved",
+        },
+        {
+          label: "Signal BPM",
+          value: boothSignalBpm ? `${boothSignalBpm.toFixed(0)}` : "—",
+          helper: boothSignalBpm ? "bpm" : "waiting",
+        },
+        {
+          label: "Confidence",
+          value: formatMonitorConfidence(latestUpdate?.confidence),
+          helper: "match",
+        },
+      ]
+    : [
+        {
+          label: "Signal BPM",
+          value: boothSignalBpm ? `${boothSignalBpm.toFixed(0)}` : "—",
+          helper: boothSignalBpm ? "bpm" : "waiting",
+        },
+        {
+          label: "Windows",
+          value: `${monitor.metrics.windowCount}`,
+          helper: "processed",
+        },
+        {
+          label: "Lines",
+          value: `${monitor.metrics.processedLines}`,
+          helper: "streamed",
+        },
+        {
+          label: "Anomalies",
+          value: `${monitor.metrics.totalAnomalies}`,
+          helper: "detected",
+        },
+        {
+          label: "Dominant level",
+          value: formatMonitorLevel(latestUpdate?.dominantLevel),
+          helper: latestUpdate?.hasData ? "latest window" : "idle",
+        },
+        {
+          label: "Confidence",
+          value: formatMonitorConfidence(latestUpdate?.confidence),
+          helper: "match",
+        },
+      ];
 
   const statusLabel = (status: string) =>
     status === "active"
@@ -305,6 +677,280 @@ export function SessionScreen({
           </p>
         </div>
       )}
+
+      <section className="panel session-booth-panel">
+        <div className="session-booth-head">
+          <div className="session-booth-head-copy">
+            <span className={`session-booth-status-badge ${boothState.tone}`}>
+              {boothState.label}
+            </span>
+            <p className="eyebrow">Live booth</p>
+            <h3>{boothHeadline}</h3>
+            <p className="support-copy">{boothSummary}</p>
+          </div>
+
+          <div className="session-booth-actions">
+            {playbackActive ? (
+              <>
+                <button
+                  type="button"
+                  className="secondary-action"
+                  onClick={() => monitor.stepPlaybackWindow(-1)}
+                  disabled={mutating}
+                >
+                  <SkipBack size={14} />
+                  Prev window
+                </button>
+                <button
+                  type="button"
+                  className="secondary-action"
+                  onClick={() =>
+                    monitor.isPlaybackPaused
+                      ? monitor.resumePlayback()
+                      : monitor.pausePlayback()
+                  }
+                  disabled={mutating}
+                >
+                  {monitor.isPlaybackPaused ? <Play size={14} /> : <Pause size={14} />}
+                  {monitor.isPlaybackPaused ? "Resume replay" : "Pause replay"}
+                </button>
+                <button
+                  type="button"
+                  className="secondary-action"
+                  onClick={() => monitor.stepPlaybackWindow(1)}
+                  disabled={mutating}
+                >
+                  <SkipForward size={14} />
+                  Next window
+                </button>
+                <button
+                  type="button"
+                  className="action"
+                  onClick={() => {
+                    void onStopSession();
+                  }}
+                  disabled={mutating}
+                >
+                  <Pause size={14} />
+                  Exit replay
+                </button>
+              </>
+            ) : liveMonitorActive ? (
+              <button
+                type="button"
+                className="action"
+                onClick={() => {
+                  void onStopSession();
+                }}
+                disabled={mutating}
+              >
+                <Pause size={14} />
+                {t.session.stopSession}
+              </button>
+            ) : (
+              <>
+                <div className="direct-feed-input-group">
+                   <input 
+                    type="text" 
+                    className="direct-feed-input"
+                    placeholder="Paste log path or URL (e.g. /var/log/syslog)..."
+                    value={directPath}
+                    onChange={(e) => setDirectPath(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleDirectLaunch()}
+                   />
+                   <button 
+                    className="direct-launch-btn"
+                    onClick={handleDirectLaunch}
+                    disabled={isDirectLoading || !directPath.trim()}
+                   >
+                    {isDirectLoading ? "..." : "Launch"}
+                   </button>
+                </div>
+                {selectedSession && selectedSession.status === "paused" && (
+                  <button
+                    type="button"
+                    className="secondary-action"
+                    onClick={() => {
+                      void handleResumeSession(selectedSession.id);
+                    }}
+                    disabled={mutating}
+                  >
+                    <Play size={14} />
+                    Resume selected
+                  </button>
+                )}
+                {selectedSession && selectedSession.totalPolls > 0 && (
+                  <button
+                    type="button"
+                    className="secondary-action"
+                    onClick={async () => {
+                      setCreateError(null);
+                      if (!selectedSession.sourcePath) {
+                        setCreateError("This session has no stored source path for replay.");
+                        return;
+                      }
+
+                      const success = await onPlayback(selectedSession);
+                      if (!success) {
+                        setCreateError("Maia could not start the session replay.");
+                        return;
+                      }
+
+                      onSelectSession(selectedSession.id);
+                    }}
+                    disabled={mutating}
+                  >
+                    <Radio size={14} />
+                    Replay selected
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="action"
+                  onClick={handleCreateSession}
+                  disabled={creating || mutating || !readyToRun}
+                >
+                  <Play size={14} />
+                  {t.session.startSession}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {(playbackActive || liveMonitorActive) && (
+          <div
+            className="session-booth-progress"
+            aria-label={playbackActive ? "Replay progress" : "Live monitoring activity"}
+          >
+            <span
+              style={{
+                width: playbackActive
+                  ? `${playbackPercent ?? 0}%`
+                  : `${Math.max(
+                      12,
+                      Math.min(
+                        100,
+                        latestUpdate?.hasData
+                          ? latestUpdate.anomalyCount * 22 + latestUpdate.lineCount
+                          : monitor.metrics.windowCount * 12,
+                      ),
+                    )}%`,
+              }}
+            />
+          </div>
+        )}
+
+        <div className="session-booth-grid">
+          <div className="session-booth-route">
+            <div className="session-booth-route-item">
+              <span>Source feed</span>
+              <strong>{boothSourceLabel ?? "Not selected"}</strong>
+              <small>{boothSourcePath ?? "Pick a log file or repository to monitor."}</small>
+            </div>
+            <div className="session-booth-route-item">
+              <span>Base bed</span>
+              <strong>{boothBaseLabel ?? "Not armed"}</strong>
+              <small>{boothBaseDetail ?? "Track or playlist will sit under the live data."}</small>
+            </div>
+            <div className="session-booth-route-item">
+              <span>Adapter</span>
+              <strong>{boothAdapterLabel}</strong>
+              <small>
+                {monitor.session
+                  ? `Session ${monitor.session.sessionId}`
+                  : `Ready to launch in ${resolveModeLabel(mode).toLowerCase()} mode.`}
+              </small>
+            </div>
+          </div>
+
+          <div className="session-booth-stat-grid">
+            {boothStats.map((item) => (
+              <article key={item.label} className="session-booth-stat">
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+                <small>{item.helper}</small>
+              </article>
+            ))}
+          </div>
+        </div>
+
+        <div className="session-booth-detail-grid">
+          <section className="session-booth-card">
+            <div className="session-booth-card-header">
+              <strong>Signal snapshot</strong>
+              <span>
+                {latestUpdate?.hasData
+                  ? `${latestUpdate.lineCount} lines in latest window`
+                  : "Waiting for stream data"}
+              </span>
+            </div>
+            <div className="session-signal-chip-row">
+              {levelCountEntries.length > 0 ? (
+                levelCountEntries.map(([level, count]) => (
+                  <span key={level} className="session-signal-chip">
+                    {formatMonitorLevel(level)} · {count}
+                  </span>
+                ))
+              ) : (
+                <span className="session-signal-chip muted">No level breakdown yet</span>
+              )}
+            </div>
+            <div className="session-signal-chip-row">
+              {topComponents.length > 0 ? (
+                topComponents.map((component) => (
+                  <span key={component.component} className="session-signal-chip">
+                    {component.component} · {component.count}
+                  </span>
+                ))
+              ) : (
+                <span className="session-signal-chip muted">Top components will appear here</span>
+              )}
+            </div>
+          </section>
+
+          <section className="session-booth-card">
+            <div className="session-booth-card-header">
+              <strong>{playbackActive ? "Replay notes" : "Watchouts"}</strong>
+              <span>
+                {latestUpdate?.anomalyCount
+                  ? `${latestUpdate.anomalyCount} anomalies in latest window`
+                  : "No current anomaly burst"}
+              </span>
+            </div>
+            {warningItems.length > 0 || anomalyMarkers.length > 0 ? (
+              <div className="session-booth-list">
+                {warningItems.map((warning) => (
+                  <div key={warning} className="session-booth-list-item">
+                    <AlertCircle size={14} />
+                    <span>{warning}</span>
+                  </div>
+                ))}
+                {anomalyMarkers.map((marker) => (
+                  <div
+                    key={`${marker.eventIndex}-${marker.component}-${marker.excerpt}`}
+                    className="session-booth-list-item"
+                  >
+                    <TrendingUp size={14} />
+                    <span>
+                      {formatMonitorLevel(marker.level)} · {marker.component} · {marker.excerpt}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="session-booth-list-item muted">
+                <Activity size={14} />
+                <span>
+                  {readyToRun
+                    ? "Run the booth to start collecting warnings, anomaly markers, and playback notes."
+                    : "The booth will surface warnings and anomaly markers once a source is active."}
+                </span>
+              </div>
+            )}
+          </section>
+        </div>
+      </section>
 
       <div className="session-layout">
         <section className="panel session-form-panel">
@@ -559,53 +1205,6 @@ export function SessionScreen({
             </p>
           </div>
 
-          {activeSession && (
-            <div
-              className={`session-active-banner${playbackActive ? " session-active-banner--playback" : ""}`}
-            >
-              <div className="session-active-banner-copy">
-                <div className="session-active-label">
-                  {playbackActive ? <Radio size={14} /> : <Activity size={14} />}
-                  <span>
-                    {playbackActive ? "Replay active" : t.session.active}:{" "}
-                    {activeSession.label || "—"}
-                  </span>
-                </div>
-                {playbackActive ? (
-                  <div className="session-progress-block">
-                    <div
-                      className="session-progress-track"
-                      aria-label="Replay progress"
-                      role="progressbar"
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-valuenow={playbackPercent ?? 0}
-                    >
-                      <span style={{ width: `${playbackPercent ?? 0}%` }} />
-                    </div>
-                    <p className="session-progress-copy">
-                      {playbackPercent ?? 0}% complete · {activeSession.totalPolls} stored windows
-                    </p>
-                  </div>
-                ) : (
-                  <p className="session-progress-copy">
-                    {activeSession.totalPolls} polls · {activeSession.totalLines} lines ·{" "}
-                    {activeSession.totalAnomalies} anomalies
-                  </p>
-                )}
-              </div>
-              <button
-                type="button"
-                className="secondary-action"
-                onClick={onStopSession}
-                disabled={mutating}
-              >
-                <Pause size={14} />
-                {playbackActive ? "Exit replay" : t.session.stopSession}
-              </button>
-            </div>
-          )}
-
           <div className="session-card-list">
             {loading ? (
               <p className="placeholder">{t.session.loading}</p>
@@ -660,19 +1259,28 @@ export function SessionScreen({
                       <div className="session-metric">
                         <TrendingUp size={12} />
                         <span>
-                          {session.totalPolls} {t.session.polls}
+                          {isActive && !isPlaybackSession
+                            ? monitor.metrics.windowCount
+                            : session.totalPolls}{" "}
+                          {t.session.polls}
                         </span>
                       </div>
                       <div className="session-metric">
                         <Clock size={12} />
                         <span>
-                          {session.totalLines} {t.session.lines}
+                          {isActive && !isPlaybackSession
+                            ? monitor.metrics.processedLines
+                            : session.totalLines}{" "}
+                          {t.session.lines}
                         </span>
                       </div>
                       <div className="session-metric">
                         <AlertCircle size={12} />
                         <span>
-                          {session.totalAnomalies} {t.session.anomalies}
+                          {isActive && !isPlaybackSession
+                            ? monitor.metrics.totalAnomalies
+                            : session.totalAnomalies}{" "}
+                          {t.session.anomalies}
                         </span>
                       </div>
                     </div>

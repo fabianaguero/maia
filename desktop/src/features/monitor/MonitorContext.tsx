@@ -51,6 +51,8 @@ import {
 
 const POLL_INTERVAL_MS = 600;
 const RENDER_SAMPLE_RATE = 44100;
+const REPLAY_REBUILD_WINDOW_BYTES = 16 * 1024;
+const MAX_REPLAY_REBUILD_WINDOWS = 48;
 
 // ---------------------------------------------------------------------------
 // Guide Track Engine — loads a real MP3/audio file and slices bar-length
@@ -343,13 +345,72 @@ function renderSynthFallback(cues: LiveLogCue[], volume: number, bpm?: number | 
   return new Blob([buf], { type: "audio/wav" });
 }
 
-function playWavBlobCtx(blob: Blob): void {
-  const url = URL.createObjectURL(blob);
-  const audio = new Audio(url);
-  audio.volume = 1.0;
-  audio.play().catch(() => {});
-  audio.addEventListener("ended", () => URL.revokeObjectURL(url), { once: true });
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
+// Global registry of active Audio elements to allow cleanup on app close
+const activeAudioElements = new Set<HTMLAudioElement>();
+const DEFAULT_MONITOR_WAV_VOLUME = 0.4;
+
+function stopAllAudio(): void {
+  activeAudioElements.forEach((audio) => {
+    audio.pause();
+    audio.currentTime = 0;
+    audio.src = "";
+  });
+  activeAudioElements.clear();
+}
+
+async function playWavBlobWithContext(ctx: AudioContext, blob: Blob, volume = DEFAULT_MONITOR_WAV_VOLUME): Promise<void> {
+  if (ctx.state === "suspended") {
+    // We don't log a warning here every time to avoid spamming during silence-by-design
+    return;
+  }
+
+  try {
+    const arrayBuffer = await blob.arrayBuffer();
+    const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+    
+    const source = ctx.createBufferSource();
+    source.buffer = audioBuffer;
+    
+    // Smooth Gain/Envelope
+    const gainNode = ctx.createGain();
+    const now = ctx.currentTime;
+    gainNode.gain.setValueAtTime(0, now);
+    gainNode.gain.linearRampToValueAtTime(volume, now + 0.01);
+    
+    source.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    source.start(now);
+  } catch (error) {
+    console.error("[MAIA:Audio] Failed to play sonification via context:", error);
+  }
+}
+
+function createSyntheticReplayEvent(
+  sessionId: string,
+  pollIndex: number,
+  update: LiveLogStreamUpdate,
+): SessionEvent {
+  return {
+    id: -(pollIndex + 1),
+    sessionId,
+    pollIndex,
+    capturedAt: new Date().toISOString(),
+    fromOffset: update.fromOffset,
+    toOffset: update.toOffset,
+    summary: update.summary,
+    suggestedBpm: update.suggestedBpm ?? null,
+    confidence: update.confidence,
+    dominantLevel: update.dominantLevel,
+    lineCount: update.lineCount,
+    anomalyCount: update.anomalyCount,
+    levelCountsJson: JSON.stringify(update.levelCounts),
+    anomalyMarkersJson: JSON.stringify(update.anomalyMarkers),
+    topComponentsJson: JSON.stringify(update.topComponents),
+    sonificationCuesJson: JSON.stringify(update.sonificationCues),
+    parsedLinesJson: JSON.stringify(update.parsedLines),
+    warningsJson: JSON.stringify(update.warnings),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -446,11 +507,14 @@ interface MonitorContextValue {
   /** Move one replay window backward/forward and pause there. */
   stepPlaybackWindow: (direction: -1 | 1) => void;
   /**
-   * Register a listener that receives every LiveLogStreamUpdate emitted by the
    * background poll loop.  Returns an unsubscribe function.
    * The listener is called from within a React state-transition context.
    */
   subscribe: (listener: StreamListener) => () => void;
+  /** Access to the real-time AudioContext for state monitoring and manual resume. */
+  audioContext: AudioContext | null;
+  /** Explicitly resume the audio context (required on first user interaction). */
+  resumeAudio: () => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -478,6 +542,8 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
   const [playbackEventIndex, setPlaybackEventIndex] = useState<number | null>(null);
   const [playbackEventCount, setPlaybackEventCount] = useState<number | null>(null);
   const [guideTrackDurationSec, setGuideTrackDurationSec] = useState<number | null>(null);
+  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   // Refs that survive across re-renders without causing them
   const pollTimerRef = useRef<number | null>(null);
@@ -500,6 +566,10 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
   ]);
   /** Next replay event index to emit. */
   const replayIndexRef = useRef(0);
+  /** True while replay windows are being reconstructed from the source file. */
+  const replayHydratingRef = useRef(false);
+  /** Monotonic token used to ignore stale async replay hydration results. */
+  const replayHydrationTokenRef = useRef(0);
   /** Mirror of playback pause state for callbacks/timers. */
   const playbackPausedRef = useRef(false);
   /** Consecutive empty-window count for direct mode — reset cursor after N to loop static files. */
@@ -512,6 +582,8 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
   const httpUrlRef = useRef<string>("");
   /** Poll counter for recording session events. */
   const pollIndexRef = useRef<number>(0);
+  /** Mirror of playback state for callbacks that should not close over stale state. */
+  const isPlaybackRef = useRef(false);
 
   // -------------------------------------------------------------------------
   // Internal helpers
@@ -520,6 +592,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
   const guideTrackPathRef = useRef<string | null>(null);
   const guideTrackQueueRef = useRef<string[]>([]);
   const guideTrackQueueIndexRef = useRef(0);
+  const guideTrackLoadPromiseRef = useRef<Promise<void> | null>(null);
 
   const seekGuideTrack = useCallback((second: number) => {
     if (!guideTrackRef.current) return;
@@ -541,6 +614,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       guideTrackRef.current = null;
       guideTrackCursorRef.current.current = 0;
       guideTrackFinishedRef.current = false;
+      guideTrackLoadPromiseRef.current = null;
       setGuideTrackReady(false);
       setGuideTrackPathState(null);
       setGuideTrackDurationSec(null);
@@ -552,8 +626,12 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
     guideTrackRef.current = null;
     guideTrackCursorRef.current.current = 0;
     guideTrackFinishedRef.current = false;  // Reset finished flag for new track
-    decodeAudioFile(path)
+    const requestedPath = path;
+    const loadPromise = decodeAudioFile(path)
       .then((pcm) => {
+        if (guideTrackPathRef.current !== requestedPath) {
+          return;
+        }
         guideTrackRef.current = pcm;
         guideTrackCursorRef.current.current = 0;
         setGuideTrackDurationSec(pcm.durationSec);
@@ -561,9 +639,19 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
         log.info(`guide track ready: ${pcm.durationSec.toFixed(2)}s, ${pcm.samples.length} samples`);
       })
       .catch((err) => {
+        if (guideTrackPathRef.current !== requestedPath) {
+          return;
+        }
         log.error(`failed to decode guide track: ${err instanceof Error ? err.message : String(err)}`);
+        guideTrackPathRef.current = null;
+        guideTrackRef.current = null;
+        guideTrackCursorRef.current.current = 0;
+        guideTrackFinishedRef.current = false;
         setGuideTrackPathState(null);
+        setGuideTrackReady(false);
+        setGuideTrackDurationSec(null);
       });
+    guideTrackLoadPromiseRef.current = loadPromise;
   }, []);
 
   const setGuideTrack = useCallback((path: string | null) => {
@@ -629,6 +717,8 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
     replayEventsRef.current = [];
     replayMetricsRef.current = [{ windowCount: 0, processedLines: 0, totalAnomalies: 0 }];
     replayIndexRef.current = 0;
+    replayHydratingRef.current = false;
+    replayHydrationTokenRef.current += 1;
     playbackPausedRef.current = false;
     setPlaybackProgress(null);
     setIsPlaybackPaused(false);
@@ -673,6 +763,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       anomalyMarkers: JSON.parse(event.anomalyMarkersJson),
       topComponents: JSON.parse(event.topComponentsJson),
       sonificationCues: JSON.parse(event.sonificationCuesJson),
+      parsedLines: JSON.parse(event.parsedLinesJson),
       warnings: JSON.parse(event.warningsJson),
     }),
     [],
@@ -700,6 +791,10 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
     const persistPlaybackEvent = options?.persistPlaybackEvent ?? true;
 
     if (update.hasData) {
+      const ctx = audioContextRef.current;
+      if (ctx && ctx.state === "suspended") {
+        void ctx.resume();
+      }
       log.info("poll hasData=true lines=%d anomalies=%d cues=%d bpm=%s", update.lineCount, update.anomalyCount, update.sonificationCues.length, update.suggestedBpm);
       log.debug("dominantLevel=%s topComponents=%d warnings=%d", update.dominantLevel, update.topComponents.length, update.warnings.length);
       if (accumulateMetrics) {
@@ -715,6 +810,8 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
         log.info("rendering %d cues → first: hz=%d waveform=%s gain=%s dur=%dms", update.sonificationCues.length, update.sonificationCues[0]?.noteHz ?? 0, update.sonificationCues[0]?.waveform ?? "-", update.sonificationCues[0]?.gain ?? 0, update.sonificationCues[0]?.durationMs ?? 0);
 
         let wav: Blob | null = null;
+        const hasRequestedGuideTrack =
+          Boolean(guideTrackPathRef.current) || guideTrackQueueRef.current.length > 0;
         if (guideTrackRef.current && !guideTrackFinishedRef.current) {
           // Real audio path: slice bar from guide track, modulated by log data
           wav = sliceGuideTrackBar(
@@ -735,14 +832,24 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
           } else {
             log.info("guide track slice → WAV size=%d bytes", wav.size);
           }
-        } else if (!guideTrackFinishedRef.current) {
+        } else if (
+          !guideTrackFinishedRef.current &&
+          !hasRequestedGuideTrack &&
+          !isPlaybackRef.current
+        ) {
           // Synth fallback
           wav = renderSynthFallback(update.sonificationCues, 0.8, update.suggestedBpm);
+        } else if (hasRequestedGuideTrack) {
+          log.info("guide track requested but not ready yet — suppressing synth fallback");
         }
 
         if (wav) {
-          log.info("WAV blob ready size=%d bytes — playing", wav.size);
-          playWavBlobCtx(wav);
+          log.info("WAV blob ready size=%d bytes — playing via AudioContext", wav.size);
+          if (ctx) {
+            void playWavBlobWithContext(ctx, wav);
+          } else {
+            log.warn("No AudioContext available — sound skipped");
+          }
         } else if (!guideTrackFinishedRef.current) {
           log.warn("WAV render returned null — no audio");
         }
@@ -778,6 +885,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
           anomalyMarkersJson: JSON.stringify(update.anomalyMarkers),
           topComponentsJson: JSON.stringify(update.topComponents),
           sonificationCuesJson: JSON.stringify(update.sonificationCues),
+          parsedLinesJson: JSON.stringify(update.parsedLines),
           warningsJson: JSON.stringify(update.warnings),
         });
       }
@@ -805,6 +913,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       anomalyMarkers: result.anomalyMarkers,
       topComponents: result.topComponents,
       sonificationCues: result.sonificationCues,
+      parsedLines: result.parsedLines,
       warnings: result.warnings,
     }),
     [],
@@ -954,7 +1063,8 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      directCursorRef.current = undefined;
+      directCursorRef.current =
+        input.adapterKind === "file" && input.startFromBeginning ? 0 : undefined;
       emptyWindowsRef.current = 0;
       pollIndexRef.current = 0;
 
@@ -977,10 +1087,23 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       sessionRef.current = newSession;
       setSession(newSession);
       setIsPlayback(false);
+      isPlaybackRef.current = false;
       resetReplayTelemetry();
       setMetrics({ windowCount: 0, processedLines: 0, totalAnomalies: 0 });
       activeRef.current = true;
       log.info("session started id=%s mode=%s adapter=%s path=%s", newSession.sessionId, pollMode, input.adapterKind, newSession.sourcePath);
+      
+      // Initialize or resume AudioContext on startSession (user gesture)
+      let currentCtx = audioContextRef.current;
+      if (!currentCtx) {
+        currentCtx = new AudioContext();
+        audioContextRef.current = currentCtx;
+        setAudioContext(currentCtx);
+      }
+      if (currentCtx.state === "suspended") {
+        await currentCtx.resume();
+      }
+
       void doPoll();
 
       return true;
@@ -1004,7 +1127,9 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       replayIndexRef.current = clampedIndex + 1;
 
       if (options?.syncGuideTrack) {
-        syncGuideTrackToReplayProgress((clampedIndex + 1) / events.length);
+        syncGuideTrackToReplayProgress(
+          events.length > 1 ? clampedIndex / events.length : 0,
+        );
       }
 
       syncReplayTelemetry(clampedIndex + 1);
@@ -1034,26 +1159,16 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
     const idx = replayIndexRef.current;
 
     if (idx >= events.length) {
-      if (guideTrackRef.current && !guideTrackFinishedRef.current) {
-        const wav = sliceGuideTrackBar(
-          guideTrackRef.current,
-          guideTrackCursorRef.current,
-          [],
-          0.8,
-          null,
-        );
-        if (wav === null) {
-          guideTrackFinishedRef.current = true;
-          log.info("playback finished — guide track reached end after %d events", idx);
-          activeRef.current = false;
-          return;
-        }
-        pollTimerRef.current = window.setTimeout(replayTick, POLL_INTERVAL_MS);
+      if (replayHydratingRef.current) {
+        pollTimerRef.current = window.setTimeout(replayTick, 200);
         return;
       }
-
-      log.info("playback finished after %d events", idx);
+      log.info("playback reached end after %d events — stopping replay", idx);
       activeRef.current = false;
+      playbackPausedRef.current = true;
+      setIsPlaybackPaused(true);
+      syncReplayTelemetry(events.length);
+      stopAllAudio();
       return;
     }
 
@@ -1065,7 +1180,44 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
 
     log.info("playback event %d/%d", idx + 1, events.length);
     pollTimerRef.current = window.setTimeout(replayTick, POLL_INTERVAL_MS);
-  }, [dispatchReplayEventAtIndex]);
+  }, [dispatchReplayEventAtIndex, syncReplayTelemetry]);
+
+  const rebuildReplayEventsFromSource = useCallback(
+    async (sessionId: string, sourcePath: string): Promise<SessionEvent[]> => {
+      log.info(
+        "rebuildReplayEventsFromSource session=%s path=%s windowBytes=%d",
+        sessionId,
+        sourcePath,
+        REPLAY_REBUILD_WINDOW_BYTES,
+      );
+
+      const rebuiltEvents: SessionEvent[] = [];
+      let cursor = 0;
+
+      for (let index = 0; index < MAX_REPLAY_REBUILD_WINDOWS; index++) {
+        const update = await pollLogStream(
+          sourcePath,
+          cursor,
+          REPLAY_REBUILD_WINDOW_BYTES,
+        );
+
+        if (!update.hasData || update.toOffset <= cursor) {
+          break;
+        }
+
+        rebuiltEvents.push(createSyntheticReplayEvent(sessionId, index, update));
+        cursor = update.toOffset;
+      }
+
+      log.info(
+        "rebuildReplayEventsFromSource session=%s rebuilt=%d",
+        sessionId,
+        rebuiltEvents.length,
+      );
+      return rebuiltEvents;
+    },
+    [],
+  );
 
   const playbackSession = useCallback(
     async ({
@@ -1087,8 +1239,13 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       }
 
       const events = await listSessionEvents(sessionId);
-      log.info("playbackSession loaded %d events", events.length);
-      if (events.length === 0) { log.warn("playbackSession — 0 events, aborting"); return false; }
+      log.info("playbackSession loaded %d stored events", events.length);
+      const shouldHydrateReplay = events.length <= 1 && Boolean(sourcePath);
+
+      if (events.length === 0 && !shouldHydrateReplay) {
+        log.warn("playbackSession — 0 events, aborting");
+        return false;
+      }
 
       const playbackSessionObj: ActiveMonitorSession = {
         sessionId: `playback_${sessionId}`,
@@ -1104,19 +1261,92 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       sessionRef.current = playbackSessionObj;
       setSession(playbackSessionObj);
       setIsPlayback(true);
+      isPlaybackRef.current = true;
       playbackPausedRef.current = false;
       setIsPlaybackPaused(false);
       replayEventsRef.current = events;
       replayMetricsRef.current = buildReplayCumulativeMetrics(events);
       replayIndexRef.current = 0;
+      const hydrationToken = replayHydrationTokenRef.current + 1;
+      replayHydrationTokenRef.current = hydrationToken;
+      replayHydratingRef.current = shouldHydrateReplay;
       syncReplayTelemetry(0);
       setMetrics({ windowCount: 0, processedLines: 0, totalAnomalies: 0 });
       activeRef.current = true;
 
+      let currentCtx = audioContextRef.current;
+      if (!currentCtx) {
+        currentCtx = new AudioContext();
+        audioContextRef.current = currentCtx;
+        setAudioContext(currentCtx);
+      }
+      if (currentCtx.state === "suspended") {
+        await currentCtx.resume();
+      }
+
+      const shouldWaitForGuideTrack =
+        (Boolean(guideTrackPathRef.current) || guideTrackQueueRef.current.length > 0) &&
+        !guideTrackRef.current &&
+        Boolean(guideTrackLoadPromiseRef.current);
+      if (shouldWaitForGuideTrack) {
+        log.info("playbackSession waiting for guide track decode before replay");
+        await guideTrackLoadPromiseRef.current;
+      }
+
       replayTick();
+
+      if (shouldHydrateReplay) {
+        void (async () => {
+          try {
+            const rebuiltEvents = await rebuildReplayEventsFromSource(
+              sessionId,
+              sourcePath,
+            );
+            if (
+              replayHydrationTokenRef.current !== hydrationToken ||
+              sessionRef.current?.persistedSessionId !== sessionId
+            ) {
+              return;
+            }
+
+            if (rebuiltEvents.length > replayEventsRef.current.length) {
+              replayEventsRef.current = rebuiltEvents;
+              replayMetricsRef.current = buildReplayCumulativeMetrics(rebuiltEvents);
+              syncReplayTelemetry(
+                Math.min(replayIndexRef.current, rebuiltEvents.length),
+              );
+              log.info(
+                "playbackSession rebuilt replay windows from source → %d events",
+                rebuiltEvents.length,
+              );
+            }
+          } catch (error) {
+            if (replayHydrationTokenRef.current !== hydrationToken) {
+              return;
+            }
+            log.warn(
+              "playbackSession replay rebuild failed: %s",
+              error instanceof Error ? error.message : String(error),
+            );
+          } finally {
+            if (replayHydrationTokenRef.current !== hydrationToken) {
+              return;
+            }
+            replayHydratingRef.current = false;
+            if (
+              activeRef.current &&
+              !playbackPausedRef.current &&
+              pollTimerRef.current === null
+            ) {
+              pollTimerRef.current = window.setTimeout(replayTick, 0);
+            }
+          }
+        })();
+      }
+
       return true;
     },
-    [stopPolling, replayTick, syncReplayTelemetry],
+    [rebuildReplayEventsFromSource, stopPolling, replayTick, syncReplayTelemetry],
   );
 
   const seekPlaybackProgress = useCallback((progress: number) => {
@@ -1179,11 +1409,22 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       pollTimerRef.current = null;
     }
 
+    if (replayIndexRef.current >= replayEventsRef.current.length) {
+      guideTrackFinishedRef.current = false;
+      const ok = dispatchReplayEventAtIndex(0, { syncGuideTrack: true });
+      if (!ok) {
+        playbackPausedRef.current = true;
+        activeRef.current = false;
+        setIsPlaybackPaused(true);
+        return;
+      }
+    }
+
     playbackPausedRef.current = false;
     activeRef.current = true;
     setIsPlaybackPaused(false);
     pollTimerRef.current = window.setTimeout(replayTick, POLL_INTERVAL_MS);
-  }, [isPlayback, replayTick]);
+  }, [dispatchReplayEventAtIndex, isPlayback, replayTick]);
 
   const stepPlaybackWindow = useCallback((direction: -1 | 1) => {
     if (!isPlayback || replayEventsRef.current.length === 0) {
@@ -1212,12 +1453,17 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
     const current = sessionRef.current;
     const wasPlayback = isPlayback;
     log.info("stopSession id=%s wasPlayback=%s", current?.sessionId, wasPlayback);
+    
+    // Stop all audio playback immediately
+    stopAllAudio();
+    
     stopPolling();
     sessionRef.current = null;
     directCursorRef.current = undefined;
     emptyWindowsRef.current = 0;
     setSession(null);
     setIsPlayback(false);
+    isPlaybackRef.current = false;
     resetReplayTelemetry();
     setMetrics({ windowCount: 0, processedLines: 0, totalAnomalies: 0 });
 
@@ -1247,6 +1493,20 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const resumeAudio = useCallback(async () => {
+    const ctx = audioContextRef.current;
+    if (ctx && ctx.state === "suspended") {
+      log.info("resuming audio context manually");
+      await ctx.resume();
+    } else if (!ctx) {
+      log.info("creating new audio context on manual resume");
+      const nextCtx = new AudioContext();
+      audioContextRef.current = nextCtx;
+      setAudioContext(nextCtx);
+      await nextCtx.resume();
+    }
+  }, []);
+
   const value = useMemo(
     () => ({
       session,
@@ -1271,6 +1531,8 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       playbackEventIndex,
       playbackEventCount,
       guideTrackDurationSec,
+      audioContext,
+      resumeAudio,
     }),
     [
       session,
@@ -1295,6 +1557,8 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       playbackEventIndex,
       playbackEventCount,
       guideTrackDurationSec,
+      audioContext,
+      resumeAudio,
     ],
   );
 

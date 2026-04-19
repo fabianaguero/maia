@@ -1,4 +1,5 @@
 export type AppScreen = "library" | "inspect" | "compose" | "session";
+export type AppPillar = "perform" | "design" | "curate";
 export type AnalyzerViewMode = "track" | "repo" | "base";
 
 export interface BeatGridPoint {
@@ -339,6 +340,7 @@ export interface LiveLogStreamUpdate {
   anomalyMarkers: LiveLogMarker[];
   topComponents: LiveLogComponentCount[];
   sonificationCues: LiveLogCue[];
+  parsedLines: string[];
   warnings: string[];
 }
 
@@ -367,6 +369,8 @@ export interface StartSessionInput {
   source: string;
   label?: string;
   command?: string[];
+  /** For file-backed sources, begin at byte 0 instead of tailing from the end. */
+  startFromBeginning?: boolean;
   /** WebSocket URL — required when adapterKind is "websocket" */
   wsUrl?: string;
   /** HTTP endpoint URL — required when adapterKind is "http-poll" */
@@ -386,5 +390,6 @@ export interface StreamSessionPollResult {
   anomalyMarkers: LiveLogMarker[];
   topComponents: LiveLogComponentCount[];
   sonificationCues: LiveLogCue[];
+  parsedLines: string[];
   warnings: string[];
 }

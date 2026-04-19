@@ -364,6 +364,7 @@ struct LiveLogStreamUpdate {
     anomaly_markers: Vec<LiveLogMarker>,
     top_components: Vec<LiveLogComponentCount>,
     sonification_cues: Vec<LiveLogCue>,
+    parsed_lines: Vec<String>,
     warnings: Vec<String>,
 }
 
@@ -437,6 +438,7 @@ struct StartSessionInput {
     source: String,
     label: Option<String>,
     command: Option<Vec<String>>,
+    start_from_beginning: Option<bool>,
 }
 
 fn append_lines_to_session<I>(
@@ -510,8 +512,20 @@ fn waiting_stream_poll_result(
         anomaly_markers: Vec::new(),
         top_components: Vec::new(),
         sonification_cues: Vec::new(),
+        parsed_lines: Vec::new(),
         warnings,
     }
+}
+
+fn preview_stream_lines(chunk: &str) -> Vec<String> {
+    let lines: Vec<String> = chunk
+        .lines()
+        .map(str::trim_end)
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| line.to_string())
+        .collect();
+    let start = lines.len().saturating_sub(5);
+    lines[start..].to_vec()
 }
 
 fn analyze_stream_chunk(
@@ -564,6 +578,7 @@ fn analyze_stream_chunk(
 
     let metrics = &payload.musical_asset.metrics;
     let cues: Vec<LiveLogCue> = decode_json_metric(metrics, "sonificationCues")?;
+    let parsed_lines = preview_stream_lines(&chunk);
 
     Ok(StreamSessionPollResult {
         session,
@@ -581,6 +596,7 @@ fn analyze_stream_chunk(
         anomaly_markers: decode_json_metric(metrics, "anomalyMarkers")?,
         top_components: decode_json_metric(metrics, "topComponents")?,
         sonification_cues: cues,
+        parsed_lines,
         warnings: merged_warnings,
     })
 }
@@ -819,6 +835,7 @@ pub struct SessionEvent {
     pub anomaly_markers_json: String,
     pub top_components_json: String,
     pub sonification_cues_json: String,
+    pub parsed_lines_json: String,
     pub warnings_json: String,
 }
 
@@ -874,6 +891,7 @@ struct InsertSessionEventInput {
     anomaly_markers_json: String,
     top_components_json: String,
     sonification_cues_json: String,
+    parsed_lines_json: String,
     warnings_json: String,
 }
 
@@ -881,15 +899,16 @@ fn db_insert_session_event(conn: &Connection, input: &InsertSessionEventInput) -
     conn.execute(
         "INSERT INTO session_events (session_id, poll_index, captured_at, from_offset, to_offset,
             summary, suggested_bpm, confidence, dominant_level, line_count, anomaly_count,
-            level_counts_json, anomaly_markers_json, top_components_json, sonification_cues_json, warnings_json)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+            level_counts_json, anomaly_markers_json, top_components_json, sonification_cues_json, parsed_lines_json, warnings_json)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
         rusqlite::params![
             input.session_id, input.poll_index as i64, now_iso(),
             input.from_offset as i64, input.to_offset as i64,
             input.summary, input.suggested_bpm, input.confidence, input.dominant_level,
             input.line_count as i64, input.anomaly_count as i64,
             input.level_counts_json, input.anomaly_markers_json,
-            input.top_components_json, input.sonification_cues_json, input.warnings_json,
+            input.top_components_json, input.sonification_cues_json, input.parsed_lines_json,
+            input.warnings_json,
         ],
     ).map_err(|e| format!("Failed to insert session event: {e}"))?;
     Ok(conn.last_insert_rowid())
@@ -900,7 +919,7 @@ fn db_list_session_events(conn: &Connection, session_id: &str) -> Result<Vec<Ses
         "SELECT id, session_id, poll_index, captured_at, from_offset, to_offset,
                 summary, suggested_bpm, confidence, dominant_level, line_count, anomaly_count,
                 level_counts_json, anomaly_markers_json, top_components_json,
-                sonification_cues_json, warnings_json
+                sonification_cues_json, parsed_lines_json, warnings_json
          FROM session_events
          WHERE session_id = ?1
          ORDER BY poll_index ASC",
@@ -924,7 +943,8 @@ fn db_list_session_events(conn: &Connection, session_id: &str) -> Result<Vec<Ses
             anomaly_markers_json: row.get(13)?,
             top_components_json: row.get(14)?,
             sonification_cues_json: row.get(15)?,
-            warnings_json: row.get(16)?,
+            parsed_lines_json: row.get(16)?,
+            warnings_json: row.get(17)?,
         })
     }).map_err(|e| format!("Failed to query session events: {e}"))?;
 
@@ -1069,6 +1089,7 @@ struct StreamSessionPollResult {
     anomaly_markers: Vec<LiveLogMarker>,
     top_components: Vec<LiveLogComponentCount>,
     sonification_cues: Vec<LiveLogCue>,
+    parsed_lines: Vec<String>,
     warnings: Vec<String>,
 }
 
@@ -1446,10 +1467,11 @@ fn pick_repository_file(initial_path: Option<String>) -> Result<Option<String>, 
 fn poll_log_stream(
     source_path: String,
     cursor: Option<u64>,
+    max_bytes: Option<u64>,
 ) -> Result<LiveLogStreamUpdate, String> {
     eprintln!("[MAIA:Rust] poll_log_stream path={} cursor={:?}", source_path, cursor);
     let (resolved_path, from_offset, to_offset, chunk, local_warnings) =
-        read_log_stream_chunk(&source_path, cursor)?;
+        read_log_stream_chunk(&source_path, cursor, max_bytes)?;
 
     let has_data = !chunk.trim().is_empty();
     eprintln!("[MAIA:Rust] poll_log_stream has_data={} chunk_len={} from={} to={}", has_data, chunk.len(), from_offset, to_offset);
@@ -1471,6 +1493,7 @@ fn poll_log_stream(
             anomaly_markers: Vec::new(),
             top_components: Vec::new(),
             sonification_cues: Vec::new(),
+            parsed_lines: Vec::new(),
             warnings,
         });
     }
@@ -1514,6 +1537,7 @@ fn poll_log_stream(
 
     let metrics = &payload.musical_asset.metrics;
     let cues: Vec<LiveLogCue> = decode_json_metric(metrics, "sonificationCues")?;
+    let parsed_lines = preview_stream_lines(&chunk);
     eprintln!("[MAIA:Rust] poll_log_stream → lines={} anomalies={} cues={} bpm={:?}",
         metric_i64(metrics, "lineCount"), metric_i64(metrics, "anomalyCount"), cues.len(), payload.musical_asset.suggested_bpm);
     Ok(LiveLogStreamUpdate {
@@ -1534,6 +1558,7 @@ fn poll_log_stream(
         anomaly_markers: decode_json_metric(metrics, "anomalyMarkers")?,
         top_components: decode_json_metric(metrics, "topComponents")?,
         sonification_cues: cues,
+        parsed_lines,
         warnings,
     })
 }
@@ -1564,7 +1589,11 @@ fn start_stream_session(
         created_at: now_iso(),
         last_polled_at: None,
         total_polls: 0,
-        file_cursor: None,
+        file_cursor: if input.adapter_kind == "file" && input.start_from_beginning.unwrap_or(false) {
+            Some(0)
+        } else {
+            None
+        },
     };
 
     {
@@ -1771,7 +1800,7 @@ fn poll_stream_session(
 
     if adapter_kind == "file" {
         let (_resolved, _from, to_offset, chunk, read_warnings) =
-            read_log_stream_chunk(&source, cursor)?;
+            read_log_stream_chunk(&source, cursor, None)?;
         warnings.extend(read_warnings);
 
         let session_record = update_session_metadata(&registry, &session_id, |session| {
@@ -1990,6 +2019,45 @@ fn import_repository(
     let conn = open_database(&app_handle)?;
     let managed_root = managed_repositories_root(&app_handle)?;
     insert_repository(&conn, input, &managed_root)
+}
+
+fn find_logs_recursive(dir: &Path, logs: &mut Vec<String>) -> std::io::Result<()> {
+    if dir.is_dir() {
+        // Skip hidden directories like .git or node_modules for performance
+        if let Some(name) = dir.file_name().and_then(|n| n.to_str()) {
+            if name.starts_with('.') || name == "node_modules" || name == "target" || name == "vendor" {
+                return Ok(());
+            }
+        }
+
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                find_logs_recursive(&path, logs)?;
+            } else if let Some(ext) = path.extension() {
+                if ext == "log" {
+                    logs.push(path.to_string_lossy().to_string());
+                }
+            }
+            // Sanity limit to avoid UI explosion
+            if logs.len() >= 50 {
+                return Ok(());
+            }
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn discover_repository_logs(path: String) -> Result<Vec<String>, String> {
+    let mut logs = Vec::new();
+    let root = Path::new(&path);
+    if !root.exists() {
+        return Err(format!("Path does not exist: {path}"));
+    }
+    find_logs_recursive(root, &mut logs).map_err(|e| e.to_string())?;
+    Ok(logs)
 }
 
 #[tauri::command]
@@ -2459,6 +2527,7 @@ fn copy_directory_recursively(source: &Path, destination: &Path) -> Result<(), S
 fn read_log_stream_chunk(
     source_path: &str,
     cursor: Option<u64>,
+    max_bytes: Option<u64>,
 ) -> Result<(String, u64, u64, String, Vec<String>), String> {
     let resolved_source = resolve_existing_input_path(source_path)?;
     if !resolved_source.is_file() {
@@ -2485,12 +2554,15 @@ fn read_log_stream_chunk(
         None => file_size.saturating_sub(INITIAL_LOG_TAIL_BYTES),
     };
 
+    let max_bytes = max_bytes.unwrap_or(MAX_LOG_TAIL_READ_BYTES).max(1);
     let remaining = file_size.saturating_sub(start_offset);
-    let bytes_to_read = remaining.min(MAX_LOG_TAIL_READ_BYTES);
-    if remaining > MAX_LOG_TAIL_READ_BYTES {
+    let bytes_to_read = remaining.min(max_bytes);
+    if remaining > max_bytes {
         warnings.push(
-            "Large log burst detected. Maia streamed only the next 128 KB in this polling window."
-                .to_string(),
+            format!(
+                "Large log burst detected. Maia streamed only the next {} KB in this polling window.",
+                (max_bytes / 1024).max(1)
+            ),
         );
     }
 
@@ -2581,6 +2653,7 @@ fn open_database(app_handle: &AppHandle) -> Result<Connection, String> {
     ensure_composition_export_path_column(&conn)?;
     ensure_session_playlist_column(&conn)?;
     ensure_session_bookmark_feedback_columns(&conn)?;
+    ensure_session_event_parsed_lines_column(&conn)?;
     let managed_compositions_root = managed_compositions_root(app_handle)?;
     backfill_composition_export_paths(&conn, &managed_compositions_root)?;
 
@@ -2883,6 +2956,40 @@ fn ensure_session_bookmark_feedback_columns(conn: &Connection) -> Result<(), Str
             )
         })?;
     }
+
+    Ok(())
+}
+
+fn ensure_session_event_parsed_lines_column(conn: &Connection) -> Result<(), String> {
+    let mut statement = conn
+        .prepare("PRAGMA table_info(session_events)")
+        .map_err(|error| format!("Failed to inspect session_events columns: {error}"))?;
+    let mut rows = statement
+        .query([])
+        .map_err(|error| format!("Failed to query session_events columns: {error}"))?;
+    let mut has_parsed_lines_json = false;
+
+    while let Some(row) = rows
+        .next()
+        .map_err(|error| format!("Failed to iterate session_events columns: {error}"))?
+    {
+        let name: String = row
+            .get(1)
+            .map_err(|error| format!("Failed to read session_events column name: {error}"))?;
+        if name == "parsed_lines_json" {
+            has_parsed_lines_json = true;
+            break;
+        }
+    }
+
+    if has_parsed_lines_json {
+        return Ok(());
+    }
+
+    conn.execute_batch(
+        "ALTER TABLE session_events ADD COLUMN parsed_lines_json TEXT NOT NULL DEFAULT '[]';",
+    )
+    .map_err(|error| format!("Failed to add session_events parsed_lines_json column: {error}"))?;
 
     Ok(())
 }
@@ -5452,8 +5559,13 @@ fn insert_repository(
     let source_kind = input.source_kind.trim();
     let source_path = input.source_path.trim();
 
-    if check_duplicate_source_path(conn, source_path)? {
-        return Err(format!("A repository with path '{}' already exists in your library.", source_path));
+    // Update mode (v5.5): If repository already exists, remove it first to allow "refresh"
+    let canonical = canonical_source_path(source_path);
+    if let Err(e) = conn.execute(
+        "DELETE FROM musical_assets WHERE source_path = ?1",
+        params![canonical],
+    ) {
+        eprintln!("[MAIA:Rust] Warning: Failed to clear existing repository record: {}", e);
     }
     let import_label = input
         .label
@@ -6570,6 +6682,7 @@ fn main() {
             import_composition,
             list_repositories,
             import_repository,
+            discover_repository_logs,
             read_audio_bytes,
             log_to_terminal,
             hide_window,
