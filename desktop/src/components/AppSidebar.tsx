@@ -2,8 +2,10 @@ import { Activity, AudioWaveform, Cable, Library, LayoutGrid } from "lucide-reac
 import type React from "react";
 import type { ActiveMonitorSession, MonitorMetrics } from "../features/monitor/MonitorContext";
 import { useT } from "../i18n/I18nContext";
+import { useUserMode } from "../features/simple/UserModeContext";
 import type { AppPillar } from "../types/library";
 import { getStreamAdapterLabel } from "../utils/streamAdapter";
+import { ModeToggle } from "./ModeToggle";
 
 const PILLAR_ICONS: Record<AppPillar, React.ReactNode> = {
   perform: <Activity size={18} />,
@@ -45,30 +47,49 @@ export function AppSidebar({
   onHideToBackground,
 }: AppSidebarProps) {
   const t = useT();
-  
-  const navigationItems = [
-    {
-      id: "perform" as AppPillar,
-      label: t.nav.pillars.perform.label,
-      description: t.nav.pillars.perform.description,
-      lane: t.nav.pillars.perform.lane,
-      detail: monitorSession ? "Engine Active" : "Standby",
-    },
-    {
-      id: "design" as AppPillar,
-      label: t.nav.pillars.design.label,
-      description: t.nav.pillars.design.description,
-      lane: t.nav.pillars.design.lane,
-      detail: `${compositionCount} arrangements cued`,
-    },
-    {
-      id: "curate" as AppPillar,
-      label: t.nav.pillars.curate.label,
-      description: t.nav.pillars.curate.description,
-      lane: t.nav.pillars.curate.lane,
-      detail: `${trackCount + repositoryCount} assets in vault`,
-    },
-  ];
+  const { userMode } = useUserMode();
+
+  const navigationItems =
+    userMode === "simple"
+      ? [
+          {
+            id: "perform" as AppPillar,
+            label: t.simpleMode.nav.monitor,
+            description: "Real-time log monitoring",
+            lane: null,
+            detail: monitorSession ? t.simpleMode.status.listening : t.simpleMode.status.standby,
+          },
+          {
+            id: "curate" as AppPillar,
+            label: t.simpleMode.nav.files,
+            description: "Manage your files and logs",
+            lane: null,
+            detail: `${trackCount + repositoryCount} items`,
+          },
+        ]
+      : [
+          {
+            id: "perform" as AppPillar,
+            label: t.nav.pillars.perform.label,
+            description: t.nav.pillars.perform.description,
+            lane: t.nav.pillars.perform.lane,
+            detail: monitorSession ? "Engine Active" : "Standby",
+          },
+          {
+            id: "design" as AppPillar,
+            label: t.nav.pillars.design.label,
+            description: t.nav.pillars.design.description,
+            lane: t.nav.pillars.design.lane,
+            detail: `${compositionCount} arrangements cued`,
+          },
+          {
+            id: "curate" as AppPillar,
+            label: t.nav.pillars.curate.label,
+            description: t.nav.pillars.curate.description,
+            lane: t.nav.pillars.curate.lane,
+            detail: `${trackCount + repositoryCount} assets in vault`,
+          },
+        ];
 
   const uptimeSeconds = monitorSession
     ? Math.floor((Date.now() - monitorSession.startedAt) / 1000)
@@ -103,7 +124,7 @@ export function AppSidebar({
               className={`nav-button nav-pillar-button ${active ? "active" : ""}`}
               onClick={() => onPillarChange(item.id)}
             >
-              <span className="nav-lane">{item.lane}</span>
+              {item.lane && <span className="nav-lane">{item.lane}</span>}
               <span className="nav-icon-shell">{PILLAR_ICONS[item.id]}</span>
               <span className="nav-copy">
                 <span className="nav-title">{item.label}</span>
@@ -135,7 +156,9 @@ export function AppSidebar({
         <div className="monitor-status-card">
           <div className="monitor-status-header">
             <span className="monitor-pulse" aria-hidden="true" />
-            <span className="monitor-status-label">Engine Live</span>
+            <span className="monitor-status-label">
+              {userMode === "simple" ? t.simpleMode.status.listening : "Engine Live"}
+            </span>
             <span className="monitor-mode-badge">
               {monitorAdapterLabel}
             </span>
@@ -167,24 +190,27 @@ export function AppSidebar({
         </div>
       ) : null}
 
-      <div className="sidebar-meta">
-        <div className="sidebar-stat">
-          <small className="sidebar-stat-code">TRK</small>
-          <strong>{trackCount}</strong>
+      {userMode === "expert" && (
+        <div className="sidebar-meta">
+          <div className="sidebar-stat">
+            <small className="sidebar-stat-code">TRK</small>
+            <strong>{trackCount}</strong>
+          </div>
+          <div className="sidebar-stat">
+            <small className="sidebar-stat-code">SRC</small>
+            <strong>{repositoryCount}</strong>
+          </div>
+          <div className="sidebar-stat">
+            <small className="sidebar-stat-code">BAS</small>
+            <strong>{baseAssetCount}</strong>
+          </div>
         </div>
-        <div className="sidebar-stat">
-          <small className="sidebar-stat-code">SRC</small>
-          <strong>{repositoryCount}</strong>
-        </div>
-        <div className="sidebar-stat">
-          <small className="sidebar-stat-code">BAS</small>
-          <strong>{baseAssetCount}</strong>
-        </div>
-      </div>
+      )}
 
       <div className="sidebar-footer">
         <span className="sidebar-footer-kicker">Selected Focus</span>
         <strong className="sidebar-footer-title">{selectedItemTitle ?? "None"}</strong>
+        <ModeToggle />
       </div>
     </aside>
   );

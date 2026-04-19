@@ -98,4 +98,32 @@ export const es: AppTranslations = {
     dark: "Oscuro",
     light: "Claro",
   },
+  simpleMode: {
+    nav: {
+      monitor: "Monitor",
+      files: "Mis archivos",
+    },
+    steps: {
+      step1: "Conectá tus logs",
+      step1Help: "Elegí un archivo de log, carpeta o repositorio de GitHub",
+      step2: "Elegí un sonido",
+      step2Help: "Elegí entre calmo, alerta o intenso",
+      step3: "Empezá a escuchar",
+      step3Help: "Maia monitorea en tiempo real",
+    },
+    status: {
+      listening: "Escuchando ahora",
+      standby: "Listo",
+      loading: "Analizando...",
+      start: "Analizar logs",
+    },
+    wizard: {
+      title: "Comenzá",
+      subtitle: "Monitoreá tus logs en tres pasos",
+      nextButton: "Siguiente",
+      backButton: "Atrás",
+      startButton: "Empezar a escuchar",
+      errorMessage: "Algo salió mal. Intentá de nuevo.",
+    },
+  },
 };

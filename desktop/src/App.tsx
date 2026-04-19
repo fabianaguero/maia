@@ -11,6 +11,8 @@ import { InspectScreen } from "./features/inspect/InspectScreen";
 import { LibraryScreen, type LibraryTab } from "./features/library/LibraryScreen";
 import { SessionScreen } from "./features/session/SessionScreen";
 import { useMonitor } from "./features/monitor/MonitorContext";
+import { UserModeProvider, useUserMode } from "./features/simple/UserModeContext";
+import { SimpleModeWizard } from "./features/simple/SimpleModeWizard";
 import { useSessions } from "./hooks/useSessions";
 import { useBaseAssets } from "./hooks/useBaseAssets";
 import { useCompositionResults } from "./hooks/useCompositionResults";
@@ -56,13 +58,16 @@ function isHealthResponse(
 export default function App() {
   return (
     <NotificationProvider>
-      <AppContent />
+      <UserModeProvider>
+        <AppContent />
+      </UserModeProvider>
     </NotificationProvider>
   );
 }
 
 function AppContent() {
   const { notify } = useNotify();
+  const { userMode } = useUserMode();
   const [manifest, setManifest] = useState<BootstrapManifest | null>(null);
   const [health, setHealth] = useState<AnalyzerResponse | null>(null);
   const [booting, setBooting] = useState(true);
@@ -80,6 +85,13 @@ function AppContent() {
   const compositions = useCompositionResults();
   const monitor = useMonitor();
   const sessions = useSessions();
+
+  // Simple mode routing: collapse to just library and session
+  const effectivePillar = userMode === "simple" && pillar === "design" ? "curate" : pillar;
+  const effectiveScreen =
+    userMode === "simple" && (screen === "inspect" || screen === "compose")
+      ? "library"
+      : screen;
 
   useEffect(() => {
     if (isDark) {
@@ -591,11 +603,11 @@ function AppContent() {
 
       <section className={`app-main role--${pillar}`}>
         <AppSidebar
-          currentPillar={pillar}
+          currentPillar={effectivePillar}
           onPillarChange={(p) => {
-            setPillar(p);
+            setPillar(userMode === "simple" && p === "design" ? "curate" : p);
             if (p === "perform") setScreen("session");
-            if (p === "design") setScreen("compose");
+            if (p === "design" && userMode === "expert") setScreen("compose");
             if (p === "curate") setScreen("library");
           }}
           trackCount={library.tracks.length}
@@ -625,7 +637,31 @@ function AppContent() {
           </section>
         ) : null}
 
-        {pillar === "curate" && screen === "library" && (
+        {effectivePillar === "curate" &&
+          effectiveScreen === "library" &&
+          userMode === "simple" &&
+          !monitor.session &&
+          repositories.repositories.length === 0 && (
+          <SimpleModeWizard
+            busyRepository={repositories.mutating}
+            busyBaseAsset={baseAssets.mutating}
+            onImportRepository={handleImportRepository}
+            onImportBaseAsset={handleImportBaseAsset}
+            onStartSession={async (repoId, presetId) => {
+              const repo = repositories.repositories.find((r) => r.id === repoId);
+              const preset = baseAssets.baseAssets.find((b) => b.id === presetId);
+              if (!repo || !preset) return;
+              setPillar("perform");
+              setScreen("session");
+            }}
+            repositoryCount={repositories.repositories.length}
+            baseAssetCount={baseAssets.baseAssets.length}
+            baseAssetCategories={manifest?.baseAssetCategories ?? []}
+            defaultCategoryId={manifest?.defaultBaseAssetCategoryId}
+          />
+        )}
+
+        {effectivePillar === "curate" && effectiveScreen === "library" && (
           <LibraryScreen
             tracks={library.tracks}
             playlists={library.playlists}
@@ -680,7 +716,7 @@ function AppContent() {
           />
         )}
 
-        {pillar === "curate" && screen === "inspect" && (
+        {userMode === "expert" && effectivePillar === "curate" && effectiveScreen === "inspect" && (
           <InspectScreen
             track={library.selectedTrack}
             repository={repositories.selectedRepository}
@@ -703,7 +739,7 @@ function AppContent() {
           />
         )}
 
-        {pillar === "design" && (
+        {userMode === "expert" && effectivePillar === "design" && (
           <ComposeScreen
             composition={compositions.selectedComposition}
             compositions={compositions.compositions}
@@ -719,7 +755,7 @@ function AppContent() {
           />
         )}
 
-        {pillar === "perform" && (
+        {effectivePillar === "perform" && (
           <SessionScreen
             tracks={library.tracks}
             playlists={library.playlists}

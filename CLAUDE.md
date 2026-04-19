@@ -84,6 +84,18 @@ interface ComponentProps {
 - Console only for dev/debugging
 - Never throw uncaught errors in React components
 
+## Simple Mode Feature
+
+When implementing anything related to `userMode` or `SimpleMode`:
+
+- `simple` mode = terminología SRE, wizard 3 pasos, sidebar colapsado
+- `expert` mode = UI actual sin cambios (PERFORM/DESIGN/CURATE, BPM, etc.)
+- El modo se persiste en `localStorage` con key `maia_user_mode`
+- Default para usuarios nuevos: `simple`
+- Los componentes del modo simple viven en `src/features/simple/`
+- Nunca modificar los componentes experto — solo condicionarlos con `userMode`
+- Los textos del modo simple van en `src/i18n/en.ts` y `src/i18n/es.ts` bajo la clave `simpleMode`
+
 ## Debugging Tips
 
 - **Analyzer connection:** Check `App.tsx` bootstrap logic (loads health, manifest)

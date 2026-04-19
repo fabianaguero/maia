@@ -96,6 +96,34 @@ export const en = {
     dark: "Dark",
     light: "Light",
   },
+  simpleMode: {
+    nav: {
+      monitor: "Monitor",
+      files: "My files",
+    },
+    steps: {
+      step1: "Connect your logs",
+      step1Help: "Choose a log file, folder, or GitHub repository",
+      step2: "Pick a sound",
+      step2Help: "Choose calm, alert, or intense",
+      step3: "Start listening",
+      step3Help: "Maia monitors in real-time",
+    },
+    status: {
+      listening: "Listening now",
+      standby: "Ready",
+      loading: "Analyzing...",
+      start: "Analyze logs",
+    },
+    wizard: {
+      title: "Get started",
+      subtitle: "Monitor your logs in three steps",
+      nextButton: "Next",
+      backButton: "Back",
+      startButton: "Start listening",
+      errorMessage: "Something went wrong. Please try again.",
+    },
+  },
 };
 
 export type AppTranslations = typeof en;
