@@ -19,21 +19,8 @@ function AppContentV0() {
   const [lang, setLang] = useState<"en" | "es">("es");
   const [currentSection, setCurrentSection] = useState<Section>("library");
   const [isMonitoring, setIsMonitoring] = useState(false);
-  const [showWizard, setShowWizard] = useState(userMode === "simple");
 
   const t = lang === "es" ? es : en;
-
-  if (userMode === "simple" && showWizard) {
-    return (
-      <OnboardingWizard
-        onComplete={(config) => {
-          console.log("Wizard complete:", config);
-          setShowWizard(false);
-          setCurrentSection("library");
-        }}
-      />
-    );
-  }
 
   const renderContent = () => {
     switch (currentSection) {
@@ -45,15 +32,19 @@ function AppContentV0() {
         );
       case "library":
         return userMode === "simple" ? (
-          <SimpleModeLibraryView
-            tracks={[]}
-            repositories={[]}
-            baseAssets={[]}
-            selectedRepositoryId={null}
-            onSelectRepository={() => {}}
-            onImportRepository={async () => false}
-            onImportBaseAsset={async () => false}
-          />
+          <div style={{ display: "flex", gap: "2rem", height: "100%" }}>
+            <div style={{ flex: 1 }}>
+              <SimpleModeLibraryView
+                tracks={[]}
+                repositories={[]}
+                baseAssets={[]}
+                selectedRepositoryId={null}
+                onSelectRepository={() => {}}
+                onImportRepository={async () => false}
+                onImportBaseAsset={async () => false}
+              />
+            </div>
+          </div>
         ) : (
           <ProLibraryScreen />
         );
