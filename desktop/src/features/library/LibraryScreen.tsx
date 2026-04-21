@@ -145,14 +145,14 @@ export function LibraryScreen({
   const [playlistTrackIds, setPlaylistTrackIds] = useState<string[]>([]);
 
   const tabs: Array<{ id: LibraryTab; label: string; count: number; icon: React.ReactNode }> = [
-    { id: "tracks", label: "Tracks", count: tracks.length, icon: <Music size={14} /> },
-    { id: "sources", label: "Sources", count: repositories.length, icon: <FolderOpen size={14} /> },
+    { id: "tracks", label: "Sounds", count: tracks.length, icon: <Music size={14} /> },
+    { id: "sources", label: "Log sources", count: repositories.length, icon: <FolderOpen size={14} /> },
     { id: "connections", label: "Connections", count: logConnections.length, icon: <Cable size={14} /> },
-    { id: "bases", label: "Bases", count: baseAssets.length, icon: <PackagePlus size={14} /> },
+    { id: "bases", label: "Profiles", count: baseAssets.length, icon: <PackagePlus size={14} /> },
   ];
 
   function handleTabChange(next: LibraryTab) {
-    setInternalTab(next);
+    setTab(next);
     onTabChange?.(next);
     setShowForm(false);
   }
@@ -315,7 +315,7 @@ export function LibraryScreen({
         <div className="library-tab-toolbar-copy">
           <div className="library-tab-toolbar-meta">
             <span className="eyebrow">
-              {tab === "tracks" ? "Tracks" : tab === "sources" ? "Sources" : tab === "connections" ? "Connections" : "Bases"}
+              {tab === "tracks" ? "Sounds" : tab === "sources" ? "Log sources" : tab === "connections" ? "Connections" : "Profiles"}
             </span>
             <span className="library-toolbar-count">
               {tab === "tracks"

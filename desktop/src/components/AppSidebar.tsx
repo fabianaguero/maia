@@ -193,15 +193,15 @@ export function AppSidebar({
       {userMode === "expert" && (
         <div className="sidebar-meta">
           <div className="sidebar-stat">
-            <small className="sidebar-stat-code">TRK</small>
+            <small className="sidebar-stat-code">SND</small>
             <strong>{trackCount}</strong>
           </div>
           <div className="sidebar-stat">
-            <small className="sidebar-stat-code">SRC</small>
+            <small className="sidebar-stat-code">LOG</small>
             <strong>{repositoryCount}</strong>
           </div>
           <div className="sidebar-stat">
-            <small className="sidebar-stat-code">BAS</small>
+            <small className="sidebar-stat-code">PRF</small>
             <strong>{baseAssetCount}</strong>
           </div>
         </div>

@@ -25,6 +25,13 @@ interface AppShellProps {
     confidence?: number;
   };
   selectedItem?: string;
+  trackCount?: number;
+  repositoryCount?: number;
+  baseAssetCount?: number;
+  onSectionChange?: (section: "monitor" | "library" | "inspect" | "compose") => void;
+  onInspect?: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export function AppShell({
@@ -33,6 +40,13 @@ export function AppShell({
   isMonitoring = false,
   monitoringStatus = {},
   selectedItem = "",
+  trackCount = 0,
+  repositoryCount = 0,
+  baseAssetCount = 0,
+  onSectionChange,
+  onInspect,
+  isCollapsed = false,
+  onToggleCollapse,
 }: AppShellProps) {
   const t = useT();
   const { userMode, setUserMode } = useUserMode();
@@ -82,20 +96,25 @@ export function AppShell({
         ];
 
   return (
-    <div className="app-shell-layout">
+    <div className={`app-shell-layout ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
       {/* Sidebar */}
       <aside className="app-sidebar">
         {/* Logo + Branding */}
         <div className="sidebar-brand">
           <div className="sidebar-logo">
-            <div className="logo-icon">◆</div>
-            <span className="logo-text">MAIA</span>
+            <img src="file:///home/faguero/.gemini/antigravity/brain/0811368a-61f2-4dcc-a96b-476a10a440a2/media__1776681366000.png" alt="MAIA" className="logo-main" />
+            {!isCollapsed && <span className="logo-text">MAIA</span>}
           </div>
-          <p className="sidebar-tagline">
-            {userMode === "simple"
-              ? "Connect → Monitor → Detect"
-              : "Library → Analyze → Perform"}
-          </p>
+          <button className="btn-collapse" onClick={onToggleCollapse}>
+            {isCollapsed ? "→" : "←"}
+          </button>
+          {!isCollapsed && (
+            <p className="sidebar-tagline">
+              {userMode === "simple"
+                ? "Connect → Monitor → Detect"
+                : "Library → Analyze → Perform"}
+            </p>
+          )}
         </div>
 
         {/* Mode Toggle */}
@@ -106,7 +125,7 @@ export function AppShell({
             title="Basic Mode"
           >
             <Users size={16} />
-            Basic
+            {!isCollapsed && "Basic"}
           </button>
           <button
             className={`mode-toggle-btn ${userMode === "expert" ? "active" : ""}`}
@@ -114,7 +133,7 @@ export function AppShell({
             title="Pro Mode"
           >
             <Sliders size={16} />
-            Pro
+            {!isCollapsed && "Pro"}
           </button>
         </div>
 
@@ -132,14 +151,19 @@ export function AppShell({
                     if (item.id === "monitor") {
                       setIsMonitorActive(true);
                     }
+                    onSectionChange?.(item.id as any);
                   }}
                 >
                   <Icon size={18} className="nav-icon" />
-                  <div className="nav-label-group">
-                    <span className="nav-label">{item.label}</span>
-                    {item.lane && <span className="nav-lane">{item.lane}</span>}
-                  </div>
-                  <span className="nav-subtitle">{item.subtitle}</span>
+                  {!isCollapsed && (
+                    <>
+                      <div className="nav-label-group">
+                        <span className="nav-label">{item.label}</span>
+                        {item.lane && <span className="nav-lane">{item.lane}</span>}
+                      </div>
+                      <span className="nav-subtitle">{item.subtitle}</span>
+                    </>
+                  )}
                 </button>
 
                 {/* Monitor status badge (when monitoring) */}
@@ -183,15 +207,15 @@ export function AppShell({
           <div className="sidebar-stats">
             <div className="stat-item">
               <span className="stat-label">SND</span>
-              <span className="stat-value">12</span>
+              <span className="stat-value">{trackCount}</span>
             </div>
             <div className="stat-item">
               <span className="stat-label">LOG</span>
-              <span className="stat-value">8</span>
+              <span className="stat-value">{repositoryCount}</span>
             </div>
             <div className="stat-item">
               <span className="stat-label">PRF</span>
-              <span className="stat-value">3</span>
+              <span className="stat-value">{baseAssetCount}</span>
             </div>
           </div>
         )}

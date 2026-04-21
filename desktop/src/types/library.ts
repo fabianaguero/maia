@@ -400,6 +400,7 @@ export interface StartSessionInput {
   adapterKind: StreamAdapterKind;
   source: string;
   label?: string;
+  trackTitle?: string; // New field
   command?: string[];
   /** For file-backed sources, begin at byte 0 instead of tailing from the end. */
   startFromBeginning?: boolean;
@@ -407,6 +408,8 @@ export interface StartSessionInput {
   wsUrl?: string;
   /** HTTP endpoint URL — required when adapterKind is "http-poll" */
   httpUrl?: string;
+  /** Source template ID to use for this session's sonification style. */
+  sourceTemplateId?: string;
 }
 
 export interface StreamSessionPollResult {

@@ -1,7 +1,7 @@
 import { useT } from "../../i18n/I18nContext";
 import type { LibraryTrack, RepositoryAnalysis, BaseAssetRecord, ImportRepositoryInput, ImportBaseAssetInput } from "../../types/library";
 import { useUnifiedLibraryState } from "./useUnifiedLibraryState";
-import { FolderOpen, Zap, Play } from "lucide-react";
+import { FolderOpen, Zap, Play, FileText, Activity, Folder } from "lucide-react";
 
 interface SimpleModeLibraryViewProps {
   tracks: LibraryTrack[];
@@ -11,6 +11,8 @@ interface SimpleModeLibraryViewProps {
   onSelectRepository: (repositoryId: string) => void;
   onImportRepository: (input: ImportRepositoryInput) => Promise<boolean>;
   onImportBaseAsset: (input: ImportBaseAssetInput) => Promise<boolean>;
+  selectedTrackId: string | null;
+  onSelectTrack: (trackId: string) => void;
   onStartMonitoring?: (repoId: string) => void;
 }
 
@@ -22,6 +24,8 @@ export function SimpleModeLibraryView({
   onSelectRepository,
   onImportRepository,
   onImportBaseAsset,
+  selectedTrackId,
+  onSelectTrack,
   onStartMonitoring,
 }: SimpleModeLibraryViewProps) {
   const t = useT();
@@ -53,11 +57,35 @@ export function SimpleModeLibraryView({
         {adapter.repositories.length === 0 ? (
           <div className="simple-empty-state">
             <p>No logs imported yet. Use the import button to add your first log file or folder.</p>
+            <button
+              className="simple-import-btn"
+              onClick={() => {
+                const path = prompt("Enter log file or folder path:");
+                if (path) {
+                  onImportRepository({
+                    title: path.split("/").pop() || "Log Source",
+                    sourcePath: path,
+                    sourceKind: path.includes(".") ? "file" : "directory"
+                  });
+                }
+              }}
+            >
+              <FolderOpen size={16} />
+              Import your first log
+            </button>
           </div>
         ) : (
           <div className="simple-repo-list">
             {adapter.repositories.map((repo) => {
               const isSelected = repo.id === adapter.selectedRepositoryId;
+              
+              // Determine the right icon based on sourceKind
+              const SourceIcon = repo.sourceKind === "directory" 
+                ? Folder 
+                : repo.sourceKind === "file" 
+                  ? FileText 
+                  : Activity;
+                  
               return (
                 <div
                   key={repo.id}
@@ -68,9 +96,12 @@ export function SimpleModeLibraryView({
                     onClick={() => adapter.onSelectRepository(repo.id)}
                   >
                     <div className="simple-repo-header">
-                      <span className="simple-repo-title">{repo.title}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                        <SourceIcon size={18} style={{ color: isSelected ? "var(--color-accent)" : "#94a3b8" }} />
+                        <span className="simple-repo-title">{repo.title}</span>
+                      </div>
                       <span className="simple-repo-type">
-                        {repo.sourceKind === "file" ? "Log file" : "Folder"}
+                        {repo.sourceKind === "file" ? "Log file" : repo.sourceKind === "directory" ? "Folder" : "Live stream"}
                       </span>
                     </div>
                     <p className="simple-repo-path">{repo.sourcePath}</p>
@@ -98,10 +129,31 @@ export function SimpleModeLibraryView({
             Sound presets ({adapter.baseAssets.length})
           </h3>
           <div className="simple-assets-grid">
-            {adapter.baseAssets.map((asset) => (
-              <div key={asset.id} className="simple-asset-card">
-                <span className="simple-asset-name">{asset.title}</span>
-                <p className="simple-asset-desc">{asset.categoryId || "Preset"}</p>
+            {tracks.map((track) => (
+              <div
+                key={track.id}
+                className={`simple-asset-card ${selectedTrackId === track.id ? "selected" : ""}`}
+                onClick={() => onSelectTrack(track.id)}
+              >
+                <div className="simple-asset-info">
+                  <span className="simple-asset-name">{track.tags.title}</span>
+                  <p className="simple-asset-desc">{track.tags.musicStyleLabel || "Preset"}</p>
+                </div>
+                <div className="simple-asset-wave-preview">
+                  <div className="visual-wave-mini">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                      <div 
+                        key={i} 
+                        className="wave-bar-mini" 
+                        style={{ 
+                          height: `${[20, 50, 80, 40, 60, 30, 70, 40][i]}%`,
+                          animationDelay: `${i * 0.1}s`,
+                          backgroundColor: selectedTrackId === track.id ? "var(--color-accent)" : "var(--text-muted)"
+                        }} 
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
             ))}
           </div>

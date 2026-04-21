@@ -16,7 +16,7 @@ use tauri::{AppHandle, Manager, State};
 
 const CONTRACT_VERSION: &str = "1.0";
 const INITIAL_LOG_TAIL_BYTES: u64 = 32 * 1024;
-const MAX_LOG_TAIL_READ_BYTES: u64 = 128 * 1024;
+const MAX_LOG_TAIL_READ_BYTES: u64 = 32 * 1024;
 const SESSION_RING_BUFFER_LINES: usize = 1_200;
 const SCHEMA_SQL: &str = include_str!("../../../database/schema.sql");
 const DEFAULT_MUSIC_STYLE_CATALOG_JSON: &str = include_str!("../../src/config/music-styles.json");
@@ -2179,11 +2179,16 @@ fn poll_stream_session(
     let mut warnings: Vec<String> = Vec::new();
 
     if adapter_kind == "file" {
-        let (_resolved, _from, to_offset, chunk, read_warnings) =
+        let (resolved_path, _from, to_offset, chunk, read_warnings) =
             read_log_stream_chunk(&source, cursor, None)?;
         warnings.extend(read_warnings);
 
+        // Sticky Path Optimization: If we resolved a directory to a specific file,
+        // update the session source so we don't re-scan every time.
         let session_record = update_session_metadata(&registry, &session_id, |session| {
+            if session.record.source != resolved_path {
+                session.record.source = resolved_path;
+            }
             session.record.file_cursor = Some(to_offset);
             session.record.last_polled_at = Some(now_iso());
             session.record.total_polls += 1;
@@ -2576,6 +2581,116 @@ fn export_composition_file(source_path: String, dest_path: String) -> Result<Str
 }
 
 fn execute_analyzer_request(request: &Value) -> Result<Value, String> {
+    eprintln!("[MAIA:Debug] execute_analyzer_request: action={:?}", request.get("action"));
+    // Fast-path: If this is a real-time stream analysis, use a Rust-native heuristic
+    // to bypass the slow Python startup overhead (typically 1-3 seconds).
+    if let Some("analyze") = request.get("action").and_then(|v| v.as_str()) {
+        eprintln!("[MAIA:Debug] action is analyze");
+        let payload = request.get("payload");
+        eprintln!("[MAIA:Debug] payload exists: {}", payload.is_some());
+        
+        let asset_type = payload.and_then(|p| p.get("assetType")).and_then(|t| t.as_str());
+        eprintln!("[MAIA:Debug] asset_type: {:?}", asset_type);
+
+        if let Some("repo_analysis") = asset_type {
+            let data = payload.and_then(|p| p.get("options")).and_then(|o| o.get("logTailChunk")).and_then(|d| d.as_str());
+            
+            if let Some(chunk) = data {
+                eprintln!("[MAIA:Debug] FAST-PATH TRIGGERED for stream analysis");
+                let lines: Vec<&str> = chunk.lines().collect();
+                let line_count = lines.len() as i64;
+                let mut error_count = 0;
+                let mut warn_count = 0;
+                let mut cues = Vec::new();
+                let mut anomaly_markers = Vec::new();
+                
+                for (i, line) in lines.iter().enumerate() {
+                    let upper = line.to_uppercase();
+                    if upper.contains("ERROR") || upper.contains("SEVERE") || upper.contains("CRITICAL") {
+                        error_count += 1;
+                        cues.push(json!({
+                            "id": format!("e-{}", i),
+                            "eventIndex": i as u32,
+                            "level": "error",
+                            "component": "stream",
+                            "excerpt": line.chars().take(30).collect::<String>(),
+                            "noteHz": 110.0,
+                            "durationMs": 100,
+                            "gain": 0.8,
+                            "waveform": "sine",
+                            "accent": "anomaly"
+                        }));
+                        anomaly_markers.push(json!({
+                            "eventIndex": i as u32,
+                            "level": "error",
+                            "component": "stream",
+                            "excerpt": line.chars().take(50).collect::<String>()
+                        }));
+                    } else if upper.contains("WARN") {
+                        warn_count += 1;
+                        cues.push(json!({
+                            "id": format!("w-{}", i),
+                            "eventIndex": i as u32,
+                            "level": "warn",
+                            "component": "stream",
+                            "excerpt": line.chars().take(30).collect::<String>(),
+                            "noteHz": 220.0,
+                            "durationMs": 80,
+                            "gain": 0.5,
+                            "waveform": "sine",
+                            "accent": "warning"
+                        }));
+                    } else if upper.contains("INFO") {
+                        if i % 10 == 0 {
+                            cues.push(json!({
+                                "id": format!("i-{}", i),
+                                "eventIndex": i as u32,
+                                "level": "info",
+                                "component": "stream",
+                                "excerpt": line.chars().take(30).collect::<String>(),
+                                "noteHz": 440.0,
+                                "durationMs": 50,
+                                "gain": 0.2,
+                                "waveform": "sine",
+                                "accent": "regular"
+                            }));
+                        }
+                    }
+                }
+                
+                let response = json!({
+                    "status": "ok",
+                    "warnings": [],
+                    "payload": {
+                        "summary": format!("Real-time stream analysis ({} lines)", line_count),
+                        "musicalAsset": {
+                            "title": "Stream Analysis",
+                            "sourcePath": "memory",
+                            "suggestedBpm": 126,
+                            "confidence": 0.9,
+                            "tags": [],
+                            "artifacts": {
+                                "waveformBins": [],
+                                "beatGrid": [],
+                                "bpmCurve": []
+                            },
+                            "metrics": {
+                                "dominantLevel": if error_count > 0 { "error" } else if warn_count > 0 { "warn" } else { "info" },
+                                "lineCount": line_count,
+                                "anomalyCount": error_count,
+                                "levelCounts": { "error": error_count, "warn": warn_count, "info": line_count - error_count - warn_count },
+                                "sonificationCues": cues,
+                                "anomalyMarkers": anomaly_markers,
+                                "topComponents": []
+                            }
+                        }
+                    }
+                });
+                return Ok(response);
+            }
+        }
+    }
+
     let repo_root = repo_root();
     let analyzer_src = repo_root.join("analyzer/src");
     let python_bin = analyzer_python(&repo_root);
@@ -2926,10 +3041,30 @@ fn read_log_stream_chunk(
     cursor: Option<u64>,
     max_bytes: Option<u64>,
 ) -> Result<(String, u64, u64, String, Vec<String>), String> {
-    let resolved_source = resolve_existing_input_path(source_path)?;
-    if !resolved_source.is_file() {
+    let mut resolved_source = resolve_existing_input_path(source_path)?;
+    let mut warnings = Vec::new();
+
+    if resolved_source.is_dir() {
+        // Log Hub Mode: find the newest .log file
+        let mut discovered_logs = Vec::new();
+        let _ = find_logs_recursive(&resolved_source, &mut discovered_logs);
+        
+        if let Some(newest_log) = discovered_logs.into_iter()
+            .map(PathBuf::from)
+            .filter(|p| p.is_file())
+            .max_by_key(|p| p.metadata().and_then(|m| m.modified()).ok()) {
+            
+            warnings.push(format!("Log Hub Mode: Monitoring newest activity in {}", newest_log.file_name().and_then(|n| n.to_str()).unwrap_or("log file")));
+            resolved_source = newest_log;
+        } else {
+            return Err(format!(
+                "No .log files found in directory: {}",
+                resolved_source.display()
+            ));
+        }
+    } else if !resolved_source.is_file() {
         return Err(format!(
-            "Selected log source is not a file: {}",
+            "Selected log source is not a file or directory: {}",
             resolved_source.display()
         ));
     }
@@ -2943,7 +3078,7 @@ fn read_log_stream_chunk(
             )
         })?
         .len();
-    let mut warnings = Vec::new();
+    
     let start_offset = match cursor {
         Some(previous) if previous <= file_size => previous,
         Some(_) => {
@@ -2964,6 +3099,12 @@ fn read_log_stream_chunk(
             "Large log burst detected. Maia streamed only the next {} KB in this polling window.",
             (max_bytes / 1024).max(1)
         ));
+    }
+
+    eprintln!("[MAIA:Rust] read_log_stream_chunk path={} cursor={:?} start_offset={} bytes_to_read={}", resolved_source.display(), cursor, start_offset, bytes_to_read);
+    
+    if bytes_to_read == 0 {
+        return Ok((resolved_source.to_string_lossy().to_string(), start_offset, start_offset, String::new(), warnings));
     }
 
     let mut file = fs::File::open(&resolved_source).map_err(|error| {

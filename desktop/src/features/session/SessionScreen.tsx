@@ -27,6 +27,7 @@ import { formatShortDate, formatShortDateTime } from "../../utils/date";
 import { useT } from "../../i18n/I18nContext";
 import { resolveReplayBookmarkTagLabel } from "../../config/replayBookmarks";
 import { resolveMutationProfile, resolveStyleProfile } from "../../config/liveProfiles";
+import { SOURCE_TEMPLATES, DEFAULT_SOURCE_TEMPLATE_ID, type SourceTemplate } from "../../config/sourceTemplates";
 import { useReplayFeedbackRecommendation } from "../../hooks/useReplayFeedbackRecommendation";
 import { getPlaylistMedianBpm } from "../../utils/playlist";
 import { getTrackTitle, resolvePlayableTrackPath } from "../../utils/track";
@@ -242,6 +243,7 @@ export function SessionScreen({
   const [latestUpdate, setLatestUpdate] = useState<LiveLogStreamUpdate | null>(null);
   const [directPath, setDirectPath] = useState("");
   const [isDirectLoading, setIsDirectLoading] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(DEFAULT_SOURCE_TEMPLATE_ID);
   const boothBedAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const logSources = useMemo(
@@ -385,19 +387,25 @@ export function SessionScreen({
           return;
         }
 
-        const source = repositories.find(
-          (repository) => repository.id === session.sourceId,
-        );
-        if (!source) {
-          setCreateError("Source asset not found");
+        // Resolve source: prefer by id, fall back to path match, then use stored path directly
+        const source =
+          repositories.find((r) => r.id === session.sourceId) ??
+          repositories.find(
+            (r) => session.sourcePath !== null && r.sourcePath === session.sourcePath,
+          ) ??
+          null;
+
+        const sourcePath = source?.sourcePath ?? session.sourcePath;
+        if (!sourcePath) {
+          setCreateError("This session has no stored source path to resume from.");
           return;
         }
 
         const input: StartSessionInput = {
           sessionId: session.id,
           adapterKind: (session.adapterKind as StreamAdapterKind) || "file",
-          source: source.sourcePath,
-          label: session.label || source.title,
+          source: sourcePath,
+          label: session.label || source?.title || session.sourceTitle || "Resumed session",
         };
 
         const success = await onStartSession(input, session.id, {
@@ -961,6 +969,33 @@ export function SessionScreen({
             </p>
           </div>
 
+          {/* Source Templates */}
+          <div className="source-templates">
+            <span className="source-templates-label">Style preset</span>
+            <div className="source-template-list">
+              {SOURCE_TEMPLATES.map((tpl: SourceTemplate) => (
+                <button
+                  key={tpl.id}
+                  type="button"
+                  className={`source-template-card${selectedTemplateId === tpl.id ? " selected" : ""}`}
+                  onClick={() => setSelectedTemplateId(tpl.id)}
+                  title={tpl.hint}
+                >
+                  <span className="source-template-icon">{tpl.icon}</span>
+                  <span className="source-template-name">{tpl.label}</span>
+                  <span className="source-template-bpm">{tpl.bpm} BPM</span>
+                  <span className="source-template-genre">{tpl.genre}</span>
+                </button>
+              ))}
+            </div>
+            {(() => {
+              const tpl = SOURCE_TEMPLATES.find((t) => t.id === selectedTemplateId);
+              return tpl ? (
+                <p className="source-template-hint">{tpl.hint}</p>
+              ) : null;
+            })()}
+          </div>
+
           {/* Progress strip — same vocabulary as the monitor deck */}
           <div className="workflow-strip" aria-hidden="true">
             <div className="workflow-step-wrap">
@@ -1144,8 +1179,8 @@ export function SessionScreen({
               onChange={(event) => setSessionLabel(event.target.value)}
               placeholder={
                 selectedSource && selectedBaseLabel
-                  ? `${selectedSource.title} · ${selectedBaseLabel}`
-                  : "Give this session a name…"
+                  ? `${selectedSource.title} · ${selectedBaseLabel} · ${SOURCE_TEMPLATES.find(t => t.id === selectedTemplateId)?.genre ?? ""}`
+                  : SOURCE_TEMPLATES.find(t => t.id === selectedTemplateId)?.label ?? "Give this session a name…"
               }
               className="field-input"
             />

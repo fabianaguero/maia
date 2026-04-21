@@ -24,6 +24,8 @@ export interface PersistedSession {
   lastBpm: number | null;
   createdAt: string;
   updatedAt: string;
+  /** Source template ID recorded at session creation time. */
+  sourceTemplateId: string | null;
 }
 
 export interface CreateSessionInput {
@@ -34,6 +36,8 @@ export interface CreateSessionInput {
   playlistId?: string;
   adapterKind: string;
   mode: "live" | "play";
+  /** Source template ID to persist with the session. */
+  sourceTemplateId?: string;
 }
 
 function isTauriUnavailable(error: unknown): boolean {
