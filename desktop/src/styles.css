@@ -4310,7 +4310,7 @@ dd {
 
 .session-card-metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
   gap: var(--space-sm);
 }
 
@@ -4328,6 +4328,16 @@ dd {
 
 .session-metric span {
   min-width: 0;
+}
+
+.session-chip {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  font-size: var(--font-label);
+  white-space: nowrap;
 }
 
 .session-card-actions {

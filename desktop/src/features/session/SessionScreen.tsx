@@ -92,6 +92,18 @@ function formatMonitorLevel(level: string | null | undefined): string {
     .join(" ");
 }
 
+function formatSessionBpm(bpm: number | null | undefined): string {
+  return bpm != null ? `${Math.round(bpm)} BPM` : "— BPM";
+}
+
+function resolveSessionTemplateLabel(sourceTemplateId: string | null | undefined): string {
+  if (!sourceTemplateId) {
+    return "No template";
+  }
+  const found = SOURCE_TEMPLATES.find((t) => t.id === sourceTemplateId);
+  return found ? found.label : "Unknown template";
+}
+
 function resolveModeLabel(mode: QuickSessionMode): string {
   return mode === "log" ? "Log file" : "Repository";
 }
@@ -1317,6 +1329,12 @@ export function SessionScreen({
                             : session.totalAnomalies}{" "}
                           {t.session.anomalies}
                         </span>
+                      </div>
+                      <div className="session-metric">
+                        <span className="session-chip">{formatSessionBpm(session.lastBpm)}</span>
+                      </div>
+                      <div className="session-metric">
+                        <span className="session-chip">{resolveSessionTemplateLabel(session.sourceTemplateId)}</span>
                       </div>
                     </div>
 
