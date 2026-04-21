@@ -21,7 +21,8 @@ import type {
   StartSessionInput,
   StreamAdapterKind,
 } from "../../types/library";
-import type { PersistedSession, SessionBookmark } from "../../api/sessions";
+import type { PersistedSession, SessionBookmark, SessionEvent } from "../../api/sessions";
+import { listSessionEvents } from "../../api/sessions";
 import { ReplayFeedbackSummaryCard } from "../../components/ReplayFeedbackSummaryCard";
 import { formatShortDate, formatShortDateTime } from "../../utils/date";
 import { useT } from "../../i18n/I18nContext";
@@ -33,6 +34,13 @@ import { getPlaylistMedianBpm } from "../../utils/playlist";
 import { getTrackTitle, resolvePlayableTrackPath } from "../../utils/track";
 import { useMonitor } from "../monitor/MonitorContext";
 import { getStreamAdapterLabel } from "../../utils/streamAdapter";
+
+interface BookmarkContext {
+  bpm: number | null;
+  dominantLevel: string | null;
+  anomalyCount: number | null;
+  logExcerpt: string | null;
+}
 
 interface SessionStartDraft {
   sourceId?: string;
@@ -102,6 +110,63 @@ function resolveSessionTemplateLabel(sourceTemplateId: string | null | undefined
   }
   const found = SOURCE_TEMPLATES.find((t) => t.id === sourceTemplateId);
   return found ? found.label : "Unknown template";
+}
+
+function formatBookmarkBpm(bpm: number | null | undefined): string {
+  return bpm != null ? `${Math.round(bpm)} BPM` : "— BPM";
+}
+
+function formatBookmarkDominantLevel(level: string | null | undefined): string {
+  if (!level || !level.trim()) {
+    return "—";
+  }
+  return level
+    .trim()
+    .split(/[-\s_]+/)
+    .filter((word) => word.length > 0)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function resolveBookmarkContext(
+  bookmark: SessionBookmark,
+  events: SessionEvent[],
+): BookmarkContext {
+  if (bookmark.eventIndex == null) {
+    return {
+      bpm: null,
+      dominantLevel: null,
+      anomalyCount: null,
+      logExcerpt: null,
+    };
+  }
+
+  const event = events[bookmark.eventIndex];
+  if (!event) {
+    return {
+      bpm: null,
+      dominantLevel: null,
+      anomalyCount: null,
+      logExcerpt: null,
+    };
+  }
+
+  let logExcerpt: string | null = null;
+  try {
+    const parsedLines = JSON.parse(event.parsedLinesJson) as string[];
+    if (parsedLines && parsedLines.length > 0) {
+      logExcerpt = parsedLines[0].slice(0, 120) || null;
+    }
+  } catch {
+    // Silent fail on JSON parse
+  }
+
+  return {
+    bpm: event.suggestedBpm,
+    dominantLevel: event.dominantLevel,
+    anomalyCount: event.anomalyCount,
+    logExcerpt,
+  };
 }
 
 function resolveModeLabel(mode: QuickSessionMode): string {
@@ -256,6 +321,7 @@ export function SessionScreen({
   const [directPath, setDirectPath] = useState("");
   const [isDirectLoading, setIsDirectLoading] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(DEFAULT_SOURCE_TEMPLATE_ID);
+  const [selectedSessionEvents, setSelectedSessionEvents] = useState<SessionEvent[]>([]);
   const boothBedAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const logSources = useMemo(
@@ -458,6 +524,25 @@ export function SessionScreen({
   }, [monitor.subscribe]);
 
   useEffect(() => {
+    if (!selectedSession) {
+      setSelectedSessionEvents([]);
+      return;
+    }
+
+    const loadEvents = async () => {
+      try {
+        const events = await listSessionEvents(selectedSession.id);
+        setSelectedSessionEvents(events);
+      } catch (err) {
+        // Silent fail on event load
+        setSelectedSessionEvents([]);
+      }
+    };
+
+    void loadEvents();
+  }, [selectedSession?.id]);
+
+  useEffect(() => {
     return () => {
       const audio = boothBedAudioRef.current;
       if (!audio) {
@@ -507,6 +592,13 @@ export function SessionScreen({
   const selectedSessionBookmarks = selectedSession
     ? sessionBookmarksBySessionId[selectedSession.id] ?? []
     : [];
+  const bookmarkContexts = useMemo(() => {
+    const contexts: Record<number, BookmarkContext> = {};
+    for (const bookmark of selectedSessionBookmarks) {
+      contexts[bookmark.id] = resolveBookmarkContext(bookmark, selectedSessionEvents);
+    }
+    return contexts;
+  }, [selectedSessionBookmarks, selectedSessionEvents]);
   const selectedSessionReplayFeedbackRecommendation = useReplayFeedbackRecommendation(
     selectedSessionBookmarks,
   );
@@ -1439,6 +1531,22 @@ export function SessionScreen({
                             <span>{bookmark.trackSecond.toFixed(2)}s</span>
                           ) : null}
                         </div>
+                        {bookmarkContexts[bookmark.id] && (
+                          <div className="session-bookmark-card-context">
+                            <span className="context-field">
+                              {formatBookmarkBpm(bookmarkContexts[bookmark.id].bpm)}
+                            </span>
+                            <span className="context-field">
+                              {formatBookmarkDominantLevel(bookmarkContexts[bookmark.id].dominantLevel)}
+                            </span>
+                            <span className="context-field">
+                              {bookmarkContexts[bookmark.id].anomalyCount ?? 0} anomalies
+                            </span>
+                            <span className="context-field context-field--excerpt">
+                              {bookmarkContexts[bookmark.id].logExcerpt ?? "No log excerpt available"}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <button
                         type="button"

@@ -4423,6 +4423,34 @@ dd {
   font-size: var(--font-label);
 }
 
+.session-bookmark-card-context {
+  display: grid;
+  grid-template-columns: auto auto auto 1fr;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.context-field {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(33, 180, 184, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.context-field--excerpt {
+  grid-column: 4;
+  white-space: normal;
+  word-break: break-word;
+  background: rgba(255, 255, 255, 0.03);
+}
+
 .session-bookmark-empty {
   padding: var(--space-lg);
 }
