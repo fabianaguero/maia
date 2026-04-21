@@ -144,6 +144,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   total_lines INTEGER NOT NULL DEFAULT 0,
   total_anomalies INTEGER NOT NULL DEFAULT 0,
   last_bpm REAL,
+  source_template_id TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

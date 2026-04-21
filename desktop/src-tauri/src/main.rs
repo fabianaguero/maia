@@ -704,6 +704,7 @@ pub struct PersistedSession {
     pub total_lines: u64,
     pub total_anomalies: u64,
     pub last_bpm: Option<f64>,
+    pub source_template_id: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -718,6 +719,7 @@ struct CreateSessionInput {
     playlist_id: Option<String>,
     adapter_kind: String,
     mode: String,
+    source_template_id: Option<String>,
 }
 
 fn db_create_session(
@@ -726,8 +728,8 @@ fn db_create_session(
 ) -> Result<PersistedSession, String> {
     let now = now_iso();
     conn.execute(
-        "INSERT OR REPLACE INTO sessions (id, label, source_id, track_id, playlist_id, adapter_kind, mode, status, file_cursor, total_polls, total_lines, total_anomalies, last_bpm, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'stopped', 0, 0, 0, 0, NULL, ?8, ?8)",
+        "INSERT OR REPLACE INTO sessions (id, label, source_id, track_id, playlist_id, adapter_kind, mode, status, file_cursor, total_polls, total_lines, total_anomalies, last_bpm, source_template_id, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'stopped', 0, 0, 0, 0, NULL, ?8, ?9, ?9)",
         rusqlite::params![
             input.id,
             input.label,
@@ -736,6 +738,7 @@ fn db_create_session(
             input.playlist_id,
             input.adapter_kind,
             input.mode,
+            input.source_template_id,
             now
         ],
     ).map_err(|e| format!("Failed to create session: {e}"))?;
@@ -751,7 +754,7 @@ fn db_get_session(conn: &Connection, id: &str) -> Result<PersistedSession, Strin
                 s.playlist_id, p.name,
                 s.adapter_kind, s.mode, s.status,
                 s.file_cursor, s.total_polls, s.total_lines, s.total_anomalies, s.last_bpm,
-                s.created_at, s.updated_at
+                s.source_template_id, s.created_at, s.updated_at
          FROM sessions s
          LEFT JOIN musical_assets ma_src ON ma_src.id = s.source_id
          LEFT JOIN musical_assets ma_trk ON ma_trk.id = s.track_id
@@ -783,8 +786,9 @@ fn row_to_persisted_session(row: &rusqlite::Row<'_>) -> rusqlite::Result<Persist
         total_lines: row.get::<_, i64>(15).map(|v| v as u64)?,
         total_anomalies: row.get::<_, i64>(16).map(|v| v as u64)?,
         last_bpm: row.get(17)?,
-        created_at: row.get(18)?,
-        updated_at: row.get(19)?,
+        source_template_id: row.get(18)?,
+        created_at: row.get(19)?,
+        updated_at: row.get(20)?,
     })
 }
 
@@ -797,7 +801,7 @@ fn db_list_sessions(conn: &Connection) -> Result<Vec<PersistedSession>, String> 
                 s.playlist_id, p.name,
                 s.adapter_kind, s.mode, s.status,
                 s.file_cursor, s.total_polls, s.total_lines, s.total_anomalies, s.last_bpm,
-                s.created_at, s.updated_at
+                s.source_template_id, s.created_at, s.updated_at
          FROM sessions s
          LEFT JOIN musical_assets ma_src ON ma_src.id = s.source_id
          LEFT JOIN musical_assets ma_trk ON ma_trk.id = s.track_id
@@ -3193,6 +3197,7 @@ fn open_database(app_handle: &AppHandle) -> Result<Connection, String> {
     ensure_repository_storage_path_column(&conn)?;
     ensure_composition_export_path_column(&conn)?;
     ensure_session_playlist_column(&conn)?;
+    ensure_session_source_template_id_column(&conn)?;
     ensure_session_bookmark_feedback_columns(&conn)?;
     ensure_session_event_parsed_lines_column(&conn)?;
     let managed_compositions_root = managed_compositions_root(app_handle)?;
@@ -3441,6 +3446,38 @@ fn ensure_session_playlist_column(conn: &Connection) -> Result<(), String> {
 
     conn.execute_batch("ALTER TABLE sessions ADD COLUMN playlist_id TEXT;")
         .map_err(|error| format!("Failed to add sessions playlist_id column: {error}"))?;
+
+    Ok(())
+}
+
+fn ensure_session_source_template_id_column(conn: &Connection) -> Result<(), String> {
+    let mut statement = conn
+        .prepare("PRAGMA table_info(sessions)")
+        .map_err(|error| format!("Failed to inspect sessions columns: {error}"))?;
+    let mut rows = statement
+        .query([])
+        .map_err(|error| format!("Failed to query sessions columns: {error}"))?;
+    let mut has_source_template_id = false;
+
+    while let Some(row) = rows
+        .next()
+        .map_err(|error| format!("Failed to iterate sessions columns: {error}"))?
+    {
+        let name: String = row
+            .get(1)
+            .map_err(|error| format!("Failed to read sessions column name: {error}"))?;
+        if name == "source_template_id" {
+            has_source_template_id = true;
+            break;
+        }
+    }
+
+    if has_source_template_id {
+        return Ok(());
+    }
+
+    conn.execute_batch("ALTER TABLE sessions ADD COLUMN source_template_id TEXT;")
+        .map_err(|error| format!("Failed to add sessions source_template_id column: {error}"))?;
 
     Ok(())
 }
