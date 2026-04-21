@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMonitor } from "../features/monitor/MonitorContext";
 import type { LiveLogCue, LiveLogStreamUpdate, LibraryTrack } from "../types/library";
+import type { SourceTemplate } from "../config/sourceTemplates";
 import { getTrackTitle, resolvePlayableTrackPath } from "../utils/track";
 
 // ---------------------------------------------------------------------------
@@ -58,12 +59,25 @@ function resolveProcessedMetrics(cues: LiveLogCue[], update: LiveLogStreamUpdate
   const avgGain = (cues || []).reduce((s, c) => s + c.gain, 0) / Math.max(1, cues?.length || 0);
   // Boost weight of normal "voice" sonification (gainFactor)
   const gainFactor = Math.min(1, avgGain * 2.2);
-  
+
   return {
     low: Math.min(1, (anomalySignal * 1.2) + gainFactor * 0.4 + 0.1),
     mid: Math.min(1, gainFactor * 0.9 + 0.15),
     high: Math.min(1, gainFactor * 0.6 + 0.1),
   };
+}
+
+function TemplateIndicatorChip({ template, liveBpm }: { template: SourceTemplate | null; liveBpm: number | null }) {
+  if (!template) {
+    return <span className="template-chip">Synth Default</span>;
+  }
+
+  const showLive = liveBpm != null && Math.abs(liveBpm - template.bpm) > 5;
+  const displayText = `${template.icon} ${template.genre} · ${template.bpm} BPM${
+    showLive ? ` → ${Math.round(liveBpm!)} live` : ""
+  }`;
+
+  return <span className="template-chip template-chip--active">{displayText}</span>;
 }
 
 export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] }) {
@@ -72,6 +86,7 @@ export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] })
   const historyRef = useRef<WaveColumn[]>([]);
   const animRef = useRef<number>(0);
   const [hudLines, setHudLines] = useState<HUDLine[]>([]);
+  const [latestBpm, setLatestBpm] = useState<number | null>(null);
   const lastOffsetRef = useRef<number>(-1);
   const hasSession = !!monitor.session;
 
@@ -89,7 +104,12 @@ export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] })
       const sourceMetrics = resolveSourceMetrics(update);
       const processedMetrics = resolveProcessedMetrics(update.sonificationCues || [], update);
       const heat = Math.min(1, update.anomalyMarkers.length * 0.4);
-      
+
+      // Track the latest BPM for the template chip
+      if (update.suggestedBpm != null) {
+        setLatestBpm(update.suggestedBpm);
+      }
+
       // Ensure AudioContext is alive when data flows
       if (update.hasData && monitor.audioContext?.state === "suspended") {
         void monitor.resumeAudio();
@@ -281,6 +301,9 @@ export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] })
           </div>
 
           <div className="monitor-header-controls">
+            {hasSession && (
+              <TemplateIndicatorChip template={monitor.activeTemplate ?? null} liveBpm={latestBpm} />
+            )}
             <label className="header-controls-label">LISTENING BED</label>
             <select
               className="monitor-track-select monitor-track-select--header"
@@ -295,8 +318,8 @@ export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] })
               ))}
             </select>
             {monitor.audioContext?.state === "suspended" && (
-              <button 
-                className="resume-audio-btn" 
+              <button
+                className="resume-audio-btn"
                 onClick={() => void monitor.resumeAudio()}
                 title="Resume Audio Engine"
               >
