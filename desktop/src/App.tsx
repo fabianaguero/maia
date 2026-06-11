@@ -680,8 +680,12 @@ function AppContent() {
             repositories={repositories.repositories}
             baseAssets={baseAssets.baseAssets}
             selectedRepositoryId={repositories.selectedRepositoryId}
+            selectedTrackId={library.selectedTrackId}
             onSelectRepository={(repositoryId) => {
               repositories.setSelectedRepositoryId(repositoryId);
+            }}
+            onSelectTrack={(trackId) => {
+              library.setSelectedTrackId(trackId);
             }}
             onImportRepository={handleImportRepository}
             onImportBaseAsset={handleImportBaseAsset}
