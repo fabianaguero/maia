@@ -132,7 +132,7 @@ function resolveBookmarkContext(
   bookmark: SessionBookmark,
   events: SessionEvent[],
 ): BookmarkContext {
-  if (bookmark.eventIndex == null) {
+  if (!events || bookmark.eventIndex == null) {
     return {
       bpm: null,
       dominantLevel: null,
@@ -505,6 +505,11 @@ export function SessionScreen({
   );
 
   const activeSession = sessions.find((session) => session.id === activeSessionId);
+  const selectedSession =
+    sessions.find((session) => session.id === selectedSessionId) ??
+    activeSession ??
+    sessions[0] ??
+    null;
   const playbackActive = activeSessionMode === "playback" && Boolean(activeSession);
   const liveMonitorActive = Boolean(monitor.session) && !playbackActive;
   const activeBedUrl = resolveSessionBedUrl(
@@ -584,11 +589,6 @@ export function SessionScreen({
       // Ignore autoplay failures; the next button interaction will retry.
     });
   }, [activeBedUrl]);
-  const selectedSession =
-    sessions.find((session) => session.id === selectedSessionId) ??
-    activeSession ??
-    sessions[0] ??
-    null;
   const selectedSessionBookmarks = selectedSession
     ? sessionBookmarksBySessionId[selectedSession.id] ?? []
     : [];
@@ -1137,7 +1137,7 @@ export function SessionScreen({
             <div className="audio-path-card monitor-setup-card">
               <span>1. Base listening bed</span>
               <p className="monitor-empty-hint">
-                A track or playlist that stays musical while the source feeds in.
+                <strong>Required:</strong> Select a track or playlist. This plays as your musical foundation while logs modulate anomalies on top.
               </p>
 
               <div className="session-mode-tabs">
