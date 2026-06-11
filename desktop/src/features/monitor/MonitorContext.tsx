@@ -191,8 +191,10 @@ function sliceGuideTrackBar(
   const anomRatio = anomCount / Math.max(1, cues.length);
   const intensity = Math.min(1, avgGain * 3);
 
-  // 1) Volume envelope: swell based on intensity (0.3–1.0)
-  const masterGain = volume * (0.3 + intensity * 0.7);
+  // 1) Master gain: full volume during normal operation, swell during anomalies
+  const masterGain = anomRatio > 0.1
+    ? volume * (0.5 + intensity * 0.5)  // anomaly mode: swell 0.5–1.0
+    : volume;                            // normal: full volume
 
   // 2) Simple low-pass filter: reduce brightness when anomaly ratio is high
   //    (simulate "underwater" effect). We do a running average.
@@ -211,18 +213,27 @@ function sliceGuideTrackBar(
     if (filterStrength > 0) {
       lpState += filterStrength * (s - lpState);
       // Blend between dry and filtered based on anomaly intensity
-      s = s * (1 - anomRatio * 0.6) + lpState * (anomRatio * 0.6);
+      s = s * (1 - anomRatio * 0.85) + lpState * (anomRatio * 0.85);
     }
 
-    // Sidechain ducking on kick beats
-    const posInBar = i % (sixteenthSamples * 16);
-    const stepInBar = Math.floor(posInBar / sixteenthSamples);
-    if (stepInBar === 0 || stepInBar === 8) {
-      const duckPhase = (posInBar % (sixteenthSamples * 4)) / sixteenthSamples;
-      if (duckPhase < 1) {
-        // Quick duck over 1 sixteenth note
-        const duckEnv = 0.3 + 0.7 * (duckPhase);
-        s *= duckEnv;
+    // Saturation / Distortion for anomalies
+    if (anomRatio > 0.25) {
+      const drive = 1 + (anomRatio * 1.5);
+      // Soft clip to add grit during anomalies
+      s = Math.tanh(s * drive) / (drive * 0.9);
+    }
+
+    // Sidechain ducking on kick beats (only during anomalies)
+    if (anomRatio > 0.1) {
+      const posInBar = i % (sixteenthSamples * 16);
+      const stepInBar = Math.floor(posInBar / sixteenthSamples);
+      if (stepInBar === 0 || stepInBar === 8) {
+        const duckPhase = (posInBar % (sixteenthSamples * 4)) / sixteenthSamples;
+        if (duckPhase < 1) {
+          // Quick duck over 1 sixteenth note
+          const duckEnv = 0.3 + 0.7 * (duckPhase);
+          s *= duckEnv;
+        }
       }
     }
 
@@ -375,6 +386,41 @@ function stopAllAudio(): void {
     audio.src = "";
   });
   activeAudioElements.clear();
+}
+
+function stopCrossfadeEngine(
+  currentSegmentRef: React.MutableRefObject<CrossfadeHandle | null>,
+  audioContextRef: React.MutableRefObject<AudioContext | null>,
+  activeSourcesRef: React.MutableRefObject<AudioBufferSourceNode[]>,
+): void {
+  const ctx = audioContextRef.current;
+  if (!ctx) return;
+
+  // Stop current segment with a quick fade-out
+  const current = currentSegmentRef.current;
+  if (current && ctx.state === "running") {
+    try {
+      const now = ctx.currentTime;
+      current.gainNode.gain.cancelScheduledValues(now);
+      current.gainNode.gain.setValueAtTime(current.gainNode.gain.value, now);
+      current.gainNode.gain.linearRampToValueAtTime(0, now + 0.05);
+      current.source.stop(now + 0.05);
+    } catch {
+      // Silent fail
+    }
+  }
+  currentSegmentRef.current = null;
+
+  // Stop all tracked sources
+  const now = ctx.currentTime;
+  activeSourcesRef.current.forEach((source) => {
+    try {
+      source.stop(now);
+    } catch {
+      // Silent fail on already-stopped sources
+    }
+  });
+  activeSourcesRef.current = [];
 }
 
 async function playWavBlobWithContext(ctx: AudioContext, blob: Blob, volume = DEFAULT_MONITOR_WAV_VOLUME): Promise<void> {
@@ -628,6 +674,8 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
   const currentSegmentRef = useRef<CrossfadeHandle | null>(null);
   /** Decoded AudioBuffer waiting to play once AudioContext resumes. */
   const pendingSegmentRef = useRef<AudioBuffer | null>(null);
+  /** List of all active audio sources for cleanup on stop. */
+  const activeSourcesRef = useRef<AudioBufferSourceNode[]>([]);
 
   /** Active source template — read on every poll, never causes re-renders. */
   const activeTemplateRef = useRef<SourceTemplate>(resolveSourceTemplate(DEFAULT_SOURCE_TEMPLATE_ID));
@@ -809,6 +857,12 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
     source.connect(gainNode);
     gainNode.connect(ctx.destination);
     source.start(startTime);
+
+    activeSourcesRef.current.push(source);
+    // Cleanup old sources periodically to prevent leaks
+    if (activeSourcesRef.current.length > 10) {
+      activeSourcesRef.current = activeSourcesRef.current.slice(-5);
+    }
 
     currentSegmentRef.current = {
       gainNode,
@@ -1610,10 +1664,14 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
     const current = sessionRef.current;
     const wasPlayback = isPlayback;
     log.info("stopSession id=%s wasPlayback=%s", current?.sessionId, wasPlayback);
-    
-    // Stop all audio playback immediately
+
+    // Stop all audio playback immediately (HTML Audio elements + Web Audio API)
     stopAllAudio();
-    
+    stopCrossfadeEngine(currentSegmentRef, audioContextRef, activeSourcesRef);
+    if (audioContextRef.current && audioContextRef.current.state === "running") {
+      void audioContextRef.current.suspend();
+    }
+
     stopPolling();
     sessionRef.current = null;
     directCursorRef.current = undefined;
