@@ -13,7 +13,7 @@ interface SimpleModeLibraryViewProps {
   onImportBaseAsset: (input: ImportBaseAssetInput) => Promise<boolean>;
   selectedTrackId: string | null;
   onSelectTrack: (trackId: string) => void;
-  onStartMonitoring?: (repoId: string) => void;
+  onStartMonitoring?: (repoId: string, trackId?: string) => void;
 }
 
 export function SimpleModeLibraryView({
@@ -109,7 +109,7 @@ export function SimpleModeLibraryView({
                   {isSelected && adapter.baseAssets.length > 0 && (
                     <button
                       className="simple-start-btn"
-                      onClick={() => adapter.onStartMonitoring?.(repo.id)}
+                      onClick={() => adapter.onStartMonitoring?.(repo.id, selectedTrackId ?? undefined)}
                     >
                       <Play size={16} />
                       Start monitoring

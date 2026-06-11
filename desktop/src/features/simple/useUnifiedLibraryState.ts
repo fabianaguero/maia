@@ -24,7 +24,7 @@ export function useUnifiedLibraryState(props: {
   onSelectRepository: (repositoryId: string) => void;
   onImportRepository: (input: ImportRepositoryInput) => Promise<boolean>;
   onImportBaseAsset: (input: ImportBaseAssetInput) => Promise<boolean>;
-  onStartMonitoring?: (repoId: string) => void;
+  onStartMonitoring?: (repoId: string, trackId?: string) => void;
 }): LibraryViewAdapter {
   const { userMode } = useUserMode();
 
@@ -51,8 +51,8 @@ export function useUnifiedLibraryState(props: {
   );
 
   const handleStartMonitoring = useCallback(
-    (repoId: string) => {
-      props.onStartMonitoring?.(repoId);
+    (repoId: string, trackId?: string) => {
+      props.onStartMonitoring?.(repoId, trackId);
     },
     [props]
   );
