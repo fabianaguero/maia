@@ -685,9 +685,10 @@ function AppContent() {
             }}
             onImportRepository={handleImportRepository}
             onImportBaseAsset={handleImportBaseAsset}
-            onStartMonitoring={(repoId) => {
+            onStartMonitoring={(repoId, trackId) => {
               const repo = repositories.repositories.find((r) => r.id === repoId);
               if (!repo) return;
+              library.setSelectedTrackId(trackId ?? null);
               setPillar("perform");
               setScreen("session");
             }}

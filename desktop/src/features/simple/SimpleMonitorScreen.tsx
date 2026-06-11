@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Play, Square, Music, AlertCircle, Clock } from "lucide-react";
 
 import type { ActiveMonitorSession, MonitorMetrics } from "../monitor/MonitorContext";
@@ -14,7 +14,7 @@ interface SimpleMonitorScreenProps {
   onStop: () => void;
   onResumeAudio: () => void;
   audioStatus: AudioContextState;
-  onStartMonitoring: (repoId: string, trackId: string) => void;
+  onStartMonitoring: (repoId: string, trackId?: string) => void;
   onReplaySession: (sessionId: string, sourcePath: string, repoTitle: string) => void;
   subscribe: (listener: (update: any) => void) => () => void;
   trackName?: string;
@@ -143,7 +143,7 @@ export function SimpleMonitorScreen({
   const [liveLines, setLiveLines] = useState<any[]>([]);
   const [selectedSourceId, setSelectedSourceId] = useState("");
   const [selectedSoundId, setSelectedSoundId] = useState("");
-  const [logSignalBuffer, setLogSignalBuffer] = useState<number[]>(new Array(120).fill(10));
+  const [logSignalBuffer, setLogSignalBuffer] = useState<{val: number, heat: number}[]>(new Array(120).fill({val: 10, heat: 0}));
   const [isAnomalyFilterActive, setIsAnomalyFilterActive] = useState(false);
   const [waveformScale, setWaveformScale] = useState(1.0);
 
@@ -164,8 +164,17 @@ export function SimpleMonitorScreen({
     };
     setLiveLines(prev => [mock, ...prev].slice(0, 50));
     setLogSignalBuffer(prev => {
-      const val = level === "error" ? 140 : level === "warn" ? 100 : 60;
-      return [...prev.slice(1), val];
+      const heat = level === "error" ? 1.0 : level === "warn" ? 0.5 : 0;
+      const val = 40 + (heat * 100);
+      const newBuffer = [...prev];
+      for (let i = 0; i < 60; i++) {
+        newBuffer[i] = prev[i + 1] || {val: 20, heat: 0};
+      }
+      newBuffer[60] = { val, heat }; // Insert EXACTLY at the center playhead
+      for (let i = 61; i < 120; i++) {
+        newBuffer[i] = { val: 20, heat: 0 }; // Future is empty
+      }
+      return newBuffer;
     });
   };
 
@@ -179,7 +188,7 @@ export function SimpleMonitorScreen({
       }]);
     } else {
       setLiveLines([]);
-      setLogSignalBuffer(new Array(120).fill(10));
+      setLogSignalBuffer(new Array(120).fill({val: 10, heat: 0}));
     }
   }, [isListening, session?.sourcePath]);
 
@@ -203,23 +212,54 @@ export function SimpleMonitorScreen({
 
         setLiveLines((prev) => [...parsed, ...prev].slice(0, 200));
         
-        // Push to log signal buffer based on levels - Aggressive amplification
+        // Push EXACTLY ONE value to the log signal buffer per stream update.
+        // This ensures the visual waveform moves at the exact same rate as the 
+        // crossfade audio engine (1 block = 1 poll interval), syncing sight and sound.
         setLogSignalBuffer(prev => {
-          const next = [...prev];
-          parsed.forEach(p => {
-            let val = 40;
-            if (p.level === "error") val = 140; 
-            else if (p.level === "warn") val = 100;
-            else if (p.level === "info") val = 60;
-            next.push(val);
-          });
-          return next.slice(-120);
+          let val = 20;
+          let heat = 0;
+          const cues = update.sonificationCues || [];
+          const anomalies = update.anomalyMarkers || [];
+          
+          if (cues.length > 0 || anomalies.length > 0) {
+            // Volume logic: based purely on sonification gain (how loud the output is)
+            const avgGain = cues.length > 0 ? cues.reduce((s, c) => s + c.gain, 0) / cues.length : 0;
+            // Map gain to visual height (0 to 140)
+            val = 20 + Math.min(120, avgGain * 150);
+            
+            // Heat logic: based purely on anomaly presence (triggers red color)
+            heat = anomalies.length > 0 ? 0.5 + Math.min(0.5, anomalies.length * 0.1) : 0;
+          } else {
+            // Low resting pulse if lines arrived but no cues/anomalies
+            val = 30 + Math.random() * 10;
+          }
+          
+          const newBuffer = [...prev];
+          // Shift the past leftwards
+          for (let i = 0; i < 60; i++) {
+             newBuffer[i] = prev[i + 1] || {val: 20, heat: 0};
+          }
+          // Insert the new live data EXACTLY at the center playhead
+          newBuffer[60] = { val, heat };
+          // The future (right side of playhead) is empty because we don't know future logs
+          for (let i = 61; i < 120; i++) {
+             newBuffer[i] = { val: 20, heat: 0 };
+          }
+          return newBuffer;
         });
       } else {
-        // Idle pulse when no data - More visible "heartbeat"
+        // Idle pulse when no data
         setLogSignalBuffer(prev => {
           const idle = (Math.sin(Date.now() / 300) * 8 + 18);
-          return [...prev.slice(1), idle];
+          const newBuffer = [...prev];
+          for (let i = 0; i < 60; i++) {
+             newBuffer[i] = prev[i + 1] || {val: 20, heat: 0};
+          }
+          newBuffer[60] = { val: idle, heat: 0 };
+          for (let i = 61; i < 120; i++) {
+             newBuffer[i] = { val: 20, heat: 0 };
+          }
+          return newBuffer;
         });
       }
     });
@@ -360,57 +400,81 @@ export function SimpleMonitorScreen({
               </div>
 
               <div className="waveform-dual-channel" style={{ height: `${160 * waveformScale}px` }}>
-              <div className="analysis-scanline-hd"></div>
+              <div className="analysis-scanline-hd" style={{ left: "50%", boxShadow: "0 0 10px #fff" }}></div>
 
-              {/* Top channel - TRACK Analysis (Real PCM Bins) */}
-              <div className="waveform-channel-hd">
-                <div className="channel-label-mini">
-                  <span className="label-blue">TRACK PCM</span>
-                  <span className="label-muted-hd">{trackName || "Master"}</span>
+              {/* Unified Rekordbox-style Waveform Channel */}
+              <div className="waveform-channel-hd" style={{ height: "100%", borderBottom: "none", position: "relative" }}>
+                <div className="channel-label-mini" style={{ zIndex: 30 }}>
+                  <span className="label-blue">HYBRID MONITOR</span>
+                  <span className="label-muted-hd">{trackName || "Live Ingestion"}</span>
                 </div>
-                <div className="waveform-container-hd">
-                  {(waveformBins && waveformBins.length > 0 
-                    ? waveformBins 
-                    : Array.from({ length: 120 }).map((_, i) => {
-                        // Deterministic "Unique" wave based on trackName string
-                        const seed = (trackName || "Master").split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-                        return (Math.sin(i * 0.15 + seed) * 20 + 40) + (Math.cos(i * 0.05 + seed) * 10);
-                      })
-                  ).slice(0, 120).map((bin, i) => (
-                    <div
-                      key={`track-${i}`}
-                      className="waveform-bar-hd blue"
-                      style={{
-                        height: `${Math.max(15, bin * 1.8)}%`,
-                        opacity: 0.5 + (bin / 100) * 0.5
-                      }}
-                    ></div>
-                  ))}
-                </div>
-              </div>
+                
+                <div className="waveform-container-hd" style={{ alignItems: "center", height: "100%", position: "relative", backgroundColor: "#000" }}>
+                  {/* ICU Monitor: Single Continuous Line */}
+                  <svg 
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      display: "block",
+                      minHeight: "150px"
+                    }}
+                    viewBox="0 0 119 100"
+                    preserveAspectRatio="none"
+                  >
+                    <defs>
+                      <linearGradient id="icuGradient" x1="0" y1="0" x2="1" y2="0">
+                        {logSignalBuffer.map((state, i) => {
+                          const offset1 = (i / 120) * 100;
+                          const offset2 = ((i + 1) / 120) * 100;
+                          const color = state.heat > 0.05 ? "#ff003c" : "#00c8ff";
+                          return (
+                            <React.Fragment key={`stop-${i}`}>
+                              <stop offset={`${offset1}%`} stopColor={color} />
+                              <stop offset={`${offset2}%`} stopColor={color} />
+                            </React.Fragment>
+                          );
+                        })}
+                      </linearGradient>
+                      <filter id="glow">
+                        <feGaussianBlur stdDeviation="0.8" result="coloredBlur"/>
+                        <feMerge>
+                          <feMergeNode in="coloredBlur"/>
+                          <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                      </filter>
+                    </defs>
 
-              {/* Bottom channel - LOG Activity (Reactive) */}
-              <div className="waveform-channel-hd mirrored">
-                <div className="channel-label-mini">
-                  <span className="label-cyan">LOG SIGNAL</span>
-                  <span className="label-muted-hd">LIVE INGESTION</span>
-                </div>
-                <div className="waveform-container-hd">
-                  {logSignalBuffer.map((val, i) => {
-                    const isHigh = val > 60;
-                    const isExtreme = val > 90;
-                    return (
-                      <div
-                        key={`log-${i}`}
-                        className={`waveform-bar-hd ${isExtreme ? 'red' : isHigh ? 'orange' : 'cyan'}`}
-                        style={{
-                          height: `${val}%`,
-                          opacity: isHigh ? 1 : 0.6,
-                          transition: "height 0.05s ease"
-                        }}
-                      ></div>
-                    );
-                  })}
+                    {/* Grid lines */}
+                    <path d="M 0 50 L 119 50" stroke="#00c8ff" strokeWidth="0.2" opacity="0.3" strokeDasharray="1,1" />
+                    <path d="M 0 25 L 119 25" stroke="#00c8ff" strokeWidth="0.1" opacity="0.2" />
+                    <path d="M 0 75 L 119 75" stroke="#00c8ff" strokeWidth="0.1" opacity="0.2" />
+
+                    <polyline 
+                      points={logSignalBuffer.map((state, i) => {
+                        const { val, heat } = state;
+                        
+                        if (heat > 0.01) {
+                          // Pure data representation: no fake sine waves or P-QRS-T complexes.
+                          // Maps the exact anomaly intensity (heat) to the height.
+                          // If there are fluctuating anomalies, it will draw a natural jagged mountain.
+                          // If it's a constant flood, it will correctly show a plateau.
+                          // We add a tiny bit of the raw audio volume (val) to keep it feeling 'alive'
+                          const liveVal = ((val - 20) * 0.1);
+                          return `${i},${50 - (heat * 35) + liveVal}`;
+                        } else {
+                          // Tiny resting ripples based on volume
+                          const ripple = ((val - 20) * 0.05);
+                          return `${i},${50 + ripple}`;
+                        }
+                      }).join(" ")}
+                      fill="none"
+                      stroke="url(#icuGradient)"
+                      strokeWidth="1.2"
+                      strokeLinejoin="miter"
+                      strokeLinecap="square"
+                      filter="url(#glow)"
+                    />
+                  </svg>
                 </div>
               </div>
 
