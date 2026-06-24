@@ -78,7 +78,6 @@ export function ImportRepositoryForm({
           minimumSeverity: "DEFAULT",
         },
       });
-      onLogConnectionSaved?.();
       setLabel("");
       setSourcePath("");
       setGcpProjectId("");
