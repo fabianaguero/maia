@@ -154,6 +154,18 @@ function getBasename(path: string | null | undefined): string {
   return segments[segments.length - 1] || path;
 }
 
+function truncateMiddle(value: string | null | undefined, maxLength = 56): string {
+  if (!value) {
+    return "unknown";
+  }
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  const half = Math.max(8, Math.floor((maxLength - 3) / 2));
+  return `${value.slice(0, half)}...${value.slice(-half)}`;
+}
+
 function safeElementScrollTo(
   element: HTMLDivElement,
   top: number,
@@ -1596,21 +1608,41 @@ export function SimpleMonitorScreen({
     drawSingleSidedWaveform(context, trackWaveSamples, width, trackBaseY, trackAmplitude * 0.9, glossGradient);
     context.globalCompositeOperation = "source-over";
 
-    const logLaneBed = context.createLinearGradient(0, logBaseY - logAmplitude, 0, logBaseY + 2);
-    logLaneBed.addColorStop(0, "rgba(255,176,84,0.04)");
-    logLaneBed.addColorStop(0.6, "rgba(255,196,92,0.08)");
-    logLaneBed.addColorStop(1, "rgba(72,215,255,0.08)");
+    const logLaneBed = context.createLinearGradient(0, logBaseY - logAmplitude, 0, logBaseY + 4);
+    logLaneBed.addColorStop(0, "rgba(255,176,84,0.03)");
+    logLaneBed.addColorStop(0.52, "rgba(255,196,92,0.06)");
+    logLaneBed.addColorStop(1, "rgba(72,215,255,0.12)");
     context.fillStyle = logLaneBed;
     context.fillRect(0, logBaseY - logAmplitude, width, logAmplitude + 4);
 
     const logSamples = logWaveOverlay.map((point) => Math.max(0.04, point.level * (0.2 + point.heat * 0.45)));
-    const logGradient = context.createLinearGradient(0, logBaseY - logAmplitude, 0, logBaseY + 2);
-    logGradient.addColorStop(0, "rgba(255,132,96,0.42)");
-    logGradient.addColorStop(0.6, "rgba(255,196,92,0.34)");
-    logGradient.addColorStop(1, "rgba(120,198,255,0.16)");
+    const logAreaGradient = context.createLinearGradient(0, logBaseY - logAmplitude, 0, logBaseY + 2);
+    logAreaGradient.addColorStop(0, "rgba(255,104,92,0.18)");
+    logAreaGradient.addColorStop(0.4, "rgba(255,188,84,0.22)");
+    logAreaGradient.addColorStop(1, "rgba(120,198,255,0.12)");
     context.globalCompositeOperation = "screen";
-    context.globalAlpha = 0.82;
-    drawSingleSidedWaveform(context, logSamples, width, logBaseY, logAmplitude * 0.88, logGradient);
+    context.globalAlpha = 0.44;
+    drawSingleSidedWaveform(context, logSamples, width, logBaseY, logAmplitude * 0.74, logAreaGradient);
+    context.globalCompositeOperation = "source-over";
+    context.globalAlpha = 0.96;
+    drawQuantizedLogBlocks(context, logWaveOverlay, width, logBaseY, logAmplitude * 0.96, 84);
+
+    const logAccentStroke = context.createLinearGradient(0, logBaseY - logAmplitude * 0.7, 0, logBaseY);
+    logAccentStroke.addColorStop(0, "rgba(255,238,216,0.56)");
+    logAccentStroke.addColorStop(1, "rgba(255,120,92,0.08)");
+    context.strokeStyle = logAccentStroke;
+    context.lineWidth = 1;
+    context.beginPath();
+    logSamples.forEach((value, index) => {
+      const x = (index / Math.max(1, logSamples.length - 1)) * width;
+      const y = logBaseY - value * logAmplitude * 0.72;
+      if (index === 0) {
+        context.moveTo(x, y);
+      } else {
+        context.lineTo(x, y);
+      }
+    });
+    context.stroke();
     context.globalCompositeOperation = "source-over";
 
     context.globalAlpha = 1;
@@ -1882,21 +1914,21 @@ export function SimpleMonitorScreen({
                       {activeTrack?.tags?.musicStyleLabel ? ` · ${activeTrack.tags.musicStyleLabel}` : ""}
                     </span>
                   </div>
-                  <div className="monitor-deck-meta">
-                    <div className="monitor-deck-legend" aria-label="Anomaly severity legend">
-                      <span className="monitor-deck-legend__item">
-                        <span className="monitor-deck-legend__swatch track" />
-                        TRACK
-                      </span>
-                      <span className="monitor-deck-legend__item">
-                        <span className="monitor-deck-legend__swatch warn" />
-                        WARN
-                      </span>
-                      <span className="monitor-deck-legend__item">
-                        <span className="monitor-deck-legend__swatch error" />
-                        ERROR
-                      </span>
-                    </div>
+                    <div className="monitor-deck-meta">
+                      <div className="monitor-deck-legend" aria-label="Anomaly severity legend">
+                        <span className="monitor-deck-legend__item">
+                          <span className="monitor-deck-legend__swatch track" />
+                          TRACK AUDIO
+                        </span>
+                        <span className="monitor-deck-legend__item">
+                          <span className="monitor-deck-legend__swatch warn" />
+                          LOG PRESSURE
+                        </span>
+                        <span className="monitor-deck-legend__item">
+                          <span className="monitor-deck-legend__swatch error" />
+                          ANOMALY
+                        </span>
+                      </div>
                     <span className="monitor-deck-meta__chip">
                       BPM {typeof deckBpm === "number" ? deckBpm.toFixed(0) : "--"}
                     </span>
@@ -1907,6 +1939,14 @@ export function SimpleMonitorScreen({
                       -{formatDeckTime(deckRemainingSeconds)}
                     </span>
                   </div>
+                </div>
+                <div className="monitor-deck-explainer" aria-hidden="true">
+                  <span className="monitor-deck-explainer__item">
+                    Upper lane: real track energy and phrase shape
+                  </span>
+                  <span className="monitor-deck-explainer__item">
+                    Lower lane: log intensity, warnings and anomaly bursts
+                  </span>
                 </div>
                 <div className="zoom-control-vertical">
                   <span className="zoom-label-vertical">H</span>
@@ -1938,7 +1978,7 @@ export function SimpleMonitorScreen({
                       onClick={(event) => seekTrackFromOverviewViewport(event.clientX)}
                     >
                       <canvas ref={overviewCanvasRef} className="monitor-overview-wave__canvas" />
-                      <span className="monitor-overview-wave__label">TRACK OVERVIEW</span>
+                      <span className="monitor-overview-wave__label">FULL TRACK MAP</span>
                       <div className="monitor-overview-wave__anomalies">
                         {overviewAnomalyMarkers.map((marker) => (
                           <button
@@ -2010,8 +2050,8 @@ export function SimpleMonitorScreen({
                     >
                       <canvas ref={waveformCanvasRef} className="monitor-wave-canvas" />
                       <div className="monitor-deck-lane-labels" aria-hidden="true">
-                        <span className="monitor-deck-lane-label track">TRACK</span>
-                        <span className="monitor-deck-lane-label log">LOG STREAM</span>
+                        <span className="monitor-deck-lane-label track">TRACK AUDIO</span>
+                        <span className="monitor-deck-lane-label log">LOG REACTIVITY</span>
                       </div>
                       <div className="monitor-deck-beat-grid" aria-hidden="true">
                         {deckBeatMarkers.map((marker) => (
@@ -2038,7 +2078,7 @@ export function SimpleMonitorScreen({
                       <div className="monitor-deck-footer__lane">
                         <span className="monitor-deck-footer__tag log">LOG STREAM</span>
                         <span className="monitor-deck-footer__text">
-                          {getBasename(session?.sourcePath)}
+                          {truncateMiddle(session?.sourcePath, 52)}
                         </span>
                       </div>
                     </div>
@@ -2155,12 +2195,15 @@ export function SimpleMonitorScreen({
                         <div key={session.id} className="session-row">
                           <div className="session-info">
                             <div className="session-row__top">
-                              <span className="session-name">{session.label || session.sourceTitle || "Untitled Session"}</span>
+                              <div className="session-row__identity">
+                                <span className="session-name">{session.label || session.sourceTitle || "Untitled Session"}</span>
+                                <span className="session-track-chip">{session.trackTitle || "No track"}</span>
+                              </div>
                               <span className={`session-status-chip ${session.status}`}>{session.status}</span>
                             </div>
-                            <span className="session-source">{session.sourcePath}</span>
+                            <span className="session-source">{truncateMiddle(session.sourcePath, 74)}</span>
                             <div className="session-row__meta">
-                              <span className="session-meta-chip">{session.trackTitle || "No track"}</span>
+                              <span className="session-meta-chip">{getBasename(session.sourcePath)}</span>
                               <span className="session-meta-text">Updated {formatSessionUpdatedAt(session.updatedAt)}</span>
                             </div>
                           </div>
