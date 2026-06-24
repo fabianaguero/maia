@@ -5,6 +5,9 @@ const log = getLogger("API.Repos");
 
 import type {
   ImportRepositoryInput,
+  LogSourceConnection,
+  StartLogSourceConnectionInput,
+  UpsertLogSourceConnectionInput,
   LiveLogStreamUpdate,
   RepositoryAnalysis,
   StartSessionInput,
@@ -36,6 +39,31 @@ export async function discoverRepositoryLogs(
 ): Promise<string[]> {
   return invokeOrFallback("discover_repository_logs", { path }, () => []);
 }
+
+export async function listLogSourceConnections(): Promise<LogSourceConnection[]> {
+  return invokeOrFallback("list_log_source_connections", undefined, () => []);
+}
+
+export async function upsertLogSourceConnection(
+  input: UpsertLogSourceConnectionInput,
+): Promise<LogSourceConnection> {
+  return invokeOrFallback("upsert_log_source_connection", { input }, () => {
+    throw new Error("Persistent log connections require the native desktop shell.");
+  });
+}
+
+export async function deleteLogSourceConnection(id: string): Promise<boolean> {
+  return invokeOrFallback("delete_log_source_connection", { id }, () => false);
+}
+
+export async function startLogSourceConnection(
+  input: StartLogSourceConnectionInput,
+): Promise<StreamSessionRecord> {
+  return invokeOrFallback("start_log_source_connection", { input }, () => {
+    throw new Error("Persistent log connections require the native desktop shell.");
+  });
+}
+
 
 export async function pickRepositoryDirectory(
   initialPath?: string,
