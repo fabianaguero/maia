@@ -78,6 +78,11 @@ interface DeckSelectedMarker {
   message: string;
 }
 
+interface OverviewAnomalyDensityPoint {
+  warning: number;
+  critical: number;
+}
+
 function getTrackTitle(track: LibraryTrack): string {
   return getLibraryTrackTitle(track);
 }
@@ -421,6 +426,41 @@ function sampleOverviewWave(
     const sourceIndex = Math.floor((index / Math.max(1, points - 1)) * denseBins.length);
     const value = denseBins[Math.min(sourceIndex, denseBins.length - 1)] ?? 0;
     return Math.max(0.05, Math.min(1, value / max));
+  });
+}
+
+function sampleOverviewAnomalyDensity(
+  markers: WaveformAnomalyMarker[],
+  points = 160,
+): OverviewAnomalyDensityPoint[] {
+  if (markers.length === 0) {
+    return Array.from({ length: points }, () => ({ warning: 0, critical: 0 }));
+  }
+
+  return Array.from({ length: points }, (_, index) => {
+    const progress = index / Math.max(1, points - 1);
+    let warning = 0;
+    let critical = 0;
+
+    markers.forEach((marker) => {
+      const distance = Math.abs(marker.progress - progress);
+      if (distance > 0.08) {
+        return;
+      }
+
+      const falloff = Math.max(0, 1 - distance / 0.08);
+      const weight = falloff * falloff * (0.45 + marker.severity * 0.55);
+      if (marker.severity >= 0.9) {
+        critical += weight;
+      } else {
+        warning += weight;
+      }
+    });
+
+    return {
+      warning: Math.min(1, warning),
+      critical: Math.min(1, critical),
+    };
   });
 }
 
@@ -1500,6 +1540,7 @@ export function SimpleMonitorScreen({
     activeBeatGrid,
   );
   const overviewWaveSamples = sampleOverviewWave(waveformBins ?? null);
+  const overviewAnomalyDensity = sampleOverviewAnomalyDensity(waveformAnomalies);
   const overviewWindowWidthPercent =
     typeof deckDurationSeconds === "number" && deckDurationSeconds > 0
       ? Math.min(100, (visibleWindowSeconds / deckDurationSeconds) * 100)
@@ -1573,14 +1614,19 @@ export function SimpleMonitorScreen({
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
     context.clearRect(0, 0, width, height);
 
-    const floorY = height - 2;
-    const amplitude = Math.max(8, height - 6);
-    const baseGlow = context.createLinearGradient(0, floorY - 8, 0, floorY + 4);
+    const trackFloorY = Math.max(14, height * 0.58);
+    const trackAmplitude = Math.max(7, trackFloorY - 6);
+    const anomalyBandTop = Math.max(trackFloorY + 3, height * 0.68);
+    const anomalyBandHeight = Math.max(6, height - anomalyBandTop - 3);
+    const baseGlow = context.createLinearGradient(0, trackFloorY - 8, 0, trackFloorY + 4);
     baseGlow.addColorStop(0, "rgba(72,215,255,0)");
     baseGlow.addColorStop(0.72, "rgba(72,215,255,0.18)");
     baseGlow.addColorStop(1, "rgba(72,215,255,0.04)");
     context.fillStyle = baseGlow;
-    context.fillRect(0, floorY - 8, width, 12);
+    context.fillRect(0, trackFloorY - 8, width, 12);
+
+    context.fillStyle = "rgba(255,255,255,0.05)";
+    context.fillRect(0, anomalyBandTop - 2, width, 1);
 
     const fillGradient = context.createLinearGradient(0, 0, width, 0);
     fillGradient.addColorStop(0, "rgba(255,120,92,0.82)");
@@ -1589,14 +1635,27 @@ export function SimpleMonitorScreen({
     fillGradient.addColorStop(0.5, "rgba(255,198,82,0.88)");
     fillGradient.addColorStop(0.68, "rgba(120,198,255,0.88)");
     fillGradient.addColorStop(1, "rgba(176,222,255,0.78)");
-    drawSingleSidedWaveform(context, overviewWaveSamples, width, floorY, amplitude, fillGradient);
-    drawWaveContour(context, overviewWaveSamples, width, floorY, amplitude, "rgba(255,255,255,0.38)", 1, "top");
+    drawSingleSidedWaveform(context, overviewWaveSamples, width, trackFloorY, trackAmplitude, fillGradient);
+    drawWaveContour(context, overviewWaveSamples, width, trackFloorY, trackAmplitude, "rgba(255,255,255,0.38)", 1, "top");
+
+    const densityWidth = width / Math.max(1, overviewAnomalyDensity.length);
+    overviewAnomalyDensity.forEach((point, index) => {
+      const x = index * densityWidth;
+      if (point.warning > 0) {
+        context.fillStyle = `rgba(255,196,92,${0.14 + point.warning * 0.32})`;
+        context.fillRect(x, anomalyBandTop, Math.max(2, densityWidth + 1), anomalyBandHeight);
+      }
+      if (point.critical > 0) {
+        context.fillStyle = `rgba(255,72,108,${0.16 + point.critical * 0.42})`;
+        context.fillRect(x, anomalyBandTop, Math.max(2, densityWidth + 1), anomalyBandHeight);
+      }
+    });
 
     waveformAnomalies.forEach((marker) => {
       const x = marker.progress * width;
       const markerHeight = Math.max(8, 6 + marker.severity * 10);
       const isCritical = marker.severity >= 0.9;
-      const glow = context.createLinearGradient(0, floorY - markerHeight - 8, 0, floorY + 2);
+      const glow = context.createLinearGradient(0, trackFloorY - markerHeight - 8, 0, anomalyBandTop + anomalyBandHeight);
       if (isCritical) {
         glow.addColorStop(0, "rgba(255,72,108,0)");
         glow.addColorStop(0.45, "rgba(255,72,108,0.2)");
@@ -1609,12 +1668,22 @@ export function SimpleMonitorScreen({
         glow.addColorStop(1, "rgba(255,196,92,0)");
       }
       context.fillStyle = glow;
-      context.fillRect(x - 2, floorY - markerHeight - 8, 4, markerHeight + 10);
+      context.fillRect(x - 2, trackFloorY - markerHeight - 8, 4, anomalyBandTop + anomalyBandHeight - (trackFloorY - markerHeight - 8));
 
       context.fillStyle = isCritical ? "rgba(255,72,108,0.62)" : "rgba(255,196,92,0.56)";
-      context.fillRect(x - 1, floorY - markerHeight, 2, markerHeight);
+      context.fillRect(x - 1, trackFloorY - markerHeight, 2, anomalyBandTop + anomalyBandHeight - (trackFloorY - markerHeight));
     });
-  }, [overviewWaveSamples, waveformAnomalies]);
+
+    if (selectedDeckMarker) {
+      const x = selectedDeckMarker.progress * width;
+      const beam = context.createLinearGradient(x - 12, 0, x + 12, 0);
+      beam.addColorStop(0, "rgba(255,255,255,0)");
+      beam.addColorStop(0.5, "rgba(255,255,255,0.9)");
+      beam.addColorStop(1, "rgba(255,255,255,0)");
+      context.fillStyle = beam;
+      context.fillRect(x - 12, 0, 24, height);
+    }
+  }, [overviewAnomalyDensity, overviewWaveSamples, selectedDeckMarker, waveformAnomalies]);
 
   useEffect(() => {
     if (SAFE_MONITOR_RUNTIME) {
@@ -2092,6 +2161,7 @@ export function SimpleMonitorScreen({
                     >
                       <canvas ref={overviewCanvasRef} className="monitor-overview-wave__canvas" />
                       <span className="monitor-overview-wave__label">FULL TRACK MAP</span>
+                      <span className="monitor-overview-wave__sublabel">ANOMALY HEAT</span>
                       <div className="monitor-overview-wave__anomalies">
                         {overviewAnomalyMarkers.map((marker) => (
                           <button
