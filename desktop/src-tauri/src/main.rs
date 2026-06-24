@@ -636,6 +636,10 @@ fn analyze_stream_chunk(
     })
 }
 
+fn should_ignore_process_line(line: &str) -> bool {
+    line.contains("SyntaxWarning") && line.contains("google-cloud-sdk")
+}
+
 fn spawn_process_reader<R>(session_id: String, registry: SessionRegistryState, reader: R)
 where
     R: Read + Send + 'static,
@@ -646,6 +650,9 @@ where
             let Ok(text) = line else {
                 break;
             };
+            if should_ignore_process_line(&text) {
+                continue;
+            }
             if append_lines_to_session(&registry, &session_id, vec![text]).is_err() {
                 break;
             }
@@ -664,6 +671,7 @@ fn spawn_process_session(
 
     let mut child = Command::new(program)
         .args(args)
+        .env("CLOUDSDK_PYTHON_SITEPACKAGES", "1")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -1877,6 +1885,7 @@ fn gcp_cloud_run_tail_command(connection: &LogSourceConnection) -> Result<Vec<St
     }
     Ok(vec![
         "gcloud".to_string(),
+        "alpha".to_string(),
         "logging".to_string(),
         "tail".to_string(),
         filter,
@@ -2576,7 +2585,9 @@ fn collect_audio_files_recursive(
             .and_then(|name| name.to_str())
             .map(|name| name.to_ascii_lowercase());
         if let Some(file_name) = file_name {
-            files.entry(file_name).or_insert_with(|| path.to_string_lossy().to_string());
+            files
+                .entry(file_name)
+                .or_insert_with(|| path.to_string_lossy().to_string());
         }
     }
 
@@ -2726,7 +2737,10 @@ fn export_composition_file(source_path: String, dest_path: String) -> Result<Str
 }
 
 fn execute_analyzer_request(request: &Value) -> Result<Value, String> {
-    eprintln!("[MAIA:Debug] execute_analyzer_request: action={:?}", request.get("action"));
+    eprintln!(
+        "[MAIA:Debug] execute_analyzer_request: action={:?}",
+        request.get("action")
+    );
     let repo_root = repo_root();
     let analyzer_src = repo_root.join("analyzer/src");
     let python_bin = analyzer_python(&repo_root);
@@ -3084,13 +3098,20 @@ fn read_log_stream_chunk(
         // Log Hub Mode: find the newest .log file
         let mut discovered_logs = Vec::new();
         let _ = find_logs_recursive(&resolved_source, &mut discovered_logs);
-        
-        if let Some(newest_log) = discovered_logs.into_iter()
+
+        if let Some(newest_log) = discovered_logs
+            .into_iter()
             .map(PathBuf::from)
             .filter(|p| p.is_file())
-            .max_by_key(|p| p.metadata().and_then(|m| m.modified()).ok()) {
-            
-            warnings.push(format!("Log Hub Mode: Monitoring newest activity in {}", newest_log.file_name().and_then(|n| n.to_str()).unwrap_or("log file")));
+            .max_by_key(|p| p.metadata().and_then(|m| m.modified()).ok())
+        {
+            warnings.push(format!(
+                "Log Hub Mode: Monitoring newest activity in {}",
+                newest_log
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("log file")
+            ));
             resolved_source = newest_log;
         } else {
             return Err(format!(
@@ -3114,7 +3135,7 @@ fn read_log_stream_chunk(
             )
         })?
         .len();
-    
+
     let start_offset = match cursor {
         Some(previous) if previous <= file_size => previous,
         Some(_) => {
@@ -3137,10 +3158,22 @@ fn read_log_stream_chunk(
         ));
     }
 
-    eprintln!("[MAIA:Rust] read_log_stream_chunk path={} cursor={:?} start_offset={} bytes_to_read={}", resolved_source.display(), cursor, start_offset, bytes_to_read);
-    
+    eprintln!(
+        "[MAIA:Rust] read_log_stream_chunk path={} cursor={:?} start_offset={} bytes_to_read={}",
+        resolved_source.display(),
+        cursor,
+        start_offset,
+        bytes_to_read
+    );
+
     if bytes_to_read == 0 {
-        return Ok((resolved_source.to_string_lossy().to_string(), start_offset, start_offset, String::new(), warnings));
+        return Ok((
+            resolved_source.to_string_lossy().to_string(),
+            start_offset,
+            start_offset,
+            String::new(),
+            warnings,
+        ));
     }
 
     let mut file = fs::File::open(&resolved_source).map_err(|error| {
