@@ -10,6 +10,7 @@ interface ImportRepositoryFormProps {
   busy: boolean;
   defaultDirectoryPath?: string;
   onImportRepository: (input: ImportRepositoryInput) => Promise<boolean>;
+  onLogConnectionSaved?: () => void;
 }
 
 const importModes: Array<{
@@ -42,6 +43,7 @@ export function ImportRepositoryForm({
   busy,
   defaultDirectoryPath,
   onImportRepository,
+  onLogConnectionSaved,
 }: ImportRepositoryFormProps) {
   const [sourceKind, setSourceKind] = useState<RepositorySourceKind>("directory");
   const [sourcePath, setSourcePath] = useState("");
@@ -97,6 +99,9 @@ export function ImportRepositoryForm({
     });
 
     if (imported) {
+      if (sourceKind === "file") {
+        onLogConnectionSaved?.();
+      }
       setLabel("");
       setSourcePath("");
     }
