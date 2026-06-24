@@ -13,11 +13,34 @@ import {
 import type { LogSourceConnection, StreamSessionPollResult } from "../../types/library";
 
 type ConnectionKind = "file_log" | "gcp_cloud_run";
+type ConnectionTestStatus = "idle" | "testing" | "success" | "error";
 
 const CONNECTION_KIND_LABEL: Record<ConnectionKind, string> = {
   file_log: "File tail",
   gcp_cloud_run: "GCP Cloud Run",
 };
+
+const GCLOUD_READY_MARKERS = [
+  "Initializing tail session",
+  "Waiting for new log lines",
+];
+const GCLOUD_ERROR_MARKERS = [
+  "ERROR:",
+  "You do not currently have an active account",
+  "Permission denied",
+];
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function isCloudSdkNoise(line: string): boolean {
+  return line.includes("SyntaxWarning") && line.includes("google-cloud-sdk");
+}
+
+function hasAnyMarker(lines: string[], markers: string[]): boolean {
+  return lines.some((line) => markers.some((marker) => line.includes(marker)));
+}
 
 function deriveFileConnectionLabel(path: string): string {
   const trimmed = path.trim();
@@ -55,7 +78,9 @@ export function ConnectionsScreen() {
       setError(null);
       setConnections(await listLogSourceConnections());
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : String(nextError));
+      setError(
+        nextError instanceof Error ? nextError.message : String(nextError),
+      );
     } finally {
       setLoading(false);
     }
@@ -97,7 +122,9 @@ export function ConnectionsScreen() {
       if (kind === "file_log") {
         const normalizedPath = sourcePath.trim();
         if (!normalizedPath) {
-          setError("Elegí un archivo de log para crear la conexión persistente.");
+          setError(
+            "Elegí un archivo de log para crear la conexión persistente.",
+          );
           return;
         }
 
@@ -138,7 +165,9 @@ export function ConnectionsScreen() {
 
       await refreshConnections();
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : String(nextError));
+      setError(
+        nextError instanceof Error ? nextError.message : String(nextError),
+      );
     } finally {
       setSaving(false);
     }
@@ -214,7 +243,9 @@ export function ConnectionsScreen() {
       await deleteLogSourceConnection(id);
       await refreshConnections();
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : String(nextError));
+      setError(
+        nextError instanceof Error ? nextError.message : String(nextError),
+      );
     }
   }
 
@@ -225,8 +256,9 @@ export function ConnectionsScreen() {
           <span className="connections-hero__kicker">Persistent adapters</span>
           <h2>Conexiones</h2>
           <p>
-            Configurá fuentes persistentes para monitoreo pasivo. Acá quedan guardados
-            los file tails y los conectores de GCP Cloud Run para reabrirlos después.
+            Configurá fuentes persistentes para monitoreo pasivo. Acá quedan
+            guardados los file tails y los conectores de GCP Cloud Run para
+            reabrirlos después.
           </p>
         </div>
         <div className="connections-hero__stats">
@@ -255,11 +287,16 @@ export function ConnectionsScreen() {
           <div className="form-intro">
             <h3>Nueva conexión</h3>
             <p className="support-copy">
-              Elegí el adapter persistente que querés dejar disponible en el monitor.
+              Elegí el adapter persistente que querés dejar disponible en el
+              monitor.
             </p>
           </div>
 
-          <div className="source-card-grid" role="tablist" aria-label="Connection kind">
+          <div
+            className="source-card-grid"
+            role="tablist"
+            aria-label="Connection kind"
+          >
             <button
               type="button"
               className={`source-card ${kind === "file_log" ? "active" : ""}`}
@@ -347,7 +384,11 @@ export function ConnectionsScreen() {
                 value={label}
                 className="maia-input"
                 onChange={(event) => setLabel(event.target.value)}
-                placeholder={kind === "file_log" ? "visits-service live tail" : "checkout-api · Cloud Run"}
+                placeholder={
+                  kind === "file_log"
+                    ? "visits-service live tail"
+                    : "checkout-api · Cloud Run"
+                }
               />
             </label>
           </div>
@@ -376,7 +417,8 @@ export function ConnectionsScreen() {
             <div>
               <h3>Saved connections</h3>
               <p className="support-copy">
-                Estas conexiones deberían quedar accesibles desde el monitor para abrirlas cuando quieras.
+                Estas conexiones deberían quedar accesibles desde el monitor
+                para abrirlas cuando quieras.
               </p>
             </div>
           </div>
@@ -390,7 +432,9 @@ export function ConnectionsScreen() {
             <div className="empty-state compact-empty">
               <Cable size={28} />
               <strong>No hay conexiones persistentes todavía</strong>
-              <p>Agregá un file tail o una conexión de Cloud Run para verla acá.</p>
+              <p>
+                Agregá un file tail o una conexión de Cloud Run para verla acá.
+              </p>
             </div>
           ) : (
             <ul className="asset-card-list">
@@ -400,23 +444,87 @@ export function ConnectionsScreen() {
                     <Cable size={18} />
                   </div>
                   <div className="asset-card-body">
-                    <strong className="asset-card-title">{connection.label}</strong>
+                    <strong className="asset-card-title">
+                      {connection.label}
+                    </strong>
                     <div className="asset-card-meta">
                       <span className="type-badge">
-                        {CONNECTION_KIND_LABEL[connection.kind as ConnectionKind] ?? connection.kind}
+                        {CONNECTION_KIND_LABEL[
+                          connection.kind as ConnectionKind
+                        ] ?? connection.kind}
                       </span>
-                      <span className={connection.enabled ? "bpm-badge" : "bpm-badge pending"}>
+                      <span
+                        className={
+                          connection.enabled ? "bpm-badge" : "bpm-badge pending"
+                        }
+                      >
                         {connection.enabled ? "Enabled" : "Disabled"}
                       </span>
                       {" · "}
                       {connection.adapterKind}
                       {activeConnectionId === connection.id ? " · Tailing now" : ""}
                     </div>
-                    <span className="asset-card-date" title={connection.sourceUri}>
+                    {testStatusById[connection.id] &&
+                    testStatusById[connection.id] !== "idle" ? (
+                      <div className="asset-card-meta">
+                        <span
+                          className={
+                            testStatusById[connection.id] === "success"
+                              ? "bpm-badge"
+                              : testStatusById[connection.id] === "error"
+                                ? "bpm-badge pending"
+                                : "type-badge"
+                          }
+                        >
+                          {testStatusById[connection.id] === "testing"
+                            ? "Testing…"
+                            : testStatusById[connection.id] === "success"
+                              ? "Connection OK"
+                              : "Test failed"}
+                        </span>
+                        <span>{testMessageById[connection.id]}</span>
+                      </div>
+                    ) : null}
+                    <span
+                      className="asset-card-date"
+                      title={connection.sourceUri}
+                    >
                       {connection.sourceUri}
                     </span>
                   </div>
                   <div className="asset-card-actions">
+                    {activeConnectionId === connection.id ? (
+                      <button
+                        type="button"
+                        className="card-action-delete"
+                        title="Stop live tail"
+                        onClick={() => void handleStopTail()}
+                      >
+                        <Square size={14} />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="card-action-delete"
+                        title="Start live tail"
+                        onClick={() => void handleStartTail(connection)}
+                        disabled={activeSessionId !== null}
+                      >
+                        <Play size={14} />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="card-action-delete"
+                      title="Test gcloud/file tail connection"
+                      onClick={() => void handleTestConnection(connection)}
+                      disabled={
+                        activeSessionId !== null ||
+                        testStatusById[connection.id] === "testing"
+                      }
+                    >
+                      Test
+                    </button>
                     {activeConnectionId === connection.id ? (
                       <button
                         type="button"

@@ -636,6 +636,10 @@ fn analyze_stream_chunk(
     })
 }
 
+fn should_ignore_process_line(line: &str) -> bool {
+    line.contains("SyntaxWarning") && line.contains("google-cloud-sdk")
+}
+
 fn spawn_process_reader<R>(session_id: String, registry: SessionRegistryState, reader: R)
 where
     R: Read + Send + 'static,
@@ -646,6 +650,9 @@ where
             let Ok(text) = line else {
                 break;
             };
+            if should_ignore_process_line(&text) {
+                continue;
+            }
             if append_lines_to_session(&registry, &session_id, vec![text]).is_err() {
                 break;
             }
