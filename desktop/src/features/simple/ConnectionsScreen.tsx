@@ -1,13 +1,4 @@
-import {
-  Cable,
-  FolderOpen,
-  Globe,
-  Play,
-  RefreshCw,
-  ScrollText,
-  Square,
-  Trash2,
-} from "lucide-react";
+import { Cable, FolderOpen, Globe, Play, RefreshCw, ScrollText, Square, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -19,10 +10,7 @@ import {
   stopStreamSession,
   upsertLogSourceConnection,
 } from "../../api/repositories";
-import type {
-  LogSourceConnection,
-  StreamSessionPollResult,
-} from "../../types/library";
+import type { LogSourceConnection, StreamSessionPollResult } from "../../types/library";
 
 type ConnectionKind = "file_log" | "gcp_cloud_run";
 type ConnectionTestStatus = "idle" | "testing" | "success" | "error";
@@ -74,17 +62,9 @@ export function ConnectionsScreen() {
   const [pickerBusy, setPickerBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [activeConnectionId, setActiveConnectionId] = useState<string | null>(
-    null,
-  );
+  const [activeConnectionId, setActiveConnectionId] = useState<string | null>(null);
   const [tailPreview, setTailPreview] = useState<string[]>([]);
   const [tailStatus, setTailStatus] = useState<string | null>(null);
-  const [testStatusById, setTestStatusById] = useState<
-    Record<string, ConnectionTestStatus>
-  >({});
-  const [testMessageById, setTestMessageById] = useState<
-    Record<string, string>
-  >({});
   const pollTimerRef = useRef<number | null>(null);
 
   const activeCount = useMemo(
@@ -193,30 +173,22 @@ export function ConnectionsScreen() {
     }
   }
 
+
   function scheduleConnectionPoll(sessionId: string) {
     pollTimerRef.current = window.setTimeout(async () => {
       try {
-        const result: StreamSessionPollResult =
-          await pollStreamSession(sessionId);
-        const visibleLines = result.parsedLines.filter(
-          (line) => !isCloudSdkNoise(line),
-        );
-        const gcloudReady = hasAnyMarker(visibleLines, GCLOUD_READY_MARKERS);
+        const result: StreamSessionPollResult = await pollStreamSession(sessionId);
         setTailStatus(
-          gcloudReady
-            ? "Connected to gcloud tail session. Waiting for Cloud Logging entries…"
-            : result.hasData
-              ? `${result.lineCount} lines · ${result.anomalyCount} anomalies · ${result.dominantLevel}`
-              : result.summary,
+          result.hasData
+            ? `${result.lineCount} lines · ${result.anomalyCount} anomalies · ${result.dominantLevel}`
+            : result.summary,
         );
-        if (visibleLines.length > 0) {
-          setTailPreview((current) => [...current, ...visibleLines].slice(-12));
+        if (result.parsedLines.length > 0) {
+          setTailPreview((current) => [...current, ...result.parsedLines].slice(-12));
         }
         scheduleConnectionPoll(sessionId);
       } catch (nextError) {
-        setError(
-          nextError instanceof Error ? nextError.message : String(nextError),
-        );
+        setError(nextError instanceof Error ? nextError.message : String(nextError));
         setActiveSessionId(null);
         setActiveConnectionId(null);
       }
@@ -245,9 +217,7 @@ export function ConnectionsScreen() {
       setTailStatus("Connected. Waiting for Cloud Logging entries…");
       scheduleConnectionPoll(sessionId);
     } catch (nextError) {
-      setError(
-        nextError instanceof Error ? nextError.message : String(nextError),
-      );
+      setError(nextError instanceof Error ? nextError.message : String(nextError));
       setActiveSessionId(null);
       setActiveConnectionId(null);
     }
@@ -263,78 +233,6 @@ export function ConnectionsScreen() {
     setActiveConnectionId(null);
     setTailStatus(null);
     if (sessionId) {
-      await stopStreamSession(sessionId);
-    }
-  }
-
-  async function handleTestConnection(connection: LogSourceConnection) {
-    const sessionId = `test-${connection.id}-${Date.now()}`;
-    setError(null);
-    setTestStatusById((current) => ({
-      ...current,
-      [connection.id]: "testing",
-    }));
-    setTestMessageById((current) => ({
-      ...current,
-      [connection.id]: "Testing gcloud tail startup…",
-    }));
-
-    try {
-      await startLogSourceConnection({
-        connectionId: connection.id,
-        sessionId,
-        startFromBeginning: false,
-      });
-
-      for (let attempt = 0; attempt < 5; attempt += 1) {
-        await sleep(1000);
-        const result = await pollStreamSession(sessionId);
-        const visibleLines = result.parsedLines.filter(
-          (line) => !isCloudSdkNoise(line),
-        );
-        if (hasAnyMarker(visibleLines, GCLOUD_ERROR_MARKERS)) {
-          throw new Error(
-            visibleLines.find((line) =>
-              hasAnyMarker([line], GCLOUD_ERROR_MARKERS),
-            ) ?? "gcloud tail failed",
-          );
-        }
-        if (
-          result.hasData ||
-          hasAnyMarker(visibleLines, GCLOUD_READY_MARKERS)
-        ) {
-          setTestStatusById((current) => ({
-            ...current,
-            [connection.id]: "success",
-          }));
-          setTestMessageById((current) => ({
-            ...current,
-            [connection.id]: "OK: gcloud tail session initialized.",
-          }));
-          return;
-        }
-      }
-
-      setTestStatusById((current) => ({
-        ...current,
-        [connection.id]: "success",
-      }));
-      setTestMessageById((current) => ({
-        ...current,
-        [connection.id]: "OK: process started; no log lines yet.",
-      }));
-    } catch (nextError) {
-      const message =
-        nextError instanceof Error ? nextError.message : String(nextError);
-      setTestStatusById((current) => ({
-        ...current,
-        [connection.id]: "error",
-      }));
-      setTestMessageById((current) => ({
-        ...current,
-        [connection.id]: message,
-      }));
-    } finally {
       await stopStreamSession(sessionId);
     }
   }
@@ -564,9 +462,7 @@ export function ConnectionsScreen() {
                       </span>
                       {" · "}
                       {connection.adapterKind}
-                      {activeConnectionId === connection.id
-                        ? " · Tailing now"
-                        : ""}
+                      {activeConnectionId === connection.id ? " · Tailing now" : ""}
                     </div>
                     {testStatusById[connection.id] &&
                     testStatusById[connection.id] !== "idle" ? (
@@ -597,6 +493,26 @@ export function ConnectionsScreen() {
                     </span>
                   </div>
                   <div className="asset-card-actions">
+                    {activeConnectionId === connection.id ? (
+                      <button
+                        type="button"
+                        className="card-action-delete"
+                        title="Stop live tail"
+                        onClick={() => void handleStopTail()}
+                      >
+                        <Square size={14} />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="card-action-delete"
+                        title="Start live tail"
+                        onClick={() => void handleStartTail(connection)}
+                        disabled={activeSessionId !== null}
+                      >
+                        <Play size={14} />
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="card-action-delete"
