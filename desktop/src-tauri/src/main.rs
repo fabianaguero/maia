@@ -1,9 +1,9 @@
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::cmp::Ordering;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
-use std::cmp::Ordering;
 use std::env;
 use std::fs;
 use std::hash::{Hash, Hasher};
@@ -376,7 +376,7 @@ struct LiveLogStreamUpdate {
 #[serde(rename_all = "camelCase")]
 pub struct StreamSessionRecord {
     pub session_id: String,
-    pub adapter_kind: String,  // file | process | websocket | http-poll | journald
+    pub adapter_kind: String, // file | process | websocket | http-poll | journald
     pub source: String,
     pub label: Option<String>,
     pub created_at: String,
@@ -438,6 +438,41 @@ struct StartSessionInput {
     source: String,
     label: Option<String>,
     command: Option<Vec<String>>,
+    start_from_beginning: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LogSourceConnection {
+    pub id: String,
+    pub kind: String,
+    pub label: String,
+    pub source_uri: String,
+    pub enabled: bool,
+    pub adapter_kind: String,
+    pub config: Value,
+    pub last_cursor: u64,
+    pub last_seen_at: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UpsertLogSourceConnectionInput {
+    id: Option<String>,
+    kind: String,
+    label: String,
+    source_uri: Option<String>,
+    enabled: Option<bool>,
+    config: Value,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StartLogSourceConnectionInput {
+    connection_id: String,
+    session_id: String,
     start_from_beginning: Option<bool>,
 }
 
@@ -601,11 +636,8 @@ fn analyze_stream_chunk(
     })
 }
 
-fn spawn_process_reader<R>(
-    session_id: String,
-    registry: SessionRegistryState,
-    reader: R,
-) where
+fn spawn_process_reader<R>(session_id: String, registry: SessionRegistryState, reader: R)
+where
     R: Read + Send + 'static,
 {
     std::thread::spawn(move || {
@@ -688,7 +720,10 @@ struct CreateSessionInput {
     mode: String,
 }
 
-fn db_create_session(conn: &Connection, input: &CreateSessionInput) -> Result<PersistedSession, String> {
+fn db_create_session(
+    conn: &Connection,
+    input: &CreateSessionInput,
+) -> Result<PersistedSession, String> {
     let now = now_iso();
     conn.execute(
         "INSERT OR REPLACE INTO sessions (id, label, source_id, track_id, playlist_id, adapter_kind, mode, status, file_cursor, total_polls, total_lines, total_anomalies, last_bpm, created_at, updated_at)
@@ -724,7 +759,8 @@ fn db_get_session(conn: &Connection, id: &str) -> Result<PersistedSession, Strin
          WHERE s.id = ?1",
         rusqlite::params![id],
         row_to_persisted_session,
-    ).map_err(|e| format!("Session not found: {e}"))
+    )
+    .map_err(|e| format!("Session not found: {e}"))
 }
 
 fn row_to_persisted_session(row: &rusqlite::Row<'_>) -> rusqlite::Result<PersistedSession> {
@@ -753,8 +789,9 @@ fn row_to_persisted_session(row: &rusqlite::Row<'_>) -> rusqlite::Result<Persist
 }
 
 fn db_list_sessions(conn: &Connection) -> Result<Vec<PersistedSession>, String> {
-    let mut stmt = conn.prepare(
-        "SELECT s.id, s.label, s.source_id,
+    let mut stmt = conn
+        .prepare(
+            "SELECT s.id, s.label, s.source_id,
                 ma_src.title, ma_src.source_path, ma_src.source_kind,
                 s.track_id, ma_trk.title,
                 s.playlist_id, p.name,
@@ -766,9 +803,11 @@ fn db_list_sessions(conn: &Connection) -> Result<Vec<PersistedSession>, String> 
          LEFT JOIN musical_assets ma_trk ON ma_trk.id = s.track_id
          LEFT JOIN base_track_playlists p ON p.id = s.playlist_id
          ORDER BY s.updated_at DESC",
-    ).map_err(|e| format!("Failed to prepare session list: {e}"))?;
+        )
+        .map_err(|e| format!("Failed to prepare session list: {e}"))?;
 
-    let rows = stmt.query_map([], row_to_persisted_session)
+    let rows = stmt
+        .query_map([], row_to_persisted_session)
         .map_err(|e| format!("Failed to query sessions: {e}"))?;
 
     rows.map(|r| r.map_err(|e| format!("Row error: {e}")))
@@ -779,7 +818,8 @@ fn db_update_session_status(conn: &Connection, id: &str, status: &str) -> Result
     conn.execute(
         "UPDATE sessions SET status = ?1, updated_at = ?2 WHERE id = ?3",
         rusqlite::params![status, now_iso(), id],
-    ).map_err(|e| format!("Failed to update session status: {e}"))?;
+    )
+    .map_err(|e| format!("Failed to update session status: {e}"))?;
     Ok(())
 }
 
@@ -801,13 +841,22 @@ fn db_update_session_cursor(
             status = 'active',
             updated_at = ?5
          WHERE id = ?6",
-        rusqlite::params![cursor as i64, lines_delta as i64, anomalies_delta as i64, last_bpm, now_iso(), id],
-    ).map_err(|e| format!("Failed to update session cursor: {e}"))?;
+        rusqlite::params![
+            cursor as i64,
+            lines_delta as i64,
+            anomalies_delta as i64,
+            last_bpm,
+            now_iso(),
+            id
+        ],
+    )
+    .map_err(|e| format!("Failed to update session cursor: {e}"))?;
     Ok(())
 }
 
 fn db_delete_session(conn: &Connection, id: &str) -> Result<bool, String> {
-    let n = conn.execute("DELETE FROM sessions WHERE id = ?1", rusqlite::params![id])
+    let n = conn
+        .execute("DELETE FROM sessions WHERE id = ?1", rusqlite::params![id])
         .map_err(|e| format!("Failed to delete session: {e}"))?;
     Ok(n > 0)
 }
@@ -895,7 +944,10 @@ struct InsertSessionEventInput {
     warnings_json: String,
 }
 
-fn db_insert_session_event(conn: &Connection, input: &InsertSessionEventInput) -> Result<i64, String> {
+fn db_insert_session_event(
+    conn: &Connection,
+    input: &InsertSessionEventInput,
+) -> Result<i64, String> {
     conn.execute(
         "INSERT INTO session_events (session_id, poll_index, captured_at, from_offset, to_offset,
             summary, suggested_bpm, confidence, dominant_level, line_count, anomaly_count,
@@ -914,41 +966,49 @@ fn db_insert_session_event(conn: &Connection, input: &InsertSessionEventInput) -
     Ok(conn.last_insert_rowid())
 }
 
-fn db_list_session_events(conn: &Connection, session_id: &str) -> Result<Vec<SessionEvent>, String> {
-    let mut stmt = conn.prepare(
-        "SELECT id, session_id, poll_index, captured_at, from_offset, to_offset,
+fn db_list_session_events(
+    conn: &Connection,
+    session_id: &str,
+) -> Result<Vec<SessionEvent>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, session_id, poll_index, captured_at, from_offset, to_offset,
                 summary, suggested_bpm, confidence, dominant_level, line_count, anomaly_count,
                 level_counts_json, anomaly_markers_json, top_components_json,
                 sonification_cues_json, parsed_lines_json, warnings_json
          FROM session_events
          WHERE session_id = ?1
          ORDER BY poll_index ASC",
-    ).map_err(|e| format!("Failed to prepare session events query: {e}"))?;
+        )
+        .map_err(|e| format!("Failed to prepare session events query: {e}"))?;
 
-    let rows = stmt.query_map(rusqlite::params![session_id], |row| {
-        Ok(SessionEvent {
-            id: row.get(0)?,
-            session_id: row.get(1)?,
-            poll_index: row.get::<_, i64>(2).map(|v| v as u64)?,
-            captured_at: row.get(3)?,
-            from_offset: row.get::<_, i64>(4).map(|v| v as u64)?,
-            to_offset: row.get::<_, i64>(5).map(|v| v as u64)?,
-            summary: row.get(6)?,
-            suggested_bpm: row.get(7)?,
-            confidence: row.get(8)?,
-            dominant_level: row.get(9)?,
-            line_count: row.get::<_, i64>(10).map(|v| v as u64)?,
-            anomaly_count: row.get::<_, i64>(11).map(|v| v as u64)?,
-            level_counts_json: row.get(12)?,
-            anomaly_markers_json: row.get(13)?,
-            top_components_json: row.get(14)?,
-            sonification_cues_json: row.get(15)?,
-            parsed_lines_json: row.get(16)?,
-            warnings_json: row.get(17)?,
+    let rows = stmt
+        .query_map(rusqlite::params![session_id], |row| {
+            Ok(SessionEvent {
+                id: row.get(0)?,
+                session_id: row.get(1)?,
+                poll_index: row.get::<_, i64>(2).map(|v| v as u64)?,
+                captured_at: row.get(3)?,
+                from_offset: row.get::<_, i64>(4).map(|v| v as u64)?,
+                to_offset: row.get::<_, i64>(5).map(|v| v as u64)?,
+                summary: row.get(6)?,
+                suggested_bpm: row.get(7)?,
+                confidence: row.get(8)?,
+                dominant_level: row.get(9)?,
+                line_count: row.get::<_, i64>(10).map(|v| v as u64)?,
+                anomaly_count: row.get::<_, i64>(11).map(|v| v as u64)?,
+                level_counts_json: row.get(12)?,
+                anomaly_markers_json: row.get(13)?,
+                top_components_json: row.get(14)?,
+                sonification_cues_json: row.get(15)?,
+                parsed_lines_json: row.get(16)?,
+                warnings_json: row.get(17)?,
+            })
         })
-    }).map_err(|e| format!("Failed to query session events: {e}"))?;
+        .map_err(|e| format!("Failed to query session events: {e}"))?;
 
-    rows.map(|r| r.map_err(|e| format!("Row error: {e}"))).collect()
+    rows.map(|r| r.map_err(|e| format!("Row error: {e}")))
+        .collect()
 }
 
 fn row_to_session_bookmark(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionBookmark> {
@@ -956,9 +1016,7 @@ fn row_to_session_bookmark(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionB
         id: row.get(0)?,
         session_id: row.get(1)?,
         replay_window_index: row.get::<_, i64>(2).map(|v| v as u64)?,
-        event_index: row
-            .get::<_, Option<i64>>(3)?
-            .map(|value| value as u64),
+        event_index: row.get::<_, Option<i64>>(3)?.map(|value| value as u64),
         label: row.get(4)?,
         note: row.get(5)?,
         bookmark_tag: row.get(6)?,
@@ -1011,7 +1069,11 @@ fn db_upsert_session_bookmark(
             input.event_index.map(|value| value as i64),
             input.label.trim(),
             input.note.trim(),
-            input.bookmark_tag.as_ref().map(|value| value.trim()).filter(|value| !value.is_empty()),
+            input
+                .bookmark_tag
+                .as_ref()
+                .map(|value| value.trim())
+                .filter(|value| !value.is_empty()),
             input
                 .suggested_style_profile_id
                 .as_ref()
@@ -1061,7 +1123,8 @@ fn db_list_session_bookmarks(
         .query_map(rusqlite::params![session_id], row_to_session_bookmark)
         .map_err(|e| format!("Failed to query session bookmarks: {e}"))?;
 
-    rows.map(|r| r.map_err(|e| format!("Row error: {e}"))).collect()
+    rows.map(|r| r.map_err(|e| format!("Row error: {e}")))
+        .collect()
 }
 
 fn db_delete_session_bookmark(conn: &Connection, id: i64) -> Result<bool, String> {
@@ -1469,12 +1532,21 @@ fn poll_log_stream(
     cursor: Option<u64>,
     max_bytes: Option<u64>,
 ) -> Result<LiveLogStreamUpdate, String> {
-    eprintln!("[MAIA:Rust] poll_log_stream path={} cursor={:?}", source_path, cursor);
+    eprintln!(
+        "[MAIA:Rust] poll_log_stream path={} cursor={:?}",
+        source_path, cursor
+    );
     let (resolved_path, from_offset, to_offset, chunk, local_warnings) =
         read_log_stream_chunk(&source_path, cursor, max_bytes)?;
 
     let has_data = !chunk.trim().is_empty();
-    eprintln!("[MAIA:Rust] poll_log_stream has_data={} chunk_len={} from={} to={}", has_data, chunk.len(), from_offset, to_offset);
+    eprintln!(
+        "[MAIA:Rust] poll_log_stream has_data={} chunk_len={} from={} to={}",
+        has_data,
+        chunk.len(),
+        from_offset,
+        to_offset
+    );
     let mut warnings = local_warnings;
 
     if !has_data {
@@ -1538,8 +1610,13 @@ fn poll_log_stream(
     let metrics = &payload.musical_asset.metrics;
     let cues: Vec<LiveLogCue> = decode_json_metric(metrics, "sonificationCues")?;
     let parsed_lines = preview_stream_lines(&chunk);
-    eprintln!("[MAIA:Rust] poll_log_stream → lines={} anomalies={} cues={} bpm={:?}",
-        metric_i64(metrics, "lineCount"), metric_i64(metrics, "anomalyCount"), cues.len(), payload.musical_asset.suggested_bpm);
+    eprintln!(
+        "[MAIA:Rust] poll_log_stream → lines={} anomalies={} cues={} bpm={:?}",
+        metric_i64(metrics, "lineCount"),
+        metric_i64(metrics, "anomalyCount"),
+        cues.len(),
+        payload.musical_asset.suggested_bpm
+    );
     Ok(LiveLogStreamUpdate {
         source_path: resolved_path,
         from_offset,
@@ -1564,6 +1641,282 @@ fn poll_log_stream(
 }
 
 // ---------------------------------------------------------------------------
+// Persistent log source connections (SQLite-backed)
+// ---------------------------------------------------------------------------
+
+fn config_string(config: &Value, key: &str) -> Option<String> {
+    config
+        .get(key)
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+        .map(str::to_string)
+}
+
+fn normalize_log_source_connection(
+    input: &UpsertLogSourceConnectionInput,
+) -> Result<(String, String, String, Value), String> {
+    let kind = input.kind.trim();
+    let label = input.label.trim();
+    if label.is_empty() {
+        return Err("Connection label is required.".to_string());
+    }
+
+    match kind {
+        "file_log" => {
+            let path = input
+                .source_uri
+                .as_deref()
+                .or_else(|| input.config.get("path").and_then(Value::as_str))
+                .unwrap_or("")
+                .trim();
+            if path.is_empty() {
+                return Err("File log connections require a sourceUri or config.path.".to_string());
+            }
+            let resolved = PathBuf::from(path);
+            if !resolved.is_file() {
+                return Err(format!(
+                    "Log file does not exist or is not a file: {}",
+                    resolved.display()
+                ));
+            }
+            let source_uri = resolved.to_string_lossy().to_string();
+            let mut config = input.config.clone();
+            if !config.is_object() {
+                config = json!({});
+            }
+            if let Some(map) = config.as_object_mut() {
+                map.insert("path".to_string(), Value::String(source_uri.clone()));
+                map.insert(
+                    "standard".to_string(),
+                    Value::String("filesystem-tail".to_string()),
+                );
+            }
+            Ok((
+                "file_log".to_string(),
+                "file".to_string(),
+                source_uri,
+                config,
+            ))
+        }
+        "gcp_cloud_run" => {
+            let project_id = config_string(&input.config, "projectId")
+                .ok_or_else(|| "GCP Cloud Run connections require config.projectId.".to_string())?;
+            let service_name = config_string(&input.config, "serviceName").ok_or_else(|| {
+                "GCP Cloud Run connections require config.serviceName.".to_string()
+            })?;
+            let region = config_string(&input.config, "region");
+            let source_uri = input.source_uri.clone().unwrap_or_else(|| match &region {
+                Some(region) => format!("gcp-cloud-run://{project_id}/{region}/{service_name}"),
+                None => format!("gcp-cloud-run://{project_id}/{service_name}"),
+            });
+            let mut config = input.config.clone();
+            if !config.is_object() {
+                config = json!({});
+            }
+            if let Some(map) = config.as_object_mut() {
+                map.insert("projectId".to_string(), Value::String(project_id));
+                map.insert("serviceName".to_string(), Value::String(service_name));
+                if let Some(region) = region {
+                    map.insert("region".to_string(), Value::String(region));
+                }
+                map.insert(
+                    "standard".to_string(),
+                    Value::String("gcloud-logging-tail".to_string()),
+                );
+            }
+            Ok((
+                "gcp_cloud_run".to_string(),
+                "process".to_string(),
+                source_uri,
+                config,
+            ))
+        }
+        _ => Err("Unsupported log connection kind. Use file_log or gcp_cloud_run.".to_string()),
+    }
+}
+
+fn row_to_log_source_connection(row: &rusqlite::Row<'_>) -> rusqlite::Result<LogSourceConnection> {
+    let config_json: String = row.get(6)?;
+    let config = serde_json::from_str(&config_json).unwrap_or_else(|_| json!({}));
+    let last_cursor_i64: i64 = row.get(7)?;
+    Ok(LogSourceConnection {
+        id: row.get(0)?,
+        kind: row.get(1)?,
+        label: row.get(2)?,
+        source_uri: row.get(3)?,
+        enabled: row.get::<_, i64>(4)? == 1,
+        adapter_kind: row.get(5)?,
+        config,
+        last_cursor: last_cursor_i64.max(0) as u64,
+        last_seen_at: row.get(8)?,
+        created_at: row.get(9)?,
+        updated_at: row.get(10)?,
+    })
+}
+
+fn db_list_log_source_connections(conn: &Connection) -> Result<Vec<LogSourceConnection>, String> {
+    let mut stmt = conn.prepare(
+        "SELECT id, kind, label, source_uri, enabled, adapter_kind, config_json, last_cursor, last_seen_at, created_at, updated_at
+         FROM log_source_connections ORDER BY updated_at DESC"
+    ).map_err(|e| format!("Failed to query log source connections: {e}"))?;
+    let rows = stmt
+        .query_map([], row_to_log_source_connection)
+        .map_err(|e| format!("Failed to read log source connections: {e}"))?;
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("Failed to decode log source connection: {e}"))
+}
+
+fn db_get_log_source_connection(
+    conn: &Connection,
+    id: &str,
+) -> Result<LogSourceConnection, String> {
+    conn.query_row(
+        "SELECT id, kind, label, source_uri, enabled, adapter_kind, config_json, last_cursor, last_seen_at, created_at, updated_at
+         FROM log_source_connections WHERE id = ?1",
+        params![id],
+        row_to_log_source_connection,
+    ).map_err(|e| format!("Log source connection not found: {e}"))
+}
+
+fn db_upsert_log_source_connection(
+    conn: &Connection,
+    input: &UpsertLogSourceConnectionInput,
+) -> Result<LogSourceConnection, String> {
+    let (kind, adapter_kind, source_uri, config) = normalize_log_source_connection(input)?;
+    let now = now_iso();
+    let id = input
+        .id
+        .clone()
+        .filter(|id| !id.trim().is_empty())
+        .unwrap_or_else(|| {
+            format!(
+                "log-source-{:x}",
+                stable_hash(&format!("{}:{}:{}", kind, source_uri, now_millis()))
+            )
+        });
+    let existing_created_at: Option<String> = conn
+        .query_row(
+            "SELECT created_at FROM log_source_connections WHERE id = ?1 OR source_uri = ?2",
+            params![id, source_uri],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|e| format!("Failed to inspect existing log connection: {e}"))?;
+    let created_at = existing_created_at.unwrap_or_else(|| now.clone());
+    let enabled = input.enabled.unwrap_or(true);
+    let config_json = serde_json::to_string(&config)
+        .map_err(|e| format!("Failed to encode log connection config: {e}"))?;
+    conn.execute(
+        "INSERT INTO log_source_connections (id, kind, label, source_uri, enabled, adapter_kind, config_json, last_cursor, last_seen_at, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, NULL, ?8, ?9)
+         ON CONFLICT(source_uri) DO UPDATE SET
+           kind = excluded.kind,
+           label = excluded.label,
+           enabled = excluded.enabled,
+           adapter_kind = excluded.adapter_kind,
+           config_json = excluded.config_json,
+           updated_at = excluded.updated_at",
+        params![id, kind, input.label.trim(), source_uri, if enabled {1} else {0}, adapter_kind, config_json, created_at, now],
+    ).map_err(|e| format!("Failed to save log source connection: {e}"))?;
+    conn.query_row(
+        "SELECT id, kind, label, source_uri, enabled, adapter_kind, config_json, last_cursor, last_seen_at, created_at, updated_at
+         FROM log_source_connections WHERE source_uri = ?1",
+        params![source_uri],
+        row_to_log_source_connection,
+    ).map_err(|e| format!("Failed to reload log source connection: {e}"))
+}
+
+fn gcp_cloud_run_tail_command(connection: &LogSourceConnection) -> Result<Vec<String>, String> {
+    let project_id = config_string(&connection.config, "projectId")
+        .ok_or_else(|| "Missing projectId in GCP connection config.".to_string())?;
+    let service_name = config_string(&connection.config, "serviceName")
+        .ok_or_else(|| "Missing serviceName in GCP connection config.".to_string())?;
+    let mut filter = format!(
+        "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"{}\"",
+        service_name.replace('"', "\\\"")
+    );
+    if let Some(region) = config_string(&connection.config, "region") {
+        filter.push_str(&format!(
+            " AND resource.labels.location=\"{}\"",
+            region.replace('"', "\\\"")
+        ));
+    }
+    if let Some(severity) = config_string(&connection.config, "minimumSeverity") {
+        filter.push_str(&format!(
+            " AND severity>=\"{}\"",
+            severity.replace('"', "\\\"")
+        ));
+    }
+    Ok(vec![
+        "gcloud".to_string(),
+        "logging".to_string(),
+        "tail".to_string(),
+        filter,
+        "--project".to_string(),
+        project_id,
+        "--format".to_string(),
+        "json".to_string(),
+    ])
+}
+
+#[tauri::command]
+fn list_log_source_connections(app_handle: AppHandle) -> Result<Vec<LogSourceConnection>, String> {
+    let conn = open_database(&app_handle)?;
+    db_list_log_source_connections(&conn)
+}
+
+#[tauri::command]
+fn upsert_log_source_connection(
+    app_handle: AppHandle,
+    input: UpsertLogSourceConnectionInput,
+) -> Result<LogSourceConnection, String> {
+    let conn = open_database(&app_handle)?;
+    db_upsert_log_source_connection(&conn, &input)
+}
+
+#[tauri::command]
+fn delete_log_source_connection(app_handle: AppHandle, id: String) -> Result<bool, String> {
+    let conn = open_database(&app_handle)?;
+    let changed = conn
+        .execute(
+            "DELETE FROM log_source_connections WHERE id = ?1",
+            params![id],
+        )
+        .map_err(|e| format!("Failed to delete log source connection: {e}"))?;
+    Ok(changed > 0)
+}
+
+#[tauri::command]
+fn start_log_source_connection(
+    app_handle: AppHandle,
+    input: StartLogSourceConnectionInput,
+    registry: State<'_, SessionRegistryState>,
+) -> Result<StreamSessionRecord, String> {
+    let conn = open_database(&app_handle)?;
+    let connection = db_get_log_source_connection(&conn, &input.connection_id)?;
+    if !connection.enabled {
+        return Err("Log source connection is disabled.".to_string());
+    }
+    let command = if connection.kind == "gcp_cloud_run" {
+        Some(gcp_cloud_run_tail_command(&connection)?)
+    } else {
+        None
+    };
+    start_stream_session(
+        StartSessionInput {
+            session_id: input.session_id,
+            adapter_kind: connection.adapter_kind.clone(),
+            source: connection.source_uri.clone(),
+            label: Some(connection.label.clone()),
+            command,
+            start_from_beginning: input.start_from_beginning,
+        },
+        registry,
+    )
+}
+
+// ---------------------------------------------------------------------------
 // Stream session commands
 // ---------------------------------------------------------------------------
 
@@ -1572,7 +1925,10 @@ fn start_stream_session(
     input: StartSessionInput,
     registry: State<'_, SessionRegistryState>,
 ) -> Result<StreamSessionRecord, String> {
-    eprintln!("[MAIA:Rust] start_stream_session id={} adapter={} source={}", input.session_id, input.adapter_kind, input.source);
+    eprintln!(
+        "[MAIA:Rust] start_stream_session id={} adapter={} source={}",
+        input.session_id, input.adapter_kind, input.source
+    );
     let session_id = input.session_id.trim().to_string();
     if session_id.is_empty() {
         return Err("sessionId must not be empty".to_string());
@@ -1589,7 +1945,8 @@ fn start_stream_session(
         created_at: now_iso(),
         last_polled_at: None,
         total_polls: 0,
-        file_cursor: if input.adapter_kind == "file" && input.start_from_beginning.unwrap_or(false) {
+        file_cursor: if input.adapter_kind == "file" && input.start_from_beginning.unwrap_or(false)
+        {
             Some(0)
         } else {
             None
@@ -1597,7 +1954,9 @@ fn start_stream_session(
     };
 
     {
-        let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+        let mut reg = registry
+            .lock()
+            .map_err(|e| format!("Registry lock failed: {e}"))?;
         reg.sessions
             .insert(session_id.clone(), StreamSessionState::new(record.clone()));
     }
@@ -1620,19 +1979,25 @@ fn start_stream_session(
         let child = match spawn_process_session(registry_handle, session_id.clone(), cmd) {
             Ok(child) => child,
             Err(error) => {
-                let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+                let mut reg = registry
+                    .lock()
+                    .map_err(|e| format!("Registry lock failed: {e}"))?;
                 reg.sessions.remove(&session_id);
                 return Err(error);
             }
         };
-        let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+        let mut reg = registry
+            .lock()
+            .map_err(|e| format!("Registry lock failed: {e}"))?;
         if let Some(session) = reg.sessions.get_mut(&session_id) {
             session.process = Some(child);
         }
     } else if input.adapter_kind == "process" {
         let command = input.command.clone().unwrap_or_default();
         if command.is_empty() {
-            let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+            let mut reg = registry
+                .lock()
+                .map_err(|e| format!("Registry lock failed: {e}"))?;
             reg.sessions.remove(&session_id);
             return Err("command list required for process adapter".to_string());
         }
@@ -1641,13 +2006,17 @@ fn start_stream_session(
         let child = match spawn_process_session(registry_handle, session_id.clone(), command) {
             Ok(child) => child,
             Err(error) => {
-                let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+                let mut reg = registry
+                    .lock()
+                    .map_err(|e| format!("Registry lock failed: {e}"))?;
                 reg.sessions.remove(&session_id);
                 return Err(error);
             }
         };
 
-        let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+        let mut reg = registry
+            .lock()
+            .map_err(|e| format!("Registry lock failed: {e}"))?;
         if let Some(session) = reg.sessions.get_mut(&session_id) {
             session.process = Some(child);
         }
@@ -1661,7 +2030,9 @@ fn stop_stream_session(
     session_id: String,
     registry: State<'_, SessionRegistryState>,
 ) -> Result<bool, String> {
-    let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+    let mut reg = registry
+        .lock()
+        .map_err(|e| format!("Registry lock failed: {e}"))?;
     let mut removed = reg.sessions.remove(&session_id);
     if let Some(session) = removed.as_mut() {
         if let Some(process) = session.process.as_mut() {
@@ -1676,9 +2047,14 @@ fn stop_stream_session(
 fn list_stream_sessions(
     registry: State<'_, SessionRegistryState>,
 ) -> Result<Vec<StreamSessionRecord>, String> {
-    let reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
-    let mut sessions: Vec<StreamSessionRecord> =
-        reg.sessions.values().map(|state| state.record.clone()).collect();
+    let reg = registry
+        .lock()
+        .map_err(|e| format!("Registry lock failed: {e}"))?;
+    let mut sessions: Vec<StreamSessionRecord> = reg
+        .sessions
+        .values()
+        .map(|state| state.record.clone())
+        .collect();
     sessions.sort_by(|a, b| a.created_at.cmp(&b.created_at));
     Ok(sessions)
 }
@@ -1786,8 +2162,12 @@ fn poll_stream_session(
 ) -> Result<StreamSessionPollResult, String> {
     eprintln!("[MAIA:Rust] poll_stream_session id={}", session_id);
     let (adapter_kind, source, cursor) = {
-        let reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
-        let session = reg.sessions.get(&session_id)
+        let reg = registry
+            .lock()
+            .map_err(|e| format!("Registry lock failed: {e}"))?;
+        let session = reg
+            .sessions
+            .get(&session_id)
             .ok_or_else(|| format!("Session not found: {session_id}"))?;
         (
             session.record.adapter_kind.clone(),
@@ -2025,7 +2405,11 @@ fn find_logs_recursive(dir: &Path, logs: &mut Vec<String>) -> std::io::Result<()
     if dir.is_dir() {
         // Skip hidden directories like .git or node_modules for performance
         if let Some(name) = dir.file_name().and_then(|n| n.to_str()) {
-            if name.starts_with('.') || name == "node_modules" || name == "target" || name == "vendor" {
+            if name.starts_with('.')
+                || name == "node_modules"
+                || name == "target"
+                || name == "vendor"
+            {
                 return Ok(());
             }
         }
@@ -2062,9 +2446,14 @@ fn discover_repository_logs(path: String) -> Result<Vec<String>, String> {
 
 #[tauri::command]
 fn pick_export_save_path(default_name: String) -> Result<Option<String>, String> {
-    let home = home_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_else(|| "/tmp".to_string());
+    let home = home_dir()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|| "/tmp".to_string());
     let default_path = format!("{home}/{default_name}");
-    let ext = Path::new(&default_name).extension().and_then(|e| e.to_str()).unwrap_or("*");
+    let ext = Path::new(&default_name)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("*");
     let filter = format!("Export files (*.{ext})");
     pick_native_path(
         NativePickerKind::SaveFile,
@@ -2104,12 +2493,14 @@ fn export_composition_stems(
         _ => 64.0 * 60.0 / bpm,
     };
 
-    let sections_value = composition.metrics
+    let sections_value = composition
+        .metrics
         .get("arrangementSections")
         .cloned()
         .unwrap_or_else(|| Value::Array(vec![]));
 
-    let render_preview_value = composition.metrics
+    let render_preview_value = composition
+        .metrics
         .get("renderPreview")
         .cloned()
         .unwrap_or_else(|| Value::Object(serde_json::Map::new()));
@@ -2141,11 +2532,13 @@ fn export_composition_stems(
         .map_err(|e| format!("Failed to spawn analyzer for stems export: {e}"))?;
 
     if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(payload_str.as_bytes())
+        stdin
+            .write_all(payload_str.as_bytes())
             .map_err(|e| format!("Failed to write stems payload: {e}"))?;
     }
 
-    let output = child.wait_with_output()
+    let output = child
+        .wait_with_output()
         .map_err(|e| format!("Stems export process error: {e}"))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -2155,7 +2548,10 @@ fn export_composition_stems(
     if response.get("status").and_then(Value::as_str) == Some("ok") {
         Ok(response)
     } else {
-        let msg = response.get("error").and_then(Value::as_str).unwrap_or("Unknown error");
+        let msg = response
+            .get("error")
+            .and_then(Value::as_str)
+            .unwrap_or("Unknown error");
         Err(format!("Stems export failed: {msg}"))
     }
 }
@@ -2170,7 +2566,8 @@ fn export_composition_file(source_path: String, dest_path: String) -> Result<Str
     let dest = Path::new(&dest_path);
     if let Some(parent) = dest.parent() {
         if !parent.as_os_str().is_empty() && !parent.exists() {
-            fs::create_dir_all(parent).map_err(|e| format!("Failed to create destination directory: {e}"))?;
+            fs::create_dir_all(parent)
+                .map_err(|e| format!("Failed to create destination directory: {e}"))?;
         }
     }
 
@@ -2539,7 +2936,12 @@ fn read_log_stream_chunk(
 
     let file_size = resolved_source
         .metadata()
-        .map_err(|error| format!("Failed to stat log source {}: {error}", resolved_source.display()))?
+        .map_err(|error| {
+            format!(
+                "Failed to stat log source {}: {error}",
+                resolved_source.display()
+            )
+        })?
         .len();
     let mut warnings = Vec::new();
     let start_offset = match cursor {
@@ -2558,12 +2960,10 @@ fn read_log_stream_chunk(
     let remaining = file_size.saturating_sub(start_offset);
     let bytes_to_read = remaining.min(max_bytes);
     if remaining > max_bytes {
-        warnings.push(
-            format!(
-                "Large log burst detected. Maia streamed only the next {} KB in this polling window.",
-                (max_bytes / 1024).max(1)
-            ),
-        );
+        warnings.push(format!(
+            "Large log burst detected. Maia streamed only the next {} KB in this polling window.",
+            (max_bytes / 1024).max(1)
+        ));
     }
 
     let mut file = fs::File::open(&resolved_source).map_err(|error| {
@@ -2932,7 +3332,9 @@ fn ensure_session_bookmark_feedback_columns(conn: &Connection) -> Result<(), Str
 
     if !has_bookmark_tag {
         conn.execute_batch("ALTER TABLE session_bookmarks ADD COLUMN bookmark_tag TEXT;")
-            .map_err(|error| format!("Failed to add session_bookmarks bookmark_tag column: {error}"))?;
+            .map_err(|error| {
+                format!("Failed to add session_bookmarks bookmark_tag column: {error}")
+            })?;
     }
 
     if !has_suggested_style_profile_id {
@@ -2940,9 +3342,7 @@ fn ensure_session_bookmark_feedback_columns(conn: &Connection) -> Result<(), Str
             "ALTER TABLE session_bookmarks ADD COLUMN suggested_style_profile_id TEXT;",
         )
         .map_err(|error| {
-            format!(
-                "Failed to add session_bookmarks suggested_style_profile_id column: {error}"
-            )
+            format!("Failed to add session_bookmarks suggested_style_profile_id column: {error}")
         })?;
     }
 
@@ -2951,9 +3351,7 @@ fn ensure_session_bookmark_feedback_columns(conn: &Connection) -> Result<(), Str
             "ALTER TABLE session_bookmarks ADD COLUMN suggested_mutation_profile_id TEXT;",
         )
         .map_err(|error| {
-            format!(
-                "Failed to add session_bookmarks suggested_mutation_profile_id column: {error}"
-            )
+            format!("Failed to add session_bookmarks suggested_mutation_profile_id column: {error}")
         })?;
     }
 
@@ -3361,9 +3759,19 @@ fn run_native_picker_command(command: &str, args: &[&str]) -> Result<PickerOutco
 fn picker_default_path(initial_path: Option<String>) -> String {
     // If the caller provides an existing path, use its parent dir so the
     // picker opens in the same folder as the previously selected file.
-    if let Some(p) = initial_path.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+    if let Some(p) = initial_path
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
         let pb = PathBuf::from(p);
-        let dir = if pb.is_dir() { pb } else { pb.parent().map(|p| p.to_path_buf()).unwrap_or_else(|| PathBuf::from(p)) };
+        let dir = if pb.is_dir() {
+            pb
+        } else {
+            pb.parent()
+                .map(|p| p.to_path_buf())
+                .unwrap_or_else(|| PathBuf::from(p))
+        };
         if dir.exists() {
             return dir.to_string_lossy().to_string();
         }
@@ -3655,9 +4063,7 @@ fn probe_track_file_state(
     (size_bytes, modified_at, availability_state, playback_source)
 }
 
-fn default_track_hot_cues(
-    structural_patterns: &[TrackStructuralPattern],
-) -> Vec<TrackCuePoint> {
+fn default_track_hot_cues(structural_patterns: &[TrackStructuralPattern]) -> Vec<TrackCuePoint> {
     let colors = ["#f59e0b", "#22d3ee", "#ef4444", "#8b5cf6"];
 
     structural_patterns
@@ -3810,7 +4216,9 @@ fn normalize_bpm_curve_points(
     let mut normalized: Vec<BpmCurvePoint> = points
         .into_iter()
         .filter(|point| {
-            point.second.is_finite() && point.bpm.is_finite() && point.second >= 0.0
+            point.second.is_finite()
+                && point.bpm.is_finite()
+                && point.second >= 0.0
                 && point.second <= max_duration
         })
         .collect();
@@ -4168,8 +4576,8 @@ fn read_playlists(conn: &Connection) -> Result<Vec<BaseTrackPlaylist>, String> {
     let mut playlists = Vec::new();
 
     for playlist_row in playlist_rows {
-        let (id, name, created_at, updated_at) = playlist_row
-            .map_err(|error| format!("Failed to decode base playlist row: {error}"))?;
+        let (id, name, created_at, updated_at) =
+            playlist_row.map_err(|error| format!("Failed to decode base playlist row: {error}"))?;
         let item_rows = item_statement
             .query_map([id.clone()], |row| row.get::<_, String>(0))
             .map_err(|error| format!("Failed to query playlist items for {id}: {error}"))?;
@@ -4207,7 +4615,11 @@ fn persist_playlist(
     let mut track_ids = Vec::new();
     for track_id in input.track_ids {
         let trimmed = track_id.trim();
-        if !trimmed.is_empty() && !track_ids.iter().any(|existing: &String| existing == trimmed) {
+        if !trimmed.is_empty()
+            && !track_ids
+                .iter()
+                .any(|existing: &String| existing == trimmed)
+        {
             track_ids.push(trimmed.to_string());
         }
     }
@@ -4472,11 +4884,15 @@ fn persist_track_analysis_update(
     }
 
     let next_beat_grid = normalize_beat_grid_points(
-        input.beat_grid.unwrap_or_else(|| track.analysis.beat_grid.clone()),
+        input
+            .beat_grid
+            .unwrap_or_else(|| track.analysis.beat_grid.clone()),
         track.analysis.duration_seconds,
     );
     let next_bpm_curve = normalize_bpm_curve_points(
-        input.bpm_curve.unwrap_or_else(|| track.analysis.bpm_curve.clone()),
+        input
+            .bpm_curve
+            .unwrap_or_else(|| track.analysis.bpm_curve.clone()),
         track.analysis.duration_seconds,
     );
 
@@ -4862,7 +5278,10 @@ fn insert_track(
 
     // Prevent duplicates by canonical path
     if check_duplicate_source_path(conn, source_path)? {
-        return Err(format!("A track with path '{}' already exists in your library.", source_path));
+        return Err(format!(
+            "A track with path '{}' already exists in your library.",
+            source_path
+        ));
     }
 
     if title.is_empty() {
@@ -5154,7 +5573,10 @@ fn insert_base_asset(
     let category_id = input.category_id.trim();
 
     if check_duplicate_source_path(conn, source_path)? {
-        return Err(format!("A base asset with path '{}' already exists in your library.", source_path));
+        return Err(format!(
+            "A base asset with path '{}' already exists in your library.",
+            source_path
+        ));
     }
     let label = input
         .label
@@ -5466,57 +5888,67 @@ fn resolve_composition_reference(
         return Err("Composition requires a base track or a base playlist.".to_string());
     }
 
-    let (base_bpm, base_reference_title, base_reference_source_path, base_reference_asset_id, base_reference_type, base_playlist_id, base_playlist_name) =
-        if let Some(playlist) = base_playlist {
-            let mut playlist_bpms = playlist
-                .track_ids
-                .iter()
-                .filter_map(|track_id| {
-                    tracks
-                        .iter()
-                        .find(|entry| entry.id == *track_id)
-                        .and_then(|entry| entry.bpm)
-                })
-                .collect::<Vec<_>>();
+    let (
+        base_bpm,
+        base_reference_title,
+        base_reference_source_path,
+        base_reference_asset_id,
+        base_reference_type,
+        base_playlist_id,
+        base_playlist_name,
+    ) = if let Some(playlist) = base_playlist {
+        let mut playlist_bpms = playlist
+            .track_ids
+            .iter()
+            .filter_map(|track_id| {
+                tracks
+                    .iter()
+                    .find(|entry| entry.id == *track_id)
+                    .and_then(|entry| entry.bpm)
+            })
+            .collect::<Vec<_>>();
 
-            if playlist_bpms.is_empty() {
-                return Err("The selected playlist does not contain any tracks with stored BPM yet.".to_string());
-            }
+        if playlist_bpms.is_empty() {
+            return Err(
+                "The selected playlist does not contain any tracks with stored BPM yet."
+                    .to_string(),
+            );
+        }
 
-            playlist_bpms.sort_by(|left, right| left.partial_cmp(right).unwrap_or(Ordering::Equal));
-            let midpoint = playlist_bpms.len() / 2;
-            let median_bpm = if playlist_bpms.len() % 2 == 0 {
-                (playlist_bpms[midpoint - 1] + playlist_bpms[midpoint]) / 2.0
-            } else {
-                playlist_bpms[midpoint]
-            };
-
-            (
-                median_bpm,
-                playlist.name.clone(),
-                None,
-                Some(playlist.id.clone()),
-                "playlist".to_string(),
-                Some(playlist.id),
-                Some(playlist.name),
-            )
-        } else if let Some(track) = base_track {
-            let bpm = track
-                .bpm
-                .ok_or_else(|| "The selected track does not have a stored BPM yet.".to_string())?;
-
-            (
-                bpm,
-                track.title.clone(),
-                Some(track.source_path.clone()),
-                Some(track.id.clone()),
-                "track".to_string(),
-                None,
-                None,
-            )
+        playlist_bpms.sort_by(|left, right| left.partial_cmp(right).unwrap_or(Ordering::Equal));
+        let midpoint = playlist_bpms.len() / 2;
+        let median_bpm = if playlist_bpms.len() % 2 == 0 {
+            (playlist_bpms[midpoint - 1] + playlist_bpms[midpoint]) / 2.0
         } else {
-            return Err("Composition requires a base track or a base playlist.".to_string());
+            playlist_bpms[midpoint]
         };
+
+        (
+            median_bpm,
+            playlist.name.clone(),
+            None,
+            Some(playlist.id.clone()),
+            "playlist".to_string(),
+            Some(playlist.id),
+            Some(playlist.name),
+        )
+    } else if let Some(track) = base_track {
+        let bpm = track
+            .bpm
+            .ok_or_else(|| "The selected track does not have a stored BPM yet.".to_string())?;
+
+        (
+            bpm,
+            track.title.clone(),
+            Some(track.source_path.clone()),
+            Some(track.id.clone()),
+            "track".to_string(),
+            None,
+            None,
+        )
+    } else {
+        return Err("Composition requires a base track or a base playlist.".to_string());
+    };
 
     if let Some(structure_id) = input
         .structure_id
@@ -5534,7 +5966,10 @@ fn resolve_composition_reference(
             base_playlist_name,
             reference_type: "repo".to_string(),
             reference_asset_id: Some(repository.id),
-            reference_title: format!("{} (structured by {})", base_reference_title, repository.title),
+            reference_title: format!(
+                "{} (structured by {})",
+                base_reference_title, repository.title
+            ),
             reference_source_path: Some(repository.source_path),
             target_bpm: repository.suggested_bpm.unwrap_or(base_bpm),
         });
@@ -5565,7 +6000,10 @@ fn insert_repository(
         "DELETE FROM musical_assets WHERE source_path = ?1",
         params![canonical],
     ) {
-        eprintln!("[MAIA:Rust] Warning: Failed to clear existing repository record: {}", e);
+        eprintln!(
+            "[MAIA:Rust] Warning: Failed to clear existing repository record: {}",
+            e
+        );
     }
     let import_label = input
         .label
@@ -5733,6 +6171,25 @@ fn insert_repository(
         ],
     )
     .map_err(|error| format!("Failed to insert repository asset: {error}"))?;
+
+    if source_kind == "file" {
+        let connection_label = import_label.clone().unwrap_or_else(|| asset_title.clone());
+        let connection_input = UpsertLogSourceConnectionInput {
+            id: Some(format!("log-source-{id}")),
+            kind: "file_log".to_string(),
+            label: connection_label,
+            source_uri: Some(source_path.to_string()),
+            enabled: Some(true),
+            config: json!({
+                "path": source_path,
+                "standard": "filesystem-tail",
+                "assetId": id,
+            }),
+        };
+        let _ = db_upsert_log_source_connection(conn, &connection_input).map_err(|error| {
+            eprintln!("[MAIA:Rust] Warning: failed to persist file log connection: {error}")
+        });
+    }
 
     conn.execute(
         "
@@ -5938,8 +6395,8 @@ fn analyze_track_import(
                 analyzer_version: Some("maia-analyzer".to_string()),
                 analyzed_at: Some(analyzed_at),
                 repo_suggested_bpm: None,
-                repo_suggested_status: "Waiting for repository heuristics in a future analyzer pass"
-                    .to_string(),
+                repo_suggested_status:
+                    "Waiting for repository heuristics in a future analyzer pass".to_string(),
                 notes: notes.clone(),
                 key_signature: key_signature.clone(),
                 energy_level,
@@ -6528,9 +6985,13 @@ fn check_duplicate_source_path(conn: &Connection, source_path: &str) -> Result<b
     let mut stmt = conn
         .prepare("SELECT 1 FROM musical_assets WHERE source_path = ?1")
         .map_err(|e| format!("Failed to prepare duplicate check: {e}"))?;
-    let mut rows = stmt.query(params![canonical])
+    let mut rows = stmt
+        .query(params![canonical])
         .map_err(|e| format!("Failed to execute duplicate check: {e}"))?;
-    Ok(rows.next().map_err(|e| format!("Failed to read duplicate check row: {e}"))?.is_some())
+    Ok(rows
+        .next()
+        .map_err(|e| format!("Failed to read duplicate check row: {e}"))?
+        .is_some())
 }
 
 #[tauri::command]
@@ -6586,9 +7047,11 @@ fn build_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .build()?;
 
     TrayIconBuilder::new()
-        .icon(app.default_window_icon().cloned().unwrap_or_else(|| {
-            tauri::image::Image::new(&[], 0, 0)
-        }))
+        .icon(
+            app.default_window_icon()
+                .cloned()
+                .unwrap_or_else(|| tauri::image::Image::new(&[], 0, 0)),
+        )
         .menu(&menu)
         .tooltip("Maia — Auditory Monitoring")
         .on_menu_event(|app, event| match event.id.as_ref() {
@@ -6651,6 +7114,10 @@ fn main() {
             export_composition_file,
             export_composition_stems,
             poll_log_stream,
+            list_log_source_connections,
+            upsert_log_source_connection,
+            delete_log_source_connection,
+            start_log_source_connection,
             start_stream_session,
             stop_stream_session,
             list_stream_sessions,

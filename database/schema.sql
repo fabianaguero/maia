@@ -101,6 +101,24 @@ CREATE TABLE IF NOT EXISTS composition_results (
   bpm_curve_json TEXT NOT NULL DEFAULT '[]'
 );
 
+
+CREATE TABLE IF NOT EXISTS log_source_connections (
+  id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL CHECK (kind IN ('file_log', 'gcp_cloud_run')),
+  label TEXT NOT NULL,
+  source_uri TEXT NOT NULL UNIQUE,
+  enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+  adapter_kind TEXT NOT NULL CHECK (adapter_kind IN ('file', 'process')),
+  config_json TEXT NOT NULL DEFAULT '{}',
+  last_cursor INTEGER NOT NULL DEFAULT 0,
+  last_seen_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_log_source_connections_kind_updated
+  ON log_source_connections (kind, updated_at DESC);
+
 CREATE TABLE IF NOT EXISTS analysis_jobs (
   id TEXT PRIMARY KEY,
   asset_id TEXT REFERENCES musical_assets(id) ON DELETE SET NULL,
