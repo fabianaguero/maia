@@ -83,6 +83,14 @@ interface OverviewAnomalyDensityPoint {
   critical: number;
 }
 
+interface AnomalyBurstRegion {
+  id: string;
+  startProgress: number;
+  endProgress: number;
+  severity: number;
+  count: number;
+}
+
 function getTrackTitle(track: LibraryTrack): string {
   return getLibraryTrackTitle(track);
 }
@@ -462,6 +470,61 @@ function sampleOverviewAnomalyDensity(
       critical: Math.min(1, critical),
     };
   });
+}
+
+function buildAnomalyBurstRegions(
+  markers: WaveformAnomalyMarker[],
+  gapThreshold = 0.03,
+  padding = 0.008,
+): AnomalyBurstRegion[] {
+  if (markers.length === 0) {
+    return [];
+  }
+
+  const sorted = [...markers].sort((left, right) => left.progress - right.progress);
+  const regions: AnomalyBurstRegion[] = [];
+
+  let current = {
+    start: sorted[0]!.progress,
+    end: sorted[0]!.progress,
+    severity: sorted[0]!.severity,
+    count: 1,
+  };
+
+  for (let index = 1; index < sorted.length; index += 1) {
+    const marker = sorted[index]!;
+    if (marker.progress - current.end <= gapThreshold) {
+      current.end = marker.progress;
+      current.severity = Math.max(current.severity, marker.severity);
+      current.count += 1;
+      continue;
+    }
+
+    regions.push({
+      id: `burst-${regions.length}-${current.start.toFixed(4)}`,
+      startProgress: clamp01(current.start - padding),
+      endProgress: clamp01(current.end + padding),
+      severity: current.severity,
+      count: current.count,
+    });
+
+    current = {
+      start: marker.progress,
+      end: marker.progress,
+      severity: marker.severity,
+      count: 1,
+    };
+  }
+
+  regions.push({
+    id: `burst-${regions.length}-${current.start.toFixed(4)}`,
+    startProgress: clamp01(current.start - padding),
+    endProgress: clamp01(current.end + padding),
+    severity: current.severity,
+    count: current.count,
+  });
+
+  return regions;
 }
 
 function sampleLogWaveOverlay(
@@ -1541,6 +1604,7 @@ export function SimpleMonitorScreen({
   );
   const overviewWaveSamples = sampleOverviewWave(waveformBins ?? null);
   const overviewAnomalyDensity = sampleOverviewAnomalyDensity(waveformAnomalies);
+  const anomalyBurstRegions = buildAnomalyBurstRegions(waveformAnomalies);
   const overviewWindowWidthPercent =
     typeof deckDurationSeconds === "number" && deckDurationSeconds > 0
       ? Math.min(100, (visibleWindowSeconds / deckDurationSeconds) * 100)
@@ -1569,6 +1633,14 @@ export function SimpleMonitorScreen({
   const selectedDeckMarker: DeckSelectedMarker | null =
     selectedAnomalyId
       ? waveformAnomalies.find((marker) => marker.id === selectedAnomalyId) ?? null
+      : null;
+  const selectedBurstRegion =
+    selectedDeckMarker
+      ? anomalyBurstRegions.find(
+          (region) =>
+            selectedDeckMarker.progress >= region.startProgress &&
+            selectedDeckMarker.progress <= region.endProgress,
+        ) ?? null
       : null;
   const sortedPastSessions = [...safePastSessions].sort((left, right) => {
     const statusWeight = (session: PersistedSession) =>
@@ -1651,6 +1723,16 @@ export function SimpleMonitorScreen({
       }
     });
 
+    anomalyBurstRegions.forEach((region) => {
+      const left = region.startProgress * width;
+      const regionWidth = Math.max(4, (region.endProgress - region.startProgress) * width);
+      context.fillStyle =
+        region.severity >= 0.9
+          ? "rgba(255,72,108,0.12)"
+          : "rgba(255,196,92,0.1)";
+      context.fillRect(left, 1, regionWidth, height - 2);
+    });
+
     waveformAnomalies.forEach((marker) => {
       const x = marker.progress * width;
       const markerHeight = Math.max(8, 6 + marker.severity * 10);
@@ -1683,7 +1765,7 @@ export function SimpleMonitorScreen({
       context.fillStyle = beam;
       context.fillRect(x - 12, 0, 24, height);
     }
-  }, [overviewAnomalyDensity, overviewWaveSamples, selectedDeckMarker, waveformAnomalies]);
+  }, [anomalyBurstRegions, overviewAnomalyDensity, overviewWaveSamples, selectedDeckMarker, waveformAnomalies]);
 
   useEffect(() => {
     if (SAFE_MONITOR_RUNTIME) {
@@ -1810,6 +1892,39 @@ export function SimpleMonitorScreen({
     context.stroke();
     context.globalCompositeOperation = "source-over";
 
+    anomalyBurstRegions.forEach((region) => {
+      const leftRelative = 0.5 + (region.startProgress - trackWaveProgress) * MONITOR_TRACK_STRIP_MULTIPLIER;
+      const rightRelative = 0.5 + (region.endProgress - trackWaveProgress) * MONITOR_TRACK_STRIP_MULTIPLIER;
+      const leftX = leftRelative * width;
+      const rightX = rightRelative * width;
+      const burstWidth = rightX - leftX;
+      if (burstWidth <= 1 || rightX < 0 || leftX > width) {
+        return;
+      }
+
+      const visibleLeft = Math.max(0, leftX);
+      const visibleWidth = Math.min(width, rightX) - visibleLeft;
+      if (visibleWidth <= 0) {
+        return;
+      }
+
+      const burstGradient = context.createLinearGradient(0, logBaseY - logAmplitude, 0, logBaseY + 2);
+      if (region.severity >= 0.9) {
+        burstGradient.addColorStop(0, "rgba(255,72,108,0.18)");
+        burstGradient.addColorStop(1, "rgba(255,132,92,0.08)");
+      } else {
+        burstGradient.addColorStop(0, "rgba(255,196,92,0.16)");
+        burstGradient.addColorStop(1, "rgba(255,220,132,0.06)");
+      }
+      context.fillStyle = burstGradient;
+      context.fillRect(
+        visibleLeft,
+        logBaseY - logAmplitude * 0.92,
+        visibleWidth,
+        logAmplitude * 1.02,
+      );
+    });
+
     context.globalAlpha = 1;
     drawAnomalyWash(context, waveformAnomalies, trackWaveProgress, width, logBaseY, logAmplitude);
     drawSelectedMarkerBeam(
@@ -1835,7 +1950,7 @@ export function SimpleMonitorScreen({
     context.fillRect(width * 0.5 - 18, headerInset, 36, height - headerInset - footerInset);
 
     context.globalAlpha = 1;
-  }, [logWaveOverlay, selectedDeckMarker, trackWaveSamples, trackWaveProgress, waveformAnomalies, waveformScale]);
+  }, [anomalyBurstRegions, logWaveOverlay, selectedDeckMarker, trackWaveSamples, trackWaveProgress, waveformAnomalies, waveformScale]);
 
   const seekToTrackProgress = (nextProgress: number) => {
     const audio = backgroundAudioRef.current;
@@ -2128,6 +2243,11 @@ export function SimpleMonitorScreen({
                     </span>
                     <span className="monitor-deck-focusbar__time">{selectedDeckMarker.timestamp}</span>
                     <span className="monitor-deck-focusbar__text">{selectedDeckMarker.message}</span>
+                    {selectedBurstRegion ? (
+                      <span className="monitor-deck-focusbar__burst">
+                        BURST {selectedBurstRegion.count}
+                      </span>
+                    ) : null}
                   </div>
                 ) : null}
                 <div className="zoom-control-vertical">
@@ -2163,6 +2283,16 @@ export function SimpleMonitorScreen({
                       <span className="monitor-overview-wave__label">FULL TRACK MAP</span>
                       <span className="monitor-overview-wave__sublabel">ANOMALY HEAT</span>
                       <div className="monitor-overview-wave__anomalies">
+                        {anomalyBurstRegions.map((region) => (
+                          <span
+                            key={`overview-region-${region.id}`}
+                            className={`monitor-overview-wave__region${region.severity >= 0.9 ? " critical" : " warning"}${selectedBurstRegion?.id === region.id ? " active" : ""}`}
+                            style={{
+                              left: `${region.startProgress * 100}%`,
+                              width: `${Math.max(0.4, (region.endProgress - region.startProgress) * 100)}%`,
+                            }}
+                          />
+                        ))}
                         {overviewAnomalyMarkers.map((marker) => (
                           <button
                             key={`overview-${marker.id}`}
