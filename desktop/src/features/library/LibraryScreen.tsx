@@ -38,6 +38,8 @@ interface LibraryScreenProps {
   selectedRepositoryId: string | null;
   selectedBaseAssetId: string | null;
   selectedCompositionId: string | null;
+  activeTab?: LibraryTab;
+  onTabChange?: (tab: LibraryTab) => void;
   manifest: BootstrapManifest | null;
   musicStyles: MusicStyleOption[];
   baseAssetCategories: BaseAssetCategoryOption[];
@@ -98,6 +100,8 @@ export function LibraryScreen({
   selectedPlaylistId,
   selectedRepositoryId,
   selectedBaseAssetId,
+  activeTab,
+  onTabChange,
   manifest,
   musicStyles,
   baseAssetCategories,
@@ -148,7 +152,8 @@ export function LibraryScreen({
   ];
 
   function handleTabChange(next: LibraryTab) {
-    setTab(next);
+    setInternalTab(next);
+    onTabChange?.(next);
     setShowForm(false);
   }
 

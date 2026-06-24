@@ -8,7 +8,7 @@ import type { PersistedSession } from "./api/sessions";
 import { AppSidebar } from "./components/AppSidebar";
 import { ComposeScreen } from "./features/compose/ComposeScreen";
 import { InspectScreen } from "./features/inspect/InspectScreen";
-import { LibraryScreen } from "./features/library/LibraryScreen";
+import { LibraryScreen, type LibraryTab } from "./features/library/LibraryScreen";
 import { SessionScreen } from "./features/session/SessionScreen";
 import { useMonitor } from "./features/monitor/MonitorContext";
 import { useSessions } from "./hooks/useSessions";
@@ -68,6 +68,7 @@ function AppContent() {
   const [booting, setBooting] = useState(true);
   const [screen, setScreen] = useState<AppScreen>("library");
   const [pillar, setPillar] = useState<AppPillar>("curate");
+  const [libraryTab, setLibraryTab] = useState<LibraryTab>("tracks");
   const [analysisMode, setAnalysisMode] = useState<AnalyzerViewMode>("track");
   const [isDark, setIsDark] = useState(true);
   const [lang, setLang] = useState<"en" | "es">("en");
@@ -486,6 +487,12 @@ function AppContent() {
     setPillar("curate");
   }
 
+  function handleOpenConnections() {
+    setPillar("curate");
+    setScreen("library");
+    setLibraryTab("connections");
+  }
+
   const analyzerLabel = isHealthResponse(health)
     ? `${health.payload.analyzerVersion} on ${health.payload.runtime}`
     : booting
@@ -600,6 +607,8 @@ function AppContent() {
           monitorMetrics={monitor.metrics}
           onStopMonitor={() => void monitor.stopSession()}
           onOpenMonitoredRepo={handleOpenMonitoredRepo}
+          onOpenConnections={handleOpenConnections}
+          connectionsActive={pillar === "curate" && screen === "library" && libraryTab === "connections"}
           onHideToBackground={() => {
             if (isTauri()) {
               void invoke("hide_window").catch(() => {});
@@ -629,6 +638,8 @@ function AppContent() {
             selectedRepositoryId={repositories.selectedRepositoryId}
             selectedBaseAssetId={baseAssets.selectedBaseAssetId}
             selectedCompositionId={compositions.selectedCompositionId}
+            activeTab={libraryTab}
+            onTabChange={setLibraryTab}
             manifest={manifest}
             musicStyles={manifest?.musicStyles ?? []}
             baseAssetCategories={manifest?.baseAssetCategories ?? []}

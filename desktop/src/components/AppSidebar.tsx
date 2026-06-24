@@ -1,4 +1,4 @@
-import { Activity, AudioWaveform, Library, LayoutGrid } from "lucide-react";
+import { Activity, AudioWaveform, Cable, Library, LayoutGrid } from "lucide-react";
 import type React from "react";
 import type { ActiveMonitorSession, MonitorMetrics } from "../features/monitor/MonitorContext";
 import { useT } from "../i18n/I18nContext";
@@ -23,6 +23,8 @@ interface AppSidebarProps {
   monitorMetrics: MonitorMetrics;
   onStopMonitor: () => void;
   onOpenMonitoredRepo: () => void;
+  onOpenConnections: () => void;
+  connectionsActive: boolean;
   onHideToBackground: () => void;
 }
 
@@ -38,6 +40,8 @@ export function AppSidebar({
   monitorMetrics,
   onStopMonitor,
   onOpenMonitoredRepo,
+  onOpenConnections,
+  connectionsActive,
   onHideToBackground,
 }: AppSidebarProps) {
   const t = useT();
@@ -110,6 +114,22 @@ export function AppSidebar({
           );
         })}
       </nav>
+
+      <button
+        type="button"
+        className={`nav-button nav-pillar-button ${connectionsActive ? "active" : ""}`}
+        onClick={onOpenConnections}
+      >
+        <span className="nav-lane">Connect</span>
+        <span className="nav-icon-shell">
+          <Cable size={18} />
+        </span>
+        <span className="nav-copy">
+          <span className="nav-title">Conexiones</span>
+          <small>File logs & GCP Cloud Run</small>
+        </span>
+        <strong className="nav-detail">Persistent</strong>
+      </button>
 
       {monitorSession ? (
         <div className="monitor-status-card">
