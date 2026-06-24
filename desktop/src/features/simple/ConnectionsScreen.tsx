@@ -1,13 +1,16 @@
-import { Cable, FolderOpen, Globe, RefreshCw, ScrollText, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Cable, FolderOpen, Globe, Play, RefreshCw, ScrollText, Square, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   deleteLogSourceConnection,
   listLogSourceConnections,
   pickRepositoryFile,
+  pollStreamSession,
+  startLogSourceConnection,
+  stopStreamSession,
   upsertLogSourceConnection,
 } from "../../api/repositories";
-import type { LogSourceConnection } from "../../types/library";
+import type { LogSourceConnection, StreamSessionPollResult } from "../../types/library";
 
 type ConnectionKind = "file_log" | "gcp_cloud_run";
 
@@ -35,6 +38,11 @@ export function ConnectionsScreen() {
   const [saving, setSaving] = useState(false);
   const [pickerBusy, setPickerBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [activeConnectionId, setActiveConnectionId] = useState<string | null>(null);
+  const [tailPreview, setTailPreview] = useState<string[]>([]);
+  const [tailStatus, setTailStatus] = useState<string | null>(null);
+  const pollTimerRef = useRef<number | null>(null);
 
   const activeCount = useMemo(
     () => connections.filter((connection) => connection.enabled).length,
@@ -55,6 +63,11 @@ export function ConnectionsScreen() {
 
   useEffect(() => {
     void refreshConnections();
+    return () => {
+      if (pollTimerRef.current !== null) {
+        window.clearTimeout(pollTimerRef.current);
+      }
+    };
   }, []);
 
   async function handleBrowseFile() {
@@ -128,6 +141,70 @@ export function ConnectionsScreen() {
       setError(nextError instanceof Error ? nextError.message : String(nextError));
     } finally {
       setSaving(false);
+    }
+  }
+
+
+  function scheduleConnectionPoll(sessionId: string) {
+    pollTimerRef.current = window.setTimeout(async () => {
+      try {
+        const result: StreamSessionPollResult = await pollStreamSession(sessionId);
+        setTailStatus(
+          result.hasData
+            ? `${result.lineCount} lines · ${result.anomalyCount} anomalies · ${result.dominantLevel}`
+            : result.summary,
+        );
+        if (result.parsedLines.length > 0) {
+          setTailPreview((current) => [...current, ...result.parsedLines].slice(-12));
+        }
+        scheduleConnectionPoll(sessionId);
+      } catch (nextError) {
+        setError(nextError instanceof Error ? nextError.message : String(nextError));
+        setActiveSessionId(null);
+        setActiveConnectionId(null);
+      }
+    }, 1500);
+  }
+
+  async function handleStartTail(connection: LogSourceConnection) {
+    try {
+      setError(null);
+      setTailPreview([]);
+      setTailStatus("Opening live tail…");
+      if (activeSessionId) {
+        await stopStreamSession(activeSessionId);
+      }
+      if (pollTimerRef.current !== null) {
+        window.clearTimeout(pollTimerRef.current);
+      }
+      const sessionId = `conn-${connection.id}-${Date.now()}`;
+      await startLogSourceConnection({
+        connectionId: connection.id,
+        sessionId,
+        startFromBeginning: false,
+      });
+      setActiveSessionId(sessionId);
+      setActiveConnectionId(connection.id);
+      setTailStatus("Connected. Waiting for Cloud Logging entries…");
+      scheduleConnectionPoll(sessionId);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : String(nextError));
+      setActiveSessionId(null);
+      setActiveConnectionId(null);
+    }
+  }
+
+  async function handleStopTail() {
+    const sessionId = activeSessionId;
+    if (pollTimerRef.current !== null) {
+      window.clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+    setActiveSessionId(null);
+    setActiveConnectionId(null);
+    setTailStatus(null);
+    if (sessionId) {
+      await stopStreamSession(sessionId);
     }
   }
 
@@ -333,12 +410,33 @@ export function ConnectionsScreen() {
                       </span>
                       {" · "}
                       {connection.adapterKind}
+                      {activeConnectionId === connection.id ? " · Tailing now" : ""}
                     </div>
                     <span className="asset-card-date" title={connection.sourceUri}>
                       {connection.sourceUri}
                     </span>
                   </div>
                   <div className="asset-card-actions">
+                    {activeConnectionId === connection.id ? (
+                      <button
+                        type="button"
+                        className="card-action-delete"
+                        title="Stop live tail"
+                        onClick={() => void handleStopTail()}
+                      >
+                        <Square size={14} />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="card-action-delete"
+                        title="Start live tail"
+                        onClick={() => void handleStartTail(connection)}
+                        disabled={activeSessionId !== null}
+                      >
+                        <Play size={14} />
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="card-action-delete"
@@ -352,6 +450,16 @@ export function ConnectionsScreen() {
               ))}
             </ul>
           )}
+
+          {activeSessionId ? (
+            <div className="form-notice">
+              <strong>Live tail</strong>
+              <span>{tailStatus ?? "Connected"}</span>
+              {tailPreview.length > 0 ? (
+                <pre>{tailPreview.join("\n")}</pre>
+              ) : null}
+            </div>
+          ) : null}
         </section>
       </div>
     </section>
