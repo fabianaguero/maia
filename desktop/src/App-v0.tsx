@@ -18,7 +18,7 @@ import { useCompositionResults } from "./hooks/useCompositionResults";
 import { useMonitor } from "./features/monitor/MonitorContext";
 import { useSessions } from "./hooks/useSessions";
 import { Volume2 } from "lucide-react";
-import { resolvePlayableTrackPath } from "./utils/track";
+import { getTrackTitle, resolvePlayableTrackPath } from "./utils/track";
 
 type Section = "monitor" | "library" | "inspect" | "compose";
 
@@ -64,7 +64,7 @@ function AppContentV0() {
             audioContext={monitor.audioContext}
             trackName={monitor.session?.trackName}
             waveformBins={library.tracks.find(t => 
-              (t.tags.title || t.file.filename) === monitor.session?.trackName
+              getTrackTitle(t) === monitor.session?.trackName
             )?.analysis?.waveformBins}
                 onStartMonitoring={async (repoId, trackId) => {
                   console.log("🎵 onStartMonitoring called:", { repoId, trackId, trackIds: library.tracks.map(t => t.id) });
@@ -86,7 +86,7 @@ function AppContentV0() {
                       source: repo.sourcePath,
                       adapterKind: "file",
                       trackId: track.id,
-                      trackTitle: track.tags.title || track.file.filename,
+                      trackTitle: getTrackTitle(track),
                       startFromBeginning: true // Ensure we see existing logs
                     });
                     if (success) setCurrentSection("monitor");
@@ -144,7 +144,7 @@ function AppContentV0() {
           source: repo.sourcePath,
           adapterKind: "file",
           trackId: track.id,
-          trackTitle: track.tags.title || track.file.filename,
+          trackTitle: getTrackTitle(track),
           startFromBeginning: true // Ensure we see existing logs
         });
         if (success) setCurrentSection("monitor");

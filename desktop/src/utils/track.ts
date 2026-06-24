@@ -20,7 +20,20 @@ export interface TrackCompareAuditionPoint {
 const HOT_CUE_COLORS = ["#f59e0b", "#22d3ee", "#ef4444", "#8b5cf6"];
 
 export function getTrackTitle(track: LibraryTrack): string {
-  return track.tags.title;
+  const title = track.tags.title?.trim();
+  if (title) {
+    return title;
+  }
+
+  const sourcePath = track.file.sourcePath?.trim() || track.sourcePath?.trim();
+  if (sourcePath) {
+    const basename = sourcePath.split("/").pop()?.trim();
+    if (basename) {
+      return basename;
+    }
+  }
+
+  return "Untitled Track";
 }
 
 export function getTrackSourcePath(track: LibraryTrack): string {

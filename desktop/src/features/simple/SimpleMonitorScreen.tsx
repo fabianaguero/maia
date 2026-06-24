@@ -4,7 +4,7 @@ import { Play, Pause, Square, Music, AlertCircle, Clock } from "lucide-react";
 import type { ActiveMonitorSession, MonitorMetrics } from "../monitor/MonitorContext";
 import type { PersistedSession } from "../../api/sessions";
 import type { BeatGridPoint, LibraryTrack, RepositoryAnalysis } from "../../types/library";
-import { resolvePlayableTrackPath } from "../../utils/track";
+import { getTrackTitle as getLibraryTrackTitle, resolvePlayableTrackPath } from "../../utils/track";
 import { resolvePreviewAudioUrl, revokePreviewAudioUrl } from "../../utils/audioPreview";
 import { TrackWaveformMini } from "../../components/TrackWaveformMini";
 
@@ -71,7 +71,7 @@ interface LogWaveOverlayPoint {
 }
 
 function getTrackTitle(track: LibraryTrack): string {
-  return track.tags.title || track.file.filename || "Untitled Track";
+  return getLibraryTrackTitle(track);
 }
 
 function resolveSessionSortTimestamp(session: PersistedSession): number {
@@ -152,6 +152,19 @@ function getBasename(path: string | null | undefined): string {
 
   const segments = path.split("/");
   return segments[segments.length - 1] || path;
+}
+
+function safeElementScrollTo(
+  element: HTMLDivElement,
+  top: number,
+  behavior: ScrollBehavior,
+): void {
+  if (typeof element.scrollTo === "function") {
+    element.scrollTo({ top, behavior });
+    return;
+  }
+
+  element.scrollTop = top;
 }
 
 function formatDeckTime(seconds: number | null): string {
@@ -251,6 +264,7 @@ function buildDeckTimelineMarkers(
 
 const MONITOR_TRACK_WINDOW_POINTS = 420;
 const MONITOR_TRACK_STRIP_MULTIPLIER = 3;
+const SAFE_MONITOR_RUNTIME = true;
 
 function densifyWaveformBins(
   bins: number[] | null | undefined,
@@ -715,6 +729,9 @@ export function SimpleMonitorScreen({
   onToggleConsole
 }: SimpleMonitorScreenProps) {
   const isListening = !!session;
+  const safePastSessions = Array.isArray(pastSessions) ? pastSessions : [];
+  const safeRepositories = Array.isArray(repositories) ? repositories : [];
+  const safeTracks = Array.isArray(tracks) ? tracks : [];
   const [liveLines, setLiveLines] = useState<MonitorLogLine[]>([]);
   const [selectedSourceId, setSelectedSourceId] = useState("");
   const [selectedSoundId, setSelectedSoundId] = useState("");
@@ -750,7 +767,7 @@ export function SimpleMonitorScreen({
   const deckScrubStartRatioRef = useRef(0.5);
   const lineRefs = useRef(new Map<string, HTMLDivElement>());
   const activeTrack =
-    tracks.find((track) => getTrackTitle(track) === (trackName || session?.trackName)) ?? null;
+    safeTracks.find((track) => getTrackTitle(track) === (trackName || session?.trackName)) ?? null;
   const deckBpm = liveSuggestedBpm ?? activeTrack?.analysis?.bpm ?? null;
   const deckDurationSeconds = trackDurationSeconds ?? activeTrack?.analysis?.durationSeconds ?? null;
   const activeBeatGrid = activeTrack?.analysis?.beatGrid ?? activeTrack?.beatGrid ?? [];
@@ -1056,6 +1073,9 @@ export function SimpleMonitorScreen({
   }, [isListening, session?.sourcePath]);
 
   useEffect(() => {
+    if (SAFE_MONITOR_RUNTIME) {
+      return;
+    }
     return () => {
       if (previewAudioRef.current) {
         previewAudioRef.current.pause();
@@ -1067,6 +1087,9 @@ export function SimpleMonitorScreen({
   }, []);
 
   useEffect(() => {
+    if (SAFE_MONITOR_RUNTIME) {
+      return;
+    }
     if (!isListening) {
       setTrackWaveProgress(0);
       return;
@@ -1090,6 +1113,9 @@ export function SimpleMonitorScreen({
   }, [isListening]);
 
   useEffect(() => {
+    if (SAFE_MONITOR_RUNTIME) {
+      return;
+    }
     if (!isListening || !session?.trackName) {
       return;
     }
@@ -1097,7 +1123,7 @@ export function SimpleMonitorScreen({
     let cancelled = false;
 
     const bindBackgroundTrack = async () => {
-    const selectedTrack = tracks.find(
+    const selectedTrack = safeTracks.find(
       (track) => getTrackTitle(track) === session.trackName,
     );
     const playablePath = selectedTrack ? resolvePlayableTrackPath(selectedTrack) : null;
@@ -1145,9 +1171,12 @@ export function SimpleMonitorScreen({
         audio.pause();
       }
     };
-  }, [audioContext, isListening, session?.trackName, tracks]);
+  }, [audioContext, isListening, safeTracks, session?.trackName]);
 
   useEffect(() => {
+    if (SAFE_MONITOR_RUNTIME) {
+      return;
+    }
     if (!isListening) return;
     
     const unsub = subscribe((update) => {
@@ -1338,7 +1367,7 @@ export function SimpleMonitorScreen({
     }
 
     if (isTailPinnedRef.current) {
-      container.scrollTo({ top: container.scrollHeight, behavior: "auto" });
+      safeElementScrollTo(container, container.scrollHeight, "auto");
     }
   }, [liveLines, selectedAnomalyId]);
 
@@ -1399,7 +1428,7 @@ export function SimpleMonitorScreen({
       leftPercent: marker.progress * 100,
     }))
     .filter((marker) => marker.leftPercent >= 0 && marker.leftPercent <= 100);
-  const sortedPastSessions = [...pastSessions].sort((left, right) => {
+  const sortedPastSessions = [...safePastSessions].sort((left, right) => {
     const statusWeight = (session: PersistedSession) =>
       session.status === "active" ? 3 : session.status === "paused" ? 2 : 1;
     const statusDelta = statusWeight(right) - statusWeight(left);
@@ -1421,6 +1450,9 @@ export function SimpleMonitorScreen({
   });
 
   useEffect(() => {
+    if (SAFE_MONITOR_RUNTIME) {
+      return;
+    }
     const canvas = overviewCanvasRef.current;
     if (!canvas) {
       return;
@@ -1484,6 +1516,9 @@ export function SimpleMonitorScreen({
   }, [overviewWaveSamples, waveformAnomalies]);
 
   useEffect(() => {
+    if (SAFE_MONITOR_RUNTIME) {
+      return;
+    }
     const canvas = waveformCanvasRef.current;
     const stage = waveformStageRef.current;
     if (!canvas || !stage) {
@@ -1654,6 +1689,9 @@ export function SimpleMonitorScreen({
   };
 
   useEffect(() => {
+    if (SAFE_MONITOR_RUNTIME) {
+      return;
+    }
     const handlePointerMove = (event: PointerEvent) => {
       if (
         isOverviewScrubbingRef.current &&
@@ -2000,7 +2038,7 @@ export function SimpleMonitorScreen({
                       <div className="monitor-deck-footer__lane">
                         <span className="monitor-deck-footer__tag log">LOG STREAM</span>
                         <span className="monitor-deck-footer__text">
-                          {session?.sourcePath ? session.sourcePath.split("/").pop() : "No source"}
+                          {getBasename(session?.sourcePath)}
                         </span>
                       </div>
                     </div>
@@ -2068,7 +2106,7 @@ export function SimpleMonitorScreen({
                 <div className="setup-container-modern">
                   <ModernSelector
                     label="Log source"
-                    items={repositories}
+                    items={safeRepositories}
                     selectedId={selectedSourceId}
                     onSelect={setSelectedSourceId}
                     renderTitle={r => r.title}
@@ -2079,7 +2117,7 @@ export function SimpleMonitorScreen({
 
                   <ModernSelector
                     label="Sound profile"
-                    items={tracks}
+                    items={safeTracks}
                     selectedId={selectedSoundId}
                     onSelect={setSelectedSoundId}
                     renderTitle={t => getTrackTitle(t)}
@@ -2110,7 +2148,7 @@ export function SimpleMonitorScreen({
                 <div className="sessions-column">
                   <h3 className="sessions-title">Past sessions</h3>
                   <div className="sessions-list">
-                    {pastSessions.length === 0 ? (
+                    {safePastSessions.length === 0 ? (
                       <p className="text-muted" style={{ padding: "1rem", fontSize: "13px" }}>No previous sessions found.</p>
                     ) : (
                       sortedPastSessions.slice(0, 5).map((session) => (
