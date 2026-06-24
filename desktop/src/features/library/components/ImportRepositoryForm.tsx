@@ -2,7 +2,7 @@ import { FolderOpen, GitBranch, ScrollText, Globe } from "lucide-react";
 import type { FormEvent } from "react";
 import { useState } from "react";
 
-import { pickRepositoryDirectory, pickRepositoryFile } from "../../../api/repositories";
+import { pickRepositoryDirectory, pickRepositoryFile, upsertLogSourceConnection } from "../../../api/repositories";
 import type { ImportRepositoryInput, RepositorySourceKind } from "../../../types/library";
 import { Web3Spinner } from "../../../components/Web3Spinner";
 
@@ -10,6 +10,7 @@ interface ImportRepositoryFormProps {
   busy: boolean;
   defaultDirectoryPath?: string;
   onImportRepository: (input: ImportRepositoryInput) => Promise<boolean>;
+  onLogConnectionSaved?: () => void;
 }
 
 const importModes: Array<{
@@ -42,10 +43,14 @@ export function ImportRepositoryForm({
   busy,
   defaultDirectoryPath,
   onImportRepository,
+  onLogConnectionSaved,
 }: ImportRepositoryFormProps) {
   const [sourceKind, setSourceKind] = useState<RepositorySourceKind>("directory");
   const [sourcePath, setSourcePath] = useState("");
   const [label, setLabel] = useState("");
+  const [gcpProjectId, setGcpProjectId] = useState("");
+  const [gcpServiceName, setGcpServiceName] = useState("");
+  const [gcpRegion, setGcpRegion] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pickerBusy, setPickerBusy] = useState(false);
 
@@ -53,8 +58,37 @@ export function ImportRepositoryForm({
     event.preventDefault();
 
     const normalizedPath = sourcePath.trim();
+    const normalizedLabel = label.trim();
+
+    if (sourceKind === "url" && normalizedPath === "gcp-cloud-run") {
+      const projectId = gcpProjectId.trim();
+      const serviceName = gcpServiceName.trim();
+      if (!projectId || !serviceName) {
+        setError("GCP Cloud Run requires a project ID and service name.");
+        return;
+      }
+      setError(null);
+      await upsertLogSourceConnection({
+        kind: "gcp_cloud_run",
+        label: normalizedLabel || `${serviceName} · Cloud Run`,
+        config: {
+          projectId,
+          serviceName,
+          region: gcpRegion.trim() || undefined,
+          minimumSeverity: "DEFAULT",
+        },
+      });
+      onLogConnectionSaved?.();
+      setLabel("");
+      setSourcePath("");
+      setGcpProjectId("");
+      setGcpServiceName("");
+      setGcpRegion("");
+      return;
+    }
+
     if (!normalizedPath) {
-      setError("A local code/log path or GitHub URL is required.");
+      setError("A local code/log path, GitHub URL, or GCP Cloud Run source is required.");
       return;
     }
 
@@ -62,10 +96,13 @@ export function ImportRepositoryForm({
     const imported = await onImportRepository({
       sourceKind,
       sourcePath: normalizedPath,
-      label: label.trim() || undefined,
+      label: normalizedLabel || undefined,
     });
 
     if (imported) {
+      if (sourceKind === "file") {
+        onLogConnectionSaved?.();
+      }
       setLabel("");
       setSourcePath("");
     }
@@ -150,52 +187,65 @@ export function ImportRepositoryForm({
             </button>
           );
         })}
+        <button
+          type="button"
+          className={`source-card ${sourceKind === "url" && sourcePath === "gcp-cloud-run" ? "active" : ""}`}
+          onClick={() => {
+            setSourceKind("url");
+            setSourcePath("gcp-cloud-run");
+          }}
+        >
+          <div className="source-card-icon">
+            <Globe size={24} />
+          </div>
+          <div className="source-card-content">
+            <strong>GCP Cloud Run</strong>
+            <p>Persist a gcloud logging tail connector for Cloud Run services.</p>
+          </div>
+        </button>
       </div>
 
       <div className="form-fields-section">
-        <label className="field maia-field">
-          <span className="field-label">
-            {sourceKind === "directory"
-              ? "Local Project Path"
-              : sourceKind === "file"
-                ? "Source Log Path"
-                : "GitHub Repository URL"}
-          </span>
-          <div className="field-input-wrapper">
-            <input
-              value={sourcePath}
-              className="maia-input"
-              onChange={(event) => setSourcePath(event.target.value)}
-              placeholder={
-                sourceKind === "directory"
-                  ? "/home/dev/project"
-                  : sourceKind === "file"
-                    ? "/var/log/app.log"
-                  : "https://github.com/..."
-              }
-            />
-            {sourceKind === "directory" && (
-                <button
-                  type="button"
-                  className="input-inline-action"
-                  disabled={busy || pickerBusy}
-                  onClick={() => void handleBrowseDirectory()}
-                >
-                   {pickerBusy ? "..." : <FolderOpen size={16} />}
+        {sourceKind === "url" && sourcePath === "gcp-cloud-run" ? (
+          <>
+            <label className="field maia-field">
+              <span className="field-label">GCP Project ID</span>
+              <input value={gcpProjectId} className="maia-input" onChange={(event) => setGcpProjectId(event.target.value)} placeholder="my-gcp-project" />
+            </label>
+            <label className="field maia-field">
+              <span className="field-label">Cloud Run service</span>
+              <input value={gcpServiceName} className="maia-input" onChange={(event) => setGcpServiceName(event.target.value)} placeholder="checkout-api" />
+            </label>
+            <label className="field maia-field">
+              <span className="field-label">Region (optional)</span>
+              <input value={gcpRegion} className="maia-input" onChange={(event) => setGcpRegion(event.target.value)} placeholder="us-central1" />
+            </label>
+          </>
+        ) : (
+          <label className="field maia-field">
+            <span className="field-label">
+              {sourceKind === "directory" ? "Local Project Path" : sourceKind === "file" ? "Source Log Path" : "GitHub Repository URL"}
+            </span>
+            <div className="field-input-wrapper">
+              <input
+                value={sourcePath}
+                className="maia-input"
+                onChange={(event) => setSourcePath(event.target.value)}
+                placeholder={sourceKind === "directory" ? "/home/dev/project" : sourceKind === "file" ? "/var/log/app.log" : "https://github.com/..."}
+              />
+              {sourceKind === "directory" && (
+                <button type="button" className="input-inline-action" disabled={busy || pickerBusy} onClick={() => void handleBrowseDirectory()}>
+                  {pickerBusy ? "..." : <FolderOpen size={16} />}
                 </button>
-            )}
-            {sourceKind === "file" && (
-                <button
-                  type="button"
-                  className="input-inline-action"
-                  disabled={busy || pickerBusy}
-                  onClick={() => void handleBrowseFile()}
-                >
-                   {pickerBusy ? "..." : <ScrollText size={16} />}
+              )}
+              {sourceKind === "file" && (
+                <button type="button" className="input-inline-action" disabled={busy || pickerBusy} onClick={() => void handleBrowseFile()}>
+                  {pickerBusy ? "..." : <ScrollText size={16} />}
                 </button>
-            )}
-          </div>
-        </label>
+              )}
+            </div>
+          </label>
+        )}
 
         <label className="field maia-field">
           <span className="field-label">Target session label (Optional)</span>

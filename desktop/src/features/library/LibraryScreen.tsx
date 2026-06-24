@@ -1,4 +1,4 @@
-import { AudioWaveform, FolderOpen, ListMusic, Music, PackagePlus, Plus, Trash2, X } from "lucide-react";
+import { AudioWaveform, Cable, FolderOpen, ListMusic, Music, PackagePlus, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useT } from "../../i18n/I18nContext";
 import type { BootstrapManifest } from "../../contracts";
@@ -13,16 +13,18 @@ import type {
   ImportRepositoryInput,
   ImportTrackInput,
   LibraryTrack,
+  LogSourceConnection,
   RepositoryAnalysis,
   SaveBaseTrackPlaylistInput,
 } from "../../types/library";
 import { formatShortDate } from "../../utils/date";
 import { getTrackTitle } from "../../utils/track";
+import { deleteLogSourceConnection, listLogSourceConnections } from "../../api/repositories";
 import { ImportBaseAssetForm } from "./components/ImportBaseAssetForm";
 import { ImportRepositoryForm } from "./components/ImportRepositoryForm";
 import { ImportTrackForm } from "./components/ImportTrackForm";
 
-type LibraryTab = "tracks" | "sources" | "bases";
+export type LibraryTab = "tracks" | "sources" | "connections" | "bases";
 
 interface LibraryScreenProps {
   tracks: LibraryTrack[];
@@ -36,6 +38,8 @@ interface LibraryScreenProps {
   selectedRepositoryId: string | null;
   selectedBaseAssetId: string | null;
   selectedCompositionId: string | null;
+  activeTab?: LibraryTab;
+  onTabChange?: (tab: LibraryTab) => void;
   manifest: BootstrapManifest | null;
   musicStyles: MusicStyleOption[];
   baseAssetCategories: BaseAssetCategoryOption[];
@@ -81,6 +85,11 @@ const SOURCE_KIND_LABEL: Record<string, string> = {
   url: "GitHub URL",
 };
 
+const CONNECTION_KIND_LABEL: Record<string, string> = {
+  file_log: "File tail",
+  gcp_cloud_run: "GCP Cloud Run",
+};
+
 export function LibraryScreen({
   tracks,
   playlists,
@@ -91,6 +100,8 @@ export function LibraryScreen({
   selectedPlaylistId,
   selectedRepositoryId,
   selectedBaseAssetId,
+  activeTab,
+  onTabChange,
   manifest,
   musicStyles,
   baseAssetCategories,
@@ -124,7 +135,10 @@ export function LibraryScreen({
   onInspectBaseAsset,
 }: LibraryScreenProps) {
   const t = useT();
-  const [tab, setTab] = useState<LibraryTab>("tracks");
+  const [internalTab, setInternalTab] = useState<LibraryTab>("tracks");
+  const tab = activeTab ?? internalTab;
+  const [logConnections, setLogConnections] = useState<LogSourceConnection[]>([]);
+  const [logConnectionError, setLogConnectionError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [playlistEditorOpen, setPlaylistEditorOpen] = useState(false);
   const [playlistEditorId, setPlaylistEditorId] = useState<string | null>(null);
@@ -134,13 +148,28 @@ export function LibraryScreen({
   const tabs: Array<{ id: LibraryTab; label: string; count: number; icon: React.ReactNode }> = [
     { id: "tracks", label: "Tracks", count: tracks.length, icon: <Music size={14} /> },
     { id: "sources", label: "Sources", count: repositories.length, icon: <FolderOpen size={14} /> },
+    { id: "connections", label: "Connections", count: logConnections.length, icon: <Cable size={14} /> },
     { id: "bases", label: "Bases", count: baseAssets.length, icon: <PackagePlus size={14} /> },
   ];
 
   function handleTabChange(next: LibraryTab) {
-    setTab(next);
+    setInternalTab(next);
+    onTabChange?.(next);
     setShowForm(false);
   }
+
+  async function refreshLogConnections(): Promise<void> {
+    try {
+      setLogConnectionError(null);
+      setLogConnections(await listLogSourceConnections());
+    } catch (error) {
+      setLogConnectionError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  useEffect(() => {
+    void refreshLogConnections();
+  }, []);
 
   useEffect(() => {
     const selectedPlaylist =
@@ -220,8 +249,22 @@ export function LibraryScreen({
 
   async function handleImportRepository(input: ImportRepositoryInput) {
     const ok = await onImportRepository(input);
-    if (ok) setShowForm(false);
+    if (ok) {
+      if (input.sourceKind === "file") {
+        void refreshLogConnections();
+      }
+      setShowForm(false);
+    }
     return ok;
+  }
+
+  async function handleDeleteLogConnection(connectionId: string): Promise<void> {
+    try {
+      await deleteLogSourceConnection(connectionId);
+      await refreshLogConnections();
+    } catch (error) {
+      setLogConnectionError(error instanceof Error ? error.message : String(error));
+    }
   }
 
   async function handleImportBaseAsset(input: ImportBaseAssetInput) {
@@ -238,6 +281,7 @@ export function LibraryScreen({
   const error =
     tab === "tracks" ? trackError :
     tab === "sources" ? repositoryError :
+    tab === "connections" ? logConnectionError :
     baseAssetError;
 
   return (
@@ -272,14 +316,16 @@ export function LibraryScreen({
         <div className="library-tab-toolbar-copy">
           <div className="library-tab-toolbar-meta">
             <span className="eyebrow">
-              {tab === "tracks" ? "Tracks" : tab === "sources" ? "Sources" : "Bases"}
+              {tab === "tracks" ? "Tracks" : tab === "sources" ? "Sources" : tab === "connections" ? "Connections" : "Bases"}
             </span>
             <span className="library-toolbar-count">
               {tab === "tracks"
                 ? tracks.length
                 : tab === "sources"
                   ? repositories.length
-                  : baseAssets.length}
+                  : tab === "connections"
+                    ? logConnections.length
+                    : baseAssets.length}
             </span>
           </div>
           <strong>
@@ -287,14 +333,18 @@ export function LibraryScreen({
               ? "DJ-ready track crate"
               : tab === "sources"
                 ? "Code, logs, and live signal browser"
-                : "Reusable musical base pool"}
+                : tab === "connections"
+                  ? "Persistent log connector rack"
+                  : "Reusable musical base pool"}
           </strong>
           <p className="library-tab-toolbar-note">
             {tab === "tracks"
               ? "Import, seed, and clean the music library."
               : tab === "sources"
                 ? "Bring in repositories and operational signals."
-                : "Stage assets for composition and live scenes."}
+                : tab === "connections"
+                  ? "Keep filesystem tails and Cloud Run streams saved between app launches."
+                  : "Stage assets for composition and live scenes."}
           </p>
         </div>
 
@@ -308,8 +358,8 @@ export function LibraryScreen({
               <><X size={14} /> Cancel</>
             ) : tab === "tracks" ? (
               <><Music size={14} /> {t.library.importTrack}</>
-            ) : tab === "sources" ? (
-              <><FolderOpen size={14} /> {t.library.importRepository}</>
+            ) : tab === "sources" || tab === "connections" ? (
+              <><FolderOpen size={14} /> {tab === "connections" ? "Add connection" : t.library.importRepository}</>
             ) : (
               <><PackagePlus size={14} /> {t.library.importBaseAsset}</>
             )}
@@ -394,11 +444,15 @@ export function LibraryScreen({
               onSeedDemo={async () => { await onSeedDemo(); setShowForm(false); }}
             />
           )}
-          {tab === "sources" && (
+          {(tab === "sources" || tab === "connections") && (
             <ImportRepositoryForm
               busy={repositoryBusy}
               defaultDirectoryPath={manifest?.repoRoot}
               onImportRepository={handleImportRepository}
+              onLogConnectionSaved={() => {
+                setShowForm(false);
+                void refreshLogConnections();
+              }}
             />
           )}
           {tab === "bases" && (
@@ -626,6 +680,51 @@ export function LibraryScreen({
                         className="card-action-delete"
                         title="Delete repository"
                         onClick={(e) => { e.stopPropagation(); onDeleteRepository(repo.id); }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )
+          )}
+
+          {/* CONNECTIONS */}
+          {tab === "connections" && (
+            logConnections.length === 0 ? (
+              <EmptyState
+                icon={<Cable size={32} />}
+                title="No persistent connections yet"
+                body="Add a filesystem log tail or GCP Cloud Run connector so Maia can reopen it across desktop launches."
+                action={<button type="button" className="action" onClick={() => setShowForm(true)}><Plus size={14} /> Add connection</button>}
+              />
+            ) : (
+              <ul className="asset-card-list">
+                {logConnections.map((connection) => (
+                  <li key={connection.id} className="asset-card">
+                    <div className="asset-card-icon source-icon">
+                      <Cable size={18} />
+                    </div>
+                    <div className="asset-card-body">
+                      <strong className="asset-card-title">{connection.label}</strong>
+                      <div className="asset-card-meta">
+                        <span className="type-badge">{CONNECTION_KIND_LABEL[connection.kind] ?? connection.kind}</span>
+                        <span className={connection.enabled ? "bpm-badge" : "bpm-badge pending"}>
+                          {connection.enabled ? "Enabled" : "Disabled"}
+                        </span>
+                        {" · "}{connection.adapterKind}
+                      </div>
+                      <span className="asset-card-date" title={connection.sourceUri}>
+                        {connection.sourceUri}
+                      </span>
+                    </div>
+                    <div className="asset-card-actions">
+                      <button
+                        type="button"
+                        className="card-action-delete"
+                        title="Delete connection"
+                        onClick={() => void handleDeleteLogConnection(connection.id)}
                       >
                         <Trash2 size={14} />
                       </button>
