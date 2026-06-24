@@ -5934,6 +5934,55 @@ dd {
   text-transform: uppercase;
 }
 
+.monitor-deck-focusbar {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(72, 215, 255, 0.12);
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(72, 215, 255, 0.06), rgba(255, 255, 255, 0.02));
+}
+
+.monitor-deck-focusbar__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: #ffd28e;
+  border: 1px solid rgba(255, 196, 92, 0.26);
+  background: rgba(255, 196, 92, 0.08);
+}
+
+.monitor-deck-focusbar__badge.critical {
+  color: #ff8ca2;
+  border-color: rgba(255, 72, 108, 0.28);
+  background: rgba(255, 72, 108, 0.08);
+}
+
+.monitor-deck-focusbar__time {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  color: rgba(214, 227, 242, 0.72);
+  white-space: nowrap;
+}
+
+.monitor-deck-focusbar__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(232, 238, 247, 0.88);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+}
+
 .monitor-deck-meta__chip {
   display: inline-flex;
   align-items: center;

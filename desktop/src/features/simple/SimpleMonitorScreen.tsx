@@ -70,6 +70,14 @@ interface LogWaveOverlayPoint {
   heat: number;
 }
 
+interface DeckSelectedMarker {
+  id: string;
+  severity: number;
+  progress: number;
+  timestamp: string;
+  message: string;
+}
+
 function getTrackTitle(track: LibraryTrack): string {
   return getLibraryTrackTitle(track);
 }
@@ -507,6 +515,83 @@ function drawAnomalyWash(
     context.fillStyle = marker.severity >= 0.9 ? "rgba(255,76,110,0.54)" : "rgba(255,194,102,0.42)";
     context.fillRect(x - 1.25, baseY - zoneHeight * 0.76, 2.5, zoneHeight * 0.72);
   });
+}
+
+function drawPhraseRibbon(
+  context: CanvasRenderingContext2D,
+  samples: number[],
+  width: number,
+  topY: number,
+  ribbonHeight: number,
+  steps = 42,
+): void {
+  if (samples.length === 0 || steps <= 0) {
+    return;
+  }
+
+  const blockWidth = width / steps;
+  for (let step = 0; step < steps; step += 1) {
+    const start = Math.floor((step / steps) * samples.length);
+    const end = Math.max(start + 1, Math.floor(((step + 1) / steps) * samples.length));
+    let sum = 0;
+    let peak = 0;
+    let count = 0;
+    for (let index = start; index < end; index += 1) {
+      const value = samples[index] ?? 0;
+      sum += value;
+      peak = Math.max(peak, value);
+      count += 1;
+    }
+
+    const avg = count > 0 ? sum / count : 0;
+    const energy = Math.max(avg, peak * 0.82);
+    const x = step * blockWidth;
+    const fillHeight = ribbonHeight * (0.42 + energy * 0.58);
+    const y = topY + (ribbonHeight - fillHeight);
+
+    let color = "rgba(111, 220, 255, 0.8)";
+    if (energy >= 0.78) {
+      color = "rgba(255, 126, 82, 0.88)";
+    } else if (energy >= 0.6) {
+      color = "rgba(255, 198, 82, 0.84)";
+    } else if (energy >= 0.38) {
+      color = "rgba(196, 255, 104, 0.82)";
+    }
+
+    context.fillStyle = color;
+    context.fillRect(x, y, Math.max(3, blockWidth - 1), fillHeight);
+  }
+}
+
+function drawSelectedMarkerBeam(
+  context: CanvasRenderingContext2D,
+  marker: DeckSelectedMarker | null,
+  currentProgress: number,
+  width: number,
+  topY: number,
+  height: number,
+): void {
+  if (!marker) {
+    return;
+  }
+
+  const relative = 0.5 + (marker.progress - currentProgress) * MONITOR_TRACK_STRIP_MULTIPLIER;
+  if (relative < -0.08 || relative > 1.08) {
+    return;
+  }
+
+  const x = relative * width;
+  const beam = context.createLinearGradient(x - 22, topY, x + 22, topY);
+  beam.addColorStop(0, "rgba(255,255,255,0)");
+  beam.addColorStop(0.38, marker.severity >= 0.9 ? "rgba(255,92,124,0.16)" : "rgba(255,208,108,0.14)");
+  beam.addColorStop(0.5, "rgba(255,255,255,0.9)");
+  beam.addColorStop(0.62, marker.severity >= 0.9 ? "rgba(255,92,124,0.16)" : "rgba(255,208,108,0.14)");
+  beam.addColorStop(1, "rgba(255,255,255,0)");
+  context.fillStyle = beam;
+  context.fillRect(x - 22, topY, 44, height);
+
+  context.fillStyle = marker.severity >= 0.9 ? "rgba(255,72,108,0.88)" : "rgba(255,196,92,0.82)";
+  context.fillRect(x - 1, topY, 2, height);
 }
 
 function drawQuantizedLogBlocks(
@@ -1440,6 +1525,10 @@ export function SimpleMonitorScreen({
       leftPercent: marker.progress * 100,
     }))
     .filter((marker) => marker.leftPercent >= 0 && marker.leftPercent <= 100);
+  const selectedDeckMarker: DeckSelectedMarker | null =
+    selectedAnomalyId
+      ? waveformAnomalies.find((marker) => marker.id === selectedAnomalyId) ?? null
+      : null;
   const sortedPastSessions = [...safePastSessions].sort((left, right) => {
     const statusWeight = (session: PersistedSession) =>
       session.status === "active" ? 3 : session.status === "paused" ? 2 : 1;
@@ -1596,6 +1685,13 @@ export function SimpleMonitorScreen({
     trackFillGradient.addColorStop(0.14, "rgba(182,223,255,0.9)");
     trackFillGradient.addColorStop(0.52, "rgba(92,188,255,0.84)");
     trackFillGradient.addColorStop(1, "rgba(34,120,196,0.68)");
+    drawPhraseRibbon(
+      context,
+      trackWaveSamples,
+      width,
+      headerInset + deckHeight * 0.31,
+      Math.max(12, deckHeight * 0.12),
+    );
     context.globalAlpha = 0.96;
     drawSingleSidedWaveform(context, trackWaveSamples, width, trackBaseY, trackAmplitude, trackFillGradient);
 
@@ -1647,6 +1743,14 @@ export function SimpleMonitorScreen({
 
     context.globalAlpha = 1;
     drawAnomalyWash(context, waveformAnomalies, trackWaveProgress, width, logBaseY, logAmplitude);
+    drawSelectedMarkerBeam(
+      context,
+      selectedDeckMarker,
+      trackWaveProgress,
+      width,
+      headerInset,
+      height - headerInset - footerInset,
+    );
 
     drawWaveContour(context, trackWaveSamples, width, trackBaseY, trackAmplitude, "rgba(238,248,255,0.64)", 1.4, "top");
     context.fillStyle = "rgba(255,255,255,0.08)";
@@ -1662,7 +1766,7 @@ export function SimpleMonitorScreen({
     context.fillRect(width * 0.5 - 18, headerInset, 36, height - headerInset - footerInset);
 
     context.globalAlpha = 1;
-  }, [logWaveOverlay, trackWaveSamples, trackWaveProgress, waveformAnomalies, waveformScale]);
+  }, [logWaveOverlay, selectedDeckMarker, trackWaveSamples, trackWaveProgress, waveformAnomalies, waveformScale]);
 
   const seekToTrackProgress = (nextProgress: number) => {
     const audio = backgroundAudioRef.current;
@@ -1948,6 +2052,15 @@ export function SimpleMonitorScreen({
                     Lower lane: log intensity, warnings and anomaly bursts
                   </span>
                 </div>
+                {selectedDeckMarker ? (
+                  <div className="monitor-deck-focusbar">
+                    <span className={`monitor-deck-focusbar__badge${selectedDeckMarker.severity >= 0.9 ? " critical" : " warning"}`}>
+                      {selectedDeckMarker.severity >= 0.9 ? "ACTIVE ANOMALY" : "ACTIVE WARNING"}
+                    </span>
+                    <span className="monitor-deck-focusbar__time">{selectedDeckMarker.timestamp}</span>
+                    <span className="monitor-deck-focusbar__text">{selectedDeckMarker.message}</span>
+                  </div>
+                ) : null}
                 <div className="zoom-control-vertical">
                   <span className="zoom-label-vertical">H</span>
                   <input 
