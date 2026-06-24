@@ -24,7 +24,7 @@ import { ImportBaseAssetForm } from "./components/ImportBaseAssetForm";
 import { ImportRepositoryForm } from "./components/ImportRepositoryForm";
 import { ImportTrackForm } from "./components/ImportTrackForm";
 
-export type LibraryTab = "tracks" | "sources" | "connections" | "bases";
+type LibraryTab = "tracks" | "sources" | "connections" | "bases";
 
 interface LibraryScreenProps {
   tracks: LibraryTrack[];
@@ -135,8 +135,7 @@ export function LibraryScreen({
   onInspectBaseAsset,
 }: LibraryScreenProps) {
   const t = useT();
-  const [internalTab, setInternalTab] = useState<LibraryTab>("tracks");
-  const tab = activeTab ?? internalTab;
+  const [tab, setTab] = useState<LibraryTab>("tracks");
   const [logConnections, setLogConnections] = useState<LogSourceConnection[]>([]);
   const [logConnectionError, setLogConnectionError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
