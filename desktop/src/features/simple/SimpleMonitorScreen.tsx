@@ -819,9 +819,9 @@ export function SimpleMonitorScreen({
       const noteHz = typeof cue.noteHz === "number" ? cue.noteHz : 180 + index * 30;
       const duration = Math.max(0.12, (cue.durationMs ?? 140) / 1000);
       const level = backgroundGraphRef.current
-        ? Math.max(0.003, Math.min(0.012, (cue.gain ?? 0.04) * 0.12))
-        : Math.max(0.02, Math.min(0.12, (cue.gain ?? 0.08) * 1.2));
-      osc.type = cue.waveform ?? "sine";
+        ? Math.max(0.0012, Math.min(0.0045, (cue.gain ?? 0.04) * 0.05))
+        : Math.max(0.012, Math.min(0.06, (cue.gain ?? 0.08) * 0.72));
+      osc.type = cue.waveform ?? (index === 0 ? "triangle" : "sine");
       osc.frequency.setValueAtTime(noteHz, startAt);
       gain.gain.setValueAtTime(0.0001, startAt);
       gain.gain.linearRampToValueAtTime(level, startAt + 0.01);
@@ -966,56 +966,56 @@ export function SimpleMonitorScreen({
     const severityRatio = clamp01((warnCount * 0.45 + errorCount) / lineCount);
     const densityRatio = clamp01(lineCount / 18);
     const instantPressure = clamp01(anomalyRatio * 0.58 + severityRatio * 0.27 + densityRatio * 0.15);
-    const pressure = clamp01(smoothedPressureRef.current * 0.74 + instantPressure * 0.26);
+    const pressure = clamp01(smoothedPressureRef.current * 0.82 + instantPressure * 0.18);
     smoothedPressureRef.current = pressure;
     const now = graph.context.currentTime;
-    const recoverAt = now + 1.8;
+    const recoverAt = now + 2.8;
 
-    const filterHz = Math.max(5200, 21000 - 6200 * pressure);
-    const filterQ = 0.6 + pressure * 1.2;
-    const bedGain = Math.max(0.8, 0.92 - pressure * 0.05);
-    const driveWet = pressure > 0.32 ? clamp01((pressure - 0.32) * 0.18) : 0;
-    const deckGain = Math.max(0.94, 1 - pressure * 0.03);
+    const filterHz = Math.max(9800, 21000 - 2800 * pressure);
+    const filterQ = 0.7 + pressure * 0.42;
+    const bedGain = Math.max(0.86, 0.93 - pressure * 0.028);
+    const driveWet = pressure > 0.44 ? clamp01((pressure - 0.44) * 0.08) : 0;
+    const deckGain = Math.max(0.965, 1 - pressure * 0.015);
     const playbackRate = 1;
 
     graph.filter.frequency.cancelScheduledValues(now);
     graph.filter.frequency.setValueAtTime(graph.filter.frequency.value, now);
-    graph.filter.frequency.exponentialRampToValueAtTime(filterHz, now + 0.18);
+    graph.filter.frequency.exponentialRampToValueAtTime(filterHz, now + 0.32);
     graph.filter.frequency.exponentialRampToValueAtTime(18000, recoverAt);
 
     graph.filter.Q.cancelScheduledValues(now);
     graph.filter.Q.setValueAtTime(graph.filter.Q.value, now);
-    graph.filter.Q.linearRampToValueAtTime(filterQ, now + 0.18);
+    graph.filter.Q.linearRampToValueAtTime(filterQ, now + 0.28);
     graph.filter.Q.linearRampToValueAtTime(1, recoverAt);
 
     graph.outputGain.gain.cancelScheduledValues(now);
     graph.outputGain.gain.setValueAtTime(graph.outputGain.gain.value, now);
-    graph.outputGain.gain.linearRampToValueAtTime(bedGain, now + 0.16);
+    graph.outputGain.gain.linearRampToValueAtTime(bedGain, now + 0.26);
     graph.outputGain.gain.linearRampToValueAtTime(0.82, recoverAt);
 
     graph.dryGain.gain.cancelScheduledValues(now);
     graph.dryGain.gain.setValueAtTime(graph.dryGain.gain.value, now);
-    graph.dryGain.gain.linearRampToValueAtTime(Math.max(0.9, 1 - driveWet * 0.12), now + 0.16);
+    graph.dryGain.gain.linearRampToValueAtTime(Math.max(0.94, 1 - driveWet * 0.06), now + 0.26);
     graph.dryGain.gain.linearRampToValueAtTime(1, recoverAt);
 
     graph.driveWetGain.gain.cancelScheduledValues(now);
     graph.driveWetGain.gain.setValueAtTime(graph.driveWetGain.gain.value, now);
-    graph.driveWetGain.gain.linearRampToValueAtTime(Math.max(0.0001, driveWet), now + 0.16);
+    graph.driveWetGain.gain.linearRampToValueAtTime(Math.max(0.0001, driveWet), now + 0.24);
     graph.driveWetGain.gain.linearRampToValueAtTime(0.0001, recoverAt);
 
-    graph.driveNode.curve = createDriveCurve(1.1 + driveWet * 1.8);
+    graph.driveNode.curve = createDriveCurve(1.02 + driveWet * 0.85);
 
     graph.deckGain.gain.cancelScheduledValues(now);
     graph.deckGain.gain.setValueAtTime(graph.deckGain.gain.value, now);
-    graph.deckGain.gain.linearRampToValueAtTime(deckGain, now + 0.14);
+    graph.deckGain.gain.linearRampToValueAtTime(deckGain, now + 0.22);
     graph.deckGain.gain.linearRampToValueAtTime(1, recoverAt);
 
-    if (pressure > 0.8 && errorCount > 1) {
-      const gateDepth = Math.min(0.08, 0.02 + pressure * 0.04);
-      const gateFloor = Math.max(0.92, deckGain * (1 - gateDepth));
-      const pulseAt = now + 0.18;
-      graph.deckGain.gain.linearRampToValueAtTime(gateFloor, pulseAt + 0.04);
-      graph.deckGain.gain.linearRampToValueAtTime(deckGain, pulseAt + 0.18);
+    if (pressure > 0.94 && errorCount > 3) {
+      const gateDepth = Math.min(0.035, 0.008 + pressure * 0.016);
+      const gateFloor = Math.max(0.955, deckGain * (1 - gateDepth));
+      const pulseAt = now + 0.22;
+      graph.deckGain.gain.linearRampToValueAtTime(gateFloor, pulseAt + 0.08);
+      graph.deckGain.gain.linearRampToValueAtTime(deckGain, pulseAt + 0.34);
     }
 
     audio.playbackRate = playbackRate;
@@ -1220,9 +1220,9 @@ export function SimpleMonitorScreen({
           cues.find((cue) => (cue.gain ?? 0) >= 0.12) ??
           null;
         if (
-          anomalyPressure >= 0.18 &&
+          anomalyPressure >= 0.28 &&
           anomalyDrivenCue &&
-          (!hasBackgroundTrack || nowMs - lastCueAccentAtRef.current >= 1800)
+          (!hasBackgroundTrack || nowMs - lastCueAccentAtRef.current >= 2600)
         ) {
           lastCueAccentAtRef.current = nowMs;
           playCueBatch(cues);
