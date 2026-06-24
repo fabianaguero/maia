@@ -350,6 +350,38 @@ export interface ImportRepositoryInput {
   label?: string;
 }
 
+
+export type LogSourceConnectionKind = "file_log" | "gcp_cloud_run";
+
+export interface LogSourceConnection {
+  id: string;
+  kind: LogSourceConnectionKind;
+  label: string;
+  sourceUri: string;
+  enabled: boolean;
+  adapterKind: "file" | "process";
+  config: Record<string, unknown>;
+  lastCursor: number;
+  lastSeenAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpsertLogSourceConnectionInput {
+  id?: string;
+  kind: LogSourceConnectionKind;
+  label: string;
+  sourceUri?: string;
+  enabled?: boolean;
+  config: Record<string, unknown>;
+}
+
+export interface StartLogSourceConnectionInput {
+  connectionId: string;
+  sessionId: string;
+  startFromBeginning?: boolean;
+}
+
 export type StreamAdapterKind = "file" | "process" | "websocket" | "http-poll" | "journald";
 
 export interface StreamSessionRecord {
