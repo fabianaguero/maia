@@ -22,18 +22,24 @@ except ImportError:
 MAX_LOG_LINES = 4000
 LOG_BUCKET_COUNT = 24
 MAX_ANOMALY_MARKERS = 8
+MIN_AI_ANOMALY_SAMPLE_LINES = 24
 
 LEVEL_ALIASES = {
     "trace": "trace",
     "debug": "debug",
+    "default": "info",
     "info": "info",
+    "notice": "info",
     "warn": "warn",
     "warning": "warn",
     "error": "error",
     "fatal": "error",
     "critical": "error",
 }
-LEVEL_PATTERN = re.compile(r"\b(trace|debug|info|warn|warning|error|fatal|critical)\b", re.IGNORECASE)
+LEVEL_PATTERN = re.compile(
+    r"\b(trace|debug|default|info|notice|warn|warning|error|fatal|critical)\b",
+    re.IGNORECASE,
+)
 TIMESTAMP_PATTERN = re.compile(
     r"^\s*(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}|"
     r"\d{2}:\d{2}:\d{2}|"
@@ -162,15 +168,25 @@ def _extract_log_component(line: str) -> str | None:
     return None
 
 
-def _is_anomaly_line(lowered_line: str, level: str, ai_score: float = 0.0) -> bool:
+def _is_anomaly_line(
+    lowered_line: str,
+    level: str,
+    ai_score: float = 0.0,
+    *,
+    allow_ai: bool = True,
+) -> bool:
     if level == "error":
         return True
 
-    # AI-based anomaly detection (Conservative threshold)
-    if ai_score < -0.12:
+    if any(keyword in lowered_line for keyword in ANOMALY_KEYWORDS):
         return True
 
-    return any(keyword in lowered_line for keyword in ANOMALY_KEYWORDS)
+    # Keep statistical anomaly detection as a fallback only for unknown log shapes.
+    # Live windows with INFO/NOTICE timestamps were generating false positives.
+    if allow_ai and level == "unknown" and ai_score < -0.24:
+        return True
+
+    return False
 
 
 class LogAnomalyDetector:
@@ -366,7 +382,9 @@ def _summarize_log_signal(
     
     # Initialize AI Detector
     detector = LogAnomalyDetector(conservative=True)
-    detector.fit(raw_lines)
+    detector_training_lines = [line.strip() for line in raw_lines if line.strip()]
+    if len(detector_training_lines) >= MIN_AI_ANOMALY_SAMPLE_LINES:
+        detector.fit(detector_training_lines)
 
     for line_number, raw_line in enumerate(raw_lines, start=1):
         line_count += 1
@@ -381,7 +399,12 @@ def _summarize_log_signal(
         
         # AI Scoring
         ai_score = detector.score(stripped)
-        anomaly = _is_anomaly_line(lowered, level, ai_score)
+        anomaly = _is_anomaly_line(
+            lowered,
+            level,
+            ai_score,
+            allow_ai=len(detector_training_lines) >= MIN_AI_ANOMALY_SAMPLE_LINES,
+        )
         
         # Level elevation if AI detects strong anomaly in unknown logs
         if level == "unknown" and ai_score < -0.15:

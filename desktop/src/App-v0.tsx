@@ -12,6 +12,7 @@ import { I18nContext } from "./i18n/I18nContext";
 import { es } from "./i18n/es";
 import { en } from "./i18n/en";
 import { NotificationProvider } from "./components/NotificationSystem";
+import { startLogSourceConnection } from "./api/repositories";
 import { useLibrary } from "./hooks/useLibrary";
 import { useRepositories } from "./hooks/useRepositories";
 import { useBaseAssets } from "./hooks/useBaseAssets";
@@ -67,30 +68,62 @@ function AppContentV0() {
             waveformBins={library.tracks.find(t => 
               getTrackTitle(t) === monitor.session?.trackName
             )?.analysis?.waveformBins}
-                onStartMonitoring={async (repoId, trackId) => {
-                  console.log("🎵 onStartMonitoring called:", { repoId, trackId, trackIds: library.tracks.map(t => t.id) });
-                  const repo = repositories.repositories.find(r => r.id === repoId);
-                  const track = library.tracks.find(t => t.id === trackId);
-                  const guideTrackPath = track ? resolvePlayableTrackPath(track) : null;
-                  console.log("🎵 Found:", { repo: !!repo, track: !!track, sourcePath: guideTrackPath });
-                  if (repo && track) {
+                onStartMonitoring={async (source, trackId) => {
+                  try {
+                    console.log("🎵 onStartMonitoring called:", { source, trackId, trackIds: library.tracks.map(t => t.id) });
+                    const track = library.tracks.find(t => t.id === trackId);
+                    const guideTrackPath = track ? resolvePlayableTrackPath(track) : null;
                     const sessionId = typeof crypto.randomUUID === 'function' 
                       ? crypto.randomUUID() 
                       : `session-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-                    
+
+                    if (!track) {
+                      console.error("🎵 No track selected for monitoring start");
+                      return;
+                    }
+
                     if (guideTrackPath) {
                       monitor.setGuideTrack(guideTrackPath);
                     }
-                    await monitor.resumeAudio(); // Auto-resume on start
+                    await monitor.resumeAudio();
+
+                    if (source.origin === "connection" && source.connectionId) {
+                      console.log("🎵 Starting connection:", { source, track: !!track });
+                      const streamSession = await startLogSourceConnection({
+                        connectionId: source.connectionId,
+                        sessionId,
+                        startFromBeginning: false,
+                      });
+
+                      const success = await monitor.attachSession({
+                        session: streamSession,
+                        repoId: source.id,
+                        repoTitle: source.title,
+                        trackTitle: getTrackTitle(track),
+                      });
+                      if (success) {
+                        setCurrentSection("monitor");
+                      }
+                      return;
+                    }
+
+                    const repo = repositories.repositories.find(r => r.id === source.id);
+                    console.log("🎵 Found file source:", { repo: !!repo, track: !!track, sourcePath: guideTrackPath });
+                    if (!repo) {
+                      console.error("🎵 Monitor source not found in repositories:", source);
+                      return;
+                    }
+
                     const success = await monitor.startSession(repo, {
                       sessionId,
                       source: repo.sourcePath,
                       adapterKind: "file",
-                      trackId: track.id,
                       trackTitle: getTrackTitle(track),
                       startFromBeginning: true // Ensure we see existing logs
                     });
                     if (success) setCurrentSection("monitor");
+                  } catch (error) {
+                    console.error("🎵 Failed to start monitoring source", error);
                   }
                 }}
             onReplaySession={async (sessionId, sourcePath, repoTitle) => {
@@ -144,7 +177,6 @@ function AppContentV0() {
           sessionId,
           source: repo.sourcePath,
           adapterKind: "file",
-          trackId: track.id,
           trackTitle: getTrackTitle(track),
           startFromBeginning: true // Ensure we see existing logs
         });

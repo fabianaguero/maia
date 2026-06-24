@@ -150,6 +150,32 @@ def test_golden_sonification_cues_have_level(tmp_path):
     assert levels <= {"info", "debug", "warn", "error"}
 
 
+def test_gcloud_info_notice_backfill_stays_non_anomalous():
+    """Cloud backfill lines with INFO/NOTICE timestamps alone should not trigger anomalies."""
+    chunk = "\n".join(
+        [
+            "DEFAULT 2026-06-24T21:55:46.323583Z HTTP Request: GET https://restapi-847752433493.us-central1.run.app/reservations/CTO-34853 \"HTTP/1.1 200 OK\"",
+            "DEFAULT 2026-06-24T21:55:46.550023Z Notifying changes for reservation CTO-34853",
+            "DEFAULT 2026-06-24T21:55:46.552974Z Logging {'id': 'V4zlx54eKGi30jzEJYSW', 'status': 'ORCHESTRATING'}",
+            "DEFAULT 2026-06-24T21:55:48.563665Z [Mail to NonApi Providers] attempt=1 decision=skipped reason=no_relevant_changes metrics={'sent': 0, 'filtered': 0, 'zohoSkipped': 0}",
+            "DEFAULT 2026-06-24T21:55:48.647129Z Process result for reservation CTO-34853: skipped (skipped_empty_window)",
+        ]
+    )
+    asset, warnings = analyze_repository(
+        "file",
+        "/virtual/gcloud-backfill.log",
+        options={
+            "logTailChunk": chunk,
+            "logTailLiveMode": True,
+        },
+    )
+    metrics = asset["metrics"]
+    assert metrics["anomalyCount"] == 0
+    assert metrics["dominantLevel"] == "info"
+    assert metrics["levelCounts"].get("info", 0) == 5
+    assert any("steady rather than spiky" in warning for warning in warnings)
+
+
 # ---------------------------------------------------------------------------
 # Mock vs native gate: service-layer handle_request parity
 # ---------------------------------------------------------------------------

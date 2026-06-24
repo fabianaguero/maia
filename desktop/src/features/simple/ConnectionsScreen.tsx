@@ -1,4 +1,15 @@
-import { Cable, FolderOpen, Globe, Play, RefreshCw, ScrollText, Square, Trash2 } from "lucide-react";
+import {
+  Cable,
+  FolderOpen,
+  Globe,
+  Pencil,
+  Play,
+  RefreshCw,
+  ScrollText,
+  Square,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -24,10 +35,13 @@ const GCLOUD_READY_MARKERS = [
   "Initializing tail session",
   "Waiting for new log lines",
 ];
+
 const GCLOUD_ERROR_MARKERS = [
   "ERROR:",
   "You do not currently have an active account",
   "Permission denied",
+  "command not found",
+  "not recognized as an internal or external command",
 ];
 
 function sleep(ms: number): Promise<void> {
@@ -35,7 +49,10 @@ function sleep(ms: number): Promise<void> {
 }
 
 function isCloudSdkNoise(line: string): boolean {
-  return line.includes("SyntaxWarning") && line.includes("google-cloud-sdk");
+  return (
+    line.includes("SyntaxWarning") &&
+    (line.includes("google-cloud-sdk") || line.includes("gcloud"))
+  );
 }
 
 function hasAnyMarker(lines: string[], markers: string[]): boolean {
@@ -49,14 +66,36 @@ function deriveFileConnectionLabel(path: string): string {
   return parts[parts.length - 1] ?? trimmed;
 }
 
+function readConfigString(
+  config: Record<string, unknown>,
+  key: string,
+): string | null {
+  const value = config[key];
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function deriveCloudBackfillLabel(connection: LogSourceConnection): string | null {
+  if (connection.kind !== "gcp_cloud_run") return null;
+  const configured = readConfigString(connection.config, "backfillFreshness");
+  if (!configured) return "Lookback 10m";
+  if (configured === "0" || configured.toLowerCase() === "off") {
+    return "Lookback live-only";
+  }
+  return `Lookback ${configured}`;
+}
+
 export function ConnectionsScreen() {
   const [connections, setConnections] = useState<LogSourceConnection[]>([]);
+  const [editingConnectionId, setEditingConnectionId] = useState<string | null>(null);
   const [kind, setKind] = useState<ConnectionKind>("file_log");
   const [label, setLabel] = useState("");
   const [sourcePath, setSourcePath] = useState("");
   const [gcpProjectId, setGcpProjectId] = useState("");
   const [gcpServiceName, setGcpServiceName] = useState("");
   const [gcpRegion, setGcpRegion] = useState("");
+  const [gcpBackfillFreshness, setGcpBackfillFreshness] = useState("10m");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [pickerBusy, setPickerBusy] = useState(false);
@@ -65,6 +104,8 @@ export function ConnectionsScreen() {
   const [activeConnectionId, setActiveConnectionId] = useState<string | null>(null);
   const [tailPreview, setTailPreview] = useState<string[]>([]);
   const [tailStatus, setTailStatus] = useState<string | null>(null);
+  const [testStatusById, setTestStatusById] = useState<Record<string, ConnectionTestStatus>>({});
+  const [testMessageById, setTestMessageById] = useState<Record<string, string>>({});
   const pollTimerRef = useRef<number | null>(null);
 
   const activeCount = useMemo(
@@ -94,6 +135,31 @@ export function ConnectionsScreen() {
       }
     };
   }, []);
+
+  function resetForm() {
+    setEditingConnectionId(null);
+    setKind("file_log");
+    setLabel("");
+    setSourcePath("");
+    setGcpProjectId("");
+    setGcpServiceName("");
+    setGcpRegion("");
+    setGcpBackfillFreshness("10m");
+  }
+
+  function loadConnectionIntoForm(connection: LogSourceConnection) {
+    setEditingConnectionId(connection.id);
+    setKind(connection.kind as ConnectionKind);
+    setLabel(connection.label);
+    setSourcePath(readConfigString(connection.config, "path") ?? connection.sourceUri);
+    setGcpProjectId(readConfigString(connection.config, "projectId") ?? "");
+    setGcpServiceName(readConfigString(connection.config, "serviceName") ?? "");
+    setGcpRegion(readConfigString(connection.config, "region") ?? "");
+    setGcpBackfillFreshness(
+      readConfigString(connection.config, "backfillFreshness") ?? "10m",
+    );
+    setError(null);
+  }
 
   async function handleBrowseFile() {
     try {
@@ -129,6 +195,7 @@ export function ConnectionsScreen() {
         }
 
         await upsertLogSourceConnection({
+          id: editingConnectionId ?? undefined,
           kind: "file_log",
           label: label.trim() || deriveFileConnectionLabel(normalizedPath),
           sourceUri: normalizedPath,
@@ -136,33 +203,35 @@ export function ConnectionsScreen() {
             path: normalizedPath,
           },
         });
-        setLabel("");
-        setSourcePath("");
       } else {
         const projectId = gcpProjectId.trim();
         const serviceName = gcpServiceName.trim();
         const region = gcpRegion.trim();
+        const backfillFreshness = gcpBackfillFreshness.trim() || "10m";
         if (!projectId || !serviceName) {
           setError("GCP Cloud Run requiere project ID y service name.");
           return;
         }
 
         await upsertLogSourceConnection({
+          id: editingConnectionId ?? undefined,
           kind: "gcp_cloud_run",
           label: label.trim() || `${serviceName} · Cloud Run`,
+          sourceUri:
+            region
+              ? `gcp-cloud-run://${projectId}/${region}/${serviceName}`
+              : `gcp-cloud-run://${projectId}/${serviceName}`,
           config: {
             projectId,
             serviceName,
             region: region || undefined,
             minimumSeverity: "DEFAULT",
+            backfillFreshness,
           },
         });
-        setLabel("");
-        setGcpProjectId("");
-        setGcpServiceName("");
-        setGcpRegion("");
       }
 
+      resetForm();
       await refreshConnections();
     } catch (nextError) {
       setError(
@@ -241,11 +310,103 @@ export function ConnectionsScreen() {
     try {
       setError(null);
       await deleteLogSourceConnection(id);
+      if (editingConnectionId === id) {
+        resetForm();
+      }
       await refreshConnections();
     } catch (nextError) {
       setError(
         nextError instanceof Error ? nextError.message : String(nextError),
       );
+    }
+  }
+
+  async function handleTestConnection(connection: LogSourceConnection) {
+    const sessionId = `test-${connection.id}-${Date.now()}`;
+    setError(null);
+    setTestStatusById((current) => ({ ...current, [connection.id]: "testing" }));
+    setTestMessageById((current) => ({ ...current, [connection.id]: "Opening adapter…" }));
+
+    try {
+      await startLogSourceConnection({
+        connectionId: connection.id,
+        sessionId,
+        startFromBeginning: false,
+      });
+
+      let sawData = false;
+      let sawReady = false;
+      let sawError = false;
+      let errorMessage = "";
+      let latestSummary = "Connection opened.";
+
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        await sleep(attempt === 0 ? 250 : 600);
+        const result = await pollStreamSession(sessionId);
+        latestSummary = result.summary || latestSummary;
+        const observedLines = [...result.warnings, ...result.parsedLines]
+          .filter((line) => !isCloudSdkNoise(line));
+
+        if (observedLines.length > 0) {
+          sawData = true;
+        }
+        if (hasAnyMarker(observedLines, GCLOUD_READY_MARKERS)) {
+          sawReady = true;
+        }
+        if (hasAnyMarker(observedLines, GCLOUD_ERROR_MARKERS)) {
+          sawError = true;
+          errorMessage =
+            observedLines.find((line) =>
+              GCLOUD_ERROR_MARKERS.some((marker) => line.includes(marker)),
+            ) ?? "The adapter reported an error during startup.";
+          break;
+        }
+
+        if (connection.kind === "file_log" && result.warnings.length === 0) {
+          sawReady = true;
+          if (result.hasData) {
+            latestSummary = `${result.lineCount} lines available from tail`;
+          } else if (result.summary) {
+            latestSummary = result.summary;
+          } else {
+            latestSummary = "File tail opened. Waiting for new lines.";
+          }
+          break;
+        }
+
+        if (connection.kind === "gcp_cloud_run" && (sawReady || result.hasData)) {
+          latestSummary = result.hasData
+            ? `${result.lineCount} lines observed from Cloud Logging`
+            : latestSummary || "Cloud Run tail opened. Waiting for entries.";
+          break;
+        }
+      }
+
+      if (sawError) {
+        setTestStatusById((current) => ({ ...current, [connection.id]: "error" }));
+        setTestMessageById((current) => ({ ...current, [connection.id]: errorMessage }));
+        return;
+      }
+
+      const successMessage =
+        connection.kind === "file_log"
+          ? latestSummary || "File tail opened correctly."
+          : sawData || sawReady
+            ? latestSummary || "Cloud Run tail opened correctly."
+            : "Connection opened. Waiting for new log lines.";
+
+      setTestStatusById((current) => ({ ...current, [connection.id]: "success" }));
+      setTestMessageById((current) => ({ ...current, [connection.id]: successMessage }));
+    } catch (nextError) {
+      const message = nextError instanceof Error ? nextError.message : String(nextError);
+      setTestStatusById((current) => ({ ...current, [connection.id]: "error" }));
+      setTestMessageById((current) => ({ ...current, [connection.id]: message }));
+    } finally {
+      try {
+        await stopStreamSession(sessionId);
+      } catch {
+        // best-effort cleanup for ephemeral test sessions
+      }
     }
   }
 
@@ -285,10 +446,11 @@ export function ConnectionsScreen() {
       <div className="connections-layout">
         <section className="panel connections-panel">
           <div className="form-intro">
-            <h3>Nueva conexión</h3>
+            <h3>{editingConnectionId ? "Editar conexión" : "Nueva conexión"}</h3>
             <p className="support-copy">
-              Elegí el adapter persistente que querés dejar disponible en el
-              monitor.
+              {editingConnectionId
+                ? "Ajustá la conexión guardada y actualizala sin recrearla."
+                : "Elegí el adapter persistente que querés dejar disponible en el monitor."}
             </p>
           </div>
 
@@ -375,6 +537,19 @@ export function ConnectionsScreen() {
                     placeholder="us-central1"
                   />
                 </label>
+                <label className="field maia-field">
+                  <span className="field-label">Stream lookback</span>
+                  <input
+                    value={gcpBackfillFreshness}
+                    className="maia-input"
+                    onChange={(event) => setGcpBackfillFreshness(event.target.value)}
+                    placeholder="10m"
+                  />
+                  <span className="support-copy">
+                    Cuánto histórico traer al abrir el stream. Usá `30m`, `2h`,
+                    `1d` o `off` para sólo tiempo real.
+                  </span>
+                </label>
               </>
             )}
 
@@ -407,8 +582,23 @@ export function ConnectionsScreen() {
               onClick={() => void handleSaveConnection()}
             >
               <Cable size={16} />
-              {saving ? " Saving..." : " Save connection"}
+              {saving
+                ? " Saving..."
+                : editingConnectionId
+                  ? " Update connection"
+                  : " Save connection"}
             </button>
+            {editingConnectionId ? (
+              <button
+                type="button"
+                className="card-action-btn"
+                disabled={saving}
+                onClick={() => resetForm()}
+              >
+                <X size={14} />
+                Cancel
+              </button>
+            ) : null}
           </div>
         </section>
 
@@ -439,7 +629,11 @@ export function ConnectionsScreen() {
           ) : (
             <ul className="asset-card-list">
               {connections.map((connection) => (
-                <li key={connection.id} className="asset-card">
+                <li
+                  key={connection.id}
+                  className={`asset-card ${editingConnectionId === connection.id ? "selected" : ""}`}
+                  onClick={() => loadConnectionIntoForm(connection)}
+                >
                   <div className="asset-card-icon source-icon">
                     <Cable size={18} />
                   </div>
@@ -491,6 +685,11 @@ export function ConnectionsScreen() {
                     >
                       {connection.sourceUri}
                     </span>
+                    {deriveCloudBackfillLabel(connection) ? (
+                      <span className="asset-card-date">
+                        {deriveCloudBackfillLabel(connection)}
+                      </span>
+                    ) : null}
                   </div>
                   <div className="asset-card-actions">
                     {activeConnectionId === connection.id ? (
@@ -498,7 +697,10 @@ export function ConnectionsScreen() {
                         type="button"
                         className="card-action-delete"
                         title="Stop live tail"
-                        onClick={() => void handleStopTail()}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void handleStopTail();
+                        }}
                       >
                         <Square size={14} />
                       </button>
@@ -507,7 +709,10 @@ export function ConnectionsScreen() {
                         type="button"
                         className="card-action-delete"
                         title="Start live tail"
-                        onClick={() => void handleStartTail(connection)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void handleStartTail(connection);
+                        }}
                         disabled={activeSessionId !== null}
                       >
                         <Play size={14} />
@@ -515,9 +720,25 @@ export function ConnectionsScreen() {
                     )}
                     <button
                       type="button"
-                      className="card-action-delete"
-                      title="Test gcloud/file tail connection"
-                      onClick={() => void handleTestConnection(connection)}
+                      className="card-action-btn"
+                      title="Edit connection"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        loadConnectionIntoForm(connection);
+                      }}
+                      disabled={saving}
+                    >
+                      <Pencil size={14} />
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="card-action-btn"
+                      title="Test persistent connection"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void handleTestConnection(connection);
+                      }}
                       disabled={
                         activeSessionId !== null ||
                         testStatusById[connection.id] === "testing"
@@ -525,31 +746,14 @@ export function ConnectionsScreen() {
                     >
                       Test
                     </button>
-                    {activeConnectionId === connection.id ? (
-                      <button
-                        type="button"
-                        className="card-action-delete"
-                        title="Stop live tail"
-                        onClick={() => void handleStopTail()}
-                      >
-                        <Square size={14} />
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="card-action-delete"
-                        title="Start live tail"
-                        onClick={() => void handleStartTail(connection)}
-                        disabled={activeSessionId !== null}
-                      >
-                        <Play size={14} />
-                      </button>
-                    )}
                     <button
                       type="button"
                       className="card-action-delete"
                       title="Delete connection"
-                      onClick={() => void handleDeleteConnection(connection.id)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void handleDeleteConnection(connection.id);
+                      }}
                     >
                       <Trash2 size={14} />
                     </button>

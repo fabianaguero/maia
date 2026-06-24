@@ -127,6 +127,8 @@ def test_analyze_log_chunk_anomaly_keywords():
     assert metrics["anomalyCount"] >= 3  # connection refused + deadlock + timeout
 
 
+
+
 # ---------------------------------------------------------------------------
 # Remote URL — metadata-only
 # ---------------------------------------------------------------------------

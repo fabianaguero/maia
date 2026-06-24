@@ -1,9 +1,18 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Play, Pause, Square, Music, AlertCircle, Clock } from "lucide-react";
+import { flushSync } from "react-dom";
+import { Play, Pause, Square, Music, AlertCircle, Clock, RefreshCw } from "lucide-react";
 
 import type { ActiveMonitorSession, MonitorMetrics } from "../monitor/MonitorContext";
+import { listLogSourceConnections } from "../../api/repositories";
 import type { PersistedSession } from "../../api/sessions";
-import type { BeatGridPoint, LibraryTrack, LiveLogMarker, RepositoryAnalysis } from "../../types/library";
+import type {
+  BeatGridPoint,
+  LibraryTrack,
+  LiveLogCue,
+  LiveLogMarker,
+  LogSourceConnection,
+  RepositoryAnalysis,
+} from "../../types/library";
 import { getTrackTitle as getLibraryTrackTitle, resolvePlayableTrackPath } from "../../utils/track";
 import { resolvePreviewAudioUrl, revokePreviewAudioUrl } from "../../utils/audioPreview";
 import { TrackWaveformMini } from "../../components/TrackWaveformMini";
@@ -18,7 +27,7 @@ interface SimpleMonitorScreenProps {
   onResumeAudio: () => Promise<void> | void;
   audioStatus: AudioContextState;
   audioContext: AudioContext | null;
-  onStartMonitoring: (repoId: string, trackId?: string) => void;
+  onStartMonitoring: (source: MonitorLaunchSource, trackId?: string) => void | Promise<void>;
   onReplaySession: (sessionId: string, sourcePath: string, repoTitle: string) => void;
   subscribe: (listener: (update: any) => void) => () => void;
   trackName?: string;
@@ -89,6 +98,131 @@ interface AnomalyBurstRegion {
   endProgress: number;
   severity: number;
   count: number;
+}
+
+const MONITOR_LIVE_LINES_LIMIT = 1_200;
+
+function formatCloudTimestamp(isoTimestamp: string): string {
+  const trimmed = isoTimestamp.trim();
+  if (!trimmed) {
+    return new Date().toLocaleTimeString().split(" ")[0];
+  }
+
+  const parsedMs = Date.parse(trimmed);
+  if (!Number.isNaN(parsedMs)) {
+    const date = new Date(parsedMs);
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, "0");
+    const day = `${date.getDate()}`.padStart(2, "0");
+    const hours = `${date.getHours()}`.padStart(2, "0");
+    const minutes = `${date.getMinutes()}`.padStart(2, "0");
+    const seconds = `${date.getSeconds()}`.padStart(2, "0");
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  }
+
+  return trimmed.replace("T", " ").replace(/\.\d+(?=Z?$)/, "");
+}
+
+function isMonitorAnomaly(level: "trace" | "debug" | "info" | "warn" | "error", message: string): boolean {
+  if (level === "error" || level === "warn") {
+    return true;
+  }
+
+  return /\banomal(?:y|ia|ies)?\b|\btimeout\b|\bexception\b|\bfailed\b|\bfatal\b|\bpanic\b|\bunavailable\b|\binternal server error\b/i.test(
+    message,
+  );
+}
+
+function normalizeMonitorLevel(rawLevel: string): "trace" | "debug" | "info" | "warn" | "error" {
+  const level = rawLevel.trim().toLowerCase();
+  if (level === "warning") return "warn";
+  if (level === "notice") return "info";
+  if (level === "fatal" || level === "critical") return "error";
+  if (level === "trace" || level === "debug" || level === "info" || level === "warn" || level === "error") {
+    return level;
+  }
+  return "info";
+}
+
+function parseMonitorLogLine(raw: string, lineIndex: number): MonitorLogLine {
+  const cloudSeverityFirstPattern = /^([A-Z]+)\s+(\d{4}-\d{2}-\d{2}T\S+)\s+(.*)$/;
+  const cloudSeverityFirstMatch = raw.match(cloudSeverityFirstPattern);
+  if (cloudSeverityFirstMatch) {
+    const level = normalizeMonitorLevel(cloudSeverityFirstMatch[1] || "INFO");
+    const isoTimestamp = cloudSeverityFirstMatch[2] ?? "";
+    const message = (cloudSeverityFirstMatch[3] || "").trim() || raw.trim();
+    const displayTimestamp = formatCloudTimestamp(isoTimestamp);
+    const isAnomaly = isMonitorAnomaly(level, message);
+    const anomalyId = isAnomaly
+      ? `${displayTimestamp}-${lineIndex}-${message.slice(0, 48)}`
+      : null;
+
+    return {
+      id: `${displayTimestamp}-${lineIndex}-${message.slice(0, 64)}`,
+      timestamp: displayTimestamp,
+      level,
+      message,
+      isAnomaly,
+      anomalyId,
+    };
+  }
+
+  const cloudTabPattern = /^(\d{4}-\d{2}-\d{2}T[^\t]+)\t([A-Z]+)?\t(.*)$/;
+  const cloudMatch = raw.match(cloudTabPattern);
+  if (cloudMatch) {
+    const isoTimestamp = cloudMatch[1] ?? "";
+    const level = normalizeMonitorLevel(cloudMatch[2] || "INFO");
+    const message = (cloudMatch[3] || "").trim() || raw.trim();
+    const displayTimestamp = formatCloudTimestamp(isoTimestamp);
+    const isAnomaly = isMonitorAnomaly(level, message);
+    const anomalyId = isAnomaly
+      ? `${displayTimestamp}-${lineIndex}-${message.slice(0, 48)}`
+      : null;
+
+    return {
+      id: `${displayTimestamp}-${lineIndex}-${message.slice(0, 64)}`,
+      timestamp: displayTimestamp,
+      level,
+      message,
+      isAnomaly,
+      anomalyId,
+    };
+  }
+
+  const levelMatch = raw.match(/\[(ERROR|WARN|INFO|DEBUG|TRACE)\]/i);
+  const level = normalizeMonitorLevel(levelMatch ? levelMatch[1] : "info");
+  const tsMatch = raw.match(/\[(.*?)\]/);
+  const timestamp = tsMatch ? tsMatch[1] : new Date().toLocaleTimeString().split(" ")[0];
+  const message = raw.replace(/\[.*?\]\s*\[.*?\]\s*/, "");
+  const isAnomaly = isMonitorAnomaly(level, message);
+  const anomalyId = isAnomaly
+    ? `${timestamp}-${lineIndex}-${message.slice(0, 48)}`
+    : null;
+
+  return {
+    id: `${timestamp}-${lineIndex}-${message.slice(0, 64)}`,
+    timestamp,
+    level,
+    message,
+    isAnomaly,
+    anomalyId,
+  };
+}
+
+function formatAdapterStatus(adapterKind: ActiveMonitorSession["adapterKind"] | undefined): string {
+  switch (adapterKind) {
+    case "process":
+      return "PROCESS_TAIL";
+    case "http-poll":
+      return "HTTP_POLL";
+    case "websocket":
+      return "WEBSOCKET_STREAM";
+    case "journald":
+      return "JOURNALD_STREAM";
+    case "file":
+    default:
+      return "FILE_TAIL";
+  }
 }
 
 function getTrackTitle(track: LibraryTrack): string {
@@ -930,6 +1064,8 @@ interface ModernSelectorProps<T> {
   seedPrefix?: string;
   renderAction?: (item: T, isSelected: boolean) => React.ReactNode;
   renderWave?: (item: T, isSelected: boolean) => React.ReactNode;
+  renderBadge?: (item: T, isSelected: boolean) => React.ReactNode;
+  emptyMessage?: string;
 }
 
 function ModernSelector<T extends { id: string }>({ 
@@ -943,12 +1079,18 @@ function ModernSelector<T extends { id: string }>({
   seedPrefix = "item",
   renderAction,
   renderWave,
+  renderBadge,
+  emptyMessage = "No items available.",
 }: ModernSelectorProps<T>) {
   return (
     <div className="modern-selector">
       <label className="setup-label">{label}</label>
       <div className="selector-grid">
-        {items.map(item => {
+        {items.length === 0 ? (
+          <div className="selector-empty">
+            <span>{emptyMessage}</span>
+          </div>
+        ) : items.map(item => {
           const isSelected = item.id === selectedId;
           return (
             <div 
@@ -957,7 +1099,10 @@ function ModernSelector<T extends { id: string }>({
               onClick={() => onSelect(item.id)}
             >
               <div className="card-content">
-                <span className="card-title">{renderTitle(item)}</span>
+                <div className="card-head">
+                  <span className="card-title">{renderTitle(item)}</span>
+                  {renderBadge ? renderBadge(item, isSelected) : null}
+                </div>
                 <span className="card-sub">{renderSub(item)}</span>
               </div>
               {renderAction ? (
@@ -988,6 +1133,21 @@ function ModernSelector<T extends { id: string }>({
   );
 }
 
+type MonitorSourceFilter = "all" | "file" | "folder" | "cloud";
+
+export interface MonitorLaunchSource {
+  id: string;
+  title: string;
+  sourcePath: string;
+  sourceType: Exclude<MonitorSourceFilter, "all">;
+  sourceTypeLabel: string;
+  startable: boolean;
+  origin: "repository" | "connection";
+  connectionId?: string;
+}
+
+interface MonitorSourceOption extends MonitorLaunchSource {}
+
 export function SimpleMonitorScreen({ 
   session, 
   metrics, 
@@ -1010,9 +1170,12 @@ export function SimpleMonitorScreen({
   const safePastSessions = Array.isArray(pastSessions) ? pastSessions : [];
   const safeRepositories = Array.isArray(repositories) ? repositories : [];
   const safeTracks = Array.isArray(tracks) ? tracks : [];
+  const [persistentConnections, setPersistentConnections] = useState<LogSourceConnection[]>([]);
   const [liveLines, setLiveLines] = useState<MonitorLogLine[]>([]);
   const [selectedSourceId, setSelectedSourceId] = useState("");
   const [selectedSoundId, setSelectedSoundId] = useState("");
+  const [sourceFilter, setSourceFilter] = useState<MonitorSourceFilter>("all");
+  const [isLaunchingMonitor, setIsLaunchingMonitor] = useState(false);
   const [logSignalBuffer, setLogSignalBuffer] = useState<{val: number, heat: number}[]>(new Array(120).fill({val: 10, heat: 0}));
   const [isAnomalyFilterActive, setIsAnomalyFilterActive] = useState(false);
   const [waveformScale, setWaveformScale] = useState(1.0);
@@ -1029,6 +1192,8 @@ export function SimpleMonitorScreen({
   const previewUrlRef = useRef<string | null>(null);
   const audioProbePlayedRef = useRef(false);
   const lastCueAccentAtRef = useRef(0);
+  const lastStreamEventAtRef = useRef<number>(Date.now());
+  const lastIdleNoteAtRef = useRef(0);
   const smoothedPressureRef = useRef(0);
   const [previewTrackId, setPreviewTrackId] = useState<string | null>(null);
   const waveformStageRef = useRef<HTMLDivElement | null>(null);
@@ -1049,6 +1214,149 @@ export function SimpleMonitorScreen({
   const deckBpm = liveSuggestedBpm ?? activeTrack?.analysis?.bpm ?? null;
   const deckDurationSeconds = trackDurationSeconds ?? activeTrack?.analysis?.durationSeconds ?? null;
   const activeBeatGrid = activeTrack?.analysis?.beatGrid ?? activeTrack?.beatGrid ?? [];
+  const streamAdapterLabel = formatAdapterStatus(session?.adapterKind);
+  const isMonitorActive = isListening || isLaunchingMonitor;
+  const activeTrackRef = useRef(activeTrack);
+  const deckDurationSecondsRef = useRef(deckDurationSeconds);
+  const liveSuggestedBpmRef = useRef(liveSuggestedBpm);
+  const trackWaveProgressRef = useRef(trackWaveProgress);
+
+  useEffect(() => {
+    if (isListening) {
+      setIsLaunchingMonitor(false);
+    }
+  }, [isListening]);
+
+  useEffect(() => {
+    activeTrackRef.current = activeTrack;
+  }, [activeTrack]);
+
+  useEffect(() => {
+    deckDurationSecondsRef.current = deckDurationSeconds;
+  }, [deckDurationSeconds]);
+
+  useEffect(() => {
+    liveSuggestedBpmRef.current = liveSuggestedBpm;
+  }, [liveSuggestedBpm]);
+
+  useEffect(() => {
+    trackWaveProgressRef.current = trackWaveProgress;
+  }, [trackWaveProgress]);
+
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const nextConnections = await listLogSourceConnections();
+        if (!cancelled) {
+          setPersistentConnections(Array.isArray(nextConnections) ? nextConnections : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setPersistentConnections([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const monitorSourceOptions: MonitorSourceOption[] = safeRepositories.map((repo) => {
+    const sourceType: MonitorSourceOption["sourceType"] =
+      repo.sourceKind === "file"
+        ? "file"
+        : repo.sourceKind === "directory"
+          ? "folder"
+          : "cloud";
+
+    return {
+      id: repo.id,
+      title: repo.title,
+      sourcePath: repo.sourcePath,
+      sourceType,
+      sourceTypeLabel:
+        sourceType === "file"
+          ? "Log file"
+          : sourceType === "folder"
+            ? "Folder"
+            : "Cloud / remote",
+      startable: repo.sourceKind === "file",
+      origin: "repository",
+      connectionId: undefined,
+    };
+  });
+
+  const cloudConnectionOptions: MonitorSourceOption[] = persistentConnections
+    .filter((connection) => connection.kind === "gcp_cloud_run")
+    .map((connection) => ({
+      id: `connection:${connection.id}`,
+      title: connection.label,
+      sourcePath: connection.sourceUri,
+      sourceType: "cloud",
+      sourceTypeLabel: "Cloud connection",
+      startable: connection.enabled,
+      origin: "connection",
+      connectionId: connection.id,
+    }));
+
+  const allMonitorSourceOptions: MonitorSourceOption[] = [
+    ...monitorSourceOptions,
+    ...cloudConnectionOptions,
+  ];
+
+  const cloudConnectionCount = cloudConnectionOptions.length;
+
+  const filteredMonitorSourceOptions = allMonitorSourceOptions.filter((source) =>
+    sourceFilter === "all" ? true : source.sourceType === sourceFilter,
+  );
+
+  const selectedSourceOption =
+    allMonitorSourceOptions.find((source) => source.id === selectedSourceId) ?? null;
+  const launchingSource = selectedSourceOption;
+  const monitorSourceTitle = session?.repoTitle ?? launchingSource?.title ?? "Booting monitor";
+  const monitorSourcePath = session?.sourcePath ?? launchingSource?.sourcePath ?? "Awaiting source binding";
+  const monitorTrackTitle =
+    trackName ||
+    session?.trackName ||
+    safeTracks.find((track) => track.id === selectedSoundId)?.title ||
+    "No track selected";
+  const isConnectingMonitor = isLaunchingMonitor && !session;
+
+  useEffect(() => {
+    if (!selectedSourceId) {
+      return;
+    }
+    if (sourceFilter === "all") {
+      return;
+    }
+    if (selectedSourceOption && selectedSourceOption.sourceType !== sourceFilter) {
+      setSelectedSourceId("");
+    }
+  }, [selectedSourceId, selectedSourceOption, sourceFilter]);
+
+  const canStartSelectedSource = Boolean(selectedSourceOption?.startable);
+
+  const sourceEmptyMessage =
+    sourceFilter === "cloud"
+      ? cloudConnectionCount > 0
+        ? "Choose a saved cloud connection to start passive monitoring."
+        : "No cloud-ready log source is available here yet. Configure GCP adapters in Conexiones."
+      : sourceFilter === "folder"
+        ? "Folders are visible for inspection, but passive monitoring starts from log files."
+        : "No source matches this filter.";
+
+  const startHint =
+    selectedSourceOption && !selectedSourceOption.startable
+      ? selectedSourceOption.origin === "connection"
+        ? "This cloud connection exists but is disabled. Enable it in Conexiones first."
+        : selectedSourceOption.sourceType === "cloud"
+          ? "Cloud adapters are configured under Conexiones. Use a file log here, or manage cloud tails from that panel."
+        : "This source is useful for inspection, but passive monitoring starts from a file log."
+      : selectedSourceId && selectedSoundId
+        ? "Ready to start passive monitoring."
+        : "Select a log source and a sound profile below.";
 
   const playTestTone = () => {
     if (!audioContext || audioContext.state !== "running") {
@@ -1232,8 +1540,45 @@ export function SimpleMonitorScreen({
     const burstFactor = resolveBurstFactor(update.anomalyMarkers);
     const anomalyRatio = clamp01((update.anomalyCount ?? 0) / lineCount);
     const severityRatio = clamp01((warnCount * 0.45 + errorCount) / lineCount);
-    const densityRatio = clamp01(lineCount / 18);
-    const instantPressure = clamp01(anomalyRatio * 0.48 + severityRatio * 0.22 + densityRatio * 0.1 + burstFactor * 0.2);
+    const hasAlertSignal =
+      (update.anomalyCount ?? 0) > 0 ||
+      warnCount > 0 ||
+      errorCount > 0 ||
+      burstFactor > 0.18;
+
+    if (!hasAlertSignal) {
+      smoothedPressureRef.current *= 0.58;
+      const now = graph.context.currentTime;
+      graph.filter.frequency.cancelScheduledValues(now);
+      graph.filter.frequency.setValueAtTime(graph.filter.frequency.value, now);
+      graph.filter.frequency.exponentialRampToValueAtTime(18000, now + 0.22);
+
+      graph.filter.Q.cancelScheduledValues(now);
+      graph.filter.Q.setValueAtTime(graph.filter.Q.value, now);
+      graph.filter.Q.linearRampToValueAtTime(1, now + 0.22);
+
+      graph.outputGain.gain.cancelScheduledValues(now);
+      graph.outputGain.gain.setValueAtTime(graph.outputGain.gain.value, now);
+      graph.outputGain.gain.linearRampToValueAtTime(0.82, now + 0.18);
+
+      graph.dryGain.gain.cancelScheduledValues(now);
+      graph.dryGain.gain.setValueAtTime(graph.dryGain.gain.value, now);
+      graph.dryGain.gain.linearRampToValueAtTime(1, now + 0.18);
+
+      graph.driveWetGain.gain.cancelScheduledValues(now);
+      graph.driveWetGain.gain.setValueAtTime(graph.driveWetGain.gain.value, now);
+      graph.driveWetGain.gain.linearRampToValueAtTime(0.0001, now + 0.18);
+
+      graph.deckGain.gain.cancelScheduledValues(now);
+      graph.deckGain.gain.setValueAtTime(graph.deckGain.gain.value, now);
+      graph.deckGain.gain.linearRampToValueAtTime(1, now + 0.18);
+
+      graph.driveNode.curve = createDriveCurve(1.02);
+      audio.playbackRate = 1;
+      return;
+    }
+
+    const instantPressure = clamp01(anomalyRatio * 0.58 + severityRatio * 0.26 + burstFactor * 0.24);
     const pressure = clamp01(smoothedPressureRef.current * 0.84 + instantPressure * 0.16);
     smoothedPressureRef.current = pressure;
     const now = graph.context.currentTime;
@@ -1300,10 +1645,14 @@ export function SimpleMonitorScreen({
       "BUFFER_FLUSH: Real-time stream synchronized",
       "MAIA_CORE: Sonification engine optimized"
     ];
-    const mock = {
+    const now = Date.now();
+    const mock: MonitorLogLine = {
+      id: `sim-${now}`,
       timestamp: new Date().toLocaleTimeString().split(' ')[0],
       level,
-      message: messages[Math.floor(Math.random() * messages.length)]
+      message: messages[Math.floor(Math.random() * messages.length)],
+      isAnomaly: level === "error" || level === "warn",
+      anomalyId: level === "error" || level === "warn" ? `sim-anomaly-${now}` : null,
     };
     setLiveLines(prev => [mock, ...prev].slice(0, 50));
     setLogSignalBuffer(prev => {
@@ -1324,11 +1673,13 @@ export function SimpleMonitorScreen({
   useEffect(() => {
     try {
       if (isListening) {
+        lastStreamEventAtRef.current = Date.now();
+        lastIdleNoteAtRef.current = 0;
         setLiveLines([{
           id: "maia-monitor-init",
           timestamp: new Date().toLocaleTimeString().split(' ')[0],
           level: "info",
-          message: `MAIA_MONITOR_INITIALIZED: Handshake successful. Tailing ${getBasename(session?.sourcePath)}...`,
+          message: `MAIA_MONITOR_INITIALIZED: ${streamAdapterLabel} armed. Listening to ${getBasename(session?.sourcePath)}...`,
           isAnomaly: false,
           anomalyId: null,
         }]);
@@ -1341,6 +1692,8 @@ export function SimpleMonitorScreen({
         setWaveformAnomalies([]);
         setSelectedAnomalyId(null);
         audioProbePlayedRef.current = false;
+        lastStreamEventAtRef.current = Date.now();
+        lastIdleNoteAtRef.current = 0;
         backgroundAudioRef.current = null;
         safeRevokePreviewAudioUrl(backgroundAudioUrlRef.current);
         backgroundAudioUrlRef.current = null;
@@ -1351,7 +1704,7 @@ export function SimpleMonitorScreen({
       backgroundAudioRef.current = null;
       backgroundGraphRef.current = null;
     }
-  }, [isListening, session?.sourcePath]);
+  }, [isListening, session?.sourcePath, streamAdapterLabel]);
 
   useEffect(() => {
     if (SAFE_MONITOR_RUNTIME) {
@@ -1461,19 +1814,32 @@ export function SimpleMonitorScreen({
     if (!isListening) return;
     
     const unsub = subscribe((update) => {
+      const parsedLines: string[] = Array.isArray(update.parsedLines) ? update.parsedLines : [];
+      const cueBatch: LiveLogCue[] = Array.isArray(update.sonificationCues) ? update.sonificationCues : [];
+      const anomalyMarkers: LiveLogMarker[] = Array.isArray(update.anomalyMarkers) ? update.anomalyMarkers : [];
+      const hasRealLines = parsedLines.length > 0;
+      const hasRealSignals =
+        (update.lineCount ?? 0) > 0 ||
+        anomalyMarkers.length > 0 ||
+        cueBatch.length > 0;
+      const hasMeaningfulUpdate = Boolean(update.hasData && (hasRealLines || hasRealSignals));
+
+      if (hasMeaningfulUpdate) {
+        lastStreamEventAtRef.current = Date.now();
+      }
+
       setLiveSuggestedBpm(
         typeof update.suggestedBpm === "number" && Number.isFinite(update.suggestedBpm)
           ? update.suggestedBpm
           : null,
       );
-      const cues = Array.isArray(update.sonificationCues) ? update.sonificationCues : [];
       if (audioContext?.state === "running") {
         if (!audioProbePlayedRef.current) {
           audioProbePlayedRef.current = true;
           playTestTone();
         }
         const activeAudio = backgroundAudioRef.current;
-        if (activeAudio) {
+        if (activeAudio && hasMeaningfulUpdate) {
           ensureBackgroundGraph(activeAudio, audioContext);
           applyTrackMutation(update);
         }
@@ -1486,60 +1852,38 @@ export function SimpleMonitorScreen({
         );
         const burstFactor = resolveBurstFactor(update.anomalyMarkers);
         const anomalyDrivenCue =
-          cues.find((cue) => cue.accent === "anomaly") ??
-          cues.find((cue) => (cue.gain ?? 0) >= 0.12) ??
+          cueBatch.find((cue: LiveLogCue) => cue.accent === "anomaly") ??
+          cueBatch.find((cue: LiveLogCue) => (cue.gain ?? 0) >= 0.12) ??
           null;
         if (
+          hasMeaningfulUpdate &&
           anomalyPressure >= 0.28 &&
           burstFactor < 0.72 &&
           anomalyDrivenCue &&
           (!hasBackgroundTrack || nowMs - lastCueAccentAtRef.current >= 2600)
         ) {
           lastCueAccentAtRef.current = nowMs;
-          playCueBatch(cues);
+          playCueBatch(cueBatch);
         }
       }
 
-      if (update.parsedLines && update.parsedLines.length > 0) {
+      if (hasRealLines) {
         // Parse raw lines into objects for UI display and signal mapping
-        const parsed = update.parsedLines.map((raw, lineIndex) => {
-          const levelMatch = raw.match(/\[(ERROR|WARN|INFO|DEBUG|TRACE)\]/i);
-          const level = levelMatch ? levelMatch[1].toLowerCase() : "info";
-          const tsMatch = raw.match(/\[(.*?)\]/);
-          const timestamp = tsMatch ? tsMatch[1] : new Date().toLocaleTimeString().split(' ')[0];
-          
-          // Clean message: remove the tags if they exist to keep it readable
-          const message = raw.replace(/\[.*?\]\s*\[.*?\]\s*/, '');
-          const isAnomaly =
-            level === "error" ||
-            level === "warn" ||
-            /anomal|timeout|exception|failed|retry|fatal/i.test(message);
-          const anomalyId = isAnomaly
-            ? `${timestamp}-${lineIndex}-${message.slice(0, 48)}`
-            : null;
+        const parsed = parsedLines.map((raw: string, lineIndex: number) => parseMonitorLogLine(raw, lineIndex));
 
-          return {
-            id: `${timestamp}-${lineIndex}-${message.slice(0, 64)}`,
-            timestamp,
-            level,
-            message,
-            isAnomaly,
-            anomalyId,
-          } satisfies MonitorLogLine;
-        });
-
-        setLiveLines((prev) => [...prev, ...parsed].slice(-200));
+        setLiveLines((prev) => [...prev, ...parsed].slice(-MONITOR_LIVE_LINES_LIMIT));
         setWaveformAnomalies((prev) => {
           const retained = prev.filter((marker) => marker.progress >= 0 && marker.progress <= 1);
 
-          const anomalyLines = parsed.filter((line) => line.isAnomaly && line.anomalyId);
-          const durationSeconds = backgroundAudioRef.current?.duration ?? deckDurationSeconds;
-          const beatGrid = activeTrack?.analysis?.beatGrid ?? activeTrack?.beatGrid ?? [];
-          const bpm = liveSuggestedBpm ?? activeTrack?.analysis?.bpm ?? null;
+          const anomalyLines = parsed.filter((line: MonitorLogLine) => line.isAnomaly && line.anomalyId);
+          const currentTrack = activeTrackRef.current;
+          const durationSeconds = backgroundAudioRef.current?.duration ?? deckDurationSecondsRef.current;
+          const beatGrid = currentTrack?.analysis?.beatGrid ?? currentTrack?.beatGrid ?? [];
+          const bpm = liveSuggestedBpmRef.current ?? currentTrack?.analysis?.bpm ?? null;
           const currentProgress = backgroundAudioRef.current?.duration
             ? clamp01(backgroundAudioRef.current.currentTime / backgroundAudioRef.current.duration)
-            : trackWaveProgress;
-          const nextMarkers = anomalyLines.slice(0, 3).map((line, index) => ({
+            : trackWaveProgressRef.current;
+          const nextMarkers = anomalyLines.slice(0, 3).map((line: MonitorLogLine, index: number) => ({
             id: line.anomalyId ?? `${line.id}-marker`,
             lineId: line.id,
             timestamp: line.timestamp,
@@ -1556,8 +1900,8 @@ export function SimpleMonitorScreen({
 
           return [...retained, ...nextMarkers].slice(-24);
         });
-        if (parsed.some((line) => line.isAnomaly && line.anomalyId)) {
-          const firstAnomaly = parsed.find((line) => line.isAnomaly && line.anomalyId);
+        if (parsed.some((line: MonitorLogLine) => line.isAnomaly && line.anomalyId)) {
+          const firstAnomaly = parsed.find((line: MonitorLogLine) => line.isAnomaly && line.anomalyId);
           if (firstAnomaly?.anomalyId) {
             setSelectedAnomalyId((current) => current ?? firstAnomaly.anomalyId);
           }
@@ -1569,12 +1913,12 @@ export function SimpleMonitorScreen({
         setLogSignalBuffer(prev => {
           let val = 20;
           let heat = 0;
-          const cues = update.sonificationCues || [];
-          const anomalies = update.anomalyMarkers || [];
+          const cues = cueBatch;
+          const anomalies = anomalyMarkers;
           
           if (cues.length > 0 || anomalies.length > 0) {
             // Volume logic: based purely on sonification gain (how loud the output is)
-            const avgGain = cues.length > 0 ? cues.reduce((s, c) => s + c.gain, 0) / cues.length : 0;
+            const avgGain = cues.length > 0 ? cues.reduce((sum: number, cue: LiveLogCue) => sum + cue.gain, 0) / cues.length : 0;
             // Map gain to visual height (0 to 140)
             val = 20 + Math.min(120, avgGain * 150);
             
@@ -1608,28 +1952,61 @@ export function SimpleMonitorScreen({
           }
           return newBuffer;
         });
-      } else {
-        // Idle pulse when no data
-        setLogSignalBuffer(prev => {
-          const idle = (Math.sin(Date.now() / 300) * 8 + 18);
-          const newBuffer = [...prev];
-          for (let i = 0; i < 60; i++) {
-             newBuffer[i] = prev[i + 1] || {val: 20, heat: 0};
-          }
-          newBuffer[60] = { val: idle, heat: 0 };
-          for (let i = 61; i < 120; i++) {
-             const prevFuture = prev[i] || { val: 20, heat: 0 };
-             newBuffer[i] = {
-               val: 20 + (prevFuture.val - 20) * 0.82,
-               heat: prevFuture.heat * 0.78,
-             };
-          }
-          return newBuffer;
-        });
       }
     });
     return unsub;
-  }, [activeTrack, audioContext, deckDurationSeconds, isListening, liveSuggestedBpm, subscribe, trackWaveProgress]);
+  }, [audioContext, isListening, subscribe]);
+
+  useEffect(() => {
+    if (SAFE_MONITOR_RUNTIME) {
+      return;
+    }
+    if (!isListening) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      const now = Date.now();
+      const idleForMs = now - lastStreamEventAtRef.current;
+      if (idleForMs < 900) {
+        return;
+      }
+
+      setLogSignalBuffer((prev) => {
+        const idlePulse =
+          18 +
+          Math.sin(now / 420) * 4 +
+          Math.sin(now / 880) * 2 +
+          (typeof deckBpm === "number"
+            ? Math.sin((now / 60000) * deckBpm * Math.PI * 2) * 1.5
+            : 0);
+        const nextBuffer = [...prev];
+        for (let index = 0; index < 60; index += 1) {
+          nextBuffer[index] = prev[index + 1] || { val: 20, heat: 0 };
+        }
+        const previousCenter = prev[60] || { val: 20, heat: 0 };
+        nextBuffer[60] = {
+          val: previousCenter.val * 0.78 + idlePulse * 0.22,
+          heat: previousCenter.heat * 0.6,
+        };
+        for (let index = 61; index < 120; index += 1) {
+          const decay = 1 - (index - 60) / 60;
+          const eased = Math.max(0, decay * decay);
+          const future = prev[index] || { val: 20, heat: 0 };
+          nextBuffer[index] = {
+            val: 20 + (nextBuffer[60].val - 20) * eased * 0.44 + (future.val - 20) * 0.36,
+            heat: future.heat * 0.7,
+          };
+        }
+        return nextBuffer;
+      });
+
+    }, 450);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [deckBpm, isListening, streamAdapterLabel]);
 
   useEffect(() => {
     const container = terminalLinesRef.current;
@@ -2152,7 +2529,7 @@ export function SimpleMonitorScreen({
 
   return (
     <div className="simple-monitor-screen">
-      {isListening ? (
+      {isMonitorActive ? (
         <>
           {/* Active Listening State */}
           <div className="monitor-active">
@@ -2161,13 +2538,21 @@ export function SimpleMonitorScreen({
               <div className="brand-header-mini">
                 <img src="/assets/branding/maia-icon-site.png" alt="MAIA" className="logo-mini" />
                 <div className="status-indicator">
-                  <div className="pulsing-dot teal"></div>
-                  <span className="status-text">SYSTEM_ACTIVE</span>
+                  <div className={`pulsing-dot ${isConnectingMonitor ? "amber" : "teal"}`}></div>
+                  <span className={`status-text${isConnectingMonitor ? " pending" : ""}`}>
+                    {isConnectingMonitor ? "CONNECTING_GCLOUD" : "SYSTEM_ACTIVE"}
+                  </span>
                 </div>
               </div>
               <div className="source-info">
-                <span className="source-name-hd">{session?.repoTitle}</span>
-                <span className="source-path-mini">{session?.sourcePath}</span>
+                <span className="source-name-hd">{monitorSourceTitle}</span>
+                <span className="source-path-mini">{monitorSourcePath}</span>
+                {isConnectingMonitor ? (
+                  <span className="monitor-connecting-inline">
+                    <RefreshCw size={12} className="spin-ring" />
+                    Waiting for stream handshake and first response…
+                  </span>
+                ) : null}
               </div>
               <div className="metrics-row-hd">
                 <div 
@@ -2242,10 +2627,26 @@ export function SimpleMonitorScreen({
               >
                 {liveLines.length === 0 ? (
                   <div className="terminal-empty">
-                    <div className="pulsing-dot teal"></div>
-                    <span>WAITING_FOR_LIVE_INGESTION_STREAM...</span>
-                    <p className="terminal-hint">Listening to {session?.sourcePath} in real-time</p>
-                    <div className="terminal-status-badge">DIRECTORY_POLL: ACTIVE (0 LINES DETECTED)</div>
+                    {isConnectingMonitor ? (
+                      <RefreshCw size={16} className="spin-ring terminal-connecting-spinner" />
+                    ) : (
+                      <div className="pulsing-dot teal"></div>
+                    )}
+                    <span>
+                      {isConnectingMonitor
+                        ? "CONNECTING_TO_REMOTE_STREAM..."
+                        : "WAITING_FOR_LIVE_INGESTION_STREAM..."}
+                    </span>
+                    <p className="terminal-hint">
+                      {isConnectingMonitor
+                        ? `Opening ${monitorSourcePath} and waiting for first window`
+                        : `Listening to ${monitorSourcePath} in real-time`}
+                    </p>
+                    <div className="terminal-status-badge">
+                      {isConnectingMonitor
+                        ? `${streamAdapterLabel}: CONNECTING`
+                        : `${streamAdapterLabel}: ACTIVE (0 LINES DETECTED)`}
+                    </div>
                   </div>
                 ) : (
                   liveLines
@@ -2289,7 +2690,7 @@ export function SimpleMonitorScreen({
                   <div className="monitor-deck-heading">
                     <span className="section-label-hd">HD_WAVEFORM_ENGINE // SCAN_ACTIVE</span>
                     <span className="monitor-deck-trackline">
-                      {trackName || "Live Ingestion"}
+                      {monitorTrackTitle || "Live Ingestion"}
                       {activeTrack?.tags?.musicStyleLabel ? ` · ${activeTrack.tags.musicStyleLabel}` : ""}
                     </span>
                   </div>
@@ -2482,7 +2883,7 @@ export function SimpleMonitorScreen({
                       <div className="monitor-deck-footer__lane">
                         <span className="monitor-deck-footer__tag log">LOG STREAM</span>
                         <span className="monitor-deck-footer__text">
-                          {truncateMiddle(session?.sourcePath, 52)}
+                          {truncateMiddle(monitorSourcePath, 52)}
                         </span>
                       </div>
                     </div>
@@ -2523,41 +2924,79 @@ export function SimpleMonitorScreen({
             <div className="idle-container">
               <h2 className="idle-title">Start monitoring</h2>
 
-              <div className="setup-actions-fixed setup-actions-fixed--hero">
-                <button
-                  className={`btn-start-listening-impactful ${selectedSourceId && selectedSoundId ? 'ready' : ''}`}
-                  onClick={async () => {
-                    if (selectedSourceId && selectedSoundId) {
-                      await onResumeAudio();
-                      onStartMonitoring(selectedSourceId, selectedSoundId);
-                    }
-                  }}
-                  disabled={!selectedSourceId || !selectedSoundId}
-                >
+	              <div className="setup-actions-fixed setup-actions-fixed--hero">
+	                <button
+	                  className={`btn-start-listening-impactful ${selectedSourceId && selectedSoundId && canStartSelectedSource ? 'ready' : ''}${isLaunchingMonitor ? ' launching' : ''}`}
+	                  onClick={async () => {
+	                    if (selectedSourceOption && selectedSoundId && canStartSelectedSource) {
+                        try {
+                          flushSync(() => {
+                            setIsLaunchingMonitor(true);
+                          });
+                          await new Promise<void>((resolve) => {
+                            window.requestAnimationFrame(() => resolve());
+                          });
+	                      await onResumeAudio();
+	                      await onStartMonitoring(selectedSourceOption, selectedSoundId);
+                        } catch (error) {
+                          console.error("Failed to start monitor from selector", error);
+                          setIsLaunchingMonitor(false);
+                        }
+	                    }
+	                  }}
+	                  disabled={!selectedSourceId || !selectedSoundId || !canStartSelectedSource || isLaunchingMonitor}
+	                >
                   <div className="btn-impact-glitch" />
-                  <Play size={28} fill="currentColor" />
-                  <span className="btn-text">INITIALIZE MONITORING</span>
+                  {isLaunchingMonitor ? (
+                    <RefreshCw size={28} className="spin-ring" />
+                  ) : (
+                    <Play size={28} fill="currentColor" />
+                  )}
+                  <span className="btn-text">
+                    {isLaunchingMonitor ? "CONNECTING TO STREAM" : "INITIALIZE MONITORING"}
+                  </span>
                   <div className="btn-impact-scan" />
                 </button>
-                <p className="setup-hero-hint">
-                  {selectedSourceId && selectedSoundId
-                    ? "Ready to start passive monitoring."
-                    : "Select a log source and a sound profile below."}
-                </p>
-              </div>
+	                <p className="setup-hero-hint">
+	                  {startHint}
+	                </p>
+	              </div>
 
-              <div className="idle-main-grid">
-                <div className="setup-container-modern">
-                  <ModernSelector
-                    label="Log source"
-                    items={safeRepositories}
-                    selectedId={selectedSourceId}
-                    onSelect={setSelectedSourceId}
-                    renderTitle={r => r.title}
-                    renderSub={r => r.sourcePath}
-                    color="var(--color-calm)"
-                    seedPrefix="repo"
-                  />
+	              <div className="idle-main-grid">
+	                <div className="setup-container-modern">
+                    <div className="source-filter-bar" role="tablist" aria-label="Log source type filter">
+                      {[
+                        { id: "all", label: "All" },
+                        { id: "file", label: "Log file" },
+                        { id: "folder", label: "Folder" },
+                        { id: "cloud", label: "Cloud" },
+                      ].map((filter) => (
+                        <button
+                          key={filter.id}
+                          type="button"
+                          className={`source-filter-chip ${sourceFilter === filter.id ? "active" : ""}`}
+                          onClick={() => setSourceFilter(filter.id as MonitorSourceFilter)}
+                        >
+                          {filter.label}
+                        </button>
+                      ))}
+                    </div>
+	                  <ModernSelector
+	                    label="Log source"
+	                    items={filteredMonitorSourceOptions}
+	                    selectedId={selectedSourceId}
+	                    onSelect={setSelectedSourceId}
+	                    renderTitle={(source) => source.title}
+	                    renderSub={(source) => source.sourcePath}
+                      renderBadge={(source) => (
+                        <span className={`selector-type-badge selector-type-badge--${source.sourceType}`}>
+                          {source.sourceTypeLabel}
+                        </span>
+                      )}
+                      emptyMessage={sourceEmptyMessage}
+	                    color="var(--color-calm)"
+	                    seedPrefix="repo"
+	                  />
 
                   <ModernSelector
                     label="Sound profile"

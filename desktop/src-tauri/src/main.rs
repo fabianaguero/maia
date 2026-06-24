@@ -11,6 +11,7 @@ use std::io::{BufRead, BufReader, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
+use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager, State};
 
@@ -18,6 +19,9 @@ const CONTRACT_VERSION: &str = "1.0";
 const INITIAL_LOG_TAIL_BYTES: u64 = 32 * 1024;
 const MAX_LOG_TAIL_READ_BYTES: u64 = 32 * 1024;
 const SESSION_RING_BUFFER_LINES: usize = 1_200;
+const SESSION_PREVIEW_LINES: usize = 1_200;
+const SESSION_POLL_BATCH_LINES: usize = 16;
+const GCLOUD_BACKFILL_LINE_LIMIT: usize = 1_200;
 const SCHEMA_SQL: &str = include_str!("../../../database/schema.sql");
 const DEFAULT_MUSIC_STYLE_CATALOG_JSON: &str = include_str!("../../src/config/music-styles.json");
 const DEFAULT_BASE_ASSET_CATEGORY_CATALOG_JSON: &str =
@@ -419,7 +423,15 @@ impl StreamSessionState {
     }
 
     fn drain_pending_chunk(&mut self) -> String {
-        std::mem::take(&mut self.pending_lines).join("\n")
+        if self.pending_lines.is_empty() {
+            return String::new();
+        }
+
+        let drain_count = self.pending_lines.len().min(SESSION_POLL_BATCH_LINES);
+        self.pending_lines
+            .drain(0..drain_count)
+            .collect::<Vec<String>>()
+            .join("\n")
     }
 }
 
@@ -559,7 +571,7 @@ fn preview_stream_lines(chunk: &str) -> Vec<String> {
         .filter(|line| !line.trim().is_empty())
         .map(|line| line.to_string())
         .collect();
-    let start = lines.len().saturating_sub(5);
+    let start = lines.len().saturating_sub(SESSION_PREVIEW_LINES);
     lines[start..].to_vec()
 }
 
@@ -637,7 +649,65 @@ fn analyze_stream_chunk(
 }
 
 fn should_ignore_process_line(line: &str) -> bool {
-    line.contains("SyntaxWarning") && line.contains("google-cloud-sdk")
+    let trimmed = line.trim();
+    if trimmed.is_empty() {
+        return true;
+    }
+
+    trimmed.contains("SyntaxWarning") && trimmed.contains("google-cloud-sdk")
+        || trimmed.contains("pkg_resources is deprecated as an API")
+        || trimmed.starts_with("WARNING: Could not setup log file")
+        || trimmed.starts_with("The configuration directory may not be writable")
+        || trimmed.starts_with("To learn more, see https://cloud.google.com/sdk/docs/configurations")
+        || trimmed.starts_with("/usr/bin/../lib/google-cloud-sdk/")
+        || trimmed == "import pkg_resources"
+        || trimmed.starts_with("__doc__")
+        || trimmed.starts_with("\\__doc__")
+        || trimmed == "Initializing tail session."
+        || trimmed == "No se encontraron entradas más recientes que coincidan con el filtro actual."
+}
+
+fn looks_like_iso_timestamp(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() < 20 {
+        return false;
+    }
+    let bytes = trimmed.as_bytes();
+    bytes.get(4) == Some(&b'-')
+        && bytes.get(7) == Some(&b'-')
+        && matches!(bytes.get(10), Some(b'T') | Some(b' '))
+}
+
+fn normalize_gcloud_log_line(line: &str) -> Option<String> {
+    let trimmed = line.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let fields: Vec<&str> = trimmed.split('\t').collect();
+    if fields.len() >= 3 && looks_like_iso_timestamp(fields[0]) {
+        let timestamp = fields[0].trim();
+        let severity = fields[1].trim();
+        let message = fields[2..]
+            .iter()
+            .map(|field| field.trim())
+            .find(|field| !field.is_empty())?;
+        let normalized_severity = if severity.is_empty() { "DEFAULT" } else { severity };
+        return Some(format!("{normalized_severity} {timestamp} {message}"));
+    }
+
+    if fields.len() >= 3 && looks_like_iso_timestamp(fields[1]) {
+        let severity = fields[0].trim();
+        let timestamp = fields[1].trim();
+        let message = fields[2..]
+            .iter()
+            .map(|field| field.trim())
+            .find(|field| !field.is_empty())?;
+        let normalized_severity = if severity.is_empty() { "DEFAULT" } else { severity };
+        return Some(format!("{normalized_severity} {timestamp} {message}"));
+    }
+
+    Some(trimmed.to_string())
 }
 
 fn spawn_process_reader<R>(session_id: String, registry: SessionRegistryState, reader: R)
@@ -650,10 +720,13 @@ where
             let Ok(text) = line else {
                 break;
             };
-            if should_ignore_process_line(&text) {
+            let Some(normalized) = normalize_gcloud_log_line(&text) else {
+                continue;
+            };
+            if should_ignore_process_line(&normalized) {
                 continue;
             }
-            if append_lines_to_session(&registry, &session_id, vec![text]).is_err() {
+            if append_lines_to_session(&registry, &session_id, vec![normalized]).is_err() {
                 break;
             }
         }
@@ -672,6 +745,8 @@ fn spawn_process_session(
     let mut child = Command::new(program)
         .args(args)
         .env("CLOUDSDK_PYTHON_SITEPACKAGES", "1")
+        .env("CLOUDSDK_CORE_DISABLE_PROMPTS", "1")
+        .env("PYTHONWARNINGS", "ignore")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -1688,6 +1763,89 @@ fn config_string(config: &Value, key: &str) -> Option<String> {
         .map(str::to_string)
 }
 
+fn normalize_gcp_backfill_freshness(raw: Option<String>) -> Result<Option<String>, String> {
+    let Some(value) = raw.map(|value| value.trim().to_ascii_lowercase()) else {
+        return Ok(Some("10m".to_string()));
+    };
+
+    if value.is_empty() {
+        return Ok(Some("10m".to_string()));
+    }
+
+    if value == "0" || value == "off" {
+        return Ok(None);
+    }
+
+    let mut chars = value.chars();
+    let unit = chars
+        .next_back()
+        .ok_or_else(|| "GCP backfill lookback cannot be empty.".to_string())?;
+    if !matches!(unit, 's' | 'm' | 'h' | 'd') {
+        return Err(
+            "GCP backfill lookback must end with s, m, h or d. Example: 10m, 2h, 1d."
+                .to_string(),
+        );
+    }
+    let amount = chars.as_str();
+    if amount.is_empty() || !amount.chars().all(|char| char.is_ascii_digit()) {
+        return Err(
+            "GCP backfill lookback must start with a positive number. Example: 10m."
+                .to_string(),
+        );
+    }
+    if amount.parse::<u64>().unwrap_or(0) == 0 {
+        return Ok(None);
+    }
+
+    Ok(Some(value))
+}
+
+fn gcp_backfill_freshness_to_seconds(freshness: &str) -> Result<u64, String> {
+    let trimmed = freshness.trim().to_ascii_lowercase();
+    if trimmed.is_empty() {
+        return Err("GCP backfill lookback cannot be empty.".to_string());
+    }
+    let mut chars = trimmed.chars();
+    let unit = chars
+        .next_back()
+        .ok_or_else(|| "GCP backfill lookback cannot be empty.".to_string())?;
+    let amount_str = chars.as_str();
+    let amount = amount_str
+        .parse::<u64>()
+        .map_err(|_| "GCP backfill lookback must start with a positive number.".to_string())?;
+    if amount == 0 {
+        return Err("GCP backfill lookback must be greater than zero.".to_string());
+    }
+
+    let multiplier = match unit {
+        's' => 1,
+        'm' => 60,
+        'h' => 60 * 60,
+        'd' => 60 * 60 * 24,
+        _ => {
+            return Err(
+                "GCP backfill lookback must end with s, m, h or d. Example: 10m, 2h, 1d."
+                    .to_string(),
+            )
+        }
+    };
+
+    amount
+        .checked_mul(multiplier)
+        .ok_or_else(|| "GCP backfill lookback is too large.".to_string())
+}
+
+fn iso_from_unix_secs(secs: u64) -> String {
+    let (y, mo, d, h, min, s) = epoch_secs_to_ymdhms(secs);
+    format!("{y:04}-{mo:02}-{d:02}T{h:02}:{min:02}:{s:02}Z")
+}
+
+fn gcp_backfill_freshness_for_connection(
+    connection: &LogSourceConnection,
+) -> Result<Option<String>, String> {
+    normalize_gcp_backfill_freshness(config_string(&connection.config, "backfillFreshness"))
+}
+
 fn normalize_log_source_connection(
     input: &UpsertLogSourceConnectionInput,
 ) -> Result<(String, String, String, Value), String> {
@@ -1741,6 +1899,8 @@ fn normalize_log_source_connection(
                 "GCP Cloud Run connections require config.serviceName.".to_string()
             })?;
             let region = config_string(&input.config, "region");
+            let backfill_freshness =
+                normalize_gcp_backfill_freshness(config_string(&input.config, "backfillFreshness"))?;
             let source_uri = input.source_uri.clone().unwrap_or_else(|| match &region {
                 Some(region) => format!("gcp-cloud-run://{project_id}/{region}/{service_name}"),
                 None => format!("gcp-cloud-run://{project_id}/{service_name}"),
@@ -1754,6 +1914,17 @@ fn normalize_log_source_connection(
                 map.insert("serviceName".to_string(), Value::String(service_name));
                 if let Some(region) = region {
                     map.insert("region".to_string(), Value::String(region));
+                }
+                match backfill_freshness {
+                    Some(ref freshness) => {
+                        map.insert(
+                            "backfillFreshness".to_string(),
+                            Value::String(freshness.clone()),
+                        );
+                    }
+                    None => {
+                        map.insert("backfillFreshness".to_string(), Value::String("off".to_string()));
+                    }
                 }
                 map.insert(
                     "standard".to_string(),
@@ -1820,34 +1991,39 @@ fn db_upsert_log_source_connection(
 ) -> Result<LogSourceConnection, String> {
     let (kind, adapter_kind, source_uri, config) = normalize_log_source_connection(input)?;
     let now = now_iso();
-    let id = input
-        .id
-        .clone()
-        .filter(|id| !id.trim().is_empty())
+    let requested_id = input.id.clone().filter(|id| !id.trim().is_empty());
+    let existing_identity: Option<(String, String)> = conn
+        .query_row(
+            "SELECT id, created_at FROM log_source_connections WHERE id = ?1 OR source_uri = ?2
+             ORDER BY CASE WHEN id = ?1 THEN 0 ELSE 1 END
+             LIMIT 1",
+            params![requested_id, source_uri],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()
+        .map_err(|e| format!("Failed to inspect existing log connection: {e}"))?;
+    let id = requested_id
+        .or_else(|| existing_identity.as_ref().map(|(existing_id, _)| existing_id.clone()))
         .unwrap_or_else(|| {
             format!(
                 "log-source-{:x}",
                 stable_hash(&format!("{}:{}:{}", kind, source_uri, now_millis()))
             )
         });
-    let existing_created_at: Option<String> = conn
-        .query_row(
-            "SELECT created_at FROM log_source_connections WHERE id = ?1 OR source_uri = ?2",
-            params![id, source_uri],
-            |row| row.get(0),
-        )
-        .optional()
-        .map_err(|e| format!("Failed to inspect existing log connection: {e}"))?;
-    let created_at = existing_created_at.unwrap_or_else(|| now.clone());
+    let created_at = existing_identity
+        .as_ref()
+        .map(|(_, created_at)| created_at.clone())
+        .unwrap_or_else(|| now.clone());
     let enabled = input.enabled.unwrap_or(true);
     let config_json = serde_json::to_string(&config)
         .map_err(|e| format!("Failed to encode log connection config: {e}"))?;
     conn.execute(
         "INSERT INTO log_source_connections (id, kind, label, source_uri, enabled, adapter_kind, config_json, last_cursor, last_seen_at, created_at, updated_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, NULL, ?8, ?9)
-         ON CONFLICT(source_uri) DO UPDATE SET
+         ON CONFLICT(id) DO UPDATE SET
            kind = excluded.kind,
            label = excluded.label,
+           source_uri = excluded.source_uri,
            enabled = excluded.enabled,
            adapter_kind = excluded.adapter_kind,
            config_json = excluded.config_json,
@@ -1856,14 +2032,14 @@ fn db_upsert_log_source_connection(
     ).map_err(|e| format!("Failed to save log source connection: {e}"))?;
     conn.query_row(
         "SELECT id, kind, label, source_uri, enabled, adapter_kind, config_json, last_cursor, last_seen_at, created_at, updated_at
-         FROM log_source_connections WHERE source_uri = ?1",
-        params![source_uri],
+         FROM log_source_connections WHERE id = ?1",
+        params![id],
         row_to_log_source_connection,
     ).map_err(|e| format!("Failed to reload log source connection: {e}"))
 }
 
-fn gcp_cloud_run_tail_command(connection: &LogSourceConnection) -> Result<Vec<String>, String> {
-    let project_id = config_string(&connection.config, "projectId")
+fn build_gcp_cloud_run_filter(connection: &LogSourceConnection) -> Result<String, String> {
+    config_string(&connection.config, "projectId")
         .ok_or_else(|| "Missing projectId in GCP connection config.".to_string())?;
     let service_name = config_string(&connection.config, "serviceName")
         .ok_or_else(|| "Missing serviceName in GCP connection config.".to_string())?;
@@ -1883,6 +2059,16 @@ fn gcp_cloud_run_tail_command(connection: &LogSourceConnection) -> Result<Vec<St
             severity.replace('"', "\\\"")
         ));
     }
+    filter.push_str(
+        " AND (logName:\"run.googleapis.com%2Fstdout\" OR logName:\"run.googleapis.com%2Fstderr\")",
+    );
+    Ok(filter)
+}
+
+fn gcp_cloud_run_tail_command(connection: &LogSourceConnection) -> Result<Vec<String>, String> {
+    let project_id = config_string(&connection.config, "projectId")
+        .ok_or_else(|| "Missing projectId in GCP connection config.".to_string())?;
+    let filter = build_gcp_cloud_run_filter(connection)?;
     Ok(vec![
         "gcloud".to_string(),
         "alpha".to_string(),
@@ -1891,9 +2077,70 @@ fn gcp_cloud_run_tail_command(connection: &LogSourceConnection) -> Result<Vec<St
         filter,
         "--project".to_string(),
         project_id,
+        "--buffer-window".to_string(),
+        "0s".to_string(),
         "--format".to_string(),
-        "json".to_string(),
+        "value(timestamp,severity,textPayload,jsonPayload.message)".to_string(),
+        "--quiet".to_string(),
     ])
+}
+
+fn gcp_cloud_run_backfill_lines(
+    connection: &LogSourceConnection,
+    freshness: &str,
+    limit: usize,
+) -> Result<Vec<String>, String> {
+    let project_id = config_string(&connection.config, "projectId")
+        .ok_or_else(|| "Missing projectId in GCP connection config.".to_string())?;
+    let lookback_secs = gcp_backfill_freshness_to_seconds(freshness)?;
+    let now_secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0);
+    let since_secs = now_secs.saturating_sub(lookback_secs);
+    let since_iso = iso_from_unix_secs(since_secs);
+    let filter = format!(
+        "{} AND timestamp>=\"{}\"",
+        build_gcp_cloud_run_filter(connection)?,
+        since_iso
+    );
+
+    let output = Command::new("gcloud")
+        .args([
+            "logging",
+            "read",
+            filter.as_str(),
+            "--project",
+            project_id.as_str(),
+            "--limit",
+            &limit.to_string(),
+            "--order",
+            "desc",
+            "--format",
+            "value(timestamp,severity,textPayload,jsonPayload.message)",
+            "--quiet",
+        ])
+        .env("CLOUDSDK_PYTHON_SITEPACKAGES", "1")
+        .env("CLOUDSDK_CORE_DISABLE_PROMPTS", "1")
+        .env("PYTHONWARNINGS", "ignore")
+        .output()
+        .map_err(|error| format!("Failed to run gcloud logging read for backfill: {error}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("gcloud logging read backfill failed: {}", stderr.trim()));
+    }
+
+    let stdout = String::from_utf8(output.stdout)
+        .map_err(|error| format!("gcloud logging read backfill stdout was not valid UTF-8: {error}"))?;
+
+    let mut lines: Vec<String> = stdout
+        .lines()
+        .filter_map(normalize_gcloud_log_line)
+        .filter(|line| !should_ignore_process_line(line))
+        .collect();
+    lines.reverse();
+    Ok(lines)
 }
 
 #[tauri::command]
@@ -1931,6 +2178,8 @@ fn start_log_source_connection(
 ) -> Result<StreamSessionRecord, String> {
     let conn = open_database(&app_handle)?;
     let connection = db_get_log_source_connection(&conn, &input.connection_id)?;
+    let registry_state = Arc::clone(&*registry);
+    let session_id = input.session_id.clone();
     if !connection.enabled {
         return Err("Log source connection is disabled.".to_string());
     }
@@ -1939,9 +2188,9 @@ fn start_log_source_connection(
     } else {
         None
     };
-    start_stream_session(
+    let session = start_stream_session(
         StartSessionInput {
-            session_id: input.session_id,
+            session_id: session_id.clone(),
             adapter_kind: connection.adapter_kind.clone(),
             source: connection.source_uri.clone(),
             label: Some(connection.label.clone()),
@@ -1949,7 +2198,42 @@ fn start_log_source_connection(
             start_from_beginning: input.start_from_beginning,
         },
         registry,
-    )
+    )?;
+
+    if connection.kind == "gcp_cloud_run" {
+        let backfill_connection = connection.clone();
+        let backfill_registry = Arc::clone(&registry_state);
+        let backfill_session_id = session_id.clone();
+        thread::spawn(move || match gcp_backfill_freshness_for_connection(&backfill_connection) {
+            Ok(Some(freshness)) => match gcp_cloud_run_backfill_lines(
+                &backfill_connection,
+                &freshness,
+                GCLOUD_BACKFILL_LINE_LIMIT,
+            ) {
+                Ok(lines) if !lines.is_empty() => {
+                    let _ = append_lines_to_session(&backfill_registry, &backfill_session_id, lines);
+                }
+                Ok(_) => {}
+                Err(error) => {
+                    let _ = append_lines_to_session(
+                        &backfill_registry,
+                        &backfill_session_id,
+                        vec![format!("MAIA_GCLOUD_BACKFILL_WARNING: {error}")],
+                    );
+                }
+            },
+            Ok(None) => {}
+            Err(error) => {
+                let _ = append_lines_to_session(
+                    &backfill_registry,
+                    &backfill_session_id,
+                    vec![format!("MAIA_GCLOUD_BACKFILL_WARNING: {error}")],
+                );
+            }
+        });
+    }
+
+    Ok(session)
 }
 
 // ---------------------------------------------------------------------------
@@ -2230,7 +2514,12 @@ fn poll_stream_session(
             session.record.total_polls += 1;
         })?;
 
-        if chunk.trim().is_empty() {
+        if !chunk.trim().is_empty() {
+            append_lines_to_session(&registry, &session_id, chunk.lines().map(str::to_string))?;
+        }
+
+        let (_, pending_chunk) = drain_pending_chunk(&registry, &session_id)?;
+        if pending_chunk.trim().is_empty() {
             return Ok(waiting_stream_poll_result(
                 session_record,
                 "Waiting for new log lines.",
@@ -2238,8 +2527,7 @@ fn poll_stream_session(
             ));
         }
 
-        append_lines_to_session(&registry, &session_id, chunk.lines().map(str::to_string))?;
-        return analyze_stream_chunk(session_record, chunk, warnings);
+        return analyze_stream_chunk(session_record, pending_chunk, warnings);
     }
 
     let (session_record, chunk) = {

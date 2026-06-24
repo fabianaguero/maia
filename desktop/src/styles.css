@@ -5380,9 +5380,18 @@ dd {
   box-shadow: 0 0 12px var(--color-calm);
 }
 
+.pulsing-dot.amber {
+  background: #f7bd4f;
+  box-shadow: 0 0 12px rgba(247, 189, 79, 0.85);
+}
+
 .status-text {
   font-weight: 600;
   color: var(--color-calm);
+}
+
+.status-text.pending {
+  color: #f7bd4f;
 }
 
 .source-info {
@@ -5747,6 +5756,90 @@ dd {
   flex-direction: column;
   gap: var(--space-md);
   width: 100%;
+}
+
+.source-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.source-filter-chip {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--duration-base) ease;
+}
+
+.source-filter-chip:hover {
+  border-color: rgba(72, 215, 255, 0.32);
+  color: var(--text-primary);
+  background: rgba(72, 215, 255, 0.07);
+}
+
+.source-filter-chip.active {
+  border-color: rgba(72, 215, 255, 0.5);
+  color: var(--color-accent);
+  background: rgba(72, 215, 255, 0.12);
+  box-shadow: 0 0 16px rgba(72, 215, 255, 0.14);
+}
+
+.selector-empty {
+  grid-column: 1 / -1;
+  min-height: 92px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+  border-radius: var(--radius-md);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.selector-type-badge {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.selector-type-badge--file {
+  color: #89f7d1;
+  background: rgba(60, 210, 160, 0.12);
+  border-color: rgba(60, 210, 160, 0.2);
+}
+
+.selector-type-badge--folder {
+  color: #f4d479;
+  background: rgba(244, 212, 121, 0.12);
+  border-color: rgba(244, 212, 121, 0.22);
+}
+
+.selector-type-badge--cloud {
+  color: #87c9ff;
+  background: rgba(99, 179, 237, 0.12);
+  border-color: rgba(99, 179, 237, 0.24);
 }
 
 /* Static Wave Components */
@@ -7031,6 +7124,21 @@ dd {
   transform: scale(0.98);
 }
 
+.btn-start-listening-impactful.launching {
+  cursor: progress;
+  border-color: rgba(247, 189, 79, 0.5);
+  color: #f7bd4f;
+  background: linear-gradient(135deg, rgba(247, 189, 79, 0.08) 0%, rgba(72, 215, 255, 0.14) 100%);
+  box-shadow: 0 0 36px rgba(72, 215, 255, 0.12);
+}
+
+.btn-start-listening-impactful.launching:hover {
+  transform: none;
+  color: #f7bd4f;
+  background: linear-gradient(135deg, rgba(247, 189, 79, 0.08) 0%, rgba(72, 215, 255, 0.14) 100%);
+  box-shadow: 0 0 36px rgba(72, 215, 255, 0.12);
+}
+
 .btn-impact-glitch {
   position: absolute;
   top: 0;
@@ -7074,6 +7182,20 @@ dd {
 .btn-text {
   position: relative;
   z-index: 2;
+}
+
+.monitor-connecting-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: rgba(247, 189, 79, 0.92);
+  letter-spacing: 0.04em;
+}
+
+.terminal-connecting-spinner {
+  color: #f7bd4f;
 }
 
 .setup-container-modern {

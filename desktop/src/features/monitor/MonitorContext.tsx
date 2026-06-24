@@ -46,6 +46,7 @@ import type {
   RepositoryAnalysis,
   StartSessionInput,
   StreamAdapterKind,
+  StreamSessionRecord,
   StreamSessionPollResult,
 } from "../../types/library";
 import {
@@ -554,6 +555,18 @@ interface MonitorContextValue {
     input: StartSessionInput,
     persistedSessionId?: string,
   ) => Promise<boolean>;
+  /**
+   * Attach to an already-started native stream session, such as a persistent
+   * connection launched via `start_log_source_connection`.
+   */
+  attachSession: (input: {
+    session: StreamSessionRecord;
+    repoId: string;
+    repoTitle: string;
+    trackTitle?: string;
+    sourceTemplateId?: string | null;
+    persistedSessionId?: string | null;
+  }) => Promise<boolean>;
   /** Stop the active session and clear all state. */
   stopSession: () => Promise<void>;
   /**
@@ -1243,6 +1256,94 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
     [stopPolling, doPoll, resetReplayTelemetry, loadGuideTrackPath],
   );
 
+  const attachSession = useCallback(
+    async ({
+      session: sessionRecord,
+      repoId,
+      repoTitle,
+      trackTitle,
+      sourceTemplateId,
+      persistedSessionId,
+    }: {
+      session: StreamSessionRecord;
+      repoId: string;
+      repoTitle: string;
+      trackTitle?: string;
+      sourceTemplateId?: string | null;
+      persistedSessionId?: string | null;
+    }): Promise<boolean> => {
+      log.info(
+        "attachSession id=%s adapter=%s source=%s",
+        sessionRecord.sessionId,
+        sessionRecord.adapterKind,
+        sessionRecord.source,
+      );
+
+      if (sessionRef.current) {
+        const prevId = sessionRef.current.sessionId;
+        stopPolling();
+        sessionRef.current = null;
+        setSession(null);
+        try {
+          await stopStreamSession(prevId);
+        } catch {
+          // best-effort cleanup
+        }
+      }
+
+      directCursorRef.current = undefined;
+      emptyWindowsRef.current = 0;
+      pollIndexRef.current = 0;
+      activeTemplateRef.current = resolveSourceTemplate(sourceTemplateId ?? null);
+      setActiveTemplateState(activeTemplateRef.current);
+
+      const newSession: ActiveMonitorSession = {
+        sessionId: sessionRecord.sessionId,
+        persistedSessionId: persistedSessionId ?? null,
+        repoId,
+        repoTitle,
+        trackName: trackTitle || "Dynamic Track",
+        sourcePath: sessionRecord.source,
+        adapterKind: sessionRecord.adapterKind,
+        pollMode: "session",
+        startedAt: Date.now(),
+      };
+
+      if (persistedSessionId) {
+        void updatePersistedSessionStatus(persistedSessionId, "active");
+      }
+
+      sessionRef.current = newSession;
+      setSession(newSession);
+      setIsPlayback(false);
+      isPlaybackRef.current = false;
+      resetReplayTelemetry();
+      setMetrics({ windowCount: 0, processedLines: 0, totalAnomalies: 0 });
+      activeRef.current = true;
+
+      let currentCtx = audioContextRef.current;
+      if (!currentCtx) {
+        currentCtx = new AudioContext();
+        audioContextRef.current = currentCtx;
+        setAudioContext(currentCtx);
+      }
+      if (currentCtx.state === "suspended") {
+        await currentCtx.resume();
+      }
+
+      const pendingPath =
+        guideTrackQueueRef.current[guideTrackQueueIndexRef.current] ?? null;
+      if (pendingPath && !guideTrackRef.current) {
+        guideTrackPathRef.current = null;
+        loadGuideTrackPath(pendingPath);
+      }
+
+      void doPoll();
+      return true;
+    },
+    [stopPolling, doPoll, resetReplayTelemetry, loadGuideTrackPath],
+  );
+
   // -------------------------------------------------------------------------
   // Playback — replay stored session events through the listener pipeline
   // -------------------------------------------------------------------------
@@ -1671,6 +1772,7 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       setGuideTrackPlaylist,
       seekGuideTrack,
       startSession,
+      attachSession,
       stopSession,
       playbackSession,
       seekPlaybackProgress,
