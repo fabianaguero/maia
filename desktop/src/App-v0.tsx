@@ -18,6 +18,7 @@ import { useCompositionResults } from "./hooks/useCompositionResults";
 import { useMonitor } from "./features/monitor/MonitorContext";
 import { useSessions } from "./hooks/useSessions";
 import { Volume2 } from "lucide-react";
+import { resolvePlayableTrackPath } from "./utils/track";
 
 type Section = "monitor" | "library" | "inspect" | "compose";
 
@@ -60,19 +61,25 @@ function AppContentV0() {
             onStop={() => monitor.stopSession()}
             onResumeAudio={() => monitor.resumeAudio()}
             audioStatus={monitor.audioContext?.state || "closed"}
+            audioContext={monitor.audioContext}
             trackName={monitor.session?.trackName}
             waveformBins={library.tracks.find(t => 
               (t.tags.title || t.file.filename) === monitor.session?.trackName
             )?.analysis?.waveformBins}
                 onStartMonitoring={async (repoId, trackId) => {
+                  console.log("🎵 onStartMonitoring called:", { repoId, trackId, trackIds: library.tracks.map(t => t.id) });
                   const repo = repositories.repositories.find(r => r.id === repoId);
                   const track = library.tracks.find(t => t.id === trackId);
+                  const guideTrackPath = track ? resolvePlayableTrackPath(track) : null;
+                  console.log("🎵 Found:", { repo: !!repo, track: !!track, sourcePath: guideTrackPath });
                   if (repo && track) {
                     const sessionId = typeof crypto.randomUUID === 'function' 
                       ? crypto.randomUUID() 
                       : `session-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
                     
-                    await monitor.setGuideTrack(track.file.sourcePath);
+                    if (guideTrackPath) {
+                      monitor.setGuideTrack(guideTrackPath);
+                    }
                     await monitor.resumeAudio(); // Auto-resume on start
                     const success = await monitor.startSession(repo, {
                       sessionId,
@@ -126,8 +133,11 @@ function AppContentV0() {
         const sessionId = typeof crypto.randomUUID === 'function' 
           ? crypto.randomUUID() 
           : `session-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-        
-        await monitor.setGuideTrack(track.file.sourcePath);
+
+        const guideTrackPath = resolvePlayableTrackPath(track);
+        if (guideTrackPath) {
+          monitor.setGuideTrack(guideTrackPath);
+        }
         await monitor.resumeAudio(); // Auto-resume on start
         const success = await monitor.startSession(repo, {
           sessionId,

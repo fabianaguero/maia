@@ -114,18 +114,13 @@ def test_analyze_track_separate_source_adds_stems_tag(tmp_path, monkeypatch):
         "maia_analyzer.audio._analyze_musical_characteristics",
         lambda *_args, **_kwargs: {},
     )
-    monkeypatch.setattr(
-        "maia_analyzer.audio.separate_track",
-        lambda _source, _dest: {"drums": "/tmp/drums.wav", "bass": "/tmp/bass.wav"},
-    )
 
-    asset, _warnings = analyze_track(
+    asset, warnings = analyze_track(
         str(track_path),
         options={"separateSource": True},
     )
 
-    assert "stems-extracted" in asset["tags"]
-    assert asset["metrics"]["stems"]["drums"].endswith("drums.wav")
+    assert "Source separation is disabled in this MVP." in warnings
 
 
 def test_build_waveform_bins_normalizes_values():

@@ -96,10 +96,27 @@ When implementing anything related to `userMode` or `SimpleMode`:
 - Nunca modificar los componentes experto — solo condicionarlos con `userMode`
 - Los textos del modo simple van en `src/i18n/en.ts` y `src/i18n/es.ts` bajo la clave `simpleMode`
 
+## Recent Implementations (April 2026)
+
+### Tasks 4-8: Audio Session Enhancements
+- **Task 4 (April 20):** Added `source_template_id` column to sessions DB for persisting source template associations
+- **Task 5 (April 20):** BPM and template chips on session cards with auto-fit grid layout
+- **Task 6 (April 20):** Template indicator chip in MonitorWaveformBar showing genre, template, live BPM sync
+- **Task 7 (April 21):** Property-based tests for audio session improvements (11 properties validated)
+- **Task 8 (April 21):** Replay bookmark enrichment with source template context data
+
+### Design System Integration (April)
+- V0 design system fully integrated into AppShell, Monitor, Library & Wizard components
+- AppSidebar and layout restructured to match DESIGN.md minimalismo instrumental aesthetic
+- Monitor waveform bar now displays template metadata inline with listening bed selector
+- SessionScreen shows enriched session cards with BPM and template quick-view chips
+
 ## Debugging Tips
 
 - **Analyzer connection:** Check `App.tsx` bootstrap logic (loads health, manifest)
 - **State sync issues:** Trace through hook effects in `useSessions`, `useLibrary`
-- **Tauri invoke:** Check `src-tauri/src/main.rs` for available commands
+- **Tauri invoke:** Check `src-tauri/src/main.rs` for available commands; includes `ensure_session_source_template_id_column()` migration
 - **Styling regressions:** Check current breakpoint in DevTools, compare to DESIGN.md
 - **Performance:** React DevTools Profiler, check for unnecessary re-renders
+- **Session persistence:** Verify `sourceTemplateId` round-trips through `db_create_session` → `db_get_session`
+- **Template chip display:** Check MonitorWaveformBar has active session; template-chip only renders when `hasSession` is true

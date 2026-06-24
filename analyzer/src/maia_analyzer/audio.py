@@ -16,7 +16,6 @@ except ModuleNotFoundError:  # pragma: no cover - protected by project dependenc
     miniaudio = None
 
 from .dsp import analyze_dsp, dsp_available
-from .separator import separate_track
 
 
 MAX_ANALYSIS_SECONDS = 180
@@ -43,17 +42,9 @@ def analyze_track(
     if decoded is not None:
         asset, warnings = _build_embedded_track_asset(track_path, decoded, waveform_bins)
 
-        # Handle Source Separation (Demucs) if requested
+        # Handle Source Separation (Demucs) if requested (Disabled in MVP)
         if options and options.get("separateSource"):
-            try:
-                # Use a standard subdirectory for stems in the managed storage if possible,
-                # otherwise use a temporary folder inside the same directory as the track.
-                output_dir = track_path.parent / "stems" / asset["id"]
-                stems = separate_track(str(track_path), str(output_dir))
-                asset["metrics"]["stems"] = stems
-                asset["tags"].append("stems-extracted")
-            except Exception as e:
-                warnings.append(f"Source separation failed: {e}")
+            warnings.append("Source separation is disabled in this MVP.")
 
         return asset, warnings
 

@@ -435,10 +435,10 @@ export function SessionScreen({
 
       const input: StartSessionInput = {
         sessionId: `direct_${Date.now()}`,
-        adapterKind: directPath.startsWith("ws") ? "websocket" : "file",
+        adapterKind: "file",
         source: directPath.trim(),
         label: directPath.split("/").pop() || "Direct Feed",
-        startFromBeginning: !directPath.startsWith("ws"),
+        startFromBeginning: true,
       };
 
       const success = await onStartSession(input, input.sessionId, {
@@ -478,10 +478,16 @@ export function SessionScreen({
           setCreateError("This session has no stored source path to resume from.");
           return;
         }
+        if ((session.adapterKind || "file") !== "file") {
+          setCreateError(
+            "This saved session uses an adapter outside the Week 1 MVP. Resume it from an imported log file instead.",
+          );
+          return;
+        }
 
         const input: StartSessionInput = {
           sessionId: session.id,
-          adapterKind: (session.adapterKind as StreamAdapterKind) || "file",
+          adapterKind: "file",
           source: sourcePath,
           label: session.label || source?.title || session.sourceTitle || "Resumed session",
         };

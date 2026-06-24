@@ -6,11 +6,15 @@ import {
   saveBaseTrackPlaylist,
   importTrack,
   listTracks,
+  pickTrackSourceDirectory,
   seedDemoTracks,
+  resolveMissingTracksFromDirectory as persistMissingTrackRelink,
   deleteTrack,
   checkTrackExists,
+  pickTrackSourcePath,
   updateTrackAnalysis as persistTrackAnalysis,
   updateTrackPerformance as persistTrackPerformance,
+  updateTrackSource as persistTrackSource,
 } from "../api/library";
 import { runAnalyzerRequest } from "../api/analyzer";
 import { createAnalyzeTrackRequest } from "../contracts";
@@ -18,9 +22,11 @@ import type {
   BaseTrackPlaylist,
   ImportTrackInput,
   LibraryTrack,
+  RelinkMissingTracksResult,
   SaveBaseTrackPlaylistInput,
   UpdateTrackAnalysisInput,
   UpdateTrackPerformanceInput,
+  UpdateTrackSourceInput,
 } from "../types/library";
 
 function toMessage(error: unknown): string {
@@ -340,6 +346,89 @@ export function useLibrary() {
     }
   }
 
+  async function relinkTrack(trackId: string): Promise<LibraryTrack | null> {
+    setMutating(true);
+
+    try {
+      const track = tracks.find((entry) => entry.id === trackId) ?? null;
+      if (!track) {
+        throw new Error("Track not found");
+      }
+
+      const pickedPath = await pickTrackSourcePath(track.file.sourcePath);
+      if (!pickedPath) {
+        return null;
+      }
+
+      const input: UpdateTrackSourceInput = { sourcePath: pickedPath };
+      const nextTrack = await persistTrackSource(trackId, input);
+
+      startTransition(() => {
+        setTracks((current) =>
+          sortTracks(
+            current.map((entry) => (entry.id === trackId ? nextTrack : entry)),
+          ),
+        );
+        setError(null);
+      });
+
+      return nextTrack;
+    } catch (nextError) {
+      startTransition(() => {
+        setError(toMessage(nextError));
+      });
+      return null;
+    } finally {
+      setMutating(false);
+    }
+  }
+
+  async function relinkMissingTracksFromDirectory(): Promise<RelinkMissingTracksResult | null> {
+    setMutating(true);
+
+    try {
+      const firstMissingTrack =
+        tracks.find((track) => track.file.availabilityState === "missing") ?? null;
+      const pickedDirectory = await pickTrackSourceDirectory(
+        firstMissingTrack?.file.sourcePath ?? undefined,
+      );
+      if (!pickedDirectory) {
+        return null;
+      }
+
+      const result = await persistMissingTrackRelink(pickedDirectory);
+      const relinkedIds = new Set(result.relinkedTracks.map((track) => track.id));
+
+      startTransition(() => {
+        setTracks((current) =>
+          sortTracks(
+            current.map((track) => {
+              const relinkedTrack =
+                result.relinkedTracks.find((entry) => entry.id === track.id) ?? null;
+              return relinkedTrack ?? track;
+            }),
+          ),
+        );
+        if (relinkedIds.size > 0) {
+          const preferredSelection = result.relinkedTracks[0]?.id ?? null;
+          if (preferredSelection) {
+            setSelectedTrackId(preferredSelection);
+          }
+        }
+        setError(null);
+      });
+
+      return result;
+    } catch (nextError) {
+      startTransition(() => {
+        setError(toMessage(nextError));
+      });
+      return null;
+    } finally {
+      setMutating(false);
+    }
+  }
+
   async function savePlaylist(
     input: SaveBaseTrackPlaylistInput,
   ): Promise<BaseTrackPlaylist | null> {
@@ -421,6 +510,8 @@ export function useLibrary() {
     deleteLibraryTrack,
     updateTrackPerformance,
     updateTrackAnalysis,
+    relinkTrack,
+    relinkMissingTracksFromDirectory,
     seedLibrary,
     savePlaylist,
     deletePlaylist,

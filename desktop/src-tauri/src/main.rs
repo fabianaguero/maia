@@ -1190,6 +1190,19 @@ struct UpdateTrackAnalysisInput {
     bpm_curve: Option<Vec<BpmCurvePoint>>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct UpdateTrackSourceInput {
+    source_path: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RelinkMissingTracksResult {
+    relinked_tracks: Vec<LibraryTrack>,
+    unresolved_track_ids: Vec<String>,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ImportRepositoryInput {
@@ -1507,6 +1520,16 @@ fn pick_track_source_path(initial_path: Option<String>) -> Result<Option<String>
         initial_path,
         "Select audio file",
         Some("Audio files (*.wav *.mp3 *.flac *.aif *.aiff *.m4a *.ogg *.oga)"),
+    )
+}
+
+#[tauri::command]
+fn pick_track_source_directory(initial_path: Option<String>) -> Result<Option<String>, String> {
+    pick_native_path(
+        NativePickerKind::Directory,
+        initial_path,
+        "Select music folder",
+        None,
     )
 }
 
@@ -2329,6 +2352,16 @@ fn update_track_analysis(
 }
 
 #[tauri::command]
+fn update_track_source(
+    app_handle: AppHandle,
+    track_id: String,
+    input: UpdateTrackSourceInput,
+) -> Result<LibraryTrack, String> {
+    let conn = open_database(&app_handle)?;
+    persist_track_source_update(&conn, &track_id, input)
+}
+
+#[tauri::command]
 fn list_base_assets(app_handle: AppHandle) -> Result<Vec<BaseAssetRecord>, String> {
     let conn = open_database(&app_handle)?;
     read_base_assets(&conn)
@@ -2410,6 +2443,64 @@ fn import_repository(
     insert_repository(&conn, input, &managed_root)
 }
 
+#[tauri::command]
+fn resolve_missing_tracks_from_directory(
+    app_handle: AppHandle,
+    directory_path: String,
+) -> Result<RelinkMissingTracksResult, String> {
+    let conn = open_database(&app_handle)?;
+    let expanded = expanded_input_path(&directory_path)?;
+    if !expanded.is_dir() {
+        return Err(format!("Directory does not exist: {}", expanded.display()));
+    }
+
+    let tracks = read_tracks(&conn)?;
+    let missing_tracks: Vec<LibraryTrack> = tracks
+        .into_iter()
+        .filter(|track| track.file.availability_state == "missing")
+        .collect();
+
+    let mut candidates = HashMap::new();
+    collect_audio_files_recursive(&expanded, &mut candidates)
+        .map_err(|error| format!("Failed to scan music folder: {error}"))?;
+
+    let mut relinked_tracks = Vec::new();
+    let mut unresolved_track_ids = Vec::new();
+
+    for track in missing_tracks {
+        let file_name = Path::new(&track.file.source_path)
+            .file_name()
+            .and_then(|name| name.to_str())
+            .map(|name| name.to_ascii_lowercase());
+
+        let Some(file_name) = file_name else {
+            unresolved_track_ids.push(track.id.clone());
+            continue;
+        };
+
+        let Some(matched_path) = candidates.get(&file_name) else {
+            unresolved_track_ids.push(track.id.clone());
+            continue;
+        };
+
+        match persist_track_source_update(
+            &conn,
+            &track.id,
+            UpdateTrackSourceInput {
+                source_path: matched_path.clone(),
+            },
+        ) {
+            Ok(updated_track) => relinked_tracks.push(updated_track),
+            Err(_) => unresolved_track_ids.push(track.id.clone()),
+        }
+    }
+
+    Ok(RelinkMissingTracksResult {
+        relinked_tracks,
+        unresolved_track_ids,
+    })
+}
+
 fn find_logs_recursive(dir: &Path, logs: &mut Vec<String>) -> std::io::Result<()> {
     if dir.is_dir() {
         // Skip hidden directories like .git or node_modules for performance
@@ -2439,6 +2530,56 @@ fn find_logs_recursive(dir: &Path, logs: &mut Vec<String>) -> std::io::Result<()
             }
         }
     }
+    Ok(())
+}
+
+fn is_supported_audio_extension(path: &Path) -> bool {
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| {
+            matches!(
+                ext.to_ascii_lowercase().as_str(),
+                "wav" | "mp3" | "flac" | "aif" | "aiff" | "m4a" | "ogg" | "oga"
+            )
+        })
+        .unwrap_or(false)
+}
+
+fn collect_audio_files_recursive(
+    dir: &Path,
+    files: &mut HashMap<String, String>,
+) -> std::io::Result<()> {
+    if !dir.is_dir() {
+        return Ok(());
+    }
+
+    if let Some(name) = dir.file_name().and_then(|n| n.to_str()) {
+        if name.starts_with('.') || name == "node_modules" || name == "target" || name == "vendor" {
+            return Ok(());
+        }
+    }
+
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            collect_audio_files_recursive(&path, files)?;
+            continue;
+        }
+
+        if !is_supported_audio_extension(&path) {
+            continue;
+        }
+
+        let file_name = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .map(|name| name.to_ascii_lowercase());
+        if let Some(file_name) = file_name {
+            files.entry(file_name).or_insert_with(|| path.to_string_lossy().to_string());
+        }
+    }
+
     Ok(())
 }
 
@@ -2586,115 +2727,6 @@ fn export_composition_file(source_path: String, dest_path: String) -> Result<Str
 
 fn execute_analyzer_request(request: &Value) -> Result<Value, String> {
     eprintln!("[MAIA:Debug] execute_analyzer_request: action={:?}", request.get("action"));
-    // Fast-path: If this is a real-time stream analysis, use a Rust-native heuristic
-    // to bypass the slow Python startup overhead (typically 1-3 seconds).
-    if let Some("analyze") = request.get("action").and_then(|v| v.as_str()) {
-        eprintln!("[MAIA:Debug] action is analyze");
-        let payload = request.get("payload");
-        eprintln!("[MAIA:Debug] payload exists: {}", payload.is_some());
-        
-        let asset_type = payload.and_then(|p| p.get("assetType")).and_then(|t| t.as_str());
-        eprintln!("[MAIA:Debug] asset_type: {:?}", asset_type);
-
-        if let Some("repo_analysis") = asset_type {
-            let data = payload.and_then(|p| p.get("options")).and_then(|o| o.get("logTailChunk")).and_then(|d| d.as_str());
-            
-            if let Some(chunk) = data {
-                eprintln!("[MAIA:Debug] FAST-PATH TRIGGERED for stream analysis");
-                let lines: Vec<&str> = chunk.lines().collect();
-                let line_count = lines.len() as i64;
-                let mut error_count = 0;
-                let mut warn_count = 0;
-                let mut cues = Vec::new();
-                let mut anomaly_markers = Vec::new();
-                
-                for (i, line) in lines.iter().enumerate() {
-                    let upper = line.to_uppercase();
-                    if upper.contains("ERROR") || upper.contains("SEVERE") || upper.contains("CRITICAL") {
-                        error_count += 1;
-                        cues.push(json!({
-                            "id": format!("e-{}", i),
-                            "eventIndex": i as u32,
-                            "level": "error",
-                            "component": "stream",
-                            "excerpt": line.chars().take(30).collect::<String>(),
-                            "noteHz": 110.0,
-                            "durationMs": 100,
-                            "gain": 0.8,
-                            "waveform": "sine",
-                            "accent": "anomaly"
-                        }));
-                        anomaly_markers.push(json!({
-                            "eventIndex": i as u32,
-                            "level": "error",
-                            "component": "stream",
-                            "excerpt": line.chars().take(50).collect::<String>()
-                        }));
-                    } else if upper.contains("WARN") {
-                        warn_count += 1;
-                        cues.push(json!({
-                            "id": format!("w-{}", i),
-                            "eventIndex": i as u32,
-                            "level": "warn",
-                            "component": "stream",
-                            "excerpt": line.chars().take(30).collect::<String>(),
-                            "noteHz": 220.0,
-                            "durationMs": 80,
-                            "gain": 0.5,
-                            "waveform": "sine",
-                            "accent": "warning"
-                        }));
-                    } else if upper.contains("INFO") {
-                        if i % 10 == 0 {
-                            cues.push(json!({
-                                "id": format!("i-{}", i),
-                                "eventIndex": i as u32,
-                                "level": "info",
-                                "component": "stream",
-                                "excerpt": line.chars().take(30).collect::<String>(),
-                                "noteHz": 440.0,
-                                "durationMs": 50,
-                                "gain": 0.2,
-                                "waveform": "sine",
-                                "accent": "regular"
-                            }));
-                        }
-                    }
-                }
-                
-                let response = json!({
-                    "status": "ok",
-                    "warnings": [],
-                    "payload": {
-                        "summary": format!("Real-time stream analysis ({} lines)", line_count),
-                        "musicalAsset": {
-                            "title": "Stream Analysis",
-                            "sourcePath": "memory",
-                            "suggestedBpm": 126,
-                            "confidence": 0.9,
-                            "tags": [],
-                            "artifacts": {
-                                "waveformBins": [],
-                                "beatGrid": [],
-                                "bpmCurve": []
-                            },
-                            "metrics": {
-                                "dominantLevel": if error_count > 0 { "error" } else if warn_count > 0 { "warn" } else { "info" },
-                                "lineCount": line_count,
-                                "anomalyCount": error_count,
-                                "levelCounts": { "error": error_count, "warn": warn_count, "info": line_count - error_count - warn_count },
-                                "sonificationCues": cues,
-                                "anomalyMarkers": anomaly_markers,
-                                "topComponents": []
-                            }
-                        }
-                    }
-                });
-                return Ok(response);
-            }
-        }
-    }
-
     let repo_root = repo_root();
     let analyzer_src = repo_root.join("analyzer/src");
     let python_bin = analyzer_python(&repo_root);
@@ -5131,6 +5163,129 @@ fn persist_track_analysis_update(
         .ok_or_else(|| format!("Track disappeared after analysis update: {track_id}"))
 }
 
+fn persist_track_source_update(
+    conn: &Connection,
+    track_id: &str,
+    input: UpdateTrackSourceInput,
+) -> Result<LibraryTrack, String> {
+    let track = read_tracks(conn)?
+        .into_iter()
+        .find(|entry| entry.id == track_id)
+        .ok_or_else(|| format!("Track not found: {track_id}"))?;
+
+    let next_source_path = canonical_source_path(&input.source_path);
+    if next_source_path.trim().is_empty() {
+        return Err("Track source path is required.".to_string());
+    }
+
+    let duplicate_owner: Option<String> = conn
+        .query_row(
+            "SELECT id FROM musical_assets WHERE source_path = ?1 LIMIT 1",
+            params![&next_source_path],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|error| format!("Failed to verify relink target uniqueness: {error}"))?;
+    if let Some(owner_id) = duplicate_owner {
+        if owner_id != track_id {
+            return Err(format!(
+                "Another track already uses '{}'.",
+                next_source_path
+            ));
+        }
+    }
+
+    let next_extension = Path::new(&next_source_path)
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.to_ascii_lowercase())
+        .filter(|ext| !ext.trim().is_empty())
+        .unwrap_or_else(|| track.file.file_extension.clone());
+
+    let (size_bytes, modified_at, missing_state, playback_source) = probe_track_file_state(
+        &next_source_path,
+        track.storage_path.as_deref(),
+        track.file.size_bytes,
+        track.file.modified_at.clone(),
+    );
+
+    let mut metadata = track_metadata_from_track(&track);
+    metadata.file.file_extension = next_extension.clone();
+    metadata.file.size_bytes = size_bytes;
+    metadata.file.modified_at = modified_at.clone();
+    metadata.file.checksum = track.file.checksum.clone();
+    let metadata_json = serde_json::to_string(&metadata)
+        .map_err(|error| format!("Failed to encode relinked track metadata: {error}"))?;
+    let now = now_iso();
+
+    conn.execute(
+        "
+        UPDATE musical_assets
+        SET source_path = ?1,
+            metadata_json = ?2,
+            updated_at = ?3
+        WHERE id = ?4
+        ",
+        params![&next_source_path, metadata_json, now, track_id],
+    )
+    .map_err(|error| format!("Failed to update track source path: {error}"))?;
+
+    conn.execute(
+        "
+        INSERT INTO track_library_states (
+            asset_id,
+            color,
+            rating,
+            play_count,
+            last_played_at,
+            bpm_lock,
+            grid_lock,
+            main_cue_second,
+            hot_cues_json,
+            memory_cues_json,
+            saved_loops_json,
+            missing_state,
+            file_size_bytes,
+            source_modified_at,
+            source_checksum
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
+        ON CONFLICT(asset_id) DO UPDATE SET
+            missing_state = excluded.missing_state,
+            file_size_bytes = excluded.file_size_bytes,
+            source_modified_at = excluded.source_modified_at,
+            source_checksum = excluded.source_checksum
+        ",
+        params![
+            track_id,
+            track.performance.color,
+            track.performance.rating,
+            track.performance.play_count,
+            track.performance.last_played_at,
+            if track.performance.bpm_lock { 1 } else { 0 },
+            if track.performance.grid_lock { 1 } else { 0 },
+            track.performance.main_cue_second,
+            serde_json::to_string(&track.performance.hot_cues)
+                .map_err(|error| format!("Failed to encode relink hot cues: {error}"))?,
+            serde_json::to_string(&track.performance.memory_cues)
+                .map_err(|error| format!("Failed to encode relink memory cues: {error}"))?,
+            serde_json::to_string(&track.performance.saved_loops)
+                .map_err(|error| format!("Failed to encode relink saved loops: {error}"))?,
+            missing_state,
+            size_bytes,
+            modified_at,
+            track.file.checksum
+        ],
+    )
+    .map_err(|error| format!("Failed to update relinked track state: {error}"))?;
+
+    let _ = playback_source;
+
+    read_tracks(conn)?
+        .into_iter()
+        .find(|entry| entry.id == track_id)
+        .ok_or_else(|| format!("Track disappeared after relink: {track_id}"))
+}
+
 fn read_base_assets(conn: &Connection) -> Result<Vec<BaseAssetRecord>, String> {
     let mut statement = conn
         .prepare(
@@ -7316,10 +7471,13 @@ fn main() {
             list_tracks,
             list_playlists,
             import_track,
+            pick_track_source_directory,
             save_playlist,
             delete_playlist,
             update_track_performance,
             update_track_analysis,
+            update_track_source,
+            resolve_missing_tracks_from_directory,
             seed_demo_tracks,
             list_base_assets,
             import_base_asset,

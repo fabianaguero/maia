@@ -2,9 +2,11 @@ import type {
   BaseTrackPlaylist,
   ImportTrackInput,
   LibraryTrack,
+  RelinkMissingTracksResult,
   SaveBaseTrackPlaylistInput,
   UpdateTrackAnalysisInput,
   UpdateTrackPerformanceInput,
+  UpdateTrackSourceInput,
 } from "../types/library";
 import { invokeOrFallback } from "./tauri";
 import {
@@ -13,9 +15,11 @@ import {
   saveMockPlaylist,
   importMockTrack,
   listMockTracks,
+  resolveMockMissingTracksFromDirectory,
   seedMockTracks,
   updateMockTrackAnalysis,
   updateMockTrackPerformance,
+  updateMockTrackSource,
 } from "./mockLibrary";
 
 export async function listTracks(): Promise<LibraryTrack[]> {
@@ -66,6 +70,16 @@ export async function pickTrackSourcePath(
   );
 }
 
+export async function pickTrackSourceDirectory(
+  initialPath?: string,
+): Promise<string | null> {
+  return invokeOrFallback(
+    "pick_track_source_directory",
+    { initialPath: initialPath?.trim() || undefined },
+    () => null,
+  );
+}
+
 export async function checkTrackExists(sourcePath: string): Promise<boolean> {
   return invokeOrFallback("check_file_exists", { path: sourcePath }, () => true);
 }
@@ -95,5 +109,26 @@ export async function updateTrackAnalysis(
     "update_track_analysis",
     { trackId, input },
     () => updateMockTrackAnalysis(trackId, input),
+  );
+}
+
+export async function updateTrackSource(
+  trackId: string,
+  input: UpdateTrackSourceInput,
+): Promise<LibraryTrack> {
+  return invokeOrFallback(
+    "update_track_source",
+    { trackId, input },
+    () => updateMockTrackSource(trackId, input),
+  );
+}
+
+export async function resolveMissingTracksFromDirectory(
+  directoryPath: string,
+): Promise<RelinkMissingTracksResult> {
+  return invokeOrFallback(
+    "resolve_missing_tracks_from_directory",
+    { directoryPath },
+    () => resolveMockMissingTracksFromDirectory(),
   );
 }

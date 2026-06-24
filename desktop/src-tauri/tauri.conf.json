@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.fabianaguero.maia",
   "build": {
-    "beforeDevCommand": "npx vite --port 1421 --host 127.0.0.1",
+    "beforeDevCommand": "bash ./scripts/start-vite-dev.sh",
     "beforeBuildCommand": "npx vite build",
     "devUrl": "http://127.0.0.1:1421",
     "frontendDist": "../dist"

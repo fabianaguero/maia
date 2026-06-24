@@ -69,7 +69,7 @@ def test_cli_analyze_ok_response_returns_zero(monkeypatch, capsys):
     assert payload["payload"]["hello"] == "world"
 
 
-def test_cli_export_stems_success(monkeypatch, tmp_path, capsys):
+def test_cli_export_stems_disabled(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(
         sys,
         "argv",
@@ -90,18 +90,10 @@ def test_cli_export_stems_success(monkeypatch, tmp_path, capsys):
         ),
     )
 
-    monkeypatch.setitem(sys.modules, "maia_analyzer.composition", __import__("maia_analyzer.composition", fromlist=["write_stem_wavs"]))
-    monkeypatch.setattr(
-        "maia_analyzer.composition.write_stem_wavs",
-        lambda dest_dir, bpm, duration_seconds, sections, render_preview: [
-            {"stemId": "foundation", "path": str(dest_dir / "foundation.wav")}
-        ],
-    )
-
     exit_code = cli.main()
 
     captured = capsys.readouterr()
     payload = json.loads(captured.out.strip())
-    assert exit_code == 0
-    assert payload["status"] == "ok"
-    assert payload["stems"][0]["stemId"] == "foundation"
+    assert exit_code == 1
+    assert payload["status"] == "error"
+    assert "disabled in this MVP" in payload["error"]

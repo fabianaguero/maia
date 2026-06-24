@@ -1,5 +1,18 @@
 # Decisions
 
+## 2026-04-20 to 2026-04-21: Audio Session Enhancements & Metadata Persistence
+
+### Business decisions
+- Session metadata should now carry source template association so operators can audit which templates were active during live monitoring and replay sessions.
+- BPM and template information should be quick-scannable in session listing without opening detailed view.
+- Replay bookmarks should enrich context data to improve future recommendations and operator decision-making.
+
+### Technical decisions
+- `source_template_id` added to `sessions` table as nullable TEXT column; idempotent ALTER TABLE migration pattern via `ensure_session_source_template_id_column()`.
+- Session cards in SessionScreen now display two quick-view chips: lastBpm (formatted or "— BPM") and sourceTemplateId (template label or "No template").
+- Template indicator chip now lives in MonitorWaveformBar header controls, showing active template + live BPM sync state with >5% drift threshold for "Live BPM" suffix display.
+- Property-based tests introduced for audio session improvements: 11 properties validated covering BPM formatting, template label resolution, session persistence, and chip rendering.
+
 ## 2026-04-09
 
 ### Business decisions

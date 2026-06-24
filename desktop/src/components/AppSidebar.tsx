@@ -105,11 +105,18 @@ export function AppSidebar({
   return (
     <aside className="sidebar panel role-based-sidebar">
       <div className="sidebar-brand">
-        <img
-          src="/assets/branding/maia-wordmark-site.png"
-          alt="MAIA"
-          className="sidebar-wordmark"
-        />
+        <div className="sidebar-logo-lockup">
+          <img
+            src="/assets/branding/maia-icon-site.png"
+            alt="MAIA"
+            className="sidebar-logo-icon"
+          />
+          <img
+            src="/assets/branding/maia-wordmark-site.png"
+            alt="MAIA"
+            className="sidebar-wordmark"
+          />
+        </div>
         <p className="sidebar-tagline">{t.tagline}</p>
         <ModeToggle />
       </div>

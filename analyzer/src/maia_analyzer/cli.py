@@ -79,37 +79,8 @@ def main() -> int:
 
 def _cmd_export_stems(args: Any) -> int:
     """Read a composition export-stems request from stdin and write per-stem WAVs."""
-    from .composition import write_stem_wavs
-
-    raw = sys.stdin.read().strip()
-    if not raw:
-        print(json.dumps({"status": "error", "error": "No JSON on stdin"}))
-        return 1
-
-    try:
-        payload: Any = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        print(json.dumps({"status": "error", "error": f"Invalid JSON: {exc.msg}"}))
-        return 1
-
-    try:
-        bpm = float(payload["bpm"])
-        duration_seconds = float(payload["durationSeconds"])
-        sections = list(payload["sections"])
-        render_preview = dict(payload["renderPreview"])
-    except (KeyError, TypeError, ValueError) as exc:
-        print(json.dumps({"status": "error", "error": f"Missing field: {exc}"}))
-        return 1
-
-    dest_dir = Path(args.dest_dir)
-    try:
-        stems = write_stem_wavs(dest_dir, bpm, duration_seconds, sections, render_preview)
-    except OSError as exc:
-        print(json.dumps({"status": "error", "error": str(exc)}))
-        return 1
-
-    print(json.dumps({"status": "ok", "stems": stems}))
-    return 0
+    print(json.dumps({"status": "error", "error": "Timeline composition and stem export are disabled in this MVP."}))
+    return 1
 
 
 if __name__ == "__main__":

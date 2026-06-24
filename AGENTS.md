@@ -1,5 +1,7 @@
 # AGENTS.md
 
+**Last Updated:** April 2026 (Status as of April 21, 2026)
+
 ## Product
 Desktop app tipo Rekordbox para Linux, Windows y macOS.
 Analiza repositorios, logs y genera arte sonoro en vivo (Live System Performance). 
@@ -35,8 +37,33 @@ Types:
 ## UX
 Must feel like a desktop DJ analyzer, not a web dashboard.
 
+## Implementation Status (April 2026)
+
+### Shipped Features
+- ✅ Tree-sitter based repository parsing (Java/Kotlin/Python/TypeScript/Go/Rust)
+- ✅ DSP integration via librosa (tempo, onset, beat tracking)
+- ✅ Session-based stream polling (file, process, WebSocket, HTTP-poll, journald adapters)
+- ✅ Genre-configured instrumental palette (8 curated genres)
+- ✅ Sequencer presets (sparse/balanced/beat-locked/cascade)
+- ✅ Reference anchor + multi-track playlist blending
+- ✅ Beat-phase-aware scheduling with BeatClock
+- ✅ Replay feedback loop with bookmarks and recommendations
+- ✅ Composition export (stems + plan.json + preview.wav)
+- ✅ V0 design system (minimalismo instrumental aesthetic)
+- ✅ Simple mode vs Expert mode (with UserModeContext + localStorage persistence)
+- ✅ Audio session enhancements: source template ID, BPM/template chips, template indicator chip
+- ✅ Property-based testing for session improvements
+
+### In Progress / Future Work
+- ⏳ Background music-server mode / headless runtime
+- ⏳ Broader stream adapters (Kafka, Loki)
+- ⏳ Richer sonification behavior
+- ⏳ Fuller bounce/export beyond WAV stems
+
 ## Engineering rules
 - Keep analyzer and desktop app decoupled via JSON contracts
 - Prefer deterministic heuristics over black-box ML in MVP
 - Store all analysis locally
 - Make Linux the primary dev environment
+- Maintain strict TypeScript (no `any`), proper error handling with NotificationSystem
+- All UI changes align with DESIGN.md constraints (typography, colors, spacing, motion)

@@ -12,7 +12,7 @@ Source of truth:
 
 The product app is started from `desktop/` with `npm run tauri dev`.
 
-## Current Product Status
+## Current Product Status (Updated April 2026)
 
 The current desktop app already includes:
 
@@ -25,6 +25,10 @@ The current desktop app already includes:
 - Session persistence, replay, replay bookmarks, and feedback-driven mix suggestions for monitored streams
 - Composition planning with `plan.json`, generated `preview.wav`, in-app playback, and WAV stem export
 - Track analysis enriched with key signature, energy level, danceability, and basic structural cues
+- **Session metadata enrichment (April 2026):** Source template ID persistence, BPM + template quick-view chips on session cards
+- **Template indicator chip (April 2026):** Live template and BPM sync display in monitor header with >5% drift detection
+- **Property-based testing (April 2026):** 11 properties validated for audio session improvements
+- **V0 design system (April 2026):** Full integration of minimalismo instrumental aesthetic across AppShell, Monitor, Library, and Wizard components
 
 What is still evolving is the longer-running product mode: Maia should ultimately behave like a background music server for a team, where the desktop app is the control surface and the audio layer keeps monitoring systems by ear.
 

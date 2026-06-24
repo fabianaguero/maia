@@ -4,8 +4,6 @@ import platform
 from typing import Any
 
 from . import __version__
-from .assets import analyze_base_asset
-from .composition import analyze_composition
 from .audio import analyze_track, get_supported_track_formats
 from .dsp import dsp_available
 from .contracts import ContractError, error_response, ok_response, parse_request
@@ -35,8 +33,6 @@ def handle_request(raw: Any) -> dict[str, Any]:
                     "runtime": platform.python_version(),
                     "supportedActions": ["health", "analyze", "session_start", "session_stop", "session_list", "session_poll"],
                     "modes": [
-                        "repo-heuristics",
-                        "repo-tree-sitter",
                         "log-file-heuristics",
                         "log-live-tail",
                         "track-embedded-heuristic",
@@ -44,8 +40,6 @@ def handle_request(raw: Any) -> dict[str, Any]:
                         "stream-file-adapter",
                         "stream-process-adapter",
                         "stream-session-registry",
-                        "base-assets",
-                        "composition-planner",
                         "aesthetic-presets",
                     ],
                     "supportedTrackFormats": get_supported_track_formats(),
@@ -79,23 +73,11 @@ def handle_request(raw: Any) -> dict[str, Any]:
                 payload["source"]["path"],
                 waveform_bins=int(options.get("waveformBins", 24)),
             )
-        elif payload["assetType"] == "base_asset":
-            asset, warnings = analyze_base_asset(
-                payload["source"]["path"],
-                category=options.get("baseAssetCategory"),
-                reusable=bool(options.get("baseAssetReusable", True)),
-            )
-        elif payload["assetType"] == "composition_result":
-            asset, warnings = analyze_composition(
-                payload["source"]["kind"],
-                payload["source"]["path"],
-                base_asset_category=options.get("baseAssetCategory"),
-                reusable=bool(options.get("baseAssetReusable", True)),
-                entry_count=options.get("compositionBaseAssetEntryCount"),
-                reference_type=options.get("compositionReferenceType"),
-                reference_label=options.get("compositionReferenceLabel"),
-                reference_bpm=options.get("compositionReferenceBpm"),
-                preview_output_path=options.get("compositionPreviewOutputPath"),
+        elif payload["assetType"] in ("base_asset", "composition_result"):
+            return error_response(
+                request_id,
+                "unsupported_asset_type",
+                f"{payload['assetType']} is disabled in this MVP.",
             )
         else:
             return error_response(

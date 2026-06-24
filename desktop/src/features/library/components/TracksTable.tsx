@@ -1,6 +1,10 @@
 import type { LibraryTrack } from "../../../types/library";
 import { formatShortDateTime } from "../../../utils/date";
-import { getTrackSourcePath, getTrackTitle } from "../../../utils/track";
+import {
+  getTrackAvailabilityLabel,
+  getTrackSourcePath,
+  getTrackTitle,
+} from "../../../utils/track";
 
 interface TracksTableProps {
   tracks: LibraryTrack[];
@@ -34,17 +38,19 @@ export function TracksTable({
         <tbody>
           {tracks.map((track) => {
             const selected = track.id === selectedTrackId;
+            const isMissing = track.file.availabilityState === "missing";
 
             return (
               <tr
                 key={track.id}
-                className={selected ? "selected" : undefined}
+                className={`${selected ? "selected " : ""}${isMissing ? "track-missing" : ""}`.trim() || undefined}
                 onClick={() => onSelectTrack(track.id)}
               >
                 <td>
                   <strong>{getTrackTitle(track)}</strong>
                   <small>
                     {track.file.fileExtension} · {track.tags.musicStyleLabel}
+                    {isMissing ? " · LOST" : ""}
                   </small>
                 </td>
                 <td title={track.file.sourcePath}>{getTrackSourcePath(track)}</td>
@@ -66,7 +72,10 @@ export function TracksTable({
                       Re-analyze
                     </button>
                   ) : (
-                    track.analysis.analyzerStatus
+                    <>
+                      {track.analysis.analyzerStatus}
+                      <small>{getTrackAvailabilityLabel(track)}</small>
+                    </>
                   )}
                 </td>
                 <td>{formatShortDateTime(track.analysis.importedAt)}</td>

@@ -102,7 +102,7 @@ export function AppShell({
         {/* Logo + Branding */}
         <div className="sidebar-brand">
           <div className="sidebar-logo">
-            <img src="file:///home/faguero/.gemini/antigravity/brain/0811368a-61f2-4dcc-a96b-476a10a440a2/media__1776681366000.png" alt="MAIA" className="logo-main" />
+            <img src="/assets/branding/maia-icon-site.png" alt="MAIA" className="logo-main" />
             {!isCollapsed && <span className="logo-text">MAIA</span>}
           </div>
           <button className="btn-collapse" onClick={onToggleCollapse}>

@@ -62,6 +62,8 @@ interface LibraryScreenProps {
   onImportBaseAsset: (input: ImportBaseAssetInput) => Promise<boolean>;
   onImportComposition: (input: ImportCompositionInput) => Promise<boolean>;
   onReanalyzeTrack: (trackId: string) => Promise<boolean>;
+  onRelinkTrack: (trackId: string) => Promise<boolean>;
+  onRelinkMissingTracks: () => Promise<boolean>;
   onReanalyzeRepository: (repositoryId: string) => Promise<boolean>;
   onDeleteTrack: (trackId: string) => Promise<boolean>;
   onDeleteRepository: (repositoryId: string) => Promise<boolean>;
@@ -120,6 +122,8 @@ export function LibraryScreen({
   onImportRepository,
   onImportBaseAsset,
   onReanalyzeTrack,
+  onRelinkTrack,
+  onRelinkMissingTracks,
   onReanalyzeRepository,
   onDeleteTrack,
   onDeleteRepository,
@@ -276,6 +280,9 @@ export function LibraryScreen({
     (tab === "tracks" && trackLoading) ||
     (tab === "sources" && repositoryLoading) ||
     (tab === "bases" && baseAssetLoading);
+  const missingTrackCount = tracks.filter(
+    (track) => track.file.availabilityState === "missing",
+  ).length;
 
   const error =
     tab === "tracks" ? trackError :
@@ -384,6 +391,16 @@ export function LibraryScreen({
               onClick={() => openPlaylistEditor()}
             >
               <ListMusic size={14} /> New Playlist
+            </button>
+          )}
+
+          {tab === "tracks" && missingTrackCount > 0 && (
+            <button
+              type="button"
+              className="secondary-action toolbar-action"
+              onClick={() => void onRelinkMissingTracks()}
+            >
+              <FolderOpen size={14} /> Relink Missing ({missingTrackCount})
             </button>
           )}
 
@@ -517,6 +534,7 @@ export function LibraryScreen({
                             <span>{getTrackTitle(track)}</span>
                             <small>
                               {track.analysis.bpm ? `${Math.round(track.analysis.bpm)} BPM` : "No BPM"}
+                              {track.file.availabilityState === "missing" ? " · LOST" : ""}
                             </small>
                           </label>
                         ))}
@@ -589,7 +607,7 @@ export function LibraryScreen({
                   {tracks.map((track) => (
                     <li
                       key={track.id}
-                      className={`asset-card${track.id === selectedTrackId ? " selected" : ""}${track.id === newlyImportedId ? " just-imported" : ""}`}
+                      className={`asset-card${track.id === selectedTrackId ? " selected" : ""}${track.id === newlyImportedId ? " just-imported" : ""}${track.file.availabilityState === "missing" ? " asset-card-missing" : ""}`}
                       onClick={() => onSelectTrack(track.id)}
                     >
                       <div className="asset-card-icon track-icon">
@@ -603,6 +621,9 @@ export function LibraryScreen({
                           ) : (
                             <span className="bpm-badge pending">-</span>
                           )}
+                          {track.file.availabilityState === "missing" ? (
+                            <span className="track-lost-badge">LOST</span>
+                          ) : null}
                           {track.analysis.durationSeconds ? ` · ${Math.round(track.analysis.durationSeconds / 60)}m${Math.round(track.analysis.durationSeconds % 60)}s` : ""}
                           {" · "}{track.tags.musicStyleLabel}
                           {" · "}{track.file.fileExtension}
@@ -610,6 +631,15 @@ export function LibraryScreen({
                         <span className="asset-card-date">{formatShortDate(track.analysis.importedAt)}</span>
                       </div>
                       <div className="asset-card-actions">
+                        {track.file.availabilityState === "missing" ? (
+                          <button
+                            type="button"
+                            className="card-action-btn"
+                            onClick={(e) => { e.stopPropagation(); void onRelinkTrack(track.id); }}
+                          >
+                            Relink
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className="card-action-btn"

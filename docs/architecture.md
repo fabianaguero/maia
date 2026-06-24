@@ -1,5 +1,7 @@
 # Architecture
 
+**Last Updated:** April 2026
+
 ## Product intent
 Maia is a local-first desktop app for auditory monitoring. The user selects a favorite track or playlist as the musical base, and repositories, logs, streams, scanned files, and reusable sonic assets drive alterations on top of that base.
 
@@ -99,3 +101,28 @@ Tracks are not just a reference/control lane. A selected track, or a playlist bl
 - `MonitorPrefs` now persist `basePlaylist`, `selectedStyleProfileId`, and `selectedMutationProfileId` to `localStorage` under the key `maia.monitor-prefs.<repoId>`. The per-repo initializer reads this key so that switching repos restores each repo's own last-used settings. The loader also migrates the older `referencePlaylistIds` / `selectedGenreId` / `selectedPresetId` shape forward on read. The persist effect saves on every change.
 - Sequencer presets define cue density, gain spread, and scheduling mode. The `beat-locked` preset uses the beat clock for phase-accurate first-cue placement; other presets use fixed gap milliseconds. Component routes in `COMPONENT_ROUTES` map log-event pattern strings to oscillator/sample assignments.
 - Live log-stream sonification now exists in the analyzer UI with file, process, WebSocket, HTTP-poll, and `journald` adapters, backed by a native transient session runtime in Rust rather than analyzer in-memory state. The current gap is no longer in-app session continuity, but headless/background service mode and additional external adapters such as Kafka/Loki.
+
+## Recent Updates (April 2026)
+
+### Session Metadata Persistence
+- `source_template_id` column added to `sessions` table for tracking which source template was active during live monitoring and replay sessions.
+- Idempotent DB migration: `ensure_session_source_template_id_column()` called during app initialization.
+- Session creation/retrieval functions (`db_create_session`, `db_get_session`, `db_list_sessions`) updated to include `source_template_id`.
+
+### UI Enhancements: Template & BPM Quick-View
+- **SessionScreen:** Session cards now display quick-view chips for `lastBpm` and `sourceTemplateId` with auto-fit grid layout.
+  - BPM formatting: `null → "— BPM"` or rounded integer (e.g., `"120 BPM"`).
+  - Template formatting: `null → "No template"`, valid ID → template label, invalid → `"Unknown template"`.
+- **MonitorWaveformBar:** Template indicator chip added to header controls showing active template + live BPM sync.
+  - Display format: `[icon] Genre · Template Name · [Live BPM suffix]`.
+  - Live BPM suffix shown when actual BPM diverges >5% from template baseline.
+  - Styling: Subtle cyan border/background with `.template-chip--active` for enhanced state.
+
+### Design System Integration
+- V0 design system fully integrated into AppShell, Monitor, Library & Wizard components.
+- Minimalismo instrumental aesthetic applied across all layouts per DESIGN.md constraints.
+- All typography, colors, spacing, and motion follow strict design tokens.
+
+### Testing
+- Property-based tests added for audio session improvements (11 properties validated).
+- Session persistence, BPM formatting, template label resolution, and chip rendering all covered.

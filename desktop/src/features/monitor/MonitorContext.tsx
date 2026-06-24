@@ -1027,51 +1027,9 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // --- Sonify Phase ---
-    const hasRequestedGuideTrack = Boolean(guideTrackPathRef.current) || guideTrackQueueRef.current.length > 0;
-    const guideTrackLoaded = Boolean(guideTrackRef.current && !guideTrackFinishedRef.current);
-    const shouldSonify = update.sonificationCues.length > 0 || guideTrackLoaded;
-
-    if (shouldSonify) {
-      log.trace("sonifying: cues=%d guideTrack=%s pending=%s", update.sonificationCues.length, guideTrackLoaded, hasRequestedGuideTrack && !guideTrackLoaded);
-
-      let wav: Blob | null = null;
-      const ctx = audioContextRef.current;
-
-      if (guideTrackLoaded) {
-        wav = sliceGuideTrackBar(
-          guideTrackRef.current!,
-          guideTrackCursorRef.current,
-          update.sonificationCues,
-          4.0, // Increased to cover polling delay
-          update.suggestedBpm,
-          DEFAULT_MONITOR_WAV_VOLUME,
-        );
-        if (wav === null) {
-          // Cursor exhausted — pre-slice by advancing immediately
-          const advanced = advanceGuideTrack();
-          if (!advanced) {
-            guideTrackFinishedRef.current = true;
-            log.info("guide track reached end — no next track queued");
-          }
-        } else if (ctx) {
-          // Use crossfade engine for guide track segments
-          void scheduleCrossfade(ctx, wav, DEFAULT_MONITOR_WAV_VOLUME);
-          wav = null; // prevent double-play below
-        }
-      } else if (
-        !isPlaybackRef.current &&
-        update.sonificationCues.length > 0
-      ) {
-        // Use synth fallback whether guide track is absent, pending load, or finished
-        // Pass active template BPM so the synth matches the selected style
-        wav = renderSynthFallback(update.sonificationCues, 4.0, 0.8, activeTemplateRef.current.bpm ?? update.suggestedBpm);
-      }
-
-      // Synth fallback: play via crossfade engine so synth→guide transition works
-      if (wav && ctx) {
-        void scheduleCrossfade(ctx, wav, 0.8);
-      }    }
+    // Live audio output is owned by the analyzer monitor panel.
+    // MonitorContext now behaves as a transport/session layer only, so it
+    // dispatches updates without producing a second competing sound engine.
 
     log.trace("dispatching to %d listeners", listenersRef.current.size);
     for (const listener of listenersRef.current) {
@@ -1180,6 +1138,12 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
   const startSession = useCallback(
     async (repo: RepositoryAnalysis, input: StartSessionInput, persistedSessionId?: string): Promise<boolean> => {
       log.info("startSession id=%s adapter=%s source=%s persistedId=%s", input.sessionId, input.adapterKind, input.source, persistedSessionId);
+      if (input.adapterKind !== "file") {
+        throw new Error(
+          "Week 1 MVP only supports file-backed log monitoring. Use an imported log file as the live source.",
+        );
+      }
+
       // Stop any existing session first
       if (sessionRef.current) {
         const prevId = sessionRef.current.sessionId;
@@ -1196,55 +1160,12 @@ export function MonitorProvider({ children }: { children: ReactNode }) {
 
       let pollMode: "session" | "direct" | "websocket" | "http-poll" = "session";
 
-      if (input.adapterKind === "websocket") {
-        pollMode = "websocket";
-        // Register the native session before the JS-managed WebSocket starts
-        try {
-          await startStreamSession(input);
-        } catch {
-          // WS adapter requires Tauri; abort if unavailable
-          return false;
-        }
-
-        // Open the WebSocket connection — source is the ws:// URL
-        const wsUrl = input.wsUrl ?? input.source;
-        wsLineBufferRef.current = [];
-        const ws = new WebSocket(wsUrl);
-        wsRef.current = ws;
-
-        ws.onmessage = (event) => {
-          const text = typeof event.data === "string" ? event.data : "";
-          if (text) {
-            wsLineBufferRef.current.push(...text.split("\n").filter(Boolean));
-          }
-        };
-        ws.onerror = () => {
-          wsLineBufferRef.current.push("[maia] WebSocket connection error.");
-        };
-        ws.onclose = () => {
-          wsLineBufferRef.current.push("[maia] WebSocket connection closed.");
-        };
-
-      } else if (input.adapterKind === "http-poll") {
-        pollMode = "http-poll";
-        try {
-          await startStreamSession(input);
-        } catch {
-          return false;
-        }
-        httpUrlRef.current = input.httpUrl ?? input.source;
-
-      } else {
-        try {
-          await startStreamSession(input);
-          pollMode = "session";
-        } catch {
-          if (input.adapterKind !== "file") {
-            return false;
-          }
-          // Browser/demo fallback keeps the legacy direct file-tail path.
-          pollMode = "direct";
-        }
+      try {
+        await startStreamSession(input);
+        pollMode = "session";
+      } catch {
+        // Browser/demo fallback keeps the legacy direct file-tail path.
+        pollMode = "direct";
       }
 
       directCursorRef.current =

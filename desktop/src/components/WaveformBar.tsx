@@ -37,7 +37,11 @@ export function WaveformBar({
               <div
                 key={i}
                 className="mini-bar cyan"
-                style={{ height: `${Math.random() * 60 + 20}%`, animationDelay: `${i * 0.05}s` }}
+                style={{ 
+                  height: `${isActive ? 20 + Math.random() * 50 : 10}%`, 
+                  animationDelay: `${i * 0.05}s`,
+                  opacity: isActive ? 0.8 + Math.random() * 0.2 : 0.4
+                }}
               />
             ))}
           </div>
@@ -45,13 +49,21 @@ export function WaveformBar({
         <div className="mini-visual-channel">
           <span className="channel-tag orange">ALERT</span>
           <div className="mini-bars">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div
-                key={i}
-                className="mini-bar orange"
-                style={{ height: `${anomalies > 0 ? Math.random() * 80 + 20 : 10}%`, animationDelay: `${i * 0.05}s` }}
-              />
-            ))}
+            {Array.from({ length: 12 }).map((_, i) => {
+              const intensity = anomalies > 0 ? Math.min(100, 30 + anomalies * 8) : 10;
+              const jitter = isActive ? (Math.random() * 20 * (anomalies > 0 ? 1.5 : 0.5)) : 0;
+              return (
+                <div
+                  key={i}
+                  className="mini-bar orange"
+                  style={{ 
+                    height: `${intensity + jitter}%`, 
+                    animationDelay: `${i * 0.05}s`,
+                    filter: anomalies > 0 ? `brightness(${1 + (anomalies * 0.1)})` : 'none'
+                  }}
+                />
+              );
+            })}
           </div>
         </div>
       </div>

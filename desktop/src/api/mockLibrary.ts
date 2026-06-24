@@ -10,6 +10,8 @@ import type {
   TrackStructuralPattern,
   UpdateTrackAnalysisInput,
   UpdateTrackPerformanceInput,
+  UpdateTrackSourceInput,
+  RelinkMissingTracksResult,
 } from "../types/library";
 import {
   fallbackMusicStyleLabel,
@@ -94,6 +96,15 @@ function normalizeStructuralPatterns(raw: unknown): TrackStructuralPattern[] {
       label: record.label,
     }];
   });
+}
+
+function fileExtensionFromPath(path: string): string {
+  const fileName = path.split(/[\\/]/).pop() ?? "";
+  const dotIndex = fileName.lastIndexOf(".");
+  if (dotIndex === -1 || dotIndex === fileName.length - 1) {
+    return "audio";
+  }
+  return fileName.slice(dotIndex + 1).toLowerCase();
 }
 
 function normalizeCuePoints(
@@ -519,18 +530,31 @@ function stableHash(input: string): number {
   return hash >>> 0;
 }
 
-function createWaveformBins(seed: number, length = 56): number[] {
+function createWaveformBins(seed: number, length = 512): number[] {
   let state = seed || 1;
 
   return Array.from({ length }, (_, index) => {
     state = Math.imul(state ^ (state >>> 13), 1274126177) >>> 0;
-    const raw = ((state >>> 8) & 0xff) / 255;
-    const envelope =
-      index < length / 2
-        ? 0.35 + index / length
-        : 0.35 + (length - index) / length;
+    const noise = ((state >>> 8) & 0xff) / 255;
+    const progress = index / Math.max(1, length - 1);
+    const macroEnvelope =
+      progress < 0.14
+        ? 0.24 + progress * 1.35
+        : progress < 0.34
+          ? 0.46 + Math.sin(progress * Math.PI * 2.4) * 0.12
+          : progress < 0.58
+            ? 0.7 + Math.sin(progress * Math.PI * 5.2) * 0.18
+            : progress < 0.82
+              ? 0.52 + Math.sin(progress * Math.PI * 3.6) * 0.1
+              : 0.44 + (1 - progress) * 0.34;
+    const groove =
+      Math.abs(Math.sin(progress * Math.PI * 32)) * 0.18 +
+      Math.abs(Math.sin(progress * Math.PI * 9.5)) * 0.12;
+    const transientWindow = (state >>> 4) % 17 === 0 ? 0.26 : 0;
+    const transient = Math.max(0, 1 - Math.abs(((progress * 48) % 1) - 0.5) * 2) * transientWindow;
+    const value = macroEnvelope * 0.72 + groove + noise * 0.08 + transient;
 
-    return Number(Math.min(1, raw * envelope).toFixed(3));
+    return Number(Math.max(0.04, Math.min(1, value)).toFixed(3));
   });
 }
 
@@ -871,6 +895,54 @@ export async function updateMockTrackPerformance(
   );
 
   return nextTrack;
+}
+
+export async function updateMockTrackSource(
+  trackId: string,
+  input: UpdateTrackSourceInput,
+): Promise<LibraryTrack> {
+  const nextSourcePath = input.sourcePath.trim();
+  if (!nextSourcePath) {
+    throw new Error("Track source path is required.");
+  }
+
+  const tracks = readTracks();
+  const track = tracks.find((entry) => entry.id === trackId);
+  if (!track) {
+    throw new Error(`Track not found: ${trackId}`);
+  }
+
+  const nextImportedAt = new Date().toISOString();
+  const nextExtension = fileExtensionFromPath(nextSourcePath);
+  const nextTrack: LibraryTrack = {
+    ...track,
+    file: {
+      ...track.file,
+      sourcePath: nextSourcePath,
+      fileExtension: nextExtension,
+      modifiedAt: nextImportedAt,
+      availabilityState: "available",
+      playbackSource: "source_file",
+    },
+    sourcePath: nextSourcePath,
+    fileExtension: nextExtension,
+    analysis: {
+      ...track.analysis,
+      importedAt: track.analysis.importedAt,
+    },
+  };
+
+  writeTracks(tracks.map((entry) => (entry.id === trackId ? nextTrack : entry)));
+  return nextTrack;
+}
+
+export async function resolveMockMissingTracksFromDirectory(): Promise<RelinkMissingTracksResult> {
+  return {
+    relinkedTracks: [],
+    unresolvedTrackIds: readTracks()
+      .filter((track) => track.file.availabilityState === "missing")
+      .map((track) => track.id),
+  };
 }
 
 export async function updateMockTrackAnalysis(

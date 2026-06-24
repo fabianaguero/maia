@@ -196,6 +196,15 @@ export interface UpdateTrackAnalysisInput {
   bpmCurve?: BpmCurvePoint[];
 }
 
+export interface UpdateTrackSourceInput {
+  sourcePath: string;
+}
+
+export interface RelinkMissingTracksResult {
+  relinkedTracks: LibraryTrack[];
+  unresolvedTrackIds: string[];
+}
+
 export type BaseAssetSourceKind = "file" | "directory";
 
 export interface BaseAssetRecord {

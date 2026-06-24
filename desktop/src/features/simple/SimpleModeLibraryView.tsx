@@ -1,7 +1,11 @@
 import { useT } from "../../i18n/I18nContext";
 import type { LibraryTrack, RepositoryAnalysis, BaseAssetRecord, ImportRepositoryInput, ImportBaseAssetInput } from "../../types/library";
 import { useUnifiedLibraryState } from "./useUnifiedLibraryState";
-import { FolderOpen, Zap, Play, FileText, Activity, Folder } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { FolderOpen, Zap, Play, Pause, FileText, Activity, Folder } from "lucide-react";
+import { resolvePlayableTrackPath } from "../../utils/track";
+import { resolvePreviewAudioUrl, revokePreviewAudioUrl } from "../../utils/audioPreview";
+import { TrackWaveformMini } from "../../components/TrackWaveformMini";
 
 interface SimpleModeLibraryViewProps {
   tracks: LibraryTrack[];
@@ -29,6 +33,9 @@ export function SimpleModeLibraryView({
   onStartMonitoring,
 }: SimpleModeLibraryViewProps) {
   const t = useT();
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
+  const [previewTrackId, setPreviewTrackId] = useState<string | null>(null);
 
   // Use unified state management (behavior-agnostic)
   const adapter = useUnifiedLibraryState({
@@ -41,6 +48,74 @@ export function SimpleModeLibraryView({
     onImportBaseAsset,
     onStartMonitoring,
   });
+
+  const toggleTrackPreview = async (track: LibraryTrack) => {
+    const playablePath = resolvePlayableTrackPath(track);
+    if (!playablePath) {
+      return;
+    }
+
+    if (previewTrackId === track.id && previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      previewAudioRef.current.currentTime = 0;
+      previewAudioRef.current = null;
+      revokePreviewAudioUrl(previewUrlRef.current);
+      previewUrlRef.current = null;
+      setPreviewTrackId(null);
+      return;
+    }
+
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      previewAudioRef.current.currentTime = 0;
+      previewAudioRef.current = null;
+      revokePreviewAudioUrl(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
+
+    const previewUrl = await resolvePreviewAudioUrl(playablePath);
+    previewUrlRef.current = previewUrl;
+    const audio = new Audio(previewUrl);
+    audio.volume = 0.92;
+    audio.preload = "auto";
+    previewAudioRef.current = audio;
+    setPreviewTrackId(track.id);
+    audio.addEventListener(
+      "ended",
+      () => {
+        if (previewAudioRef.current === audio) {
+          previewAudioRef.current = null;
+          revokePreviewAudioUrl(previewUrlRef.current);
+          previewUrlRef.current = null;
+          setPreviewTrackId(null);
+        }
+      },
+      { once: true },
+    );
+
+    try {
+      await audio.play();
+    } catch (error) {
+      console.warn("Library track preview failed", error);
+      if (previewAudioRef.current === audio) {
+        previewAudioRef.current = null;
+      }
+      revokePreviewAudioUrl(previewUrlRef.current);
+      previewUrlRef.current = null;
+      setPreviewTrackId(null);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause();
+        previewAudioRef.current = null;
+      }
+      revokePreviewAudioUrl(previewUrlRef.current);
+      previewUrlRef.current = null;
+    };
+  }, []);
 
   return (
     <div className="simple-library-view">
@@ -139,20 +214,22 @@ export function SimpleModeLibraryView({
                   <span className="simple-asset-name">{track.tags.title}</span>
                   <p className="simple-asset-desc">{track.tags.musicStyleLabel || "Preset"}</p>
                 </div>
+                <button
+                  type="button"
+                  className="track-preview-button"
+                  title={previewTrackId === track.id ? "Pause preview" : "Preview track"}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void toggleTrackPreview(track);
+                  }}
+                >
+                  {previewTrackId === track.id ? <Pause size={14} /> : <Play size={14} />}
+                </button>
                 <div className="simple-asset-wave-preview">
-                  <div className="visual-wave-mini">
-                    {Array.from({ length: 8 }).map((_, i) => (
-                      <div 
-                        key={i} 
-                        className="wave-bar-mini" 
-                        style={{ 
-                          height: `${[20, 50, 80, 40, 60, 30, 70, 40][i]}%`,
-                          animationDelay: `${i * 0.1}s`,
-                          backgroundColor: selectedTrackId === track.id ? "var(--color-accent)" : "var(--text-muted)"
-                        }} 
-                      />
-                    ))}
-                  </div>
+                  <TrackWaveformMini
+                    bins={track.analysis?.waveformBins ?? null}
+                    active={selectedTrackId === track.id}
+                  />
                 </div>
               </div>
             ))}

@@ -394,6 +394,50 @@ function AppContent() {
     return false;
   }
 
+  async function handleRelinkTrack(trackId: string) {
+    try {
+      const nextTrack = await library.relinkTrack(trackId);
+      if (nextTrack) {
+        notify("success", "Track relinked", `${nextTrack.tags.title} now points to the new file.`);
+        return true;
+      }
+    } catch (err) {
+      notify("error", "Relink failed", String(err));
+    }
+    return false;
+  }
+
+  async function handleRelinkMissingTracks() {
+    try {
+      const result = await library.relinkMissingTracksFromDirectory();
+      if (!result) {
+        return false;
+      }
+
+      const relinkedCount = result.relinkedTracks.length;
+      const unresolvedCount = result.unresolvedTrackIds.length;
+      if (relinkedCount > 0) {
+        notify(
+          "success",
+          "Missing tracks relinked",
+          unresolvedCount > 0
+            ? `${relinkedCount} resolved, ${unresolvedCount} still missing.`
+            : `${relinkedCount} tracks resolved from the selected folder.`,
+        );
+      } else {
+        notify(
+          "info",
+          "No matches found",
+          "Maia could not match any missing tracks by filename in that folder.",
+        );
+      }
+      return true;
+    } catch (err) {
+      notify("error", "Bulk relink failed", String(err));
+    }
+    return false;
+  }
+
   async function handleReanalyzeRepository(repositoryId: string) {
     try {
       const nextRepository = await repositories.reanalyzeRepository(repositoryId);
@@ -736,6 +780,8 @@ function AppContent() {
             onImportBaseAsset={handleImportBaseAsset}
             onImportComposition={handleImportComposition}
             onReanalyzeTrack={handleReanalyzeTrack}
+            onRelinkTrack={handleRelinkTrack}
+            onRelinkMissingTracks={handleRelinkMissingTracks}
             onReanalyzeRepository={handleReanalyzeRepository}
             onDeleteTrack={handleDeleteTrack}
             onDeleteRepository={handleDeleteRepository}

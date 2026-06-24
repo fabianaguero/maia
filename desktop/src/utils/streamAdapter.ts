@@ -19,15 +19,15 @@ export function getStreamAdapterLabel(adapterKind: StreamAdapterKind): string {
 export function getStreamAdapterDescription(adapterKind: StreamAdapterKind): string {
   switch (adapterKind) {
     case "process":
-      return "Read stdout and stderr from a local command and turn it into a live monitoring mix.";
+      return "Disabled in the Week 1 MVP reduction. Use an imported log file instead.";
     case "websocket":
-      return "Ingest newline-delimited frames from a WebSocket feed and route them through Maia's live scene.";
+      return "Disabled in the Week 1 MVP reduction. Use an imported log file instead.";
     case "http-poll":
-      return "Poll a URL on Maia's live interval and sonify the response body as operational signal.";
+      return "Disabled in the Week 1 MVP reduction. Use an imported log file instead.";
     case "journald":
-      return "Follow systemd journals locally, optionally filtered to a unit, and keep the session musical.";
+      return "Disabled in the Week 1 MVP reduction. Use an imported log file instead.";
     case "file":
     default:
-      return "Tail the imported log file directly from disk and bend the listening bed with each new window.";
+      return "Tail the imported log file directly from disk through Maia's single supported live-analysis pipeline.";
   }
 }

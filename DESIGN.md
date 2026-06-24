@@ -312,6 +312,28 @@ When user switches to Silent mode, waveform grows:
 - Meta: 12px, secondary color
 - Indicator dot: 8px, inline with label
 
+### Template Indicator Chip (New)
+**Context:** MonitorWaveformBar header controls, live session monitoring
+- **Purpose:** Display active source template + live BPM sync indicator
+- **Design:**
+  - Subtle cyan border + background matching monitor theme
+  - Icon (16×16) + label text in flexbox
+  - Shows: `[icon] Genre · Template Name · [suffix]`
+  - Suffix: rounded badge showing ` Live BPM` when actual BPM diverges >5% from template baseline
+  - "Synth Default" text when no template active (null case)
+- **Styling:** `.template-chip` (default) + `.template-chip--active` (enhanced with hover)
+- **Responsive:** Flexbox with consistent 12px gaps in controls row
+- **Render condition:** Only displays when `hasSession === true`
+
+### Session Card Chips (New)
+**Context:** SessionScreen session listing, quick-view metrics
+- **Purpose:** Show last BPM and source template at a glance on each session
+- **Grid layout:** Changed from fixed 3 columns → `auto-fit` for flexible display
+- **Chips:**
+  - **lastBpm chip:** Format is `null → "— BPM"` else rounded integer (e.g., `"120 BPM"`)
+  - **sourceTemplateId chip:** Format is `null → "No template"`, valid ID → template label, invalid → `"Unknown template"`
+- **Styling:** `.session-chip` with subtle background and label font size (12px)
+
 ### Panel
 - Padding: 16px (desktop), 12px (tablet)
 - Border: 1px solid border-soft
