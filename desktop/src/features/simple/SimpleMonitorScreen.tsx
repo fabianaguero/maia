@@ -3,7 +3,7 @@ import { Play, Pause, Square, Music, AlertCircle, Clock } from "lucide-react";
 
 import type { ActiveMonitorSession, MonitorMetrics } from "../monitor/MonitorContext";
 import type { PersistedSession } from "../../api/sessions";
-import type { BeatGridPoint, LibraryTrack, RepositoryAnalysis } from "../../types/library";
+import type { BeatGridPoint, LibraryTrack, LiveLogMarker, RepositoryAnalysis } from "../../types/library";
 import { getTrackTitle as getLibraryTrackTitle, resolvePlayableTrackPath } from "../../utils/track";
 import { resolvePreviewAudioUrl, revokePreviewAudioUrl } from "../../utils/audioPreview";
 import { TrackWaveformMini } from "../../components/TrackWaveformMini";
@@ -717,6 +717,33 @@ function drawTrackEnergyBand(
   }
 }
 
+function resolveBurstFactor(markers: LiveLogMarker[] | undefined): number {
+  if (!markers || markers.length === 0) {
+    return 0;
+  }
+
+  const sorted = [...markers].sort((left, right) => left.eventIndex - right.eventIndex);
+  let groupedPairs = 0;
+  let criticalCount = 0;
+
+  for (let index = 0; index < sorted.length; index += 1) {
+    const marker = sorted[index]!;
+    if ((marker.level || "").toLowerCase() === "error") {
+      criticalCount += 1;
+    }
+
+    const next = sorted[index + 1];
+    if (next && next.eventIndex - marker.eventIndex <= 3) {
+      groupedPairs += 1;
+    }
+  }
+
+  const density = sorted.length / Math.max(4, sorted[sorted.length - 1]!.eventIndex - sorted[0]!.eventIndex + 1);
+  const clustering = groupedPairs / Math.max(1, sorted.length - 1);
+  const severity = criticalCount / Math.max(1, sorted.length);
+  return clamp01(density * 0.25 + clustering * 0.45 + severity * 0.3);
+}
+
 function drawSelectedMarkerBeam(
   context: CanvasRenderingContext2D,
   marker: DeckSelectedMarker | null,
@@ -1190,6 +1217,7 @@ export function SimpleMonitorScreen({
     lineCount?: number;
     anomalyCount?: number;
     levelCounts?: Record<string, number>;
+    anomalyMarkers?: LiveLogMarker[];
   }) => {
     const graph = backgroundGraphRef.current;
     const audio = backgroundAudioRef.current;
@@ -1201,55 +1229,57 @@ export function SimpleMonitorScreen({
     const levelCounts = update.levelCounts ?? {};
     const warnCount = levelCounts.WARN ?? levelCounts.warn ?? 0;
     const errorCount = levelCounts.ERROR ?? levelCounts.error ?? 0;
+    const burstFactor = resolveBurstFactor(update.anomalyMarkers);
     const anomalyRatio = clamp01((update.anomalyCount ?? 0) / lineCount);
     const severityRatio = clamp01((warnCount * 0.45 + errorCount) / lineCount);
     const densityRatio = clamp01(lineCount / 18);
-    const instantPressure = clamp01(anomalyRatio * 0.58 + severityRatio * 0.27 + densityRatio * 0.15);
-    const pressure = clamp01(smoothedPressureRef.current * 0.82 + instantPressure * 0.18);
+    const instantPressure = clamp01(anomalyRatio * 0.48 + severityRatio * 0.22 + densityRatio * 0.1 + burstFactor * 0.2);
+    const pressure = clamp01(smoothedPressureRef.current * 0.84 + instantPressure * 0.16);
     smoothedPressureRef.current = pressure;
     const now = graph.context.currentTime;
-    const recoverAt = now + 2.8;
+    const sustainedBurst = burstFactor > 0.46;
+    const recoverAt = now + 2.6 + burstFactor * 1.8;
 
-    const filterHz = Math.max(9800, 21000 - 2800 * pressure);
-    const filterQ = 0.7 + pressure * 0.42;
-    const bedGain = Math.max(0.86, 0.93 - pressure * 0.028);
-    const driveWet = pressure > 0.44 ? clamp01((pressure - 0.44) * 0.08) : 0;
-    const deckGain = Math.max(0.965, 1 - pressure * 0.015);
+    const filterHz = Math.max(7600, 21000 - (2800 * pressure + burstFactor * 2800));
+    const filterQ = 0.7 + pressure * 0.42 + burstFactor * 0.3;
+    const bedGain = Math.max(0.84, 0.93 - pressure * 0.028 - burstFactor * 0.018);
+    const driveWet = pressure > 0.4 ? clamp01((pressure - 0.4) * 0.08 + burstFactor * 0.06) : burstFactor * 0.04;
+    const deckGain = Math.max(0.955, 1 - pressure * 0.015 - burstFactor * 0.01);
     const playbackRate = 1;
 
     graph.filter.frequency.cancelScheduledValues(now);
     graph.filter.frequency.setValueAtTime(graph.filter.frequency.value, now);
-    graph.filter.frequency.exponentialRampToValueAtTime(filterHz, now + 0.32);
+    graph.filter.frequency.exponentialRampToValueAtTime(filterHz, now + (sustainedBurst ? 0.5 : 0.32));
     graph.filter.frequency.exponentialRampToValueAtTime(18000, recoverAt);
 
     graph.filter.Q.cancelScheduledValues(now);
     graph.filter.Q.setValueAtTime(graph.filter.Q.value, now);
-    graph.filter.Q.linearRampToValueAtTime(filterQ, now + 0.28);
+    graph.filter.Q.linearRampToValueAtTime(filterQ, now + (sustainedBurst ? 0.42 : 0.28));
     graph.filter.Q.linearRampToValueAtTime(1, recoverAt);
 
     graph.outputGain.gain.cancelScheduledValues(now);
     graph.outputGain.gain.setValueAtTime(graph.outputGain.gain.value, now);
-    graph.outputGain.gain.linearRampToValueAtTime(bedGain, now + 0.26);
+    graph.outputGain.gain.linearRampToValueAtTime(bedGain, now + (sustainedBurst ? 0.38 : 0.26));
     graph.outputGain.gain.linearRampToValueAtTime(0.82, recoverAt);
 
     graph.dryGain.gain.cancelScheduledValues(now);
     graph.dryGain.gain.setValueAtTime(graph.dryGain.gain.value, now);
-    graph.dryGain.gain.linearRampToValueAtTime(Math.max(0.94, 1 - driveWet * 0.06), now + 0.26);
+    graph.dryGain.gain.linearRampToValueAtTime(Math.max(0.92, 1 - driveWet * 0.08), now + (sustainedBurst ? 0.38 : 0.26));
     graph.dryGain.gain.linearRampToValueAtTime(1, recoverAt);
 
     graph.driveWetGain.gain.cancelScheduledValues(now);
     graph.driveWetGain.gain.setValueAtTime(graph.driveWetGain.gain.value, now);
-    graph.driveWetGain.gain.linearRampToValueAtTime(Math.max(0.0001, driveWet), now + 0.24);
+    graph.driveWetGain.gain.linearRampToValueAtTime(Math.max(0.0001, driveWet), now + (sustainedBurst ? 0.34 : 0.24));
     graph.driveWetGain.gain.linearRampToValueAtTime(0.0001, recoverAt);
 
-    graph.driveNode.curve = createDriveCurve(1.02 + driveWet * 0.85);
+    graph.driveNode.curve = createDriveCurve(1.02 + driveWet * 0.85 + burstFactor * 0.22);
 
     graph.deckGain.gain.cancelScheduledValues(now);
     graph.deckGain.gain.setValueAtTime(graph.deckGain.gain.value, now);
-    graph.deckGain.gain.linearRampToValueAtTime(deckGain, now + 0.22);
+    graph.deckGain.gain.linearRampToValueAtTime(deckGain, now + (sustainedBurst ? 0.34 : 0.22));
     graph.deckGain.gain.linearRampToValueAtTime(1, recoverAt);
 
-    if (pressure > 0.94 && errorCount > 3) {
+    if (pressure > 0.95 && errorCount > 3 && burstFactor < 0.72) {
       const gateDepth = Math.min(0.035, 0.008 + pressure * 0.016);
       const gateFloor = Math.max(0.955, deckGain * (1 - gateDepth));
       const pulseAt = now + 0.22;
@@ -1454,12 +1484,14 @@ export function SimpleMonitorScreen({
           (update.anomalyCount ?? 0) / lineCount,
           ((update.levelCounts?.ERROR ?? update.levelCounts?.error ?? 0) + (update.levelCounts?.WARN ?? update.levelCounts?.warn ?? 0) * 0.4) / lineCount,
         );
+        const burstFactor = resolveBurstFactor(update.anomalyMarkers);
         const anomalyDrivenCue =
           cues.find((cue) => cue.accent === "anomaly") ??
           cues.find((cue) => (cue.gain ?? 0) >= 0.12) ??
           null;
         if (
           anomalyPressure >= 0.28 &&
+          burstFactor < 0.72 &&
           anomalyDrivenCue &&
           (!hasBackgroundTrack || nowMs - lastCueAccentAtRef.current >= 2600)
         ) {
