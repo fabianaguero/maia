@@ -666,6 +666,57 @@ function drawPhraseRibbon(
   }
 }
 
+function drawTrackEnergyBand(
+  context: CanvasRenderingContext2D,
+  samples: number[],
+  width: number,
+  topY: number,
+  bandHeight: number,
+  steps = 96,
+): void {
+  if (samples.length === 0 || steps <= 0) {
+    return;
+  }
+
+  const blockWidth = width / steps;
+  for (let step = 0; step < steps; step += 1) {
+    const start = Math.floor((step / steps) * samples.length);
+    const end = Math.max(start + 1, Math.floor(((step + 1) / steps) * samples.length));
+    let sum = 0;
+    let peak = 0;
+    let count = 0;
+    for (let index = start; index < end; index += 1) {
+      const value = samples[index] ?? 0;
+      sum += value;
+      peak = Math.max(peak, value);
+      count += 1;
+    }
+
+    const avg = count > 0 ? sum / count : 0;
+    const energy = Math.max(avg * 0.82, peak * 0.92);
+    const x = step * blockWidth;
+
+    let colorTop = "rgba(124, 214, 255, 0.82)";
+    let colorBottom = "rgba(72, 215, 255, 0.18)";
+    if (energy >= 0.82) {
+      colorTop = "rgba(255, 118, 84, 0.92)";
+      colorBottom = "rgba(255, 72, 108, 0.22)";
+    } else if (energy >= 0.62) {
+      colorTop = "rgba(255, 198, 82, 0.9)";
+      colorBottom = "rgba(255, 156, 92, 0.18)";
+    } else if (energy >= 0.4) {
+      colorTop = "rgba(200, 255, 108, 0.88)";
+      colorBottom = "rgba(120, 198, 255, 0.16)";
+    }
+
+    const gradient = context.createLinearGradient(0, topY, 0, topY + bandHeight);
+    gradient.addColorStop(0, colorTop);
+    gradient.addColorStop(1, colorBottom);
+    context.fillStyle = gradient;
+    context.fillRect(x, topY, Math.max(3, blockWidth + 0.5), bandHeight);
+  }
+}
+
 function drawSelectedMarkerBeam(
   context: CanvasRenderingContext2D,
   marker: DeckSelectedMarker | null,
@@ -1820,6 +1871,14 @@ export function SimpleMonitorScreen({
     trackLaneGlow.addColorStop(1, "rgba(72,215,255,0.04)");
     context.fillStyle = trackLaneGlow;
     context.fillRect(0, trackBaseY - trackAmplitude - 10, width, trackAmplitude + 20);
+
+    drawTrackEnergyBand(
+      context,
+      trackWaveSamples,
+      width,
+      headerInset + deckHeight * 0.08,
+      Math.max(10, deckHeight * 0.1),
+    );
 
     const logLaneGlow = context.createLinearGradient(0, logBaseY - logAmplitude - 12, 0, logBaseY + 10);
     logLaneGlow.addColorStop(0, "rgba(255,176,84,0)");
