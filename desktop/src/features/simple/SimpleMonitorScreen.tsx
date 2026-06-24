@@ -264,7 +264,7 @@ function buildDeckTimelineMarkers(
 
 const MONITOR_TRACK_WINDOW_POINTS = 420;
 const MONITOR_TRACK_STRIP_MULTIPLIER = 3;
-const SAFE_MONITOR_RUNTIME = true;
+const SAFE_MONITOR_RUNTIME = false;
 
 function densifyWaveformBins(
   bins: number[] | null | undefined,
