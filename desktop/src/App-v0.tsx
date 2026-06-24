@@ -4,6 +4,7 @@ import { SimpleMonitorScreen } from "./features/simple/SimpleMonitorScreen";
 import { ProMonitorScreen } from "./features/simple/ProMonitorScreen";
 import { ProLibraryScreen } from "./features/simple/ProLibraryScreen";
 import { SimpleModeLibraryView } from "./features/simple/SimpleModeLibraryView";
+import { ConnectionsScreen } from "./features/simple/ConnectionsScreen";
 import { OnboardingWizard } from "./features/simple/OnboardingWizard";
 import { WaveformBar } from "./components/WaveformBar";
 import { UserModeProvider, useUserMode } from "./features/simple/UserModeContext";
@@ -20,7 +21,7 @@ import { useSessions } from "./hooks/useSessions";
 import { Volume2 } from "lucide-react";
 import { getTrackTitle, resolvePlayableTrackPath } from "./utils/track";
 
-type Section = "monitor" | "library" | "inspect" | "compose";
+type Section = "monitor" | "library" | "inspect" | "compose" | "connections";
 
 function AppContentV0() {
   const { userMode } = useUserMode();
@@ -160,6 +161,8 @@ function AppContentV0() {
             baseAssets={baseAssets.baseAssets}
           />
         );
+      case "connections":
+        return <ConnectionsScreen />;
       default:
         return (
           <div

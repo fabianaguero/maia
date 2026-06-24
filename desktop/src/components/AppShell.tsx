@@ -5,6 +5,7 @@ import {
   Radio,
   Library,
   AudioWaveform,
+  Cable,
   Users,
   Sliders,
   Music,
@@ -16,7 +17,7 @@ import {
 
 interface AppShellProps {
   children: React.ReactNode;
-  currentSection?: "monitor" | "library" | "inspect" | "compose";
+  currentSection?: "monitor" | "library" | "inspect" | "compose" | "connections";
   isMonitoring?: boolean;
   monitoringStatus?: {
     source?: string;
@@ -28,7 +29,7 @@ interface AppShellProps {
   trackCount?: number;
   repositoryCount?: number;
   baseAssetCount?: number;
-  onSectionChange?: (section: "monitor" | "library" | "inspect" | "compose") => void;
+  onSectionChange?: (section: "monitor" | "library" | "inspect" | "compose" | "connections") => void;
   onInspect?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -64,6 +65,13 @@ export function AppShell({
             lane: undefined,
           },
           {
+            id: "connections",
+            icon: Cable,
+            label: "Conexiones",
+            subtitle: "GCloud, file tails y adapters",
+            lane: undefined,
+          },
+          {
             id: "library",
             icon: Library,
             label: t.simpleMode.nav.files,
@@ -80,18 +88,25 @@ export function AppShell({
             lane: "A01",
           },
           {
+            id: "connections",
+            icon: Cable,
+            label: "Conexiones",
+            subtitle: "Persistent telemetry adapters",
+            lane: "B02",
+          },
+          {
             id: "compose",
             icon: AudioWaveform,
             label: t.nav.compose.label,
             subtitle: t.nav.compose.description,
-            lane: "B02",
+            lane: "C03",
           },
           {
             id: "library",
             icon: Library,
             label: t.nav.library.label,
             subtitle: t.nav.library.description,
-            lane: "C03",
+            lane: "D04",
           },
         ];
 

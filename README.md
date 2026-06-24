@@ -12,7 +12,7 @@ Source of truth:
 
 The product app is started from `desktop/` with `npm run tauri dev`.
 
-## Current Product Status (Updated April 2026)
+## Current Product Status (Updated June 2026)
 
 The current desktop app already includes:
 
@@ -21,6 +21,7 @@ The current desktop app already includes:
 - Native Tauri imports with managed local snapshots and SQLite persistence
 - Repository parsing with tree-sitter-backed language support for Java, Kotlin, Python, TypeScript/TSX, Rust, and Go
 - Local log-file analysis plus live sonification with Web Audio
+- OpenTelemetry-friendly passive log monitoring with `trace_id` / `span_id` compatible intake and correlated anomaly views
 - Live monitor scenes with genre palettes, sequencer presets, component routing, beat-locked scheduling, and base-track/base-playlist anchoring
 - Session persistence, replay, replay bookmarks, and feedback-driven mix suggestions for monitored streams
 - Composition planning with `plan.json`, generated `preview.wav`, in-app playback, and WAV stem export
@@ -29,6 +30,8 @@ The current desktop app already includes:
 - **Template indicator chip (April 2026):** Live template and BPM sync display in monitor header with >5% drift detection
 - **Property-based testing (April 2026):** 11 properties validated for audio session improvements
 - **V0 design system (April 2026):** Full integration of minimalismo instrumental aesthetic across AppShell, Monitor, Library, and Wizard components
+- **OpenTelemetry-friendly monitoring (June 2026):** Passive monitoring flow now treats trace-context-bearing logs as first-class input so anomaly markers can stay visually linked to the live log stream while the selected track remains the listening bed
+- **Codex Web iteration note (June 2026):** Part of the recent monitoring feature definition was first iterated through Codex Web, then reflected back into the desktop product documentation here
 
 What is still evolving is the longer-running product mode: Maia should ultimately behave like a background music server for a team, where the desktop app is the control surface and the audio layer keeps monitoring systems by ear.
 

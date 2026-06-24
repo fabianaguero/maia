@@ -20,9 +20,18 @@ A selected `track` or `playlist` acts as the listening bed so the monitoring mix
 Live sources such as local log tails, process output, session streams, and future broader adapters mutate that bed using Maia's deterministic sonification rules.
 - **Low latency:** The mix should reflect meaningful signal shifts quickly enough to stay useful.
 - **Continuous listening:** The output should remain pleasant over long sessions and evolve with the source.
+- **Trace-aware context:** Structured telemetry fields such as `trace_id` and `span_id` should remain visible and explorable so OpenTelemetry-style logs can be monitored passively without losing operator context.
 
 ### 3. Feedback loop
 Replay bookmarks and session notes let a team mark windows like `good alerting`, `too noisy`, or `deploy transition`, then reuse that feedback to improve later monitoring mixes.
+
+### 4. OpenTelemetry-friendly passive monitoring
+For teams already emitting OpenTelemetry-enriched application logs, Maia should work as a passive deck on top of that stream rather than forcing a separate observability workflow.
+- The selected track remains the listening bed.
+- Anomaly windows stay linked to the corresponding log lines.
+- Trace-context-bearing lines remain readable in the tail so an operator can move from "I heard tension" to "this exact trace/span is misbehaving" with minimal visual effort.
+
+This monitoring behavior can be iterated conceptually in Codex Web first, but the target experience remains the desktop DJ-deck workflow.
 
 ---
 

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-**Last Updated:** April 2026 (Status as of April 21, 2026)
+**Last Updated:** June 2026 (Status as of June 24, 2026)
 
 ## Product
 Desktop app tipo Rekordbox para Linux, Windows y macOS.
@@ -43,6 +43,8 @@ Must feel like a desktop DJ analyzer, not a web dashboard.
 - ✅ Tree-sitter based repository parsing (Java/Kotlin/Python/TypeScript/Go/Rust)
 - ✅ DSP integration via librosa (tempo, onset, beat tracking)
 - ✅ Session-based stream polling (file, process, WebSocket, HTTP-poll, journald adapters)
+- ✅ OpenTelemetry-aware log intake with trace-context-friendly passive monitoring (`trace_id` / `span_id` compatible)
+- ✅ Feature iteration also captured from Codex Web workflow notes before landing in the desktop product backlog
 - ✅ Genre-configured instrumental palette (8 curated genres)
 - ✅ Sequencer presets (sparse/balanced/beat-locked/cascade)
 - ✅ Reference anchor + multi-track playlist blending
@@ -52,6 +54,7 @@ Must feel like a desktop DJ analyzer, not a web dashboard.
 - ✅ V0 design system (minimalismo instrumental aesthetic)
 - ✅ Simple mode vs Expert mode (with UserModeContext + localStorage persistence)
 - ✅ Audio session enhancements: source template ID, BPM/template chips, template indicator chip
+- ✅ Anomaly-to-log linking in passive monitoring, so deck events and highlighted log rows stay correlated
 - ✅ Property-based testing for session improvements
 
 ### In Progress / Future Work
