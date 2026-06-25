@@ -152,3 +152,16 @@ Implement a **Preset-based Sonification Engine**. The mapping between log events
 - The frontend must support selecting `presetId`.
 - The analyzer must expose a registry of available presets.
 - Logs will now "mutate" active audio stems (e.g., triggering filters or effects).
+
+## 2026-06-25: Open music integrations strategy
+
+### Business decisions
+- Maia should remain free, open-source-friendly, customizable, and local-first while allowing optional playlist and metadata integrations. Spotify and SoundCloud are examples of proprietary adapters, not the foundation of the strategy.
+- There is no single universal open music-integration standard for every layer, so Maia should combine the most open/free option per layer: local files for audio, XSPF/M3U8 for playlist exchange, MusicBrainz/ISRC for identifiers, ListenBrainz for open recommendations/listening history, and Internet Archive/Jamendo-style catalogs for free or Creative Commons music discovery.
+- Proprietary integrations such as Spotify and SoundCloud should be treated as late, optional provider adapters for playlist metadata, track references, attribution, discovery, and possible playback control, not as sources for raw audio analysis unless rights and provider terms explicitly allow it.
+
+### Technical decisions
+- Add `docs/music-integrations-open-standards.md` as the product strategy for free/open playlist, metadata, discovery, and provider integrations.
+- Future implementation should use provider-neutral adapter contracts and convert every external playlist or track reference into Maia's existing local `musical_asset` model where possible.
+- OAuth tokens must be stored in OS secure storage, while SQLite should keep only provider IDs, portable metadata, provenance, and local Maia asset links.
+- XSPF should be the canonical portable playlist interchange format; M3U8 should be the compatibility import/export format. MusicBrainz, ListenBrainz, Internet Archive, Creative Commons catalogs, self-hosted media servers, and local DJ libraries should be implemented before Spotify/SoundCloud.
