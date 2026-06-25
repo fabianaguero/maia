@@ -1,4 +1,5 @@
 import { resolveMutationProfile, resolveStyleProfile } from "../config/liveProfiles";
+import { useT } from "../i18n/I18nContext";
 import type { ReplayFeedbackRecommendation } from "../utils/replayFeedback";
 
 interface ReplayFeedbackSummaryCardProps {
@@ -12,23 +13,29 @@ interface ReplayFeedbackSummaryCardProps {
 
 export function ReplayFeedbackSummaryCard({
   recommendation,
-  title = "Feedback mix",
+  title,
   className = "",
   actionLabel,
   actionDisabled = false,
   onApply,
 }: ReplayFeedbackSummaryCardProps) {
+  const t = useT();
   const rootClassName = ["audio-path-card", "replay-feedback-card", className]
     .filter(Boolean)
     .join(" ");
 
   return (
     <div className={rootClassName}>
-      <span>{title}</span>
+      <span>{title ?? t.session.replayFeedbackTitle}</span>
       <strong>{recommendation.summary}</strong>
       <small>{recommendation.detail}</small>
       <div className="replay-feedback-meta">
-        <span>{recommendation.bookmarkCount} saved windows</span>
+        <span>
+          {t.session.replayFeedbackSavedWindows.replace(
+            "{count}",
+            String(recommendation.bookmarkCount),
+          )}
+        </span>
         <span>{resolveStyleProfile(recommendation.suggestedStyleProfileId).label}</span>
         <span>{resolveMutationProfile(recommendation.suggestedMutationProfileId).label}</span>
         {recommendation.dominantTagLabel ? <span>{recommendation.dominantTagLabel}</span> : null}

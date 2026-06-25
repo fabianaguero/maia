@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 import { CheckCircle2, AlertCircle, X } from "lucide-react";
 
 type ToastType = "success" | "error" | "info";
@@ -60,7 +60,12 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
             </div>
             <button
               onClick={() => removeToast(toast.id)}
-              style={{ background: "transparent", color: "rgba(255,255,255,0.3)", cursor: "pointer", padding: "4px" }}
+              style={{
+                background: "transparent",
+                color: "rgba(255,255,255,0.3)",
+                cursor: "pointer",
+                padding: "4px",
+              }}
             >
               <X size={16} />
             </button>

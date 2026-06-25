@@ -47,7 +47,11 @@ def test_cli_analyze_ok_response_returns_zero(monkeypatch, capsys):
     monkeypatch.setattr(
         sys,
         "stdin",
-        io.StringIO(json.dumps({"contractVersion": "1.0", "requestId": "r1", "action": "health", "payload": {}})),
+        io.StringIO(
+            json.dumps(
+                {"contractVersion": "1.0", "requestId": "r1", "action": "health", "payload": {}}
+            )
+        ),
     )
     monkeypatch.setattr(
         cli,

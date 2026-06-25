@@ -54,8 +54,7 @@ export function ComposeScreen({
   const [tab, setTab] = useState<ComposeTab>("preview");
   const [currentTime, setCurrentTime] = useState(0);
 
-  const canCompose =
-    baseAssets.length > 0 && (tracks.length > 0 || playlists.length > 0);
+  const canCompose = baseAssets.length > 0 && (tracks.length > 0 || playlists.length > 0);
 
   return (
     <section className="screen">
@@ -68,17 +67,17 @@ export function ComposeScreen({
         {compositions.length > 0 && (
           <div className="screen-summary">
             <div className="summary-pill">
-              <span>Compositions</span>
+              <span>{t.compose.compositions}</span>
               <strong>{compositions.length}</strong>
             </div>
             {composition && (
               <>
                 <div className="summary-pill">
-                  <span>Target BPM</span>
+                  <span>{t.compose.targetBpm}</span>
                   <strong>{composition.targetBpm.toFixed(0)}</strong>
                 </div>
                 <div className="summary-pill">
-                  <span>Timing source</span>
+                  <span>{t.compose.timingSource}</span>
                   <strong>{composition.referenceTitle}</strong>
                 </div>
               </>
@@ -93,9 +92,9 @@ export function ComposeScreen({
           {!canCompose ? (
             <div className="empty-state">
               <AudioWaveform size={28} style={{ opacity: 0.3, marginBottom: 10 }} />
-              <p>You need at least one base asset and one base track or playlist to compose.</p>
+              <p>{t.compose.emptyRequirements}</p>
               <button type="button" className="action" onClick={onGoLibrary}>
-                Go to Library →
+                {t.compose.goLibrary}
               </button>
             </div>
           ) : (
@@ -130,7 +129,7 @@ export function ComposeScreen({
 
           {!composition ? (
             <section className="panel empty-state">
-              <p>Create a composition to see its preview and export options here.</p>
+              <p>{t.compose.createToPreview}</p>
             </section>
           ) : (
             <>
@@ -154,14 +153,20 @@ export function ComposeScreen({
               )}
 
               <div className="composition-tabs">
-                {(["preview", "structure", "render", "export"] as ComposeTab[]).map((t) => (
+                {(["preview", "structure", "render", "export"] as ComposeTab[]).map((tabOption) => (
                   <button
-                    key={t}
+                    key={tabOption}
                     type="button"
-                    className={`composition-tab${tab === t ? " active" : ""}`}
-                    onClick={() => setTab(t)}
+                    className={`composition-tab${tab === tabOption ? " active" : ""}`}
+                    onClick={() => setTab(tabOption)}
                   >
-                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                    {tabOption === "preview"
+                      ? t.compose.previewTab
+                      : tabOption === "structure"
+                        ? t.compose.structureTab
+                        : tabOption === "render"
+                          ? t.compose.renderTab
+                          : t.compose.exportTab}
                   </button>
                 ))}
               </div>
@@ -191,9 +196,7 @@ export function ComposeScreen({
                       onTimeUpdate={setCurrentTime}
                     />
                   )}
-                  {tab === "export" && (
-                    <ExportCompositionPanel composition={composition} />
-                  )}
+                  {tab === "export" && <ExportCompositionPanel composition={composition} />}
                 </div>
 
                 <div className="analyzer-sidebar">
@@ -203,21 +206,40 @@ export function ComposeScreen({
                   />
                   <section className="panel metric-panel">
                     <details className="panel-collapsible">
-                      <summary className="panel-collapsible-summary">Notes &amp; metadata</summary>
+                      <summary className="panel-collapsible-summary">
+                        {t.compose.notesMetadata}
+                      </summary>
                       <div className="panel-collapsible-body">
                         {composition.notes.length > 0 && (
                           <ul className="stack-list note-list">
-                            {composition.notes.map((note) => <li key={note}>{note}</li>)}
+                            {composition.notes.map((note) => (
+                              <li key={note}>{note}</li>
+                            ))}
                           </ul>
                         )}
                         <dl className="meta-list compact-meta">
-                          <div><dt>Base asset</dt><dd>{composition.baseAssetTitle}</dd></div>
+                          <div>
+                            <dt>{t.compose.baseAsset}</dt>
+                            <dd>{composition.baseAssetTitle}</dd>
+                          </div>
                           {composition.basePlaylistName ? (
-                            <div><dt>Base playlist</dt><dd>{composition.basePlaylistName}</dd></div>
+                            <div>
+                              <dt>{t.compose.basePlaylist}</dt>
+                              <dd>{composition.basePlaylistName}</dd>
+                            </div>
                           ) : null}
-                          <div><dt>Timing source</dt><dd>{composition.referenceSourcePath ?? composition.referenceTitle}</dd></div>
-                          <div><dt>Strategy</dt><dd>{composition.strategy}</dd></div>
-                          <div><dt>Plan path</dt><dd>{composition.exportPath ?? "Pending"}</dd></div>
+                          <div>
+                            <dt>{t.compose.timingSource}</dt>
+                            <dd>{composition.referenceSourcePath ?? composition.referenceTitle}</dd>
+                          </div>
+                          <div>
+                            <dt>{t.compose.strategy}</dt>
+                            <dd>{composition.strategy}</dd>
+                          </div>
+                          <div>
+                            <dt>{t.compose.planPath}</dt>
+                            <dd>{composition.exportPath ?? t.inspect.pending}</dd>
+                          </div>
                         </dl>
                       </div>
                     </details>

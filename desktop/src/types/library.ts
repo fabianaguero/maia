@@ -21,10 +21,7 @@ export interface TrackStructuralPattern {
 }
 
 export type TrackAvailabilityState = "available" | "missing";
-export type TrackPlaybackSource =
-  | "managed_snapshot"
-  | "source_file"
-  | "unavailable";
+export type TrackPlaybackSource = "managed_snapshot" | "source_file" | "unavailable";
 
 export interface TrackCuePoint {
   id: string;
@@ -358,7 +355,6 @@ export interface ImportRepositoryInput {
   sourcePath: string;
   label?: string;
 }
-
 
 export type LogSourceConnectionKind = "file_log" | "gcp_cloud_run";
 

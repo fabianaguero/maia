@@ -6,6 +6,7 @@ import {
   pickExportSavePath,
   pickStemsExportDirectory,
 } from "../../../api/repositories";
+import { useT } from "../../../i18n/I18nContext";
 import type { CompositionResultRecord } from "../../../types/library";
 
 interface ExportCompositionPanelProps {
@@ -28,9 +29,8 @@ function triggerBrowserDownload(url: string, filename: string) {
   a.click();
 }
 
-export function ExportCompositionPanel({
-  composition,
-}: ExportCompositionPanelProps) {
+export function ExportCompositionPanel({ composition }: ExportCompositionPanelProps) {
+  const t = useT();
   const [planState, setPlanState] = useState<ExportState>(IDLE);
   const [audioState, setAudioState] = useState<ExportState>(IDLE);
   const [stemsState, setStemsState] = useState<ExportState>(IDLE);
@@ -47,7 +47,9 @@ export function ExportCompositionPanel({
       const count = result.stems.length;
       setStemsState({
         status: "done",
-        message: `${count} stem${count === 1 ? "" : "s"} written to ${destDir}`,
+        message: t.compose.stemsWritten
+          .replace("{count}", String(count))
+          .replace("{path}", destDir),
       });
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -65,7 +67,7 @@ export function ExportCompositionPanel({
         return;
       }
       await exportCompositionFile(composition.exportPath, dest);
-      setPlanState({ status: "done", message: `Saved to ${dest}` });
+      setPlanState({ status: "done", message: t.compose.savedTo.replace("{path}", dest) });
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       if (msg.includes("tauri") || msg.includes("__TAURI_INTERNALS__")) {
@@ -74,7 +76,7 @@ export function ExportCompositionPanel({
           `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify({ exportPath: composition.exportPath }, null, 2))}`,
           "plan.json",
         );
-        setPlanState({ status: "done", message: "Downloaded via browser fallback." });
+        setPlanState({ status: "done", message: t.compose.downloadedFallback });
       } else {
         setPlanState({ status: "error", message: msg });
       }
@@ -92,12 +94,12 @@ export function ExportCompositionPanel({
         return;
       }
       await exportCompositionFile(composition.previewAudioPath, dest);
-      setAudioState({ status: "done", message: `Saved to ${dest}` });
+      setAudioState({ status: "done", message: t.compose.savedTo.replace("{path}", dest) });
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       if (msg.includes("tauri") || msg.includes("__TAURI_INTERNALS__")) {
         triggerBrowserDownload(composition.previewAudioPath, defaultName);
-        setAudioState({ status: "done", message: "Downloaded via browser fallback." });
+        setAudioState({ status: "done", message: t.compose.downloadedFallback });
       } else {
         setAudioState({ status: "error", message: msg });
       }
@@ -111,10 +113,8 @@ export function ExportCompositionPanel({
     <section className="panel">
       <div className="panel-header compact">
         <div>
-          <h2>Export</h2>
-          <p className="support-copy">
-            Save the composition artifacts to disk.
-          </p>
+          <h2>{t.compose.exportTitle}</h2>
+          <p className="support-copy">{t.compose.exportCopy}</p>
         </div>
       </div>
 
@@ -127,7 +127,7 @@ export function ExportCompositionPanel({
               onClick={() => void handleExportPlan()}
               type="button"
             >
-              {planState.status === "exporting" ? "Exporting…" : "Export plan.json"}
+              {planState.status === "exporting" ? t.compose.exporting : t.compose.exportPlan}
             </button>
             {planState.status === "done" && (
               <span className="export-feedback export-feedback--ok">{planState.message}</span>
@@ -146,7 +146,7 @@ export function ExportCompositionPanel({
               onClick={() => void handleExportAudio()}
               type="button"
             >
-              {audioState.status === "exporting" ? "Exporting…" : "Export preview WAV"}
+              {audioState.status === "exporting" ? t.compose.exporting : t.compose.exportPreviewWav}
             </button>
             {audioState.status === "done" && (
               <span className="export-feedback export-feedback--ok">{audioState.message}</span>
@@ -164,7 +164,9 @@ export function ExportCompositionPanel({
             onClick={() => void handleExportStems()}
             type="button"
           >
-            {stemsState.status === "exporting" ? "Rendering stems…" : "Export stems as WAV"}
+            {stemsState.status === "exporting"
+              ? t.compose.renderingStems
+              : t.compose.exportStemsWav}
           </button>
           {stemsState.status === "done" && (
             <span className="export-feedback export-feedback--ok">{stemsState.message}</span>

@@ -5,16 +5,16 @@ Validates that:
 - analyze request payloads conform to contracts/analyzer-request.schema.json
 - The musicalAsset sub-schema is respected by analyze_repository outputs
 """
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-import pytest
 import jsonschema
-
-from maia_analyzer.service import handle_request
+import pytest
 from maia_analyzer.repository import analyze_repository
+from maia_analyzer.service import handle_request
 
 from .fixtures import SAMPLE_LOG
 
@@ -23,6 +23,7 @@ from .fixtures import SAMPLE_LOG
 # ---------------------------------------------------------------------------
 
 _CONTRACTS_DIR = Path(__file__).parent.parent.parent.parent / "contracts"
+
 
 def _load_schema(name: str) -> dict:
     path = _CONTRACTS_DIR / name
@@ -50,6 +51,7 @@ def _validate(instance: dict, schema: dict) -> None:
 
 CONTRACT_VERSION = "1.0"
 
+
 def _req(action: str, payload: dict | None = None, request_id: str = "v-1") -> dict:
     return {
         "contractVersion": CONTRACT_VERSION,
@@ -72,11 +74,14 @@ def test_request_schema_health_valid(request_schema):
 def test_request_schema_analyze_valid(request_schema):
     """A well-formed analyze request must validate."""
     _validate(
-        _req("analyze", {
-            "assetType": "repo_analysis",
-            "source": {"kind": "file", "path": "/tmp/app.log"},
-            "options": {"logTailChunk": "INFO hello"},
-        }),
+        _req(
+            "analyze",
+            {
+                "assetType": "repo_analysis",
+                "source": {"kind": "file", "path": "/tmp/app.log"},
+                "options": {"logTailChunk": "INFO hello"},
+            },
+        ),
         request_schema,
     )
 
@@ -84,17 +89,20 @@ def test_request_schema_analyze_valid(request_schema):
 def test_request_schema_analyze_all_option_fields(request_schema):
     """All documented options fields must be schema-valid."""
     _validate(
-        _req("analyze", {
-            "assetType": "repo_analysis",
-            "source": {"kind": "file", "path": "/tmp/app.log"},
-            "options": {
-                "waveformBins": 128,
-                "beatGridResolution": 4,
-                "captureBpmCurve": True,
-                "logTailChunk": "INFO x",
-                "logTailLiveMode": True,
+        _req(
+            "analyze",
+            {
+                "assetType": "repo_analysis",
+                "source": {"kind": "file", "path": "/tmp/app.log"},
+                "options": {
+                    "waveformBins": 128,
+                    "beatGridResolution": 4,
+                    "captureBpmCurve": True,
+                    "logTailChunk": "INFO x",
+                    "logTailLiveMode": True,
+                },
             },
-        }),
+        ),
         request_schema,
     )
 
@@ -145,11 +153,17 @@ def test_response_schema_analyze_repo(tmp_path, response_schema):
     log_file = tmp_path / "app.log"
     log_file.write_text(SAMPLE_LOG, encoding="utf-8")
 
-    resp = handle_request(_req("analyze", {
-        "assetType": "repo_analysis",
-        "source": {"kind": "file", "path": str(log_file)},
-        "options": {"logTailChunk": SAMPLE_LOG},
-    }, request_id="sch-a1"))
+    resp = handle_request(
+        _req(
+            "analyze",
+            {
+                "assetType": "repo_analysis",
+                "source": {"kind": "file", "path": str(log_file)},
+                "options": {"logTailChunk": SAMPLE_LOG},
+            },
+            request_id="sch-a1",
+        )
+    )
 
     assert resp["status"] == "ok", resp.get("error")
     _validate(resp, response_schema)
@@ -166,8 +180,17 @@ def test_musical_asset_all_required_fields(tmp_path):
         options={"logTailChunk": SAMPLE_LOG},
     )
 
-    for field in ("id", "assetType", "title", "sourcePath", "confidence",
-                  "tags", "metrics", "artifacts", "createdAt"):
+    for field in (
+        "id",
+        "assetType",
+        "title",
+        "sourcePath",
+        "confidence",
+        "tags",
+        "metrics",
+        "artifacts",
+        "createdAt",
+    ):
         assert field in asset, f"Missing field: {field}"
 
     artifacts = asset["artifacts"]

@@ -1,23 +1,11 @@
-import { useState } from "react";
 import { useT } from "../i18n/I18nContext";
 import { useUserMode } from "../features/simple/UserModeContext";
-import {
-  Radio,
-  Library,
-  AudioWaveform,
-  Cable,
-  Users,
-  Sliders,
-  Music,
-  AlertCircle,
-  Clock,
-  Volume2,
-  Dot,
-} from "lucide-react";
+import type { AppSection } from "../features/simple/appSections";
+import { Radio, Library, AudioWaveform, Cable, Users, Sliders, Dot } from "lucide-react";
 
 interface AppShellProps {
   children: React.ReactNode;
-  currentSection?: "monitor" | "library" | "inspect" | "compose" | "connections";
+  currentSection?: AppSection;
   isMonitoring?: boolean;
   monitoringStatus?: {
     source?: string;
@@ -29,8 +17,9 @@ interface AppShellProps {
   trackCount?: number;
   repositoryCount?: number;
   baseAssetCount?: number;
-  onSectionChange?: (section: "monitor" | "library" | "inspect" | "compose" | "connections") => void;
+  onSectionChange?: (section: AppSection) => void;
   onInspect?: () => void;
+  onStopMonitoring?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
 }
@@ -46,12 +35,13 @@ export function AppShell({
   baseAssetCount = 0,
   onSectionChange,
   onInspect,
+  onStopMonitoring,
   isCollapsed = false,
   onToggleCollapse,
 }: AppShellProps) {
   const t = useT();
   const { userMode, setUserMode } = useUserMode();
-  const [isMonitorActive, setIsMonitorActive] = useState(isMonitoring);
+  const isMonitorActive = isMonitoring;
 
   // Navigation structure differs by mode
   const navItems =
@@ -61,21 +51,28 @@ export function AppShell({
             id: "monitor",
             icon: Radio,
             label: t.simpleMode.nav.monitor,
-            subtitle: "Booth en vivo y reproducción reactiva",
+            subtitle: t.simpleMode.setup.monitorSubtitle,
             lane: undefined,
           },
           {
             id: "connections",
             icon: Cable,
-            label: "Conexiones",
-            subtitle: "GCloud, file tails y adapters",
+            label: t.simpleMode.nav.connections,
+            subtitle: t.simpleMode.setup.connectionsSubtitle,
+            lane: undefined,
+          },
+          {
+            id: "setup",
+            icon: Sliders,
+            label: t.simpleMode.nav.setup,
+            subtitle: t.simpleMode.setup.setupSubtitle,
             lane: undefined,
           },
           {
             id: "library",
             icon: Library,
             label: t.simpleMode.nav.files,
-            subtitle: "Log sources & sounds",
+            subtitle: t.simpleMode.setup.filesSubtitle,
             lane: undefined,
           },
         ]
@@ -90,28 +87,35 @@ export function AppShell({
           {
             id: "connections",
             icon: Cable,
-            label: "Conexiones",
-            subtitle: "Persistent telemetry adapters",
+            label: t.simpleMode.nav.connections,
+            subtitle: t.simpleMode.shell.connectionsExpertSubtitle,
             lane: "B02",
+          },
+          {
+            id: "setup",
+            icon: Sliders,
+            label: t.simpleMode.nav.setup,
+            subtitle: t.simpleMode.shell.setupExpertSubtitle,
+            lane: "C03",
           },
           {
             id: "compose",
             icon: AudioWaveform,
             label: t.nav.compose.label,
             subtitle: t.nav.compose.description,
-            lane: "C03",
+            lane: "D04",
           },
           {
             id: "library",
             icon: Library,
             label: t.nav.library.label,
             subtitle: t.nav.library.description,
-            lane: "D04",
+            lane: "E05",
           },
         ];
 
   return (
-    <div className={`app-shell-layout ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
+    <div className={`app-shell-layout ${isCollapsed ? "sidebar-collapsed" : ""}`}>
       {/* Sidebar */}
       <aside className="app-sidebar">
         {/* Logo + Branding */}
@@ -126,8 +130,8 @@ export function AppShell({
           {!isCollapsed && (
             <p className="sidebar-tagline">
               {userMode === "simple"
-                ? "Connect → Monitor → Detect"
-                : "Library → Analyze → Perform"}
+                ? t.simpleMode.shell.simpleTagline
+                : t.simpleMode.shell.expertTagline}
             </p>
           )}
         </div>
@@ -137,18 +141,18 @@ export function AppShell({
           <button
             className={`mode-toggle-btn ${userMode === "simple" ? "active" : ""}`}
             onClick={() => setUserMode("simple")}
-            title="Basic Mode"
+            title={t.simpleMode.shell.basicMode}
           >
             <Users size={16} />
-            {!isCollapsed && "Basic"}
+            {!isCollapsed && t.simpleMode.shell.basicShort}
           </button>
           <button
             className={`mode-toggle-btn ${userMode === "expert" ? "active" : ""}`}
             onClick={() => setUserMode("expert")}
-            title="Pro Mode"
+            title={t.simpleMode.shell.proMode}
           >
             <Sliders size={16} />
-            {!isCollapsed && "Pro"}
+            {!isCollapsed && t.simpleMode.shell.proShort}
           </button>
         </div>
 
@@ -162,12 +166,7 @@ export function AppShell({
               <div key={item.id} className="nav-item-wrapper">
                 <button
                   className={`nav-item ${isActive ? "active" : ""}`}
-                  onClick={() => {
-                    if (item.id === "monitor") {
-                      setIsMonitorActive(true);
-                    }
-                    onSectionChange?.(item.id as any);
-                  }}
+                  onClick={() => onSectionChange?.(item.id as any)}
                 >
                   <Icon size={18} className="nav-icon" />
                   {!isCollapsed && (
@@ -186,27 +185,35 @@ export function AppShell({
                   <div className="monitor-status-badge">
                     <Dot size={8} className="pulsing-dot" />
                     <span className="status-label">
-                      {userMode === "simple" ? "Listening now" : "Engine Live"}
+                      {userMode === "simple"
+                        ? t.simpleMode.status.listening
+                        : t.simpleMode.shell.engineLive}
                     </span>
                     {monitoringStatus.source && (
                       <>
-                        <span className="status-source">
-                          {monitoringStatus.source}
-                        </span>
+                        <span className="status-source">{monitoringStatus.source}</span>
                         <div className="status-metrics">
                           <span className="metric-anomalies">
-                            {monitoringStatus.anomalies || 0} anomalies
+                            {monitoringStatus.anomalies || 0}{" "}
+                            {t.simpleMode.monitor.anomalies.toLowerCase()}
                           </span>
                           <span className="metric-uptime">
                             {monitoringStatus.uptime || "00:00"}
                           </span>
                         </div>
-                        <button className="btn-inspect-small">Inspect</button>
                         <button
-                          className="btn-stop-small"
-                          onClick={() => setIsMonitorActive(false)}
+                          type="button"
+                          className="btn-inspect-small"
+                          onClick={() => onInspect?.()}
                         >
-                          Stop
+                          {t.simpleMode.common.inspect}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-stop-small"
+                          onClick={() => onStopMonitoring?.()}
+                        >
+                          {t.simpleMode.common.stop}
                         </button>
                       </>
                     )}
@@ -238,7 +245,7 @@ export function AppShell({
         {/* Selected Item Footer */}
         <div className="sidebar-footer">
           <span className="footer-label">
-            {userMode === "simple" ? "Current focus" : "Selected"}
+            {userMode === "simple" ? t.simpleMode.shell.currentFocus : t.sidebar.selected}
           </span>
           <span className="footer-value">{selectedItem || "—"}</span>
         </div>

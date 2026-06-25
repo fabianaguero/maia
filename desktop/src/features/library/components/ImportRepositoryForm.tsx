@@ -2,7 +2,11 @@ import { FolderOpen, GitBranch, ScrollText, Globe } from "lucide-react";
 import type { FormEvent } from "react";
 import { useState } from "react";
 
-import { pickRepositoryDirectory, pickRepositoryFile, upsertLogSourceConnection } from "../../../api/repositories";
+import {
+  pickRepositoryDirectory,
+  pickRepositoryFile,
+  upsertLogSourceConnection,
+} from "../../../api/repositories";
 import type { ImportRepositoryInput, RepositorySourceKind } from "../../../types/library";
 import { Web3Spinner } from "../../../components/Web3Spinner";
 
@@ -112,9 +116,7 @@ export function ImportRepositoryForm({
     setError(null);
 
     try {
-      const pickedPath = await pickRepositoryDirectory(
-        sourcePath || defaultDirectoryPath,
-      );
+      const pickedPath = await pickRepositoryDirectory(sourcePath || defaultDirectoryPath);
       if (!pickedPath) {
         return;
       }
@@ -159,10 +161,8 @@ export function ImportRepositoryForm({
     <form className="import-form maia-pro-form" onSubmit={(event) => void handleSubmit(event)}>
       <Web3Spinner visible={busy} label="Ingesting Telemetry Source..." />
       <div className="form-intro">
-          <h2>Import code or logs</h2>
-          <p className="support-copy">
-            Select a source type to begin operational telemetry intake.
-          </p>
+        <h2>Import code or logs</h2>
+        <p className="support-copy">Select a source type to begin operational telemetry intake.</p>
       </div>
 
       <div className="source-card-grid" role="tablist" aria-label="Repository import type">
@@ -209,36 +209,71 @@ export function ImportRepositoryForm({
           <>
             <label className="field maia-field">
               <span className="field-label">GCP Project ID</span>
-              <input value={gcpProjectId} className="maia-input" onChange={(event) => setGcpProjectId(event.target.value)} placeholder="my-gcp-project" />
+              <input
+                value={gcpProjectId}
+                className="maia-input"
+                onChange={(event) => setGcpProjectId(event.target.value)}
+                placeholder="my-gcp-project"
+              />
             </label>
             <label className="field maia-field">
               <span className="field-label">Cloud Run service</span>
-              <input value={gcpServiceName} className="maia-input" onChange={(event) => setGcpServiceName(event.target.value)} placeholder="checkout-api" />
+              <input
+                value={gcpServiceName}
+                className="maia-input"
+                onChange={(event) => setGcpServiceName(event.target.value)}
+                placeholder="checkout-api"
+              />
             </label>
             <label className="field maia-field">
               <span className="field-label">Region (optional)</span>
-              <input value={gcpRegion} className="maia-input" onChange={(event) => setGcpRegion(event.target.value)} placeholder="us-central1" />
+              <input
+                value={gcpRegion}
+                className="maia-input"
+                onChange={(event) => setGcpRegion(event.target.value)}
+                placeholder="us-central1"
+              />
             </label>
           </>
         ) : (
           <label className="field maia-field">
             <span className="field-label">
-              {sourceKind === "directory" ? "Local Project Path" : sourceKind === "file" ? "Source Log Path" : "GitHub Repository URL"}
+              {sourceKind === "directory"
+                ? "Local Project Path"
+                : sourceKind === "file"
+                  ? "Source Log Path"
+                  : "GitHub Repository URL"}
             </span>
             <div className="field-input-wrapper">
               <input
                 value={sourcePath}
                 className="maia-input"
                 onChange={(event) => setSourcePath(event.target.value)}
-                placeholder={sourceKind === "directory" ? "/home/dev/project" : sourceKind === "file" ? "/var/log/app.log" : "https://github.com/..."}
+                placeholder={
+                  sourceKind === "directory"
+                    ? "/home/dev/project"
+                    : sourceKind === "file"
+                      ? "/var/log/app.log"
+                      : "https://github.com/..."
+                }
               />
               {sourceKind === "directory" && (
-                <button type="button" className="input-inline-action" disabled={busy || pickerBusy} onClick={() => void handleBrowseDirectory()}>
+                <button
+                  type="button"
+                  className="input-inline-action"
+                  disabled={busy || pickerBusy}
+                  onClick={() => void handleBrowseDirectory()}
+                >
                   {pickerBusy ? "..." : <FolderOpen size={16} />}
                 </button>
               )}
               {sourceKind === "file" && (
-                <button type="button" className="input-inline-action" disabled={busy || pickerBusy} onClick={() => void handleBrowseFile()}>
+                <button
+                  type="button"
+                  className="input-inline-action"
+                  disabled={busy || pickerBusy}
+                  onClick={() => void handleBrowseFile()}
+                >
                   {pickerBusy ? "..." : <ScrollText size={16} />}
                 </button>
               )}
@@ -259,15 +294,23 @@ export function ImportRepositoryForm({
 
       {error ? (
         <div className="form-notice error">
-           <span>{error}</span>
+          <span>{error}</span>
         </div>
       ) : null}
 
       <div className="form-actions-footer">
         <button type="submit" className="action primary-launch-btn" disabled={busy}>
-          {busy ? <><span className="spin-ring" aria-hidden="true" /> Analyzing...</> : <><GitBranch size={16} /> Start Ingestion</>}
+          {busy ? (
+            <>
+              <span className="spin-ring" aria-hidden="true" /> Analyzing...
+            </>
+          ) : (
+            <>
+              <GitBranch size={16} /> Start Ingestion
+            </>
+          )}
         </button>
-        
+
         {defaultDirectoryPath && (
           <button
             type="button"

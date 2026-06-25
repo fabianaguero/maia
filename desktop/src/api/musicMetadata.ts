@@ -53,8 +53,7 @@ export async function searchMusicBrainz(
     const recording = data.recordings?.[0];
     if (!recording) return null;
 
-    const artistName =
-      recording["artist-credit"]?.[0]?.artist.name || artist;
+    const artistName = recording["artist-credit"]?.[0]?.artist.name || artist;
     const releaseDate = recording.releases?.[0]?.date;
     const releaseYear = releaseDate ? parseInt(releaseDate.split("-")[0], 10) : undefined;
 
@@ -190,11 +189,7 @@ export async function fetchSongMetadata(
 
   // Enhance with Last.fm if available
   if (sources.includes("lastfm") && options?.lastFmApiKey) {
-    const lastFmData = await searchLastFm(
-      title,
-      artist,
-      options.lastFmApiKey,
-    );
+    const lastFmData = await searchLastFm(title, artist, options.lastFmApiKey);
     if (lastFmData && metadata) {
       metadata = { ...metadata, ...lastFmData, source: "musicbrainz" };
     } else if (lastFmData) {
@@ -204,11 +199,7 @@ export async function fetchSongMetadata(
 
   // Try Genius for lyrics if token provided
   if (sources.includes("genius") && options?.geniusToken && metadata) {
-    const geniusData = await searchGenius(
-      title,
-      artist,
-      options.geniusToken,
-    );
+    const geniusData = await searchGenius(title, artist, options.geniusToken);
     if (geniusData) {
       metadata = { ...metadata, lyrics: geniusData.lyrics };
     }

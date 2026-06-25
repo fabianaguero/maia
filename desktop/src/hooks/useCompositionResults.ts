@@ -1,33 +1,19 @@
 import { startTransition, useEffect, useState } from "react";
 
-import {
-  importComposition,
-  listCompositions,
-} from "../api/compositions";
-import type {
-  CompositionResultRecord,
-  ImportCompositionInput,
-} from "../types/library";
+import { importComposition, listCompositions } from "../api/compositions";
+import type { CompositionResultRecord, ImportCompositionInput } from "../types/library";
 
 function toMessage(error: unknown): string {
-  return error instanceof Error
-    ? error.message
-    : "Unexpected composition failure.";
+  return error instanceof Error ? error.message : "Unexpected composition failure.";
 }
 
-function sortCompositions(
-  compositions: CompositionResultRecord[],
-): CompositionResultRecord[] {
-  return [...compositions].sort((left, right) =>
-    right.importedAt.localeCompare(left.importedAt),
-  );
+function sortCompositions(compositions: CompositionResultRecord[]): CompositionResultRecord[] {
+  return [...compositions].sort((left, right) => right.importedAt.localeCompare(left.importedAt));
 }
 
 export function useCompositionResults() {
   const [compositions, setCompositions] = useState<CompositionResultRecord[]>([]);
-  const [selectedCompositionId, setSelectedCompositionId] = useState<string | null>(
-    null,
-  );
+  const [selectedCompositionId, setSelectedCompositionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [mutating, setMutating] = useState(false);
   const [error, setError] = useState<string | null>(null);

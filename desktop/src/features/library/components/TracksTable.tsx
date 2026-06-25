@@ -1,10 +1,6 @@
 import type { LibraryTrack } from "../../../types/library";
 import { formatShortDateTime } from "../../../utils/date";
-import {
-  getTrackAvailabilityLabel,
-  getTrackSourcePath,
-  getTrackTitle,
-} from "../../../utils/track";
+import { getTrackAvailabilityLabel, getTrackSourcePath, getTrackTitle } from "../../../utils/track";
 
 interface TracksTableProps {
   tracks: LibraryTrack[];
@@ -43,7 +39,10 @@ export function TracksTable({
             return (
               <tr
                 key={track.id}
-                className={`${selected ? "selected " : ""}${isMissing ? "track-missing" : ""}`.trim() || undefined}
+                className={
+                  `${selected ? "selected " : ""}${isMissing ? "track-missing" : ""}`.trim() ||
+                  undefined
+                }
                 onClick={() => onSelectTrack(track.id)}
               >
                 <td>

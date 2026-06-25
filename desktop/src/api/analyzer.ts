@@ -24,15 +24,13 @@ const frontendOnlyManifest: BootstrapManifest = {
   defaultTrackMusicStyleId: musicStyleCatalog.defaultTrackMusicStyleId,
   musicStyles: musicStyleCatalog.musicStyles,
   baseAssetCategoryConfigPath: "../desktop/src/config/base-asset-categories.json",
-  defaultBaseAssetCategoryId:
-    baseAssetCategoryCatalog.defaultBaseAssetCategoryId,
+  defaultBaseAssetCategoryId: baseAssetCategoryCatalog.defaultBaseAssetCategoryId,
   baseAssetCategories: baseAssetCategoryCatalog.baseAssetCategories,
 };
 
 function isNativeBridgeUnavailable(error: unknown): boolean {
   return (
-    error instanceof Error &&
-    /tauri|__TAURI_INTERNALS__|ipc|native bridge/i.test(error.message)
+    error instanceof Error && /tauri|__TAURI_INTERNALS__|ipc|native bridge/i.test(error.message)
   );
 }
 
@@ -47,9 +45,7 @@ export async function loadBootstrapManifest(): Promise<BootstrapManifest> {
   }
 }
 
-export async function runAnalyzerRequest(
-  request: AnalyzerRequest,
-): Promise<AnalyzerResponse> {
+export async function runAnalyzerRequest(request: AnalyzerRequest): Promise<AnalyzerResponse> {
   try {
     return await invoke<AnalyzerResponse>("run_analyzer", { request });
   } catch (error) {
@@ -77,8 +73,7 @@ export async function runAnalyzerRequest(
       status: "error",
       error: {
         code: "tauri_unavailable",
-        message:
-          error instanceof Error ? error.message : "Tauri runtime is unavailable.",
+        message: error instanceof Error ? error.message : "Tauri runtime is unavailable.",
       },
       warnings: [
         "The React shell is running without the native bridge. Analyzer requests require Tauri.",

@@ -28,12 +28,12 @@ function writeWavHeader(view: DataView, numSamples: number): void {
   writeStr(8, "WAVE");
   writeStr(12, "fmt ");
   view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);   // PCM
-  view.setUint16(22, 1, true);   // mono
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
   view.setUint32(24, RENDER_SAMPLE_RATE, true);
   view.setUint32(28, RENDER_SAMPLE_RATE * 2, true); // byte rate
-  view.setUint16(32, 2, true);   // block align
-  view.setUint16(34, 16, true);  // bits per sample
+  view.setUint16(32, 2, true); // block align
+  view.setUint16(34, 16, true); // bits per sample
   writeStr(36, "data");
   view.setUint32(40, numSamples * 2, true);
 }
@@ -61,8 +61,7 @@ function renderCuesToBuffer(
       const releaseStart = dur * 0.7;
       let env = 1;
       if (t < attackEnd) env = t / attackEnd;
-      else if (t > releaseStart)
-        env = Math.max(0, 1 - (t - releaseStart) / (dur - releaseStart));
+      else if (t > releaseStart) env = Math.max(0, 1 - (t - releaseStart) / (dur - releaseStart));
 
       let sample: number;
       switch (cue.waveform) {
@@ -116,10 +115,7 @@ export function renderCuesToWav(cues: RoutedLiveCue[], masterGain: number): Blob
 /**
  * Render all accumulated poll windows into one long WAV for download (full mix bounce).
  */
-export function renderBounceWav(
-  windows: RoutedLiveCue[][],
-  masterGain: number,
-): Blob | null {
+export function renderBounceWav(windows: RoutedLiveCue[][], masterGain: number): Blob | null {
   if (windows.length === 0) return null;
   const samplesPerWindow = Math.ceil(RENDER_SAMPLE_RATE * BOUNCE_WINDOW_S);
   const totalSamples = samplesPerWindow * windows.length;

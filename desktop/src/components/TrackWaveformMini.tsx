@@ -26,13 +26,7 @@ export function TrackWaveformMini({ bins, active = false }: TrackWaveformMiniPro
     <div className={`track-waveform-mini ${active ? "active" : ""}`} aria-hidden="true">
       {samples.map((value, index) => {
         const height = `${Math.max(8, value * 100)}%`;
-        return (
-          <span
-            key={index}
-            className="track-waveform-mini__bar"
-            style={{ height }}
-          />
-        );
+        return <span key={index} className="track-waveform-mini__bar" style={{ height }} />;
       })}
     </div>
   );

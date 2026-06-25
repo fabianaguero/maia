@@ -295,9 +295,9 @@ describe("track utils", () => {
 
     expect(removeTrackCuePoint(track.performance.hotCues, "hot-1")).toEqual([]);
     expect(canCreateHotCue(hotCues)).toBe(false);
-    expect(() =>
-      createTrackCuePoint("hot", 12, hotCues, track.analysis.durationSeconds),
-    ).toThrow("No hot cue slots available");
+    expect(() => createTrackCuePoint("hot", 12, hotCues, track.analysis.durationSeconds)).toThrow(
+      "No hot cue slots available",
+    );
   });
 
   it("creates beat-sized saved loops and removes them by id", () => {
@@ -311,9 +311,7 @@ describe("track utils", () => {
     );
 
     expect(canCreateSavedLoop(track.performance.savedLoops)).toBe(true);
-    expect(canCreateBeatLoop(track.analysis.bpm, 32, 8, track.analysis.durationSeconds)).toBe(
-      true,
-    );
+    expect(canCreateBeatLoop(track.analysis.bpm, 32, 8, track.analysis.durationSeconds)).toBe(true);
     expect(loop).toMatchObject({
       id: "loop-1-32000-8",
       slot: 1,
@@ -530,9 +528,9 @@ describe("track utils", () => {
     expect(canCreateBeatLoop(track.analysis.bpm, 240, 8, track.analysis.durationSeconds)).toBe(
       false,
     );
-    expect(() =>
-      createTrackSavedLoop(32, 8, null, [], track.analysis.durationSeconds),
-    ).toThrow("BPM is required to create beat loops");
+    expect(() => createTrackSavedLoop(32, 8, null, [], track.analysis.durationSeconds)).toThrow(
+      "BPM is required to create beat loops",
+    );
     expect(() =>
       createTrackSavedLoop(32, 8, track.analysis.bpm, filledLoops, track.analysis.durationSeconds),
     ).toThrow("No saved loop slots available");
@@ -617,9 +615,7 @@ describe("track utils", () => {
     expect(findNearestBeatGridSecond(96.31, beatGrid)).toBe(96.25);
     expect(resolveTrackPlacementSecond(96.31, 240, beatGrid, true)).toBe(96.25);
     expect(resolveTrackPlacementSecond(96.31, 240, beatGrid, false)).toBe(96.31);
-    expect(resolveTrackPlacementSecond(96.31, 240, [{ index: 0, second: 0 }], true)).toBe(
-      96.31,
-    );
+    expect(resolveTrackPlacementSecond(96.31, 240, [{ index: 0, second: 0 }], true)).toBe(96.31);
   });
 
   it("sets saved loop boundaries with quantize and preserves minimum span", () => {

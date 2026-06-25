@@ -3,11 +3,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from pathlib import Path
 from typing import Any
 
-from .contracts import CONTRACT_VERSION
-from .contracts import error_response
+from .contracts import CONTRACT_VERSION, error_response
 from .service import handle_request
 
 
@@ -79,7 +77,14 @@ def main() -> int:
 
 def _cmd_export_stems(args: Any) -> int:
     """Read a composition export-stems request from stdin and write per-stem WAVs."""
-    print(json.dumps({"status": "error", "error": "Timeline composition and stem export are disabled in this MVP."}))
+    print(
+        json.dumps(
+            {
+                "status": "error",
+                "error": "Timeline composition and stem export are disabled in this MVP.",
+            }
+        )
+    )
     return 1
 
 

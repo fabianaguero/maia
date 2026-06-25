@@ -1,4 +1,3 @@
-import type { FormEvent } from "react";
 import { useState } from "react";
 import type { ImportRepositoryInput, ImportBaseAssetInput } from "../../types/library";
 import type { BaseAssetCategoryOption } from "../../types/baseAsset";
@@ -21,20 +20,20 @@ interface SimpleModeWizardProps {
 const SIMPLE_PRESETS = [
   {
     id: "calm",
-    label: "Calm",
-    description: "Smooth, monitoring baseline",
+    labelKey: "calm",
+    descriptionKey: "calmDesc",
   },
   {
     id: "alert",
-    label: "Alert",
-    description: "Orange warnings, moderate intensity",
+    labelKey: "alert",
+    descriptionKey: "alertDesc",
   },
   {
     id: "intense",
-    label: "Intense",
-    description: "Critical alerts, high energy",
+    labelKey: "intense",
+    descriptionKey: "intenseDesc",
   },
-];
+] as const;
 
 export function SimpleModeWizard({
   busyRepository,
@@ -48,8 +47,8 @@ export function SimpleModeWizard({
   defaultCategoryId,
 }: SimpleModeWizardProps) {
   const t = useT();
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
+  const [step] = useState<1 | 2 | 3>(1);
+  const [selectedRepo] = useState<string | null>(null);
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,7 +60,7 @@ export function SimpleModeWizard({
 
     try {
       await onStartSession(selectedRepo, selectedPreset);
-    } catch (err) {
+    } catch {
       setError(t.simpleMode.wizard.errorMessage);
     }
   }
@@ -73,10 +72,7 @@ export function SimpleModeWizard({
           <h2 className="wizard-title">{t.simpleMode.wizard.title}</h2>
           <p className="wizard-subtitle">{t.simpleMode.steps.step1}</p>
         </div>
-        <ImportRepositoryForm
-          busy={busyRepository}
-          onImportRepository={onImportRepository}
-        />
+        <ImportRepositoryForm busy={busyRepository} onImportRepository={onImportRepository} />
       </div>
     );
   }
@@ -127,8 +123,10 @@ export function SimpleModeWizard({
               }}
               type="button"
             >
-              <span className="preset-label">{preset.label}</span>
-              <span className="preset-description">{preset.description}</span>
+              <span className="preset-label">{t.simpleMode.wizard[preset.labelKey]}</span>
+              <span className="preset-description">
+                {t.simpleMode.wizard[preset.descriptionKey]}
+              </span>
             </button>
           ))}
         </div>

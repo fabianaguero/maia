@@ -6,13 +6,14 @@ import {
   Plus,
   Eye,
   Trash2,
-  GitBranch,
   ScrollText,
   RefreshCw,
   AudioWaveform,
 } from "lucide-react";
 import type { LibraryTrack, RepositoryAnalysis, BaseAssetRecord } from "../../types/library";
+import { useT } from "../../i18n/I18nContext";
 import { formatShortDate } from "../../utils/date";
+import { formatBpmLabel } from "../../utils/monitorLabels";
 import { getTrackTitle } from "../../utils/track";
 
 interface ProLibraryScreenProps {
@@ -22,23 +23,9 @@ interface ProLibraryScreenProps {
 }
 
 export function ProLibraryScreen({ tracks, repositories, baseAssets }: ProLibraryScreenProps) {
-  const [activeTab, setActiveTab] = useState<"sounds" | "sources" | "profiles">(
-    "sounds"
-  );
+  const t = useT();
+  const [activeTab, setActiveTab] = useState<"sounds" | "sources" | "profiles">("sounds");
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
-
-  const getSourceIcon = (type: string) => {
-    switch (type) {
-      case "file":
-        return <ScrollText size={16} className="text-cyan-400" />;
-      case "directory":
-        return <FolderOpen size={16} className="text-cyan-400" />;
-      case "github":
-        return <GitBranch size={16} className="text-cyan-400" />;
-      default:
-        return null;
-    }
-  };
 
   const getStatusBadge = (status: string) => {
     const statusClasses: Record<string, string> = {
@@ -47,15 +34,11 @@ export function ProLibraryScreen({ tracks, repositories, baseAssets }: ProLibrar
       pending: "badge-pending",
     };
     const statusLabels: Record<string, string> = {
-      analyzed: "Analyzed",
-      ready: "Ready",
-      pending: "Pending",
+      analyzed: t.library.statusAnalyzed,
+      ready: t.library.statusReady,
+      pending: t.library.statusPending,
     };
-    return (
-      <span className={`status-badge ${statusClasses[status]}`}>
-        {statusLabels[status]}
-      </span>
-    );
+    return <span className={`status-badge ${statusClasses[status]}`}>{statusLabels[status]}</span>;
   };
 
   return (
@@ -67,7 +50,7 @@ export function ProLibraryScreen({ tracks, repositories, baseAssets }: ProLibrar
           onClick={() => setActiveTab("sounds")}
         >
           <Music size={16} />
-          Sounds
+          {t.library.sounds}
           <span className="tab-count">{tracks.length}</span>
         </button>
         <button
@@ -75,7 +58,7 @@ export function ProLibraryScreen({ tracks, repositories, baseAssets }: ProLibrar
           onClick={() => setActiveTab("sources")}
         >
           <FolderOpen size={16} />
-          Log sources
+          {t.library.logSources}
           <span className="tab-count">{repositories.length}</span>
         </button>
         <button
@@ -83,7 +66,7 @@ export function ProLibraryScreen({ tracks, repositories, baseAssets }: ProLibrar
           onClick={() => setActiveTab("profiles")}
         >
           <Package size={16} />
-          Profiles
+          {t.library.profiles}
           <span className="tab-count">{baseAssets.length}</span>
         </button>
       </div>
@@ -94,15 +77,13 @@ export function ProLibraryScreen({ tracks, repositories, baseAssets }: ProLibrar
           <div className="sources-section">
             <div className="section-header">
               <div>
-                <h2 className="section-title">Your log sources</h2>
-                <p className="section-subtitle">
-                  Connect log files, repos, and live streams to monitor.
-                </p>
+                <h2 className="section-title">{t.library.logSources}</h2>
+                <p className="section-subtitle">{t.library.toolbarSourcesNote}</p>
               </div>
               <div className="action-buttons">
                 <button className="btn-primary">
                   <FolderOpen size={16} />
-                  Connect Log Source
+                  {t.library.importRepository}
                 </button>
               </div>
             </div>
@@ -130,18 +111,18 @@ export function ProLibraryScreen({ tracks, repositories, baseAssets }: ProLibrar
                     <code className="source-path">{source.sourcePath}</code>
                     <span className="source-date">
                       {formatShortDate(source.importedAt)}
-                      {source.suggestedBpm ? ` · ${Math.round(source.suggestedBpm)} BPM` : ""}
+                      {source.suggestedBpm ? ` · ${formatBpmLabel(source.suggestedBpm)}` : ""}
                     </span>
                   </div>
 
                   <div className="source-actions">
-                    <button className="btn-ghost" title="Inspect">
+                    <button className="btn-ghost" title={t.simpleMode.common.inspect}>
                       <Eye size={14} />
                     </button>
-                    <button className="btn-ghost" title="Reanalyze">
+                    <button className="btn-ghost" title={t.library.analyze}>
                       <RefreshCw size={14} />
                     </button>
-                    <button className="btn-ghost btn-danger" title="Delete">
+                    <button className="btn-ghost btn-danger" title={t.library.deleteRepository}>
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -154,10 +135,10 @@ export function ProLibraryScreen({ tracks, repositories, baseAssets }: ProLibrar
         {activeTab === "profiles" && (
           <div className="profiles-section empty-state">
             <div className="empty-icon">◆</div>
-            <h3>No profiles yet.</h3>
+            <h3>{t.library.noBasePacksYet}</h3>
             <button className="btn-primary">
               <Plus size={16} />
-              Import Sound Profile
+              {t.library.importBaseAsset}
             </button>
           </div>
         )}
@@ -166,10 +147,7 @@ export function ProLibraryScreen({ tracks, repositories, baseAssets }: ProLibrar
           <div className="sounds-section">
             <div className="sources-list">
               {tracks.map((track) => (
-                <div
-                  key={track.id}
-                  className="source-item"
-                >
+                <div key={track.id} className="source-item">
                   <div className="source-icon">
                     <AudioWaveform size={18} className="text-cyan-400" />
                   </div>
@@ -177,9 +155,13 @@ export function ProLibraryScreen({ tracks, repositories, baseAssets }: ProLibrar
                     <div className="source-header">
                       <span className="source-name">{getTrackTitle(track)}</span>
                       {track.analysis.bpm ? (
-                        <span className="status-badge badge-ready">{Math.round(track.analysis.bpm)} BPM</span>
+                        <span className="status-badge badge-ready">
+                          {formatBpmLabel(track.analysis.bpm)}
+                        </span>
                       ) : (
-                        <span className="status-badge badge-pending">Analyzing...</span>
+                        <span className="status-badge badge-pending">
+                          {t.simpleMode.status.loading}
+                        </span>
                       )}
                     </div>
                     <code className="source-path">{track.file.sourcePath}</code>
@@ -188,10 +170,10 @@ export function ProLibraryScreen({ tracks, repositories, baseAssets }: ProLibrar
                     </span>
                   </div>
                   <div className="source-actions">
-                    <button className="btn-ghost" title="View">
+                    <button className="btn-ghost" title={t.library.view}>
                       <Eye size={14} />
                     </button>
-                    <button className="btn-ghost btn-danger" title="Delete">
+                    <button className="btn-ghost btn-danger" title={t.library.deleteTrack}>
                       <Trash2 size={14} />
                     </button>
                   </div>

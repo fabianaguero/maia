@@ -58,9 +58,7 @@ export function stringField(value: unknown): string | null {
 }
 
 function resolvedCategoryId(composition: CompositionResultRecord): string {
-  return (
-    stringField(composition.metrics.baseAssetCategory) ?? composition.baseAssetCategoryId
-  );
+  return stringField(composition.metrics.baseAssetCategory) ?? composition.baseAssetCategoryId;
 }
 
 function previewDurationSeconds(composition: CompositionResultRecord): number {
@@ -79,12 +77,7 @@ function derivedSections(composition: CompositionResultRecord): ArrangementSecti
   const definitions = [
     { id: "intro", label: "Intro lock", energy: "low" },
     {
-      id:
-        categoryId === "fx-palette"
-          ? "lift"
-          : referenceType === "repo"
-            ? "translation"
-            : "build",
+      id: categoryId === "fx-palette" ? "lift" : referenceType === "repo" ? "translation" : "build",
       label:
         categoryId === "pad-texture"
           ? "Texture rise"
@@ -461,8 +454,6 @@ export function resolveCuePoints(composition: CompositionResultRecord): CuePoint
     : derivedCuePoints(resolveArrangementSections(composition));
 }
 
-export function resolveRenderPreview(
-  composition: CompositionResultRecord,
-): RenderPreview {
+export function resolveRenderPreview(composition: CompositionResultRecord): RenderPreview {
   return readRenderPreview(composition.metrics) ?? derivedRenderPreview(composition);
 }

@@ -1,6 +1,7 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { invokeOrFallback } from "../../../api/tauri";
+import { useT } from "../../../i18n/I18nContext";
 
 type PlaybackState = "idle" | "loading" | "ready" | "playing" | "error" | "unavailable";
 
@@ -56,20 +57,20 @@ function mimeTypeFromPath(audioPath: string): string {
   return map[ext] ?? "audio/mpeg";
 }
 
-function describeState(state: PlaybackState): string {
+function describeState(state: PlaybackState, t: ReturnType<typeof useT>): string {
   switch (state) {
     case "loading":
-      return "Loading";
+      return t.inspect.playbackLoading;
     case "ready":
-      return "Ready";
+      return t.inspect.playbackReady;
     case "playing":
-      return "Playing";
+      return t.inspect.playbackPlaying;
     case "error":
-      return "Playback error";
+      return t.inspect.playbackErrorState;
     case "unavailable":
-      return "Desktop playback only";
+      return t.inspect.desktopPlaybackOnly;
     default:
-      return "Pending";
+      return t.inspect.playbackPending;
   }
 }
 
@@ -88,6 +89,7 @@ export function ManagedAudioPlayer({
   onTimeUpdate,
   cueRequest,
 }: ManagedAudioPlayerProps) {
+  const t = useT();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
   const lastCueRequestIdRef = useRef<number | null>(null);
@@ -140,10 +142,8 @@ export function ManagedAudioPlayer({
     let cancelled = false;
     let cleanupListeners: (() => void) | null = null;
 
-    const loadPromise = invokeOrFallback<string>(
-      "read_audio_bytes",
-      { path: audioPath },
-      () => Promise.reject(new Error("Audio playback not available: desktop shell required"))
+    const loadPromise = invokeOrFallback<string>("read_audio_bytes", { path: audioPath }, () =>
+      Promise.reject(new Error("Audio playback not available: desktop shell required")),
     );
 
     loadPromise
@@ -200,7 +200,7 @@ export function ManagedAudioPlayer({
 
         audio.pause();
         audio.currentTime = 0;
-        audio.volume = volume;  // Ensure volume is set before loading
+        audio.volume = volume; // Ensure volume is set before loading
         audio.src = url;
         audio.load();
         setBlobReady(true);
@@ -223,7 +223,7 @@ export function ManagedAudioPlayer({
         blobUrlRef.current = null;
       }
     };
-  }, [audioPath, durationSeconds, errorNote]);
+  }, [audioPath, durationSeconds, errorNote, onTimeUpdate, volume]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -238,7 +238,7 @@ export function ManagedAudioPlayer({
     lastCueRequestIdRef.current = cueRequest.id;
 
     const maxDuration =
-      resolvedDurationSeconds > 0 ? resolvedDurationSeconds : durationSeconds ?? 0;
+      resolvedDurationSeconds > 0 ? resolvedDurationSeconds : (durationSeconds ?? 0);
     const targetSecond =
       maxDuration > 0
         ? Math.min(Math.max(0, cueRequest.second), maxDuration)
@@ -317,7 +317,7 @@ export function ManagedAudioPlayer({
   }
 
   const shownDurationSeconds =
-    resolvedDurationSeconds > 0 ? resolvedDurationSeconds : durationSeconds ?? null;
+    resolvedDurationSeconds > 0 ? resolvedDurationSeconds : (durationSeconds ?? null);
   const canPlayAudio = blobReady;
   const note = !audioPath
     ? missingNote
@@ -348,17 +348,17 @@ export function ManagedAudioPlayer({
           {playbackState === "playing" ? pauseLabel : playLabel}
         </button>
         <div className="render-audio-status">
-          <span>Status</span>
-          <strong>{describeState(playbackState)}</strong>
+          <span>{t.inspect.transportStatus}</span>
+          <strong>{describeState(playbackState, t)}</strong>
         </div>
         <div className="render-audio-status">
-          <span>Position</span>
+          <span>{t.inspect.transportPosition}</span>
           <strong>
             {formatDuration(currentTimeSeconds)} / {formatDuration(shownDurationSeconds)}
           </strong>
         </div>
         <div className="render-audio-volume">
-          <span>Vol</span>
+          <span>{t.inspect.transportVolume}</span>
           <div className="volume-bars">
             {Array.from({ length: 10 }, (_, i) => (
               <div

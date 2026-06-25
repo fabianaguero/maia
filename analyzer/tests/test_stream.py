@@ -3,12 +3,14 @@
 Tests the public API of maia_analyzer.stream — session creation, ingestion,
 snapshots, stop/eviction, and session_poll via handle_request.
 """
+
 from __future__ import annotations
 
 import json
-import pytest
 
+import pytest
 from maia_analyzer import stream as stream_mod
+from maia_analyzer.service import handle_request
 from maia_analyzer.stream import (
     SESSION_RING_BUFFER_LINES,
     get_or_create_session,
@@ -18,7 +20,6 @@ from maia_analyzer.stream import (
     session_snapshot,
     stop_session,
 )
-from maia_analyzer.service import handle_request
 
 from .fixtures import SAMPLE_LOG
 
@@ -35,13 +36,13 @@ def _clean_sessions():
     """Ensure each test starts with an empty session registry."""
     # Clear before
     with stream_mod._lock:
-        for sid, s in list(stream_mod._sessions.items()):
+        for _sid, s in list(stream_mod._sessions.items()):
             s.close()
         stream_mod._sessions.clear()
     yield
     # Clear after
     with stream_mod._lock:
-        for sid, s in list(stream_mod._sessions.items()):
+        for _sid, s in list(stream_mod._sessions.items()):
             s.close()
         stream_mod._sessions.clear()
 
@@ -185,12 +186,14 @@ def test_lru_eviction_removes_oldest():
 def test_session_poll_empty_buffer():
     # Create a session with no data
     get_or_create_session("poll-empty", "file", "/tmp/fake.log")
-    result = handle_request({
-        "contractVersion": CONTRACT_VERSION,
-        "requestId": "r-poll-1",
-        "action": "session_poll",
-        "payload": {"sessionId": "poll-empty"},
-    })
+    result = handle_request(
+        {
+            "contractVersion": CONTRACT_VERSION,
+            "requestId": "r-poll-1",
+            "action": "session_poll",
+            "payload": {"sessionId": "poll-empty"},
+        }
+    )
     assert result["status"] == "ok"
     assert result["payload"]["hasData"] is False
     assert result["payload"]["sessionId"] == "poll-empty"
@@ -200,12 +203,14 @@ def test_session_poll_with_data_returns_musical_asset():
     sid = "poll-data"
     get_or_create_session(sid, "file", "/tmp/virtual.log")
     ingest_lines(sid, SAMPLE_LOG.splitlines())
-    result = handle_request({
-        "contractVersion": CONTRACT_VERSION,
-        "requestId": "r-poll-2",
-        "action": "session_poll",
-        "payload": {"sessionId": sid},
-    })
+    result = handle_request(
+        {
+            "contractVersion": CONTRACT_VERSION,
+            "requestId": "r-poll-2",
+            "action": "session_poll",
+            "payload": {"sessionId": sid},
+        }
+    )
     assert result["status"] == "ok"
     payload = result["payload"]
     assert payload["hasData"] is True
@@ -224,13 +229,15 @@ def test_journald_json_line_ingested_as_log_event():
     """journald JSON output lines (journalctl -o json) should be accepted as normal log lines."""
     sid = "jd-1"
     get_or_create_session(sid, "process", "journalctl -f -o json")
-    journald_line = json.dumps({
-        "__REALTIME_TIMESTAMP": "1712650000000000",
-        "PRIORITY": "3",
-        "SYSLOG_IDENTIFIER": "nginx",
-        "MESSAGE": "connect() failed (111: Connection refused)",
-        "_SYSTEMD_UNIT": "nginx.service",
-    })
+    journald_line = json.dumps(
+        {
+            "__REALTIME_TIMESTAMP": "1712650000000000",
+            "PRIORITY": "3",
+            "SYSLOG_IDENTIFIER": "nginx",
+            "MESSAGE": "connect() failed (111: Connection refused)",
+            "_SYSTEMD_UNIT": "nginx.service",
+        }
+    )
     ingest_lines(sid, [journald_line])
     snap = session_snapshot(sid)
     assert snap is not None
@@ -252,12 +259,14 @@ def test_journald_session_poll_returns_valid_payload():
     assert snap is not None
     assert len(snap["ringBuffer"]) == 5
     # Verify session_poll produces a valid musical asset
-    result = handle_request({
-        "contractVersion": CONTRACT_VERSION,
-        "requestId": "jd-poll-1",
-        "action": "session_poll",
-        "payload": {"sessionId": sid},
-    })
+    result = handle_request(
+        {
+            "contractVersion": CONTRACT_VERSION,
+            "requestId": "jd-poll-1",
+            "action": "session_poll",
+            "payload": {"sessionId": sid},
+        }
+    )
     assert result["status"] == "ok"
     assert result["payload"]["hasData"] is True
 

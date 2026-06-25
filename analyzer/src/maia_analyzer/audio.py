@@ -1,22 +1,25 @@
 from __future__ import annotations
 
-from array import array
 import hashlib
+import importlib.util
 import math
 import struct
 import wave
+from array import array
 from datetime import UTC, datetime
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 try:
     import miniaudio
-except ModuleNotFoundError:  # pragma: no cover - protected by project dependency, kept for resilience
+except (
+    ModuleNotFoundError
+):  # pragma: no cover - protected by project dependency, kept for resilience
     miniaudio = None
 
 from .dsp import analyze_dsp, dsp_available
-
 
 MAX_ANALYSIS_SECONDS = 180
 FRAME_SIZE = 1024
@@ -57,6 +60,7 @@ def get_supported_track_formats() -> list[str]:
         formats += ["mp3", "flac", "ogg"]
     try:
         import librosa  # noqa: F401 — test presence only
+
         formats += ["m4a", "aac", "aiff", "mp4"]
     except ModuleNotFoundError:  # pragma: no cover
         pass
@@ -67,7 +71,15 @@ def _supported_track_format_summary() -> str:
     fmts = get_supported_track_formats()
     if len(fmts) == 1:
         return "WAV/PCM"
-    label_map = {"mp3": "MP3", "flac": "FLAC", "ogg": "OGG/Vorbis", "m4a": "M4A/AAC", "aac": "AAC", "aiff": "AIFF", "mp4": "MP4"}
+    label_map = {
+        "mp3": "MP3",
+        "flac": "FLAC",
+        "ogg": "OGG/Vorbis",
+        "m4a": "M4A/AAC",
+        "aac": "AAC",
+        "aiff": "AIFF",
+        "mp4": "MP4",
+    }
     labels = ["WAV"] + [label_map.get(f, f.upper()) for f in fmts if f != "wav"]
     return ", ".join(labels[:-1]) + (f", and {labels[-1]}" if len(labels) > 1 else "")
 
@@ -144,7 +156,11 @@ def _build_embedded_track_asset(
 
     warnings = [
         f"Track analysis runs inside the Maia analyzer using the embedded {decoder} decoder."
-        + (" librosa DSP active." if analysis_mode == "librosa-dsp" else " Higher-fidelity DSP can later replace this path with librosa or Essentia without depending on system tools."),
+        + (
+            " librosa DSP active."
+            if analysis_mode == "librosa-dsp"
+            else " Higher-fidelity DSP can later replace this path with librosa or Essentia without depending on system tools."
+        ),
     ]
     if duration_seconds and analysis_seconds and analysis_seconds < duration_seconds:
         warnings.append(
@@ -158,7 +174,7 @@ def _build_hash_stub_asset(
     waveform_bins: int,
 ) -> tuple[dict[str, Any], list[str]]:
     size_bytes = track_path.stat().st_size
-    digest = hashlib.sha256(f"{track_path}:{size_bytes}".encode("utf-8")).digest()
+    digest = hashlib.sha256(f"{track_path}:{size_bytes}".encode()).digest()
     bins = [round(byte / 255, 3) for byte in digest[: max(8, min(waveform_bins, 32))]]
 
     asset = {
@@ -219,19 +235,18 @@ def _decode_librosa_audio(track_path: Path) -> dict[str, Any] | None:
     Requires FFmpeg or GStreamer to be present on the host; returns None gracefully if not.
     """
     try:
-        import numpy as np  # guaranteed present (librosa dep)
-        import librosa  # type: ignore[import-untyped]
+        import librosa
     except ModuleNotFoundError:  # pragma: no cover
         return None
 
     try:
         y, sr = librosa.load(
             str(track_path),
-            sr=None,          # preserve native sample rate
-            mono=True,        # downmix to mono
+            sr=None,  # preserve native sample rate
+            mono=True,  # downmix to mono
             duration=float(MAX_ANALYSIS_SECONDS),
         )
-    except Exception:  # noqa: BLE001 — audioread/FFmpeg not available or corrupt file
+    except Exception:
         return None
 
     if y is None or len(y) == 0:
@@ -370,14 +385,14 @@ def _pcm_to_mono_f32(raw_frames: bytes, channels: int, sample_width: int) -> arr
         return mono
 
     if sample_width == 2:
-        ints = struct.unpack("<{}h".format(len(raw_frames) // 2), raw_frames)
+        ints = struct.unpack(f"<{len(raw_frames) // 2}h", raw_frames)
         return _downmix_integers_to_mono(ints, channels, 32768.0)
 
     if sample_width == 3:
         return _decode_pcm24_to_mono(raw_frames, channels)
 
     if sample_width == 4:
-        ints = struct.unpack("<{}i".format(len(raw_frames) // 4), raw_frames)
+        ints = struct.unpack(f"<{len(raw_frames) // 4}i", raw_frames)
         return _downmix_integers_to_mono(ints, channels, 2147483648.0)
 
     return array("f")
@@ -482,11 +497,7 @@ def _estimate_bpm(samples: array[float], sample_rate_hz: int) -> tuple[float | N
     second_score = scores[1][1] if len(scores) > 1 else 0.0
     average_score = sum(score for _, score in scores) / len(scores)
     dominance = (best_score - second_score) / best_score if best_score else 0.0
-    lift = (
-        max(0.0, (best_score / average_score) - 1.0)
-        if average_score > 0
-        else 0.0
-    )
+    lift = max(0.0, (best_score / average_score) - 1.0) if average_score > 0 else 0.0
     confidence = min(0.91, max(0.22, 0.34 + (dominance * 0.34) + min(0.18, lift * 0.08)))
     return float(best_bpm), round(confidence, 3)
 
@@ -505,7 +516,7 @@ def _build_onset_envelope(samples: array[float], sample_rate_hz: int) -> list[fl
         return []
 
     onset = [0.0]
-    for previous, current in zip(rms_values, rms_values[1:]):
+    for previous, current in pairwise(rms_values):
         onset.append(max(0.0, current - previous))
 
     peak = max(onset) or 1.0
@@ -605,9 +616,11 @@ def _analyze_musical_characteristics(
     This ports the useful parts of the legacy analyzer into the current JSON
     contract without changing the top-level asset shape.
     """
+    if importlib.util.find_spec("librosa") is None:
+        return {}
+
     try:
-        import librosa  # type: ignore[import-untyped]
-        import numpy as np  # type: ignore[import-untyped]
+        import numpy as np
     except ModuleNotFoundError:  # pragma: no cover
         return {}
 
@@ -624,7 +637,7 @@ def _analyze_musical_characteristics(
             sample_rate_hz,
             duration_seconds or (len(y) / sample_rate_hz),
         )
-    except Exception:  # noqa: BLE001
+    except Exception:
         return {}
 
     return {
@@ -638,8 +651,8 @@ def _analyze_musical_characteristics(
 
 
 def _detect_key_signature(y: Any, sr: int) -> tuple[str, str]:
-    import numpy as np  # type: ignore[import-untyped]
-    import librosa  # type: ignore[import-untyped]
+    import librosa
+    import numpy as np
 
     chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
     chroma_mean = np.mean(chroma, axis=1)
@@ -671,8 +684,8 @@ def _detect_key_signature(y: Any, sr: int) -> tuple[str, str]:
 
 
 def _detect_energy_level(y: Any) -> float:
-    import numpy as np  # type: ignore[import-untyped]
-    import librosa  # type: ignore[import-untyped]
+    import librosa
+    import numpy as np
 
     rms = librosa.feature.rms(y=y, hop_length=2048)[0]
     mean_rms = float(np.mean(rms)) if len(rms) > 0 else 0.0
@@ -701,8 +714,8 @@ def _detect_structural_patterns(
     sr: int,
     duration_seconds: float,
 ) -> list[dict[str, Any]]:
-    import numpy as np  # type: ignore[import-untyped]
-    import librosa  # type: ignore[import-untyped]
+    import librosa
+    import numpy as np
 
     if duration_seconds <= 12:
         return []

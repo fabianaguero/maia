@@ -7,13 +7,12 @@ level counting, and component extraction.
 "Golden" means: run once, record the output, then re-run to detect drift.
 If the heuristics change intentionally, update the golden values here.
 """
+
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
 import pytest
-
 from maia_analyzer.repository import analyze_repository
 from maia_analyzer.service import handle_request
 
@@ -154,7 +153,7 @@ def test_gcloud_info_notice_backfill_stays_non_anomalous():
     """Cloud backfill lines with INFO/NOTICE timestamps alone should not trigger anomalies."""
     chunk = "\n".join(
         [
-            "DEFAULT 2026-06-24T21:55:46.323583Z HTTP Request: GET https://restapi-847752433493.us-central1.run.app/reservations/CTO-34853 \"HTTP/1.1 200 OK\"",
+            'DEFAULT 2026-06-24T21:55:46.323583Z HTTP Request: GET https://restapi-847752433493.us-central1.run.app/reservations/CTO-34853 "HTTP/1.1 200 OK"',
             "DEFAULT 2026-06-24T21:55:46.550023Z Notifying changes for reservation CTO-34853",
             "DEFAULT 2026-06-24T21:55:46.552974Z Logging {'id': 'V4zlx54eKGi30jzEJYSW', 'status': 'ORCHESTRATING'}",
             "DEFAULT 2026-06-24T21:55:48.563665Z [Mail to NonApi Providers] attempt=1 decision=skipped reason=no_relevant_changes metrics={'sent': 0, 'filtered': 0, 'zohoSkipped': 0}",
@@ -183,12 +182,14 @@ def test_gcloud_info_notice_backfill_stays_non_anomalous():
 
 def test_mock_native_gate_health_payload_shape():
     """The health response must include all fields consumed by the TS mock."""
-    resp = handle_request({
-        "contractVersion": CONTRACT_VERSION,
-        "requestId": "gate-1",
-        "action": "health",
-        "payload": {},
-    })
+    resp = handle_request(
+        {
+            "contractVersion": CONTRACT_VERSION,
+            "requestId": "gate-1",
+            "action": "health",
+            "payload": {},
+        }
+    )
     assert resp["status"] == "ok"
     payload = resp["payload"]
     # Fields referenced in the TS mock (mockLibrary.ts / mockRepositories.ts)
@@ -203,35 +204,48 @@ def test_mock_native_gate_health_payload_shape():
 def test_mock_native_gate_analyze_response_has_musical_asset(tmp_path):
     """The analyze response must include musicalAsset as consumed by the TS mock."""
     log_file = _make_log(tmp_path)
-    resp = handle_request({
-        "contractVersion": CONTRACT_VERSION,
-        "requestId": "gate-2",
-        "action": "analyze",
-        "payload": {
-            "assetType": "repo_analysis",
-            "source": {"kind": "file", "path": str(log_file)},
-            "options": {"logTailChunk": SAMPLE_LOG},
-        },
-    })
+    resp = handle_request(
+        {
+            "contractVersion": CONTRACT_VERSION,
+            "requestId": "gate-2",
+            "action": "analyze",
+            "payload": {
+                "assetType": "repo_analysis",
+                "source": {"kind": "file", "path": str(log_file)},
+                "options": {"logTailChunk": SAMPLE_LOG},
+            },
+        }
+    )
     assert resp["status"] == "ok"
     payload = resp["payload"]
     assert "musicalAsset" in payload
     assert "summary" in payload
     asset = payload["musicalAsset"]
     # Fields the TS mock always provides
-    for field in ("id", "assetType", "title", "sourcePath",
-                  "confidence", "tags", "metrics", "artifacts", "createdAt"):
+    for field in (
+        "id",
+        "assetType",
+        "title",
+        "sourcePath",
+        "confidence",
+        "tags",
+        "metrics",
+        "artifacts",
+        "createdAt",
+    ):
         assert field in asset, f"Gate failed: missing '{field}' in musicalAsset"
 
 
 def test_mock_native_gate_error_shape():
     """Error responses must have the shape TS consumers expect."""
-    resp = handle_request({
-        "contractVersion": "0.0",
-        "requestId": "gate-3",
-        "action": "health",
-        "payload": {},
-    })
+    resp = handle_request(
+        {
+            "contractVersion": "0.0",
+            "requestId": "gate-3",
+            "action": "health",
+            "payload": {},
+        }
+    )
     assert resp["status"] == "error"
     assert "error" in resp
     assert "code" in resp["error"]

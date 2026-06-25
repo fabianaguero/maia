@@ -1,7 +1,4 @@
-import type {
-  MutationProfileOption,
-  StyleProfileOption,
-} from "../types/music";
+import type { MutationProfileOption, StyleProfileOption } from "../types/music";
 
 export const STYLE_PROFILES: StyleProfileOption[] = [
   {
@@ -117,9 +114,7 @@ export const MUTATION_PROFILES: MutationProfileOption[] = [
 
 export const DEFAULT_MUTATION_PROFILE_ID = "balanced";
 
-export function resolveStyleProfile(
-  styleProfileId: string | null | undefined,
-): StyleProfileOption {
+export function resolveStyleProfile(styleProfileId: string | null | undefined): StyleProfileOption {
   return (
     STYLE_PROFILES.find((profile) => profile.id === styleProfileId) ??
     STYLE_PROFILES.find((profile) => profile.id === DEFAULT_STYLE_PROFILE_ID) ??

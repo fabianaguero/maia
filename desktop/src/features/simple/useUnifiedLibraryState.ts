@@ -33,28 +33,28 @@ export function useUnifiedLibraryState(props: {
     (repositoryId: string) => {
       props.onSelectRepository(repositoryId);
     },
-    [props]
+    [props],
   );
 
   const handleImportRepository = useCallback(
     async (input: ImportRepositoryInput) => {
       return props.onImportRepository(input);
     },
-    [props]
+    [props],
   );
 
   const handleImportBaseAsset = useCallback(
     async (input: ImportBaseAssetInput) => {
       return props.onImportBaseAsset(input);
     },
-    [props]
+    [props],
   );
 
   const handleStartMonitoring = useCallback(
     (repoId: string, trackId?: string) => {
       props.onStartMonitoring?.(repoId, trackId);
     },
-    [props]
+    [props],
   );
 
   // Create mode-appropriate adapter

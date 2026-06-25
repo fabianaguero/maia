@@ -91,8 +91,9 @@ Maia is a local-first desktop app for auditory monitoring. The user chooses a tr
 - Blend details in scene panel: `LiveSonificationScenePanel` shows a "Blend style" row when the active anchor is a playlist composite. ✅
 
 ## Still missing / future work
-The most realistic implementation order from this point: (1) push the current app-level monitor into a true background music-server mode for teams; (2) broaden stream adapters beyond the current file / process / WebSocket / HTTP-poll / journald set; (3) deepen the sonification engine with denser sequencing and component-level mapping; (4) add fuller export/bounce beyond `plan.json`, `preview.wav`, and stem WAVs; and (5) expand format support and curated listening profiles.
+The most realistic implementation order from this point: (1) deepen imported-track and playlist prep inside the current app workflow; (2) push the current app-level monitor into a true background music-server mode for teams; (3) broaden stream adapters beyond the current file / process / WebSocket / HTTP-poll / journald set; (4) deepen the sonification engine with denser sequencing and component-level mapping; (5) add fuller export/bounce beyond `plan.json`, `preview.wav`, and stem WAVs; and (6) only later add virtual output / system-audio passthrough as a broader runtime expansion.
 
+- **Track / playlist prep depth** ⏳ pending (full-track analysis, stronger cue maps, smarter playlist intelligence, and prep closer to DJ-style library workflows).
 - **Always-on app-level monitoring** ✅ (shipped: `MonitorContext` lifts poll loop to root, sidebar live badge, session survives navigation) — resolved.
 - **Background music-server mode / headless runtime** ⏳ pending.
 - **Broader stream adapters** ✅ (shipped: WebSocket adapter manages JS `WebSocket` and feeds chunks into Rust `SessionRegistry`; HTTP-poll adapter fetches URL on each interval through the same path; `ingest_stream_chunk` Rust command; panel URL inputs; `journald` adapter via native `journalctl -f -o json` follow mode with optional unit filter in `LiveLogMonitorPanel`).
@@ -100,6 +101,7 @@ The most realistic implementation order from this point: (1) push the current ap
 - **Dense multi-track arrangement** ✅ (shipped: per-component gain/mute routing panel, `ComponentRoutingPanel`, arrangement-lane display with foundation/motion/accent tracks; `PadSequencerPanel` — 16-step × 3-track authoring grid with BPM playhead, Fill-from-scene seed, clear, per-track colour coding)
 - **Export/bounce pipeline** ✅ (shipped: `write_stem_wavs()` renders one WAV per stem; `export-stems` CLI; Rust `export_composition_stems` + `pick_stems_export_directory`; stems button in `ExportCompositionPanel`; 10 dedicated tests passing)
 - **Additional audio formats** ✅ (shipped: `_decode_librosa_audio` fallback covers m4a/aac/aiff/mp4 via audioread/FFmpeg; `get_supported_track_formats` now returns dynamic format list)
+- **Virtual output / system-audio passthrough** ⏳ later roadmap (deferred until after stronger in-product prep, background runtime, and richer sonification land).
 - **Tree-sitter beyond Java/Kotlin** ✅ (shipped: Python, TypeScript/TSX, Go, Rust fully wired + 32 passing tests)
 
 ## Implementation plan (summary)

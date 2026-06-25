@@ -1,43 +1,43 @@
 import type { RepositoryAnalysis } from "../../../types/library";
+import { useT } from "../../../i18n/I18nContext";
 
 interface RepositoryOverviewPanelProps {
   repository: RepositoryAnalysis;
 }
 
-export function RepositoryOverviewPanel({
-  repository,
-}: RepositoryOverviewPanelProps) {
+export function RepositoryOverviewPanel({ repository }: RepositoryOverviewPanelProps) {
+  const t = useT();
   const intakeCopy =
     repository.sourceKind === "directory"
-      ? "Local filesystem repository snapshotted into Maia storage for deterministic heuristics."
+      ? t.inspect.repoIntakeDirectory
       : repository.sourceKind === "file"
-        ? "Local log file snapshotted into Maia storage for baseline analysis, while live tail monitoring keeps listening to the original growing file."
-        : "Remote GitHub reference stored for metadata-only intake until clone support lands.";
+        ? t.inspect.repoIntakeFile
+        : t.inspect.repoIntakeRemote;
 
   return (
     <section className="panel waveform-panel">
       <div className="panel-header">
         <div>
-          <h2>Code/log intake</h2>
+          <h2>{t.inspect.codeLogIntake}</h2>
           <p className="support-copy">{intakeCopy}</p>
         </div>
       </div>
 
       <div className="repo-hero">
         <div className="repo-hero-card">
-          <span>Summary</span>
+          <span>{t.inspect.summary}</span>
           <strong>{repository.summary}</strong>
         </div>
         <div className="repo-hero-card">
-          <span>Source</span>
+          <span>{t.inspect.source}</span>
           <strong>{repository.sourcePath}</strong>
         </div>
         <div className="repo-hero-card">
-          <span>Storage</span>
-          <strong>{repository.storagePath ?? "No managed snapshot"}</strong>
+          <span>{t.inspect.storage}</span>
+          <strong>{repository.storagePath ?? t.inspect.noManagedSnapshot}</strong>
         </div>
         <div className="repo-hero-card">
-          <span>Tags</span>
+          <span>{t.inspect.tags}</span>
           <div className="pill-strip">
             {repository.tags.map((tag) => (
               <span key={tag}>{tag}</span>

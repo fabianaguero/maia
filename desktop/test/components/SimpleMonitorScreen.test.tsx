@@ -2,7 +2,10 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SimpleMonitorScreen } from "../../src/features/simple/SimpleMonitorScreen";
-import type { ActiveMonitorSession, MonitorMetrics } from "../../src/features/monitor/MonitorContext";
+import type {
+  ActiveMonitorSession,
+  MonitorMetrics,
+} from "../../src/features/monitor/MonitorContext";
 import type { PersistedSession } from "../../src/api/sessions";
 import type { LibraryTrack, RepositoryAnalysis } from "../../src/types/library";
 
@@ -158,14 +161,10 @@ describe("SimpleMonitorScreen", () => {
 
   it("renders idle state without crashing when track titles are empty", () => {
     render(
-      <SimpleMonitorScreen
-        {...commonProps}
-        session={null}
-        pastSessions={[persistedSession]}
-      />,
+      <SimpleMonitorScreen {...commonProps} session={null} pastSessions={[persistedSession]} />,
     );
 
-    expect(screen.getByText("INITIALIZE MONITORING")).toBeInTheDocument();
+    expect(screen.getByText(/Initialize monitoring/i)).toBeInTheDocument();
     expect(screen.getByText("Past sessions")).toBeInTheDocument();
   });
 
@@ -180,7 +179,7 @@ describe("SimpleMonitorScreen", () => {
       />,
     );
 
-    expect(screen.getByText("SYSTEM_ACTIVE")).toBeInTheDocument();
-    expect(screen.getByText("HD_WAVEFORM_ENGINE // SCAN_ACTIVE")).toBeInTheDocument();
+    expect(screen.getByText(/System active/i)).toBeInTheDocument();
+    expect(screen.getByText(/HD waveform engine \/\/ scan active/i)).toBeInTheDocument();
   });
 });

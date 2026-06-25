@@ -1,23 +1,26 @@
 from __future__ import annotations
 
-import hashlib
 import re
 from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 from uuid import uuid4
 
-from .stream import ingest_lines
 from .presets import get_preset as get_style_preset
+from .stream import ingest_lines
+
+np: Any | None = None
+_IsolationForest: Any | None = None
 
 try:
-    import numpy as np
-    from sklearn.ensemble import IsolationForest
+    import numpy as _np
+    from sklearn import ensemble
 except ImportError:
-    np = None
-    IsolationForest = None
+    pass
+else:
+    np = _np
+    _IsolationForest = ensemble.IsolationForest
 
 MAX_LOG_LINES = 4000
 LOG_BUCKET_COUNT = 24
@@ -128,11 +131,12 @@ def _analyze_log_chunk(
     live_mode: bool = False,
 ) -> tuple[dict[str, Any], list[str]]:
     log_path = Path(source_path).expanduser().resolve()
+    if not log_path.is_file() and not live_mode:
+        raise FileNotFoundError(f"Log path does not exist or is not a file: {log_path}")
     if not log_path.is_file():
-        if not live_mode:
-            raise FileNotFoundError(f"Log path does not exist or is not a file: {log_path}")
         # Virtual / URL / directory sources are valid in live mode —
         # log_path is used only for cosmetic title derivation below.
+        pass
 
     raw_lines = chunk.splitlines()
     return _summarize_log_signal(
@@ -142,9 +146,6 @@ def _analyze_log_chunk(
         from_offset=_coerce_non_negative_int(from_offset),
         to_offset=_coerce_non_negative_int(to_offset),
     )
-
-
-
 
 
 def _detect_log_level(lowered_line: str) -> str:
@@ -183,10 +184,7 @@ def _is_anomaly_line(
 
     # Keep statistical anomaly detection as a fallback only for unknown log shapes.
     # Live windows with INFO/NOTICE timestamps were generating false positives.
-    if allow_ai and level == "unknown" and ai_score < -0.24:
-        return True
-
-    return False
+    return allow_ai and level == "unknown" and ai_score < -0.24
 
 
 class LogAnomalyDetector:
@@ -197,12 +195,17 @@ class LogAnomalyDetector:
     - Pattern-based: anomaly keywords, stack traces
     - Contextual: similarity to previous line
     """
+
     def __init__(self, conservative: bool = True):
-        self.model = IsolationForest(
-            contamination=0.04 if conservative else 0.08,
-            random_state=42,
-            n_estimators=50  # Lightweight for latency
-        ) if IsolationForest else None
+        self.model = (
+            _IsolationForest(
+                contamination=0.04 if conservative else 0.08,
+                random_state=42,
+                n_estimators=50,  # Lightweight for latency
+            )
+            if _IsolationForest is not None
+            else None
+        )
         self.is_fitted = False
         self.prev_line = ""
 
@@ -212,6 +215,7 @@ class LogAnomalyDetector:
             return 0.0
         from collections import Counter
         from math import log2
+
         counts = Counter(text)
         length = len(text)
         entropy = 0.0
@@ -234,12 +238,12 @@ class LogAnomalyDetector:
 
         # Pattern features: anomaly indicators
         has_error_keywords = 1.0 if any(kw in line.lower() for kw in ANOMALY_KEYWORDS) else 0.0
-        has_stack_trace = 1.0 if re.search(r'\s+at\s+|File.*line\s+\d+|\.rs:\d+', line) else 0.0
+        has_stack_trace = 1.0 if re.search(r"\s+at\s+|File.*line\s+\d+|\.rs:\d+", line) else 0.0
 
         # Contextual: comparison with previous line
         if self.prev_line and self.prev_line != line:
             # Simple diff ratio: how different from last line
-            diff_chars = sum(1 for a, b in zip(self.prev_line, line) if a != b)
+            diff_chars = sum(1 for a, b in zip(self.prev_line, line, strict=False) if a != b)
             max_len = max(len(self.prev_line), len(line))
             dissimilarity = (diff_chars / max_len) if max_len > 0 else 0.0
         else:
@@ -256,7 +260,7 @@ class LogAnomalyDetector:
             has_error_keywords,
             has_stack_trace,
             dissimilarity,
-            0.0  # Reserved for future features
+            0.0,  # Reserved for future features
         ]
 
     def fit(self, lines: list[str]):
@@ -335,7 +339,7 @@ def _log_bpm(
         1,
         non_empty_line_count,
     )
-    severity_pressure = min(26, int(round(severity_ratio * 140)))
+    severity_pressure = min(26, round(severity_ratio * 140))
     burst_bonus = 7 if cadence_bins and max(cadence_bins) >= 0.88 else 0
     return max(82, min(160, 92 + activity_pressure + severity_pressure + burst_bonus))
 
@@ -379,7 +383,7 @@ def _summarize_log_signal(
     non_empty_line_count = 0
     timestamped_line_count = 0
     anomaly_count = 0
-    
+
     # Initialize AI Detector
     detector = LogAnomalyDetector(conservative=True)
     detector_training_lines = [line.strip() for line in raw_lines if line.strip()]
@@ -396,7 +400,7 @@ def _summarize_log_signal(
         lowered = stripped.lower()
         level = _detect_log_level(lowered)
         component = _extract_log_component(stripped) or "unknown"
-        
+
         # AI Scoring
         ai_score = detector.score(stripped)
         anomaly = _is_anomaly_line(
@@ -405,7 +409,7 @@ def _summarize_log_signal(
             ai_score,
             allow_ai=len(detector_training_lines) >= MIN_AI_ANOMALY_SAMPLE_LINES,
         )
-        
+
         # Level elevation if AI detects strong anomaly in unknown logs
         if level == "unknown" and ai_score < -0.15:
             level = "error" if ai_score < -0.22 else "warn"
@@ -441,8 +445,7 @@ def _summarize_log_signal(
     cadence_bins = _build_log_cadence_bins(cadence_samples)
     dominant_level = _dominant_level(level_counts)
     top_components = [
-        {"component": name, "count": count}
-        for name, count in component_counts.most_common(5)
+        {"component": name, "count": count} for name, count in component_counts.most_common(5)
     ]
     suggested_bpm = _log_bpm(non_empty_line_count, level_counts, anomaly_count, cadence_bins)
     confidence = _log_confidence(
@@ -472,7 +475,7 @@ def _summarize_log_signal(
             "No anomaly keywords were detected. This log source currently looks steady rather than spiky."
         )
 
-    metrics = {
+    metrics: dict[str, Any] = {
         "buildSystem": "log-stream",
         "primaryLanguage": "logs",
         "javaFileCount": 0,
@@ -513,7 +516,7 @@ def _summarize_log_signal(
     if live_mode:
         tags.append("live-window")
 
-    asset = {
+    asset: dict[str, Any] = {
         "id": str(uuid4()),
         "assetType": "repo_analysis",
         "title": log_path.stem or log_path.name,
@@ -547,7 +550,7 @@ def _summarize_log_signal(
 
 
 def _build_sonification_cues(
-    event_records: list[dict[str, Any]], 
+    event_records: list[dict[str, Any]],
     preset: Any,
 ) -> list[dict[str, Any]]:
     cues: list[dict[str, Any]] = []
@@ -555,7 +558,7 @@ def _build_sonification_cues(
     # Prioritize anomalies so they are always heard even in dense log streams
     anomalies = [r for r in event_records if r["anomaly"]]
     normals = [r for r in event_records if not r["anomaly"]]
-    
+
     # Take up to 64 cues, prioritizing anomalies
     limited_records = (anomalies + normals)[:64]
 
@@ -568,8 +571,8 @@ def _build_sonification_cues(
 
         # Mapping governed by Style Preset
         profile = preset.mappings.get(level, preset.mappings.get("unknown"))
-        
-        note_hz = profile.freq_multiplier * 261.63 # Base on C4
+
+        note_hz = profile.freq_multiplier * 261.63  # Base on C4
         waveform = profile.waveform
         gain = profile.base_gain
         duration_ms = profile.base_duration_ms

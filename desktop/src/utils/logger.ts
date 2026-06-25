@@ -59,9 +59,7 @@ function ts(): string {
 function emit(level: LogLevel, tag: string, msg: string, ...args: unknown[]): void {
   if (!shouldLog(level)) return;
   const prefix = `${ts()} ${level.padEnd(5)} ${formatTag(tag)}`;
-  const parts = args.map((a) =>
-    typeof a === "string" ? a : JSON.stringify(a) ?? String(a),
-  );
+  const parts = args.map((a) => (typeof a === "string" ? a : (JSON.stringify(a) ?? String(a))));
   const full = [prefix, msg, ...parts].join(" ");
 
   // Send to Rust terminal

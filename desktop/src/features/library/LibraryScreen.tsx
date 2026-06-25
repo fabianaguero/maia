@@ -1,4 +1,14 @@
-import { AudioWaveform, Cable, FolderOpen, ListMusic, Music, PackagePlus, Plus, Trash2, X } from "lucide-react";
+import {
+  AudioWaveform,
+  Cable,
+  FolderOpen,
+  ListMusic,
+  Music,
+  PackagePlus,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useT } from "../../i18n/I18nContext";
 import type { BootstrapManifest } from "../../contracts";
@@ -24,7 +34,7 @@ import { ImportBaseAssetForm } from "./components/ImportBaseAssetForm";
 import { ImportRepositoryForm } from "./components/ImportRepositoryForm";
 import { ImportTrackForm } from "./components/ImportTrackForm";
 
-type LibraryTab = "tracks" | "sources" | "connections" | "bases";
+export type LibraryTab = "tracks" | "sources" | "connections" | "bases";
 
 interface LibraryScreenProps {
   tracks: LibraryTrack[];
@@ -81,17 +91,6 @@ interface LibraryScreenProps {
   onInspectComposition: (compositionId: string) => void;
 }
 
-const SOURCE_KIND_LABEL: Record<string, string> = {
-  directory: "Directory",
-  file: "Log file",
-  url: "GitHub URL",
-};
-
-const CONNECTION_KIND_LABEL: Record<string, string> = {
-  file_log: "File tail",
-  gcp_cloud_run: "GCP Cloud Run",
-};
-
 export function LibraryScreen({
   tracks,
   playlists,
@@ -139,7 +138,7 @@ export function LibraryScreen({
   onInspectBaseAsset,
 }: LibraryScreenProps) {
   const t = useT();
-  const [tab, setTab] = useState<LibraryTab>("tracks");
+  const [tab, setTab] = useState<LibraryTab>(activeTab ?? "tracks");
   const [logConnections, setLogConnections] = useState<LogSourceConnection[]>([]);
   const [logConnectionError, setLogConnectionError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -148,11 +147,37 @@ export function LibraryScreen({
   const [playlistName, setPlaylistName] = useState("");
   const [playlistTrackIds, setPlaylistTrackIds] = useState<string[]>([]);
 
+  const sourceKindLabel: Record<string, string> = {
+    directory: t.library.directory,
+    file: t.library.logFile,
+    url: t.library.githubUrl,
+  };
+
+  const connectionKindLabel: Record<string, string> = {
+    file_log: t.library.fileTail,
+    gcp_cloud_run: t.simpleMode.connections.gcpCloudRun,
+  };
+
   const tabs: Array<{ id: LibraryTab; label: string; count: number; icon: React.ReactNode }> = [
-    { id: "tracks", label: "Sounds", count: tracks.length, icon: <Music size={14} /> },
-    { id: "sources", label: "Log sources", count: repositories.length, icon: <FolderOpen size={14} /> },
-    { id: "connections", label: "Connections", count: logConnections.length, icon: <Cable size={14} /> },
-    { id: "bases", label: "Profiles", count: baseAssets.length, icon: <PackagePlus size={14} /> },
+    { id: "tracks", label: t.library.sounds, count: tracks.length, icon: <Music size={14} /> },
+    {
+      id: "sources",
+      label: t.library.logSources,
+      count: repositories.length,
+      icon: <FolderOpen size={14} />,
+    },
+    {
+      id: "connections",
+      label: t.library.connections,
+      count: logConnections.length,
+      icon: <Cable size={14} />,
+    },
+    {
+      id: "bases",
+      label: t.library.profiles,
+      count: baseAssets.length,
+      icon: <PackagePlus size={14} />,
+    },
   ];
 
   function handleTabChange(next: LibraryTab) {
@@ -173,6 +198,12 @@ export function LibraryScreen({
   useEffect(() => {
     void refreshLogConnections();
   }, []);
+
+  useEffect(() => {
+    if (activeTab) {
+      setTab(activeTab);
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     const selectedPlaylist =
@@ -212,9 +243,7 @@ export function LibraryScreen({
 
   function togglePlaylistTrack(trackId: string) {
     setPlaylistTrackIds((current) =>
-      current.includes(trackId)
-        ? current.filter((id) => id !== trackId)
-        : [...current, trackId],
+      current.includes(trackId) ? current.filter((id) => id !== trackId) : [...current, trackId],
     );
   }
 
@@ -285,18 +314,21 @@ export function LibraryScreen({
   ).length;
 
   const error =
-    tab === "tracks" ? trackError :
-    tab === "sources" ? repositoryError :
-    tab === "connections" ? logConnectionError :
-    baseAssetError;
+    tab === "tracks"
+      ? trackError
+      : tab === "sources"
+        ? repositoryError
+        : tab === "connections"
+          ? logConnectionError
+          : baseAssetError;
 
   return (
     <section className="screen">
       {/* Header */}
       <header className="library-header">
         <div>
-          <h2>Library</h2>
-          <p className="support-copy">Everything you've added lives here. Pick an item to work with it.</p>
+          <h2>{t.library.title}</h2>
+          <p className="support-copy">{t.library.copy}</p>
         </div>
       </header>
 
@@ -322,7 +354,13 @@ export function LibraryScreen({
         <div className="library-tab-toolbar-copy">
           <div className="library-tab-toolbar-meta">
             <span className="eyebrow">
-              {tab === "tracks" ? "Sounds" : tab === "sources" ? "Log sources" : tab === "connections" ? "Connections" : "Profiles"}
+              {tab === "tracks"
+                ? t.library.sounds
+                : tab === "sources"
+                  ? t.library.logSources
+                  : tab === "connections"
+                    ? t.library.connections
+                    : t.library.profiles}
             </span>
             <span className="library-toolbar-count">
               {tab === "tracks"
@@ -336,21 +374,21 @@ export function LibraryScreen({
           </div>
           <strong>
             {tab === "tracks"
-              ? "DJ-ready track crate"
+              ? t.library.toolbarSoundsTitle
               : tab === "sources"
-                ? "Code, logs, and live signal browser"
+                ? t.library.toolbarSourcesTitle
                 : tab === "connections"
-                  ? "Persistent log connector rack"
-                  : "Reusable musical base pool"}
+                  ? t.library.toolbarConnectionsTitle
+                  : t.library.toolbarProfilesTitle}
           </strong>
           <p className="library-tab-toolbar-note">
             {tab === "tracks"
-              ? "Import, seed, and clean the music library."
+              ? t.library.toolbarSoundsNote
               : tab === "sources"
-                ? "Bring in repositories and operational signals."
+                ? t.library.toolbarSourcesNote
                 : tab === "connections"
-                  ? "Keep filesystem tails and Cloud Run streams saved between app launches."
-                  : "Stage assets for composition and live scenes."}
+                  ? t.library.toolbarConnectionsNote
+                  : t.library.toolbarProfilesNote}
           </p>
         </div>
 
@@ -361,13 +399,22 @@ export function LibraryScreen({
             onClick={() => setShowForm((v) => !v)}
           >
             {showForm ? (
-              <><X size={14} /> Cancel</>
+              <>
+                <X size={14} /> {t.library.cancel}
+              </>
             ) : tab === "tracks" ? (
-              <><Music size={14} /> {t.library.importTrack}</>
+              <>
+                <Music size={14} /> {t.library.importTrack}
+              </>
             ) : tab === "sources" || tab === "connections" ? (
-              <><FolderOpen size={14} /> {tab === "connections" ? "Add connection" : t.library.importRepository}</>
+              <>
+                <FolderOpen size={14} />{" "}
+                {tab === "connections" ? t.library.addConnection : t.library.importRepository}
+              </>
             ) : (
-              <><PackagePlus size={14} /> {t.library.importBaseAsset}</>
+              <>
+                <PackagePlus size={14} /> {t.library.importBaseAsset}
+              </>
             )}
           </button>
 
@@ -380,7 +427,7 @@ export function LibraryScreen({
                 setShowForm(false);
               }}
             >
-              <Plus size={14} /> Seed Demo
+              <Plus size={14} /> {t.library.seedDemo}
             </button>
           )}
 
@@ -390,7 +437,7 @@ export function LibraryScreen({
               className="secondary-action toolbar-action"
               onClick={() => openPlaylistEditor()}
             >
-              <ListMusic size={14} /> New Playlist
+              <ListMusic size={14} /> {t.library.newPlaylist}
             </button>
           )}
 
@@ -400,7 +447,7 @@ export function LibraryScreen({
               className="secondary-action toolbar-action"
               onClick={() => void onRelinkMissingTracks()}
             >
-              <FolderOpen size={14} /> Relink Missing ({missingTrackCount})
+              <FolderOpen size={14} /> {t.library.relinkMissing} ({missingTrackCount})
             </button>
           )}
 
@@ -411,17 +458,22 @@ export function LibraryScreen({
               onClick={async () => {
                 const orphanTracks = tracks.filter((t) => !t.analysis.bpm);
                 if (orphanTracks.length === 0) {
-                  alert("No unanalyzed tracks to delete");
+                  alert(t.library.noUnanalyzedTracks);
                   return;
                 }
-                if (!confirm(`Delete ${orphanTracks.length} unanalyzed track(s)?`)) return;
+                if (
+                  !confirm(
+                    t.library.confirmDeleteTracks.replace("{count}", String(orphanTracks.length)),
+                  )
+                )
+                  return;
                 for (const orphan of orphanTracks) {
                   await onDeleteTrack(orphan.id);
                 }
               }}
-              title="Delete all unanalyzed or missing tracks"
+              title={t.library.deleteUnanalyzedTracks}
             >
-              <Trash2 size={14} /> Clean Orphans
+              <Trash2 size={14} /> {t.library.cleanOrphans}
             </button>
           )}
 
@@ -432,17 +484,22 @@ export function LibraryScreen({
               onClick={async () => {
                 const orphanRepos = repositories.filter((r) => !r.suggestedBpm);
                 if (orphanRepos.length === 0) {
-                  alert("No unanalyzed repositories to delete");
+                  alert(t.library.noUnanalyzedSources);
                   return;
                 }
-                if (!confirm(`Delete ${orphanRepos.length} unanalyzed repositor(y|ies)?`)) return;
+                if (
+                  !confirm(
+                    t.library.confirmDeleteSources.replace("{count}", String(orphanRepos.length)),
+                  )
+                )
+                  return;
                 for (const orphan of orphanRepos) {
                   await onDeleteRepository(orphan.id);
                 }
               }}
-              title="Delete all unanalyzed or missing repositories"
+              title={t.library.deleteUnanalyzedSources}
             >
-              <Trash2 size={14} /> Clean Orphans
+              <Trash2 size={14} /> {t.library.cleanOrphans}
             </button>
           )}
         </div>
@@ -457,7 +514,10 @@ export function LibraryScreen({
               musicStyles={musicStyles}
               defaultMusicStyleId={defaultTrackMusicStyleId}
               onImportTrack={handleImportTrack}
-              onSeedDemo={async () => { await onSeedDemo(); setShowForm(false); }}
+              onSeedDemo={async () => {
+                await onSeedDemo();
+                setShowForm(false);
+              }}
             />
           )}
           {(tab === "sources" || tab === "connections") && (
@@ -488,39 +548,41 @@ export function LibraryScreen({
       {loading ? (
         <div className="placeholder-loading">
           <span className="spin-ring" aria-hidden="true" />
-          Loading…
+          {t.library.loading}
         </div>
       ) : (
         <>
           {/* TRACKS */}
-          {tab === "tracks" && (
-            tracks.length === 0 ? (
+          {tab === "tracks" &&
+            (tracks.length === 0 ? (
               <EmptyState
                 icon={<Music size={32} />}
-                title="No tracks yet"
-                body="Add an audio file (WAV, MP3, FLAC…) to get started."
-                action={<button type="button" className="action" onClick={() => setShowForm(true)}><Plus size={14} /> Add track</button>}
+                title={t.library.noTracksYet}
+                body={t.library.noTracksBody}
+                action={
+                  <button type="button" className="action" onClick={() => setShowForm(true)}>
+                    <Plus size={14} /> {t.library.addTrack}
+                  </button>
+                }
               />
             ) : (
               <div className="library-track-stack">
                 <section className="playlist-panel">
                   <div className="panel-header compact">
                     <div>
-                      <h2>Base playlists</h2>
-                      <p className="support-copy">
-                        Reusable blended track groups for monitor sessions and background listening.
-                      </p>
+                      <h2>{t.library.basePlaylists}</h2>
+                      <p className="support-copy">{t.library.basePlaylistsHelp}</p>
                     </div>
                   </div>
 
                   {playlistEditorOpen ? (
                     <div className="playlist-editor">
                       <label className="field">
-                        <span>Playlist name</span>
+                        <span>{t.library.playlistName}</span>
                         <input
                           value={playlistName}
                           onChange={(event) => setPlaylistName(event.target.value)}
-                          placeholder="Team base playlist"
+                          placeholder={t.library.playlistPlaceholder}
                         />
                       </label>
                       <div className="playlist-track-picker">
@@ -533,18 +595,30 @@ export function LibraryScreen({
                             />
                             <span>{getTrackTitle(track)}</span>
                             <small>
-                              {track.analysis.bpm ? `${Math.round(track.analysis.bpm)} BPM` : "No BPM"}
-                              {track.file.availabilityState === "missing" ? " · LOST" : ""}
+                              {track.analysis.bpm
+                                ? `${Math.round(track.analysis.bpm)} BPM`
+                                : t.library.noBpm}
+                              {track.file.availabilityState === "missing"
+                                ? ` · ${t.library.lost.toUpperCase()}`
+                                : ""}
                             </small>
                           </label>
                         ))}
                       </div>
                       <div className="form-actions">
-                        <button type="button" className="action" onClick={() => void handleSavePlaylist()}>
-                          {playlistEditorId ? "Update playlist" : "Save playlist"}
+                        <button
+                          type="button"
+                          className="action"
+                          onClick={() => void handleSavePlaylist()}
+                        >
+                          {playlistEditorId ? t.library.updatePlaylist : t.library.savePlaylist}
                         </button>
-                        <button type="button" className="secondary-action" onClick={resetPlaylistEditor}>
-                          Cancel
+                        <button
+                          type="button"
+                          className="secondary-action"
+                          onClick={resetPlaylistEditor}
+                        >
+                          {t.library.cancel}
                         </button>
                       </div>
                     </div>
@@ -561,7 +635,8 @@ export function LibraryScreen({
                           <div className="playlist-card-copy">
                             <strong>{playlist.name}</strong>
                             <span>
-                              {playlist.trackIds.length} tracks · {formatShortDate(playlist.updatedAt)}
+                              {playlist.trackIds.length} {t.library.sounds.toLowerCase()} ·{" "}
+                              {formatShortDate(playlist.updatedAt)}
                             </span>
                             <small>
                               {playlist.trackIds
@@ -569,7 +644,7 @@ export function LibraryScreen({
                                 .filter((track): track is LibraryTrack => track !== undefined)
                                 .slice(0, 3)
                                 .map((track) => getTrackTitle(track))
-                                .join(" · ") || "No tracks assigned"}
+                                .join(" · ") || t.library.noTracksAssigned}
                             </small>
                           </div>
                           <div className="playlist-card-actions">
@@ -581,12 +656,12 @@ export function LibraryScreen({
                                 openPlaylistEditor(playlist);
                               }}
                             >
-                              Edit
+                              {t.library.edit}
                             </button>
                             <button
                               type="button"
                               className="card-action-delete"
-                              title="Delete playlist"
+                              title={t.library.deletePlaylist}
                               onClick={(event) => {
                                 event.stopPropagation();
                                 void onDeletePlaylist(playlist.id);
@@ -599,7 +674,7 @@ export function LibraryScreen({
                       ))}
                     </div>
                   ) : (
-                    <p className="support-copy">No base playlists saved yet.</p>
+                    <p className="support-copy">{t.library.noBasePlaylists}</p>
                   )}
                 </section>
 
@@ -622,36 +697,53 @@ export function LibraryScreen({
                             <span className="bpm-badge pending">-</span>
                           )}
                           {track.file.availabilityState === "missing" ? (
-                            <span className="track-lost-badge">LOST</span>
+                            <span className="track-lost-badge">{t.library.lost.toUpperCase()}</span>
                           ) : null}
-                          {track.analysis.durationSeconds ? ` · ${Math.round(track.analysis.durationSeconds / 60)}m${Math.round(track.analysis.durationSeconds % 60)}s` : ""}
-                          {" · "}{track.tags.musicStyleLabel}
-                          {" · "}{track.file.fileExtension}
+                          {track.analysis.durationSeconds
+                            ? ` · ${Math.round(track.analysis.durationSeconds / 60)}m${Math.round(track.analysis.durationSeconds % 60)}s`
+                            : ""}
+                          {" · "}
+                          {track.tags.musicStyleLabel}
+                          {" · "}
+                          {track.file.fileExtension}
                         </div>
-                        <span className="asset-card-date">{formatShortDate(track.analysis.importedAt)}</span>
+                        <span className="asset-card-date">
+                          {formatShortDate(track.analysis.importedAt)}
+                        </span>
                       </div>
                       <div className="asset-card-actions">
                         {track.file.availabilityState === "missing" ? (
                           <button
                             type="button"
                             className="card-action-btn"
-                            onClick={(e) => { e.stopPropagation(); void onRelinkTrack(track.id); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void onRelinkTrack(track.id);
+                            }}
                           >
-                            Relink
+                            {t.library.relink}
                           </button>
                         ) : null}
                         <button
                           type="button"
                           className="card-action-btn"
-                          onClick={(e) => { e.stopPropagation(); !track.analysis.bpm ? void onReanalyzeTrack(track.id) : onInspectTrack(track.id); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            !track.analysis.bpm
+                              ? void onReanalyzeTrack(track.id)
+                              : onInspectTrack(track.id);
+                          }}
                         >
-                          {!track.analysis.bpm ? "Analyze" : "View"}
+                          {!track.analysis.bpm ? t.library.analyze : t.library.view}
                         </button>
                         <button
                           type="button"
                           className="card-action-delete"
-                          title="Delete track"
-                          onClick={(e) => { e.stopPropagation(); onDeleteTrack(track.id); }}
+                          title={t.library.deleteTrack}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteTrack(track.id);
+                          }}
                         >
                           <Trash2 size={14} />
                         </button>
@@ -660,17 +752,20 @@ export function LibraryScreen({
                   ))}
                 </ul>
               </div>
-            )
-          )}
+            ))}
 
           {/* SOURCES */}
-          {tab === "sources" && (
-            repositories.length === 0 ? (
+          {tab === "sources" &&
+            (repositories.length === 0 ? (
               <EmptyState
                 icon={<FolderOpen size={32} />}
-                title="No sources yet"
-                body="Add a log file, code directory, or GitHub URL to use as a signal source."
-                action={<button type="button" className="action" onClick={() => setShowForm(true)}><Plus size={14} /> Add source</button>}
+                title={t.library.noSourcesYet}
+                body={t.library.noSourcesBody}
+                action={
+                  <button type="button" className="action" onClick={() => setShowForm(true)}>
+                    <Plus size={14} /> {t.library.addSource}
+                  </button>
+                }
               />
             ) : (
               <ul className="asset-card-list">
@@ -686,7 +781,9 @@ export function LibraryScreen({
                     <div className="asset-card-body">
                       <strong className="asset-card-title">{repo.title}</strong>
                       <div className="asset-card-meta">
-                        <span className="type-badge">{SOURCE_KIND_LABEL[repo.sourceKind] ?? repo.sourceKind}</span>
+                        <span className="type-badge">
+                          {sourceKindLabel[repo.sourceKind] ?? repo.sourceKind}
+                        </span>
                         {repo.suggestedBpm ? (
                           <span className="bpm-badge">{Math.round(repo.suggestedBpm)} BPM</span>
                         ) : (
@@ -700,15 +797,23 @@ export function LibraryScreen({
                       <button
                         type="button"
                         className="card-action-btn"
-                        onClick={(e) => { e.stopPropagation(); !repo.suggestedBpm ? void onReanalyzeRepository(repo.id) : onInspectRepository(repo.id); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          !repo.suggestedBpm
+                            ? void onReanalyzeRepository(repo.id)
+                            : onInspectRepository(repo.id);
+                        }}
                       >
-                        {!repo.suggestedBpm ? "Analyze" : "View"}
+                        {!repo.suggestedBpm ? t.library.analyze : t.library.view}
                       </button>
                       <button
                         type="button"
                         className="card-action-delete"
-                        title="Delete repository"
-                        onClick={(e) => { e.stopPropagation(); onDeleteRepository(repo.id); }}
+                        title={t.library.deleteRepository}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteRepository(repo.id);
+                        }}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -716,17 +821,20 @@ export function LibraryScreen({
                   </li>
                 ))}
               </ul>
-            )
-          )}
+            ))}
 
           {/* CONNECTIONS */}
-          {tab === "connections" && (
-            logConnections.length === 0 ? (
+          {tab === "connections" &&
+            (logConnections.length === 0 ? (
               <EmptyState
                 icon={<Cable size={32} />}
-                title="No persistent connections yet"
-                body="Add a filesystem log tail or GCP Cloud Run connector so Maia can reopen it across desktop launches."
-                action={<button type="button" className="action" onClick={() => setShowForm(true)}><Plus size={14} /> Add connection</button>}
+                title={t.library.noConnectionsYet}
+                body={t.library.noConnectionsBody}
+                action={
+                  <button type="button" className="action" onClick={() => setShowForm(true)}>
+                    <Plus size={14} /> {t.library.addConnection}
+                  </button>
+                }
               />
             ) : (
               <ul className="asset-card-list">
@@ -738,11 +846,14 @@ export function LibraryScreen({
                     <div className="asset-card-body">
                       <strong className="asset-card-title">{connection.label}</strong>
                       <div className="asset-card-meta">
-                        <span className="type-badge">{CONNECTION_KIND_LABEL[connection.kind] ?? connection.kind}</span>
-                        <span className={connection.enabled ? "bpm-badge" : "bpm-badge pending"}>
-                          {connection.enabled ? "Enabled" : "Disabled"}
+                        <span className="type-badge">
+                          {connectionKindLabel[connection.kind] ?? connection.kind}
                         </span>
-                        {" · "}{connection.adapterKind}
+                        <span className={connection.enabled ? "bpm-badge" : "bpm-badge pending"}>
+                          {connection.enabled ? t.library.enabled : t.library.disabled}
+                        </span>
+                        {" · "}
+                        {connection.adapterKind}
                       </div>
                       <span className="asset-card-date" title={connection.sourceUri}>
                         {connection.sourceUri}
@@ -752,7 +863,7 @@ export function LibraryScreen({
                       <button
                         type="button"
                         className="card-action-delete"
-                        title="Delete connection"
+                        title={t.library.deleteConnection}
                         onClick={() => void handleDeleteLogConnection(connection.id)}
                       >
                         <Trash2 size={14} />
@@ -761,17 +872,20 @@ export function LibraryScreen({
                   </li>
                 ))}
               </ul>
-            )
-          )}
+            ))}
 
           {/* BASES */}
-          {tab === "bases" && (
-            baseAssets.length === 0 ? (
+          {tab === "bases" &&
+            (baseAssets.length === 0 ? (
               <EmptyState
                 icon={<PackagePlus size={32} />}
-                title="No base packs yet"
-                body="Add a sample pack or folder to use as raw material in compositions."
-                action={<button type="button" className="action" onClick={() => setShowForm(true)}><Plus size={14} /> Add base</button>}
+                title={t.library.noBasePacksYet}
+                body={t.library.noBasePacksBody}
+                action={
+                  <button type="button" className="action" onClick={() => setShowForm(true)}>
+                    <Plus size={14} /> {t.library.addBase}
+                  </button>
+                }
               />
             ) : (
               <ul className="asset-card-list">
@@ -788,11 +902,13 @@ export function LibraryScreen({
                       <strong className="asset-card-title">{asset.title}</strong>
                       <div className="asset-card-meta">
                         <span className="type-badge">{asset.categoryLabel}</span>
-                        <span className={`status-badge ${getStatusBadgeClass(asset.analyzerStatus)}`}>
+                        <span
+                          className={`status-badge ${getStatusBadgeClass(asset.analyzerStatus)}`}
+                        >
                           {getStatusLabel(asset.analyzerStatus)}
                         </span>
-                        {` · ${asset.entryCount} entries`}
-                        {asset.reusable ? " · Reusable" : ""}
+                        {` · ${asset.entryCount} ${t.library.entries}`}
+                        {asset.reusable ? ` · ${t.library.reusable}` : ""}
                       </div>
                       <span className="asset-card-date">{formatShortDate(asset.importedAt)}</span>
                     </div>
@@ -800,7 +916,10 @@ export function LibraryScreen({
                       <button
                         type="button"
                         className="card-action-btn"
-                        onClick={(e) => { e.stopPropagation(); onInspectBaseAsset(asset.id); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onInspectBaseAsset(asset.id);
+                        }}
                       >
                         {t.library.analyze}
                       </button>
@@ -808,7 +927,10 @@ export function LibraryScreen({
                         <button
                           type="button"
                           className="card-action-compose"
-                          onClick={(e) => { e.stopPropagation(); onInspectBaseAsset(asset.id); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onInspectBaseAsset(asset.id);
+                          }}
                         >
                           {t.library.compose} →
                         </button>
@@ -817,8 +939,7 @@ export function LibraryScreen({
                   </li>
                 ))}
               </ul>
-            )
-          )}
+            ))}
         </>
       )}
     </section>

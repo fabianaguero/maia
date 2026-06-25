@@ -4,7 +4,10 @@ import { brandAssets } from "../../data/brandAssets";
 export default function Header({ t, theme, lang, setLang, isDark, setIsDark }) {
   return (
     <header className="relative z-10 mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-6 lg:px-10">
-      <a href="#top" className={`group flex items-center gap-3 rounded-2xl border px-3 py-2 ${theme.soft}`}>
+      <a
+        href="#top"
+        className={`group flex items-center gap-3 rounded-2xl border px-3 py-2 ${theme.soft}`}
+      >
         <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-slate-950/60 ring-1 ring-cyan-400/20">
           <img src={brandAssets.icon} alt="MAIA icon" className="h-10 w-10 object-contain" />
         </div>
@@ -15,10 +18,18 @@ export default function Header({ t, theme, lang, setLang, isDark, setIsDark }) {
 
       <div className="flex items-center gap-3">
         <nav className={`hidden items-center gap-8 text-sm md:flex ${theme.body}`}>
-          <a href="#product" className="transition hover:text-cyan-300">{t.nav.product}</a>
-          <a href="#how-it-works" className="transition hover:text-cyan-300">{t.nav.how}</a>
-          <a href="#mvp" className="transition hover:text-cyan-300">{t.nav.mvp}</a>
-          <a href="#vision" className="transition hover:text-cyan-300">{t.nav.vision}</a>
+          <a href="#product" className="transition hover:text-cyan-300">
+            {t.nav.product}
+          </a>
+          <a href="#how-it-works" className="transition hover:text-cyan-300">
+            {t.nav.how}
+          </a>
+          <a href="#mvp" className="transition hover:text-cyan-300">
+            {t.nav.mvp}
+          </a>
+          <a href="#vision" className="transition hover:text-cyan-300">
+            {t.nav.vision}
+          </a>
         </nav>
 
         <button

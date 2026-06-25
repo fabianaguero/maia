@@ -11,9 +11,7 @@ import { listMockRepositories } from "./mockRepositories";
 const STORAGE_KEY = "maia.library.compositions.v1";
 let memoryStore: CompositionResultRecord[] = [];
 
-function normalizeComposition(
-  composition: CompositionResultRecord,
-): CompositionResultRecord {
+function normalizeComposition(composition: CompositionResultRecord): CompositionResultRecord {
   return {
     ...composition,
     basePlaylistId: composition.basePlaylistId ?? null,
@@ -46,10 +44,7 @@ function writeCompositions(compositions: CompositionResultRecord[]): void {
     return;
   }
 
-  window.localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(compositions.map(normalizeComposition)),
-  );
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(compositions.map(normalizeComposition)));
 }
 
 function stableHash(input: string): number {
@@ -69,8 +64,7 @@ function createWaveformBins(seed: number, length = 56): number[] {
   return Array.from({ length }, (_, index) => {
     state = Math.imul(state ^ (state >>> 13), 1274126177) >>> 0;
     const raw = ((state >>> 8) & 0xff) / 255;
-    const envelope =
-      0.42 + Math.sin((index / Math.max(1, length - 1)) * Math.PI) * 0.58;
+    const envelope = 0.42 + Math.sin((index / Math.max(1, length - 1)) * Math.PI) * 0.58;
 
     return Number(Math.min(1, raw * envelope).toFixed(3));
   });
@@ -133,7 +127,9 @@ function buildArrangementPlan(
   if (referenceType === "repo") {
     plan.push("Treat repository BPM as structural pacing instead of literal audio timing.");
   } else if (referenceType === "manual") {
-    plan.push("Replace the manual tempo with a real track or playlist reference when one is available.");
+    plan.push(
+      "Replace the manual tempo with a real track or playlist reference when one is available.",
+    );
   }
 
   if (!reusable) {
@@ -158,12 +154,7 @@ function arrangementSections(
   const definitions = [
     { id: "intro", label: "Intro lock", energy: "low" },
     {
-      id:
-        categoryId === "fx-palette"
-          ? "lift"
-          : referenceType === "repo"
-            ? "translation"
-            : "build",
+      id: categoryId === "fx-palette" ? "lift" : referenceType === "repo" ? "translation" : "build",
       label:
         categoryId === "pad-texture"
           ? "Texture rise"
@@ -376,9 +367,7 @@ function renderPreview(
   };
 }
 
-async function resolveReference(
-  input: ImportCompositionInput,
-): Promise<{
+async function resolveReference(input: ImportCompositionInput): Promise<{
   basePlaylistId: string | null;
   basePlaylistName: string | null;
   referenceAssetId: string | null;
@@ -386,10 +375,7 @@ async function resolveReference(
   referenceSourcePath: string | null;
   targetBpm: number;
 }> {
-  const [tracks, playlists] = await Promise.all([
-    listMockTracks(),
-    listMockPlaylists(),
-  ]);
+  const [tracks, playlists] = await Promise.all([listMockTracks(), listMockPlaylists()]);
 
   let basePlaylistId: string | null = null;
   let basePlaylistName: string | null = null;
@@ -406,9 +392,7 @@ async function resolveReference(
 
     const playlistBpm = getPlaylistMedianBpm(playlist, tracks);
     if (typeof playlistBpm !== "number") {
-      throw new Error(
-        "Select a playlist with at least one analyzed BPM before composing.",
-      );
+      throw new Error("Select a playlist with at least one analyzed BPM before composing.");
     }
 
     basePlaylistId = playlist.id;
@@ -475,9 +459,7 @@ async function resolveReference(
   };
 }
 
-async function createComposition(
-  input: ImportCompositionInput,
-): Promise<CompositionResultRecord> {
+async function createComposition(input: ImportCompositionInput): Promise<CompositionResultRecord> {
   const baseAssets = await listMockBaseAssets();
   const baseAsset = baseAssets.find((entry) => entry.id === input.baseAssetId);
   if (!baseAsset) {
@@ -510,8 +492,7 @@ async function createComposition(
     input.referenceType,
     strategy,
   );
-  const title =
-    input.label?.trim() || `${baseAsset.title} x ${reference.referenceTitle}`;
+  const title = input.label?.trim() || `${baseAsset.title} x ${reference.referenceTitle}`;
   const compositionId =
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
@@ -546,16 +527,14 @@ async function createComposition(
         ? "Track-referenced composition plan"
         : input.referenceType === "playlist"
           ? "Playlist-referenced composition plan"
-        : input.referenceType === "repo"
-          ? "Repository-referenced composition plan"
-          : "Manual-tempo composition plan",
+          : input.referenceType === "repo"
+            ? "Repository-referenced composition plan"
+            : "Manual-tempo composition plan",
     notes: [
       "Browser fallback is active because Tauri is unavailable.",
       `Built from base asset ${baseAsset.title} (${baseAsset.categoryLabel}) at ${targetBpm.toFixed(0)} BPM.`,
       `Reference type is ${input.referenceType} using ${reference.referenceTitle}.`,
-      ...(reference.basePlaylistName
-        ? [`Base playlist is ${reference.basePlaylistName}.`]
-        : []),
+      ...(reference.basePlaylistName ? [`Base playlist is ${reference.basePlaylistName}.`] : []),
       `Composition plan snapshot is simulated at ${exportPath}.`,
       `Preview audio path is simulated at ${previewAudioPath}.`,
       ...(!baseAsset.reusable
@@ -584,23 +563,14 @@ async function createComposition(
       strategy,
       managedPlanPath: exportPath,
       storageMode: "browser-fallback",
-      intensityBand:
-        targetBpm >= 132 ? "peak-time" : targetBpm <= 108 ? "warmup" : "steady",
+      intensityBand: targetBpm >= 132 ? "peak-time" : targetBpm <= 108 ? "warmup" : "steady",
       previewDurationSeconds: durationSeconds,
       recommendedBars: 16,
-      recommendedLayerCount: Math.min(
-        8,
-        Math.max(2, 1 + Math.floor(baseAsset.entryCount / 4)),
-      ),
+      recommendedLayerCount: Math.min(8, Math.max(2, 1 + Math.floor(baseAsset.entryCount / 4))),
       arrangementPlan,
       arrangementSections: sections,
       cuePoints: cuePoints(sections),
-      renderPreview: renderPreview(
-        sections,
-        baseAsset.categoryId,
-        input.referenceType,
-        strategy,
-      ),
+      renderPreview: renderPreview(sections, baseAsset.categoryId, input.referenceType, strategy),
       previewAudioPath,
       previewAudioFormat: "wav",
       previewAudioSampleRateHz: 22050,
@@ -613,9 +583,7 @@ async function createComposition(
 }
 
 export async function listMockCompositionResults(): Promise<CompositionResultRecord[]> {
-  return readCompositions().sort((left, right) =>
-    right.importedAt.localeCompare(left.importedAt),
-  );
+  return readCompositions().sort((left, right) => right.importedAt.localeCompare(left.importedAt));
 }
 
 export async function importMockCompositionResult(

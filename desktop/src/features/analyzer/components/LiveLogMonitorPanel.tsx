@@ -1,12 +1,14 @@
 import {
   startTransition,
+  useCallback,
   useEffect,
   useEffectEvent,
+  useMemo,
   useRef,
   useState,
-  useCallback,
 } from "react";
 import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
+import { useT } from "../../../i18n/I18nContext";
 import { getLogger } from "../../../utils/logger";
 
 const log = getLogger("LiveMonitor");
@@ -16,7 +18,6 @@ import type {
   BaseAssetRecord,
   CompositionResultRecord,
   LibraryTrack,
-  LiveLogCue,
   LiveLogMarker,
   LiveLogStreamUpdate,
   RepositoryAnalysis,
@@ -52,10 +53,7 @@ import {
   persistReplayFeedbackRecommendation,
   saveMonitorPrefs,
 } from "../../../utils/monitorPrefs";
-import {
-  getStreamAdapterDescription,
-  getStreamAdapterLabel,
-} from "../../../utils/streamAdapter";
+import { getStreamAdapterDescription, getStreamAdapterLabel } from "../../../utils/streamAdapter";
 import { useMonitor } from "../../monitor/MonitorContext";
 import {
   DEFAULT_MUTATION_PROFILE_ID,
@@ -103,9 +101,9 @@ const SEQ_TRACK_CONFIG: Record<
   ArrangementTrack,
   { noteHz: number; waveform: OscillatorType; gainFactor: number; durationMs: number }
 > = {
-  foundation: { noteHz: 80,   waveform: "square",   gainFactor: 0.22, durationMs: 115 },
-  motion:     { noteHz: 280,  waveform: "triangle",  gainFactor: 0.14, durationMs: 75  },
-  accent:     { noteHz: 1800, waveform: "sine",      gainFactor: 0.08, durationMs: 40  },
+  foundation: { noteHz: 80, waveform: "square", gainFactor: 0.22, durationMs: 115 },
+  motion: { noteHz: 280, waveform: "triangle", gainFactor: 0.14, durationMs: 75 },
+  accent: { noteHz: 1800, waveform: "sine", gainFactor: 0.08, durationMs: 40 },
 };
 const BACKGROUND_FADE_IN_SECONDS = 0.9;
 
@@ -173,7 +171,7 @@ function createAudioContext(): AudioContext | null {
 
 const activeBlobAudioElements = new Set<HTMLAudioElement>();
 
-function createDriveCurve(amount: number): Float32Array {
+function createDriveCurve(amount: number): Float32Array<ArrayBuffer> {
   const samples = 2048;
   const curve = new Float32Array(samples);
   const drive = Math.max(0.1, amount);
@@ -181,7 +179,7 @@ function createDriveCurve(amount: number): Float32Array {
     const x = (i * 2) / (samples - 1) - 1;
     curve[i] = Math.tanh(x * drive);
   }
-  return curve;
+  return curve as Float32Array<ArrayBuffer>;
 }
 
 function clamp01(value: number): number {
@@ -293,19 +291,6 @@ function forceBackgroundMutationProfile(
   };
 }
 
-function describeForcedState(state: ForcedLiveMutationState): string {
-  switch (state) {
-    case "normal":
-      return "Track mostly clean, with only a faint sense of drift.";
-    case "warning":
-      return "Noticeable pressure: darker tone, mild grit, and a restrained gate pulse.";
-    case "critical":
-      return "Heavy disruption: stronger filter clamp, distortion, slices, and rhythmic gating.";
-    default:
-      return "Live log driven.";
-  }
-}
-
 function setBlobAudioVolume(volume: number): void {
   const nextVolume = Math.max(0, Math.min(1, volume));
   activeBlobAudioElements.forEach((audio) => {
@@ -333,11 +318,10 @@ function playManagedWavBlob(blob: Blob, volume: number): void {
   };
 
   audio.addEventListener("ended", cleanup, { once: true });
-  audio.play()
-    .catch((err) => {
-      console.warn("[Maia Audio] WAV playback failed:", err);
-      cleanup();
-    });
+  audio.play().catch((err) => {
+    console.warn("[Maia Audio] WAV playback failed:", err);
+    cleanup();
+  });
 
   setTimeout(() => {
     if (activeBlobAudioElements.has(audio)) {
@@ -349,14 +333,14 @@ function playManagedWavBlob(blob: Blob, volume: number): void {
 
 function resolveManagedAudioSource(audioPath: string | null): string | null {
   if (!audioPath) return null;
-  
+
   // Allow browser fallback paths or remote URLs directly
   if (audioPath.startsWith("browser-fallback://") || audioPath.startsWith("http")) {
     return audioPath.replace("browser-fallback://", ""); // Strip prefix if needed
   }
 
   if (!isTauri()) {
-    // In web mode, we can only resolve relative paths or URLs. 
+    // In web mode, we can only resolve relative paths or URLs.
     // If it's an absolute disk path, we can't resolve it unless it's served.
     return audioPath.startsWith("/") ? audioPath : `./${audioPath}`;
   }
@@ -376,7 +360,9 @@ function preferredBaseAssetId(
     return preferredId;
   }
 
-  return availableBaseAssets.find((entry) => entry.reusable)?.id ?? availableBaseAssets[0]?.id ?? "";
+  return (
+    availableBaseAssets.find((entry) => entry.reusable)?.id ?? availableBaseAssets[0]?.id ?? ""
+  );
 }
 
 function preferredCompositionId(
@@ -390,13 +376,16 @@ function preferredCompositionId(
   return "";
 }
 
-function scheduleCue(context: AudioContext, cue: RoutedLiveCue, startAt: number, destination: AudioNode): void {
+function scheduleCue(
+  context: AudioContext,
+  cue: RoutedLiveCue,
+  startAt: number,
+  destination: AudioNode,
+): void {
   const oscillator = context.createOscillator();
   const gainNode = context.createGain();
   const stereoPanner =
-    typeof context.createStereoPanner === "function"
-      ? context.createStereoPanner()
-      : null;
+    typeof context.createStereoPanner === "function" ? context.createStereoPanner() : null;
 
   oscillator.type = cue.waveform;
   oscillator.frequency.setValueAtTime(cue.noteHz, startAt);
@@ -434,9 +423,7 @@ function scheduleSampleCue(
   const source = context.createBufferSource();
   const gainNode = context.createGain();
   const stereoPanner =
-    typeof context.createStereoPanner === "function"
-      ? context.createStereoPanner()
-      : null;
+    typeof context.createStereoPanner === "function" ? context.createStereoPanner() : null;
   const routeOffsetRatio =
     cue.routeKey === "info"
       ? 0.08
@@ -490,9 +477,7 @@ function scheduleTrackSliceCue(
   const source = context.createBufferSource();
   const gainNode = context.createGain();
   const stereoPanner =
-    typeof context.createStereoPanner === "function"
-      ? context.createStereoPanner()
-      : null;
+    typeof context.createStereoPanner === "function" ? context.createStereoPanner() : null;
   const routeNudge =
     cue.routeKey === "info"
       ? -0.08
@@ -591,7 +576,9 @@ function resolveParsedLineTone(line: string, markers: LiveLogMarker[]): ParsedLi
   const normalizedLine = line.trim().toLowerCase();
   const matchesMarker = markers.some((marker) => {
     const excerpt = marker.excerpt.trim().toLowerCase();
-    return Boolean(excerpt) && (normalizedLine.includes(excerpt) || excerpt.includes(normalizedLine));
+    return (
+      Boolean(excerpt) && (normalizedLine.includes(excerpt) || excerpt.includes(normalizedLine))
+    );
   });
 
   if (matchesMarker || /\banomaly|drift|spike|budget\b/i.test(line)) {
@@ -604,14 +591,6 @@ function resolveParsedLineTone(line: string, markers: LiveLogMarker[]): ParsedLi
     return "warn";
   }
   return "info";
-}
-
-function parsedLineToneLabel(tone: ParsedLineTone): string {
-  if (tone === "anomaly") {
-    return "ANOM";
-  }
-
-  return tone.toUpperCase();
 }
 
 interface AnomalySourceRow {
@@ -780,9 +759,7 @@ function startBeatLooper(
   tick();
 }
 
-function stopBeatLooper(
-  stateRef: React.MutableRefObject<BeatLooperState | null>,
-): void {
+function stopBeatLooper(stateRef: React.MutableRefObject<BeatLooperState | null>): void {
   if (stateRef.current) {
     stateRef.current.cancelled = true;
     stateRef.current = null;
@@ -920,27 +897,24 @@ function LiveWaveformCanvas({
   );
 }
 
-function statusLabel(liveEnabled: boolean, replayActive: boolean): string {
-  if (replayActive) {
-    return "Replay";
-  }
-  return liveEnabled ? "Live" : "Stopped";
-}
-
-function audioLabel(status: AudioEngineStatus, liveEnabled: boolean): string {
+function audioLabel(
+  status: AudioEngineStatus,
+  liveEnabled: boolean,
+  t: ReturnType<typeof useT>,
+): string {
   if (status === "unsupported") {
-    return "Unavailable";
+    return t.inspect.audioStateUnavailable;
   }
   if (status === "error") {
-    return "Error";
+    return t.inspect.audioStateError;
   }
   if (liveEnabled && status === "ready") {
-    return "Active";
+    return t.inspect.audioStateActive;
   }
   if (status === "ready") {
-    return "Armed";
+    return t.inspect.audioStateArmed;
   }
-  return "Idle";
+  return t.inspect.audioStateIdle;
 }
 
 export function LiveLogMonitorPanel({
@@ -952,6 +926,7 @@ export function LiveLogMonitorPanel({
   availableTracks,
   availablePlaylists,
 }: LiveLogMonitorPanelProps) {
+  const t = useT();
   const monitor = useMonitor();
   // Session is live for THIS repo when the global monitor owns it
   const liveEnabled = monitor.session?.repoId === repository.id;
@@ -961,9 +936,7 @@ export function LiveLogMonitorPanel({
       ? Math.max(0, Math.min(100, Math.round(monitor.playbackProgress * 100)))
       : null;
   const playbackWindowLabel =
-    replayActive &&
-    monitor.playbackEventIndex !== null &&
-    monitor.playbackEventCount !== null
+    replayActive && monitor.playbackEventIndex !== null && monitor.playbackEventCount !== null
       ? `${monitor.playbackEventIndex}/${monitor.playbackEventCount}`
       : null;
 
@@ -1014,11 +987,15 @@ export function LiveLogMonitorPanel({
   const [componentOverrides, setComponentOverrides] = useState<Map<string, ComponentOverride>>(
     () => new Map(),
   );
-  const [sceneBaseAssetId, setSceneBaseAssetId] = useState(() =>
+  const initialSceneBaseAssetIdRef = useRef(
     preferredBaseAssetId(availableBaseAssets, preferredBaseAssetIdProp),
   );
-  const [sceneCompositionId, setSceneCompositionId] = useState(() =>
+  const initialSceneCompositionIdRef = useRef(
     preferredCompositionId(availableCompositions, preferredCompositionIdProp),
+  );
+  const [sceneBaseAssetId, setSceneBaseAssetId] = useState(initialSceneBaseAssetIdRef.current);
+  const [sceneCompositionId, setSceneCompositionId] = useState(
+    initialSceneCompositionIdRef.current,
   );
   const [audioStatus, setAudioStatus] = useState<AudioEngineStatus>("idle");
   const [sampleStatus, setSampleStatus] = useState<SampleEngineStatus>("unavailable");
@@ -1028,9 +1005,7 @@ export function LiveLogMonitorPanel({
   const [recentCues, setRecentCues] = useState<RoutedLiveCue[]>([]);
   const [recentVoices, setRecentVoices] = useState<ArrangementVoice[]>([]);
   const [recentMarkers, setRecentMarkers] = useState<LiveLogMarker[]>([]);
-  const [recentExplanations, setRecentExplanations] = useState<
-    LiveMutationExplanation[]
-  >([]);
+  const [recentExplanations, setRecentExplanations] = useState<LiveMutationExplanation[]>([]);
   const [selectedExplanationId, setSelectedExplanationId] = useState<string | null>(null);
   const [backgroundPlayheadSecond, setBackgroundPlayheadSecond] = useState<number>(0);
   const [recentWarnings, setRecentWarnings] = useState<string[]>([]);
@@ -1048,8 +1023,12 @@ export function LiveLogMonitorPanel({
     availableCompositions.find((entry) => entry.id === sceneCompositionId) ?? null;
   const selectedStyleProfile = resolveStyleProfile(selectedStyleProfileId);
   const selectedMutationProfile = resolveMutationProfile(selectedMutationProfileId);
-  const playableBaseTracks = resolvePlaylistTracks(basePlaylist, availableTracks).filter((track) =>
-    Boolean(resolvePlayableTrackPath(track)),
+  const playableBaseTracks = useMemo(
+    () =>
+      resolvePlaylistTracks(basePlaylist, availableTracks).filter((track) =>
+        Boolean(resolvePlayableTrackPath(track)),
+      ),
+    [availableTracks, basePlaylist],
   );
   const availableBaseTrackOptions = availableTracks
     .filter((track) => !(basePlaylist?.trackIds ?? []).includes(track.id))
@@ -1062,14 +1041,12 @@ export function LiveLogMonitorPanel({
       return getTrackTitle(left).localeCompare(getTrackTitle(right));
     });
   const playableBaseTrackIdsKey = playableBaseTracks.map((track) => track.id).join("|");
-  const backgroundNowPlayingTrack =
-    backgroundNowPlayingId
-      ? availableTracks.find((track) => track.id === backgroundNowPlayingId) ?? null
-      : null;
-  const backgroundTransitionNextTrack =
-    backgroundTransitionPlan?.nextTrackId
-      ? availableTracks.find((track) => track.id === backgroundTransitionPlan.nextTrackId) ?? null
-      : null;
+  const backgroundNowPlayingTrack = backgroundNowPlayingId
+    ? (availableTracks.find((track) => track.id === backgroundNowPlayingId) ?? null)
+    : null;
+  const backgroundTransitionNextTrack = backgroundTransitionPlan?.nextTrackId
+    ? (availableTracks.find((track) => track.id === backgroundTransitionPlan.nextTrackId) ?? null)
+    : null;
   const traceWaveformTrack = backgroundNowPlayingTrack ?? playableBaseTracks[0] ?? null;
   const traceWaveformExplanations = traceWaveformTrack
     ? recentExplanations.filter(
@@ -1082,14 +1059,14 @@ export function LiveLogMonitorPanel({
     traceWaveformExplanations.find((explanation) => explanation.id === selectedExplanationId) ??
     null;
   const traceWaveformCues = toLiveMutationVisualizationCues(traceWaveformExplanations);
-  const replaySessionId = replayActive ? monitor.session?.persistedSessionId ?? null : null;
+  const replaySessionId = replayActive ? (monitor.session?.persistedSessionId ?? null) : null;
   const currentReplayExplanation =
     replayActive && monitor.playbackEventIndex !== null
-      ? (selectedTraceExplanation?.replayWindowIndex === monitor.playbackEventIndex
+      ? ((selectedTraceExplanation?.replayWindowIndex === monitor.playbackEventIndex
           ? selectedTraceExplanation
           : recentExplanations.find(
               (explanation) => explanation.replayWindowIndex === monitor.playbackEventIndex,
-            )) ?? null
+            )) ?? null)
       : null;
   const {
     sortedSessionBookmarks,
@@ -1136,8 +1113,7 @@ export function LiveLogMonitorPanel({
     .map((id) => availableTracks.find((t) => t.id === id))
     .filter((t): t is LibraryTrack => t !== undefined)
     .map(deriveReferenceAnchor);
-  const referenceAnchor =
-    playlistAnchors.length > 0 ? blendAnchors(playlistAnchors) : null;
+  const referenceAnchor = playlistAnchors.length > 0 ? blendAnchors(playlistAnchors) : null;
   const scene = resolveLiveSonificationScene(
     selectedSceneBaseAsset,
     selectedSceneComposition,
@@ -1148,9 +1124,10 @@ export function LiveLogMonitorPanel({
   const baseTrackCount = basePlaylist?.trackIds.length ?? 0;
   const hasBaseListeningBed = baseTrackCount > 0;
   const adapterConfigured = true;
-  const activeAdapterKind = monitor.session?.repoId === repository.id
-    ? monitor.session?.adapterKind ?? adapterKind
-    : adapterKind;
+  const activeAdapterKind =
+    monitor.session?.repoId === repository.id
+      ? (monitor.session?.adapterKind ?? adapterKind)
+      : adapterKind;
   const activeAdapterLabel = getStreamAdapterLabel(activeAdapterKind);
   const adapterDescription = getStreamAdapterDescription(adapterKind);
   const adapterTarget = repository.sourcePath;
@@ -1162,24 +1139,34 @@ export function LiveLogMonitorPanel({
       : effectiveLiveMutationState === "warning"
         ? "Warning pressure"
         : "Normal drift";
-  const cueEnginePreviewLabel =
-    hasBaseListeningBed
-      ? sampleStatus === "ready"
-        ? `Guide-track modulation + samples · ${liveMutationStateLabel}`
-        : `Guide-track modulation · ${liveMutationStateLabel}`
-      : sampleStatus === "ready"
-        ? scene.sampleSourceCount > 1
-          ? `Base sample pack · ${liveMutationStateLabel}`
-          : `Base sample · ${liveMutationStateLabel}`
-        : sampleStatus === "loading"
-          ? `Loading sample · ${liveMutationStateLabel}`
-          : `Internal synth · ${liveMutationStateLabel}`;
+  const cueEnginePreviewLabel = hasBaseListeningBed
+    ? sampleStatus === "ready"
+      ? `Guide-track modulation + samples · ${liveMutationStateLabel}`
+      : `Guide-track modulation · ${liveMutationStateLabel}`
+    : sampleStatus === "ready"
+      ? scene.sampleSourceCount > 1
+        ? `Base sample pack · ${liveMutationStateLabel}`
+        : `Base sample · ${liveMutationStateLabel}`
+      : sampleStatus === "loading"
+        ? `Loading sample · ${liveMutationStateLabel}`
+        : `Internal synth · ${liveMutationStateLabel}`;
 
   useEffect(() => {
-    if (
-      sceneBaseAssetId &&
-      availableBaseAssets.some((entry) => entry.id === sceneBaseAssetId)
-    ) {
+    initialSceneBaseAssetIdRef.current = preferredBaseAssetId(
+      availableBaseAssets,
+      preferredBaseAssetIdProp,
+    );
+  }, [availableBaseAssets, preferredBaseAssetIdProp]);
+
+  useEffect(() => {
+    initialSceneCompositionIdRef.current = preferredCompositionId(
+      availableCompositions,
+      preferredCompositionIdProp,
+    );
+  }, [availableCompositions, preferredCompositionIdProp]);
+
+  useEffect(() => {
+    if (sceneBaseAssetId && availableBaseAssets.some((entry) => entry.id === sceneBaseAssetId)) {
       return;
     }
 
@@ -1224,9 +1211,8 @@ export function LiveLogMonitorPanel({
     }
 
     const guideTrack =
-      availableTracks.find(
-        (track) => resolvePlayableTrackPath(track) === monitor.guideTrackPath,
-      ) ?? null;
+      availableTracks.find((track) => resolvePlayableTrackPath(track) === monitor.guideTrackPath) ??
+      null;
     if (!guideTrack) {
       return;
     }
@@ -1236,10 +1222,7 @@ export function LiveLogMonitorPanel({
         return current;
       }
 
-      return createBasePlaylist(
-        [guideTrack.id],
-        `${getTrackTitle(guideTrack)} · Monitoring`,
-      );
+      return createBasePlaylist([guideTrack.id], `${getTrackTitle(guideTrack)} · Monitoring`);
     });
   }, [availableTracks, basePlaylist?.trackIds.length, monitor.guideTrackPath]);
 
@@ -1256,10 +1239,8 @@ export function LiveLogMonitorPanel({
         ...source,
         url: resolveManagedAudioSource(source.path),
       }))
-      .filter(
-        (
-          source,
-        ): source is { path: string; label: string; url: string } => Boolean(source.url),
+      .filter((source): source is { path: string; label: string; url: string } =>
+        Boolean(source.url),
       );
 
     sampleBuffersRef.current = new Map();
@@ -1294,9 +1275,7 @@ export function LiveLogMonitorPanel({
             }
 
             const encodedAudio = await response.arrayBuffer();
-            const decoded = await audioContextRef.current!.decodeAudioData(
-              encodedAudio.slice(0),
-            );
+            const decoded = await audioContextRef.current!.decodeAudioData(encodedAudio.slice(0));
 
             return [source.path, decoded] as const;
           }),
@@ -1314,10 +1293,12 @@ export function LiveLogMonitorPanel({
 
         sampleBuffersRef.current = new Map();
         setSampleStatus("error");
-        setRecentWarnings((current) => [
-          `Base sample routing failed: ${toMessage(nextError)}`,
-          ...current,
-        ].slice(0, MAX_RECENT_WARNINGS));
+        setRecentWarnings((current) =>
+          [`Base sample routing failed: ${toMessage(nextError)}`, ...current].slice(
+            0,
+            MAX_RECENT_WARNINGS,
+          ),
+        );
       }
     }
 
@@ -1346,15 +1327,11 @@ export function LiveLogMonitorPanel({
     knownComponentsRef.current = [];
     setKnownComponents([]);
     setComponentOverrides(new Map());
-    setSceneBaseAssetId(preferredBaseAssetId(availableBaseAssets, preferredBaseAssetIdProp));
-    setSceneCompositionId(
-      preferredCompositionId(availableCompositions, preferredCompositionIdProp),
-    );
+    setSceneBaseAssetId(initialSceneBaseAssetIdRef.current);
+    setSceneCompositionId(initialSceneCompositionIdRef.current);
     const nextPrefs = loadMonitorPrefs(repository.id);
     setBasePlaylist(nextPrefs?.basePlaylist ?? createBasePlaylist([]));
-    setSelectedStyleProfileId(
-      nextPrefs?.selectedStyleProfileId ?? DEFAULT_STYLE_PROFILE_ID,
-    );
+    setSelectedStyleProfileId(nextPrefs?.selectedStyleProfileId ?? DEFAULT_STYLE_PROFILE_ID);
     setSelectedMutationProfileId(
       nextPrefs?.selectedMutationProfileId ?? DEFAULT_MUTATION_PROFILE_ID,
     );
@@ -1378,7 +1355,13 @@ export function LiveLogMonitorPanel({
       selectedMutationProfileId,
       masterVolume,
     });
-  }, [repository.id, basePlaylist, selectedStyleProfileId, selectedMutationProfileId, masterVolume]);
+  }, [
+    repository.id,
+    basePlaylist,
+    selectedStyleProfileId,
+    selectedMutationProfileId,
+    masterVolume,
+  ]);
 
   // Keep master gain in sync with the volume slider
   useEffect(() => {
@@ -1461,11 +1444,11 @@ export function LiveLogMonitorPanel({
           await ctx.resume();
         }
       }
-      
+
       if (ctx.state === "running") {
         setAudioStatus("ready");
       }
-      
+
       return ctx;
     } catch (err) {
       log.error("Failed to ensure audio ready", err);
@@ -1499,8 +1482,6 @@ export function LiveLogMonitorPanel({
       void initAudio();
     }
   }, [liveEnabled, replayActive, ensureAudioReady, masterVolume]);
-
-  const getAudioContext = useCallback(() => audioContextRef.current, []);
 
   const playRenderedBlobThroughGraph = useEffectEvent(async (blob: Blob, volume: number) => {
     const ctx = await ensureAudioReady();
@@ -1563,7 +1544,6 @@ export function LiveLogMonitorPanel({
     setAudioStatus("ready");
   });
 
-
   const clearBackgroundTransition = useCallback(() => {
     if (backgroundTransitionTimerRef.current !== null) {
       window.clearTimeout(backgroundTransitionTimerRef.current);
@@ -1608,10 +1588,7 @@ export function LiveLogMonitorPanel({
     if (!filterNodeRef.current) {
       const filter = context.createBiquadFilter();
       filter.type = "lowpass";
-      filter.frequency.setValueAtTime(
-        selectedStyleProfile.filterCeilingHz,
-        context.currentTime,
-      );
+      filter.frequency.setValueAtTime(selectedStyleProfile.filterCeilingHz, context.currentTime);
       filterNodeRef.current = filter;
       createdFilter = true;
     }
@@ -1640,10 +1617,7 @@ export function LiveLogMonitorPanel({
 
     if (!backgroundGainRef.current) {
       const backgroundGain = context.createGain();
-      backgroundGain.gain.setValueAtTime(
-        selectedStyleProfile.backgroundGain,
-        context.currentTime,
-      );
+      backgroundGain.gain.setValueAtTime(selectedStyleProfile.backgroundGain, context.currentTime);
       backgroundGain.connect(masterGainRef.current ?? context.destination);
       backgroundGainRef.current = backgroundGain;
       createdGain = true;
@@ -1709,10 +1683,7 @@ export function LiveLogMonitorPanel({
       }
 
       const currentTrack = playableBaseTracks[deck.trackIndex] ?? null;
-      const nextIndex = resolveNextPlaylistIndex(
-        deck.trackIndex,
-        playableBaseTracks.length,
-      );
+      const nextIndex = resolveNextPlaylistIndex(deck.trackIndex, playableBaseTracks.length);
       if (!currentTrack || nextIndex === null) {
         setBackgroundTransitionPlan(null);
         return;
@@ -1797,15 +1768,9 @@ export function LiveLogMonitorPanel({
         const targetGain = selectedStyleProfile.backgroundGain;
         const entrySecond =
           playableBaseTracks.length > 1
-            ? Math.min(
-                nextTransitionPlan.entrySecond,
-                Math.max(0, buffer.duration - 0.25),
-              )
+            ? Math.min(nextTransitionPlan.entrySecond, Math.max(0, buffer.duration - 0.25))
             : 0;
-        const playbackRate =
-          playableBaseTracks.length > 1
-            ? nextTransitionPlan.tempoRatio
-            : 1;
+        const playbackRate = playableBaseTracks.length > 1 ? nextTransitionPlan.tempoRatio : 1;
 
         const source = context.createBufferSource();
         source.buffer = buffer;
@@ -1826,10 +1791,7 @@ export function LiveLogMonitorPanel({
             Math.max(0.0001, previousDeck.gain.gain.value),
             startAt,
           );
-          previousDeck.gain.gain.linearRampToValueAtTime(
-            0.0001,
-            startAt + fadeSeconds,
-          );
+          previousDeck.gain.gain.linearRampToValueAtTime(0.0001, startAt + fadeSeconds);
           try {
             previousDeck.source.stop(startAt + fadeSeconds + 0.08);
           } catch {
@@ -1862,10 +1824,12 @@ export function LiveLogMonitorPanel({
         backgroundDeckRef.current = null;
         setBackgroundNowPlayingId(null);
         setBackgroundTransitionPlan(null);
-        setRecentWarnings((current) => [
-          `Failed to start guide track: ${toMessage(err)}`,
-          ...current,
-        ].slice(0, MAX_RECENT_WARNINGS));
+        setRecentWarnings((current) =>
+          [`Failed to start guide track: ${toMessage(err)}`, ...current].slice(
+            0,
+            MAX_RECENT_WARNINGS,
+          ),
+        );
       }
     },
   );
@@ -1890,7 +1854,7 @@ export function LiveLogMonitorPanel({
     if (!context) {
       return;
     }
-    
+
     if (context.state === "suspended") {
       void context.resume();
     }
@@ -1922,9 +1886,7 @@ export function LiveLogMonitorPanel({
       return;
     }
 
-    const currentIndex = playableBaseTracks.findIndex(
-      (track) => track.id === currentDeck.trackId,
-    );
+    const currentIndex = playableBaseTracks.findIndex((track) => track.id === currentDeck.trackId);
     if (currentIndex === -1) {
       stopBackgroundDeck(0.1);
       void startBackgroundDeck(context, 0);
@@ -1937,78 +1899,86 @@ export function LiveLogMonitorPanel({
     scheduleBackgroundTransition(context, syncedDeck);
   }, [
     liveEnabled,
+    playableBaseTracks,
     playableBaseTrackIdsKey,
     scheduleBackgroundTransition,
     startBackgroundDeck,
     stopBackgroundDeck,
   ]);
 
-  const applyBackgroundMutation = useEffectEvent((
-    mutation: BackgroundMutationProfile,
-    nextState: LiveMutationState,
-  ) => {
-    const context = audioContextRef.current;
-    const filter = filterNodeRef.current;
-    const backgroundGain = backgroundGainRef.current;
-    const dryGain = backgroundDryGainRef.current;
-    const driveWetGain = backgroundDriveWetGainRef.current;
-    const driveNode = backgroundDriveNodeRef.current;
-    const activeDeck = backgroundDeckRef.current;
-    if (!context || !filter || !backgroundGain || !dryGain || !driveWetGain || !driveNode || !activeDeck) {
-      return;
-    }
-    setLiveMutationState(nextState);
-    const now = context.currentTime;
-    const recoverAt = now + mutation.recoverSeconds;
-
-    filter.frequency.cancelScheduledValues(now);
-    filter.Q.cancelScheduledValues(now);
-    filter.frequency.setValueAtTime(Math.max(40, filter.frequency.value), now);
-    filter.Q.setValueAtTime(Math.max(0.001, filter.Q.value), now);
-    filter.frequency.exponentialRampToValueAtTime(mutation.filterHz, now + 0.06);
-    filter.frequency.exponentialRampToValueAtTime(
-      selectedStyleProfile.filterCeilingHz,
-      recoverAt,
-    );
-    filter.Q.linearRampToValueAtTime(mutation.filterQ, now + 0.05);
-    filter.Q.linearRampToValueAtTime(1, recoverAt);
-
-    backgroundGain.gain.cancelScheduledValues(now);
-    backgroundGain.gain.setValueAtTime(Math.max(0.0001, backgroundGain.gain.value), now);
-    backgroundGain.gain.linearRampToValueAtTime(mutation.busGain, now + 0.04);
-    backgroundGain.gain.linearRampToValueAtTime(selectedStyleProfile.backgroundGain, recoverAt);
-
-    dryGain.gain.cancelScheduledValues(now);
-    driveWetGain.gain.cancelScheduledValues(now);
-    dryGain.gain.setValueAtTime(Math.max(0.0001, dryGain.gain.value), now);
-    driveWetGain.gain.setValueAtTime(Math.max(0.0001, driveWetGain.gain.value), now);
-    dryGain.gain.linearRampToValueAtTime(Math.max(0.3, 1 - mutation.driveWet * 0.75), now + 0.04);
-    driveWetGain.gain.linearRampToValueAtTime(Math.max(0.0001, mutation.driveWet), now + 0.04);
-    dryGain.gain.linearRampToValueAtTime(1, recoverAt);
-    driveWetGain.gain.linearRampToValueAtTime(0.0001, recoverAt);
-    driveNode.curve = createDriveCurve(1.4 + mutation.driveWet * 6);
-
-    activeDeck.source.playbackRate.cancelScheduledValues(now);
-    activeDeck.source.playbackRate.setValueAtTime(activeDeck.source.playbackRate.value, now);
-    activeDeck.source.playbackRate.linearRampToValueAtTime(mutation.playbackRate, now + 0.05);
-    activeDeck.source.playbackRate.linearRampToValueAtTime(1, recoverAt);
-
-    activeDeck.gain.gain.cancelScheduledValues(now);
-    activeDeck.gain.gain.setValueAtTime(Math.max(0.0001, activeDeck.gain.gain.value), now);
-    activeDeck.gain.gain.linearRampToValueAtTime(mutation.deckGain, now + 0.03);
-
-    if (mutation.gatePulses > 0 && mutation.gateDepth > 0) {
-      const pulseSpacing = 0.12;
-      for (let pulse = 0; pulse < mutation.gatePulses; pulse++) {
-        const pulseAt = now + 0.07 + pulse * pulseSpacing;
-        const gateFloor = Math.max(0.06, mutation.deckGain * (1 - mutation.gateDepth));
-        activeDeck.gain.gain.linearRampToValueAtTime(gateFloor, pulseAt);
-        activeDeck.gain.gain.linearRampToValueAtTime(mutation.deckGain, pulseAt + 0.05);
+  const applyBackgroundMutation = useEffectEvent(
+    (mutation: BackgroundMutationProfile, nextState: LiveMutationState) => {
+      const context = audioContextRef.current;
+      const filter = filterNodeRef.current;
+      const backgroundGain = backgroundGainRef.current;
+      const dryGain = backgroundDryGainRef.current;
+      const driveWetGain = backgroundDriveWetGainRef.current;
+      const driveNode = backgroundDriveNodeRef.current;
+      const activeDeck = backgroundDeckRef.current;
+      if (
+        !context ||
+        !filter ||
+        !backgroundGain ||
+        !dryGain ||
+        !driveWetGain ||
+        !driveNode ||
+        !activeDeck
+      ) {
+        return;
       }
-    }
+      setLiveMutationState(nextState);
+      const now = context.currentTime;
+      const recoverAt = now + mutation.recoverSeconds;
 
-    activeDeck.gain.gain.linearRampToValueAtTime(1, recoverAt);
-  });
+      filter.frequency.cancelScheduledValues(now);
+      filter.Q.cancelScheduledValues(now);
+      filter.frequency.setValueAtTime(Math.max(40, filter.frequency.value), now);
+      filter.Q.setValueAtTime(Math.max(0.001, filter.Q.value), now);
+      filter.frequency.exponentialRampToValueAtTime(mutation.filterHz, now + 0.06);
+      filter.frequency.exponentialRampToValueAtTime(
+        selectedStyleProfile.filterCeilingHz,
+        recoverAt,
+      );
+      filter.Q.linearRampToValueAtTime(mutation.filterQ, now + 0.05);
+      filter.Q.linearRampToValueAtTime(1, recoverAt);
+
+      backgroundGain.gain.cancelScheduledValues(now);
+      backgroundGain.gain.setValueAtTime(Math.max(0.0001, backgroundGain.gain.value), now);
+      backgroundGain.gain.linearRampToValueAtTime(mutation.busGain, now + 0.04);
+      backgroundGain.gain.linearRampToValueAtTime(selectedStyleProfile.backgroundGain, recoverAt);
+
+      dryGain.gain.cancelScheduledValues(now);
+      driveWetGain.gain.cancelScheduledValues(now);
+      dryGain.gain.setValueAtTime(Math.max(0.0001, dryGain.gain.value), now);
+      driveWetGain.gain.setValueAtTime(Math.max(0.0001, driveWetGain.gain.value), now);
+      dryGain.gain.linearRampToValueAtTime(Math.max(0.3, 1 - mutation.driveWet * 0.75), now + 0.04);
+      driveWetGain.gain.linearRampToValueAtTime(Math.max(0.0001, mutation.driveWet), now + 0.04);
+      dryGain.gain.linearRampToValueAtTime(1, recoverAt);
+      driveWetGain.gain.linearRampToValueAtTime(0.0001, recoverAt);
+      driveNode.curve = createDriveCurve(1.4 + mutation.driveWet * 6);
+
+      activeDeck.source.playbackRate.cancelScheduledValues(now);
+      activeDeck.source.playbackRate.setValueAtTime(activeDeck.source.playbackRate.value, now);
+      activeDeck.source.playbackRate.linearRampToValueAtTime(mutation.playbackRate, now + 0.05);
+      activeDeck.source.playbackRate.linearRampToValueAtTime(1, recoverAt);
+
+      activeDeck.gain.gain.cancelScheduledValues(now);
+      activeDeck.gain.gain.setValueAtTime(Math.max(0.0001, activeDeck.gain.gain.value), now);
+      activeDeck.gain.gain.linearRampToValueAtTime(mutation.deckGain, now + 0.03);
+
+      if (mutation.gatePulses > 0 && mutation.gateDepth > 0) {
+        const pulseSpacing = 0.12;
+        for (let pulse = 0; pulse < mutation.gatePulses; pulse++) {
+          const pulseAt = now + 0.07 + pulse * pulseSpacing;
+          const gateFloor = Math.max(0.06, mutation.deckGain * (1 - mutation.gateDepth));
+          activeDeck.gain.gain.linearRampToValueAtTime(gateFloor, pulseAt);
+          activeDeck.gain.gain.linearRampToValueAtTime(mutation.deckGain, pulseAt + 0.05);
+        }
+      }
+
+      activeDeck.gain.gain.linearRampToValueAtTime(1, recoverAt);
+    },
+  );
 
   const applyLogModulation = useEffectEvent((update: LiveLogStreamUpdate) => {
     const computedMutation = resolveBackgroundMutationProfile(
@@ -2030,53 +2000,44 @@ export function LiveLogMonitorPanel({
   });
 
   useEffect(() => {
-    if (
-      !liveEnabled ||
-      !backgroundDeckRef.current ||
-      forcedLiveMutationState === "auto"
-    ) {
+    if (!liveEnabled || !backgroundDeckRef.current || forcedLiveMutationState === "auto") {
       return;
     }
 
     const mutation = forceBackgroundMutationProfile(forcedLiveMutationState, selectedStyleProfile);
     applyBackgroundMutation(mutation, forcedLiveMutationState);
-  }, [
-    applyBackgroundMutation,
-    forcedLiveMutationState,
-    liveEnabled,
-    selectedStyleProfile,
-  ]);
+  }, [applyBackgroundMutation, forcedLiveMutationState, liveEnabled, selectedStyleProfile]);
 
   const playWithCurrentEngine = useEffectEvent((cues: RoutedLiveCue[], liveBpm?: number | null) => {
     log.info("playWithCurrentEngine cues=%d bpm=%s vol=%s", cues.length, liveBpm, masterVolume);
-    if (cues.length === 0) { log.debug("playWithCurrentEngine — skipped (0 cues)"); return; }
+    if (cues.length === 0) {
+      log.debug("playWithCurrentEngine — skipped (0 cues)");
+      return;
+    }
 
     const preferGuideTrackMutation =
       playableBaseTracks.length > 0 && backgroundDeckRef.current !== null;
-    const cueIntensityMultiplier =
-      !preferGuideTrackMutation
-        ? 1
-        : effectiveLiveMutationState === "critical"
-          ? 0.34
-          : effectiveLiveMutationState === "warning"
-            ? 0.18
-            : 0.08;
+    const cueIntensityMultiplier = !preferGuideTrackMutation
+      ? 1
+      : effectiveLiveMutationState === "critical"
+        ? 0.34
+        : effectiveLiveMutationState === "warning"
+          ? 0.18
+          : 0.08;
     const allowExternalCueLayer =
-      !preferGuideTrackMutation ||
-      effectiveLiveMutationState === "critical";
+      !preferGuideTrackMutation || effectiveLiveMutationState === "critical";
 
     const preset = scene.preset;
     const cappedCues = cues.slice(0, preset.maxCuesPerWindow);
 
     // Expand each cue into arrangement voices
-    const voices = resolveArrangementVoices(
-      cappedCues,
-      scene.mutationProfile.arrangementDepth,
-    );
+    const voices = resolveArrangementVoices(cappedCues, scene.mutationProfile.arrangementDepth);
     const voicedCues: RoutedLiveCue[] = voices.map((voice) => ({
       ...voice.cue,
       noteHz: Number((voice.cue.noteHz * voice.noteMultiplier).toFixed(2)),
-      gain: Number(Math.min(0.34, Math.max(0.005, voice.cue.gain * voice.gainMultiplier)).toFixed(3)),
+      gain: Number(
+        Math.min(0.34, Math.max(0.005, voice.cue.gain * voice.gainMultiplier)).toFixed(3),
+      ),
       pan: clampPan(voice.cue.pan + voice.panOffset),
     }));
 
@@ -2087,7 +2048,11 @@ export function LiveLogMonitorPanel({
           return null;
         }
 
-        if (preferGuideTrackMutation && voicedCue.routeKey === "info" && voicedCue.accent !== "anomaly") {
+        if (
+          preferGuideTrackMutation &&
+          voicedCue.routeKey === "info" &&
+          voicedCue.accent !== "anomaly"
+        ) {
           return null;
         }
 
@@ -2098,7 +2063,9 @@ export function LiveLogMonitorPanel({
                 ...voicedCue,
                 noteHz: Number((voicedCue.noteHz * 0.42).toFixed(2)),
                 gain: Number(
-                  Math.min(0.08, Math.max(0.002, voicedCue.gain * cueIntensityMultiplier)).toFixed(3),
+                  Math.min(0.08, Math.max(0.002, voicedCue.gain * cueIntensityMultiplier)).toFixed(
+                    3,
+                  ),
                 ),
                 waveform: voicedCue.accent === "anomaly" ? "triangle" : voicedCue.waveform,
                 durationMs:
@@ -2108,28 +2075,30 @@ export function LiveLogMonitorPanel({
               }
             : {
                 ...voicedCue,
-                gain: Number(
-                  Math.min(0.52, Math.max(0.03, voicedCue.gain * 1.9)).toFixed(3),
-                ),
+                gain: Number(Math.min(0.52, Math.max(0.03, voicedCue.gain * 1.9)).toFixed(3)),
                 durationMs: Math.max(120, Math.round(voicedCue.durationMs * 1.2)),
               },
         };
       })
-      .filter((entry): entry is { voice: ArrangementVoice; voicedCue: RoutedLiveCue } => entry !== null);
-    const audibleVoiceEntriesForPlayback = audibleVoiceEntries.filter((entry) =>
-      !preferGuideTrackMutation ||
-      effectiveLiveMutationState === "critical" ||
-      entry.voicedCue.accent === "anomaly" ||
-      entry.voicedCue.routeKey === "error" ||
-      entry.voicedCue.gain >= 0.008,
+      .filter(
+        (entry): entry is { voice: ArrangementVoice; voicedCue: RoutedLiveCue } => entry !== null,
+      );
+    const audibleVoiceEntriesForPlayback = audibleVoiceEntries.filter(
+      (entry) =>
+        !preferGuideTrackMutation ||
+        effectiveLiveMutationState === "critical" ||
+        entry.voicedCue.accent === "anomaly" ||
+        entry.voicedCue.routeKey === "error" ||
+        entry.voicedCue.gain >= 0.008,
     );
     const audibleVoicedCues = audibleVoiceEntriesForPlayback
       .map((entry) => entry.voicedCue)
-      .filter((cue) =>
-        !preferGuideTrackMutation ||
-        effectiveLiveMutationState === "critical" ||
-        cue.accent === "anomaly" ||
-        cue.gain >= 0.008,
+      .filter(
+        (cue) =>
+          !preferGuideTrackMutation ||
+          effectiveLiveMutationState === "critical" ||
+          cue.accent === "anomaly" ||
+          cue.gain >= 0.008,
       );
 
     // When a guide/base track is armed, keep the cue layer restrained so the
@@ -2156,10 +2125,7 @@ export function LiveLogMonitorPanel({
 
     // ── Accumulate voiced cues for full mix bounce ──
     if (voicedCues.length > 0) {
-      bounceCuesRef.current = [
-        ...bounceCuesRef.current,
-        voicedCues,
-      ].slice(-MAX_BOUNCE_WINDOWS);
+      bounceCuesRef.current = [...bounceCuesRef.current, voicedCues].slice(-MAX_BOUNCE_WINDOWS);
       setBounceWindowCount(bounceCuesRef.current.length);
     }
 
@@ -2172,12 +2138,16 @@ export function LiveLogMonitorPanel({
       const currentDeck = backgroundDeckRef.current;
       const currentTrackSecond = resolveBackgroundTrackSecond(context, currentDeck);
       const clock = beatClockRef.current;
-      const activeBpm =
-        clock?.bpm ??
-        (typeof liveBpm === "number" && liveBpm > 0 ? liveBpm : null);
+      const activeBpm = clock?.bpm ?? (typeof liveBpm === "number" && liveBpm > 0 ? liveBpm : null);
       const useBeat = preset.useBeatGrid && activeBpm !== null && clock !== null;
       const firstCueAt = useBeat
-        ? nextBeatTime(context.currentTime, clock!.originTime, activeBpm!, preset.rhythmDivision, 0.04)
+        ? nextBeatTime(
+            context.currentTime,
+            clock!.originTime,
+            activeBpm!,
+            preset.rhythmDivision,
+            0.04,
+          )
         : context.currentTime + 0.04;
       const gapSeconds = useBeat
         ? 60 / activeBpm! / Math.max(1, preset.rhythmDivision / 4)
@@ -2190,18 +2160,16 @@ export function LiveLogMonitorPanel({
         const voicedCue = entry.voicedCue;
         const sampleBuffer =
           sampleStatus === "ready" && voice.cue.samplePath && voice.track === "foundation"
-            ? sampleBuffersRef.current.get(voice.cue.samplePath) ?? null
+            ? (sampleBuffersRef.current.get(voice.cue.samplePath) ?? null)
             : null;
         const shouldUseTrackSlice =
           preferGuideTrackMutation &&
           currentDeck !== null &&
           voice.track !== "accent" &&
-          (
-            effectiveLiveMutationState === "critical" ||
+          (effectiveLiveMutationState === "critical" ||
             voice.cue.accent === "anomaly" ||
             voice.cue.routeKey === "error" ||
-            (effectiveLiveMutationState === "warning" && voice.track === "foundation")
-          );
+            (effectiveLiveMutationState === "warning" && voice.track === "foundation"));
         if (sampleBuffer) {
           scheduleSampleCue(context, voicedCue, sampleBuffer, cueStartAt, dest);
         } else if (shouldUseTrackSlice && currentDeck) {
@@ -2229,10 +2197,21 @@ export function LiveLogMonitorPanel({
   // ---------------------------------------------------------------------------
 
   const onStreamUpdate = useEffectEvent((update: LiveLogStreamUpdate) => {
-    log.trace("onStreamUpdate hasData=%s lines=%d cues=%d sessionRepo=%s panelRepo=%s", update.hasData, update.lineCount, update.sonificationCues.length, monitor.session?.repoId, repository.id);
+    log.trace(
+      "onStreamUpdate hasData=%s lines=%d cues=%d sessionRepo=%s panelRepo=%s",
+      update.hasData,
+      update.lineCount,
+      update.sonificationCues.length,
+      monitor.session?.repoId,
+      repository.id,
+    );
     // Only process updates for the repo this panel is showing
     if (monitor.session?.repoId !== repository.id) {
-      log.debug("onStreamUpdate — skipped (repo mismatch session=%s vs panel=%s)", monitor.session?.repoId, repository.id);
+      log.debug(
+        "onStreamUpdate — skipped (repo mismatch session=%s vs panel=%s)",
+        monitor.session?.repoId,
+        repository.id,
+      );
       return;
     }
 
@@ -2255,21 +2234,16 @@ export function LiveLogMonitorPanel({
     );
     const currentDeck = backgroundDeckRef.current;
     const currentTrackSecond = resolveBackgroundTrackSecond(audioContextRef.current, currentDeck);
-    const currentTrack =
-      currentDeck
-        ? availableTracks.find((track) => track.id === currentDeck.trackId) ?? null
-        : null;
-    const nextExplanations = deriveLiveMutationExplanations(
-      routedCues,
-      update.anomalyMarkers,
-      {
-        limit: MAX_RECENT_EXPLANATIONS,
-        replayWindowIndex: update.replayWindowIndex ?? null,
-        trackId: currentTrack?.id ?? null,
-        trackTitle: currentTrack ? getTrackTitle(currentTrack) : null,
-        trackSecond: currentTrackSecond,
-      },
-    );
+    const currentTrack = currentDeck
+      ? (availableTracks.find((track) => track.id === currentDeck.trackId) ?? null)
+      : null;
+    const nextExplanations = deriveLiveMutationExplanations(routedCues, update.anomalyMarkers, {
+      limit: MAX_RECENT_EXPLANATIONS,
+      replayWindowIndex: update.replayWindowIndex ?? null,
+      trackId: currentTrack?.id ?? null,
+      trackTitle: currentTrack ? getTrackTitle(currentTrack) : null,
+      trackSecond: currentTrackSecond,
+    });
 
     startTransition(() => {
       setLastUpdate(update);
@@ -2316,34 +2290,34 @@ export function LiveLogMonitorPanel({
       if (replayActive) return;
 
       setEmittedCueCount((current) => current + routedCues.length);
-      setRecentCues((current) => [
-        ...routedCues.slice().reverse().map(cue => ({
-          ...cue,
-          logLine: primaryLine // Attach the log line to the cue for synchronized rendering
-        })),
-        ...current,
-      ].slice(0, MAX_RECENT_CUES));
-      setRecentMarkers((current) => [
-        ...update.anomalyMarkers.slice().reverse(),
-        ...current,
-      ].slice(0, MAX_RECENT_MARKERS));
-      setRecentExplanations((current) => [
-        ...nextExplanations.slice().reverse(),
-        ...current,
-      ].slice(0, MAX_RECENT_EXPLANATIONS));
+      setRecentCues((current) =>
+        [
+          ...routedCues
+            .slice()
+            .reverse()
+            .map((cue) => ({
+              ...cue,
+              logLine: primaryLine, // Attach the log line to the cue for synchronized rendering
+            })),
+          ...current,
+        ].slice(0, MAX_RECENT_CUES),
+      );
+      setRecentMarkers((current) =>
+        [...update.anomalyMarkers.slice().reverse(), ...current].slice(0, MAX_RECENT_MARKERS),
+      );
+      setRecentExplanations((current) =>
+        [...nextExplanations.slice().reverse(), ...current].slice(0, MAX_RECENT_EXPLANATIONS),
+      );
       if (typeof currentTrackSecond === "number") {
         setBackgroundPlayheadSecond(currentTrackSecond);
       }
       if (nextExplanations[0]) {
         setSelectedExplanationId((current) =>
-          monitor.isPlayback ? nextExplanations[0]!.id : current ?? nextExplanations[0]!.id,
+          monitor.isPlayback ? nextExplanations[0]!.id : (current ?? nextExplanations[0]!.id),
         );
       }
       setRecentVoices(
-        resolveArrangementVoices(
-          routedCues,
-          scene.mutationProfile.arrangementDepth,
-        ).slice(0, 12),
+        resolveArrangementVoices(routedCues, scene.mutationProfile.arrangementDepth).slice(0, 12),
       );
     });
 
@@ -2360,8 +2334,7 @@ export function LiveLogMonitorPanel({
             setBeatClockBpm(liveBpmVal);
           }
         } else if (beatClockRef.current !== null) {
-          const drift =
-            Math.abs(liveBpmVal - beatClockRef.current.bpm) / beatClockRef.current.bpm;
+          const drift = Math.abs(liveBpmVal - beatClockRef.current.bpm) / beatClockRef.current.bpm;
           if (drift > 0.12) {
             beatClockRef.current = { ...beatClockRef.current, bpm: liveBpmVal };
             setBeatClockBpm(liveBpmVal);
@@ -2369,7 +2342,11 @@ export function LiveLogMonitorPanel({
         }
       }
 
-      log.info("onStreamUpdate → playing %d routed cues, bpm=%s", routedCues.length, update.suggestedBpm);
+      log.info(
+        "onStreamUpdate → playing %d routed cues, bpm=%s",
+        routedCues.length,
+        update.suggestedBpm,
+      );
       if (!panelAudioProbePlayedRef.current && backgroundDeckRef.current === null) {
         panelAudioProbePlayedRef.current = true;
         void playPanelTestTone();
@@ -2423,37 +2400,41 @@ export function LiveLogMonitorPanel({
           ...c,
         ]);
       }
-    const input: StartSessionInput = {
-      sessionId,
-      adapterKind: "file",
-      source: repository.sourcePath,
-      label: repository.title,
-      startFromBeginning: true,
-    };
+      const input: StartSessionInput = {
+        sessionId,
+        adapterKind: "file",
+        source: repository.sourcePath,
+        label: repository.title,
+        startFromBeginning: true,
+      };
 
-    const started = await monitor.startSession(repository, input);
-    if (!started) {
-      throw new Error(
-        "Maia could not start the selected live source in the current runtime.",
-      );
-    }
+      const started = await monitor.startSession(repository, input);
+      if (!started) {
+        throw new Error("Maia could not start the selected live source in the current runtime.");
+      }
 
-    // AudioContext was already created above — just read the ref
-    const anchorBpm = referenceAnchor?.bpm ?? null;
-    const ctx = audioContextRef.current;
-    if (ctx && anchorBpm && anchorBpm > 0) {
-      beatClockRef.current = { originTime: ctx.currentTime, bpm: anchorBpm };
-      setBeatClockBpm(anchorBpm);
-    } else {
-      beatClockRef.current = null;
-      setBeatClockBpm(null);
-    }
-    // Start the background rhythm pulse when beat-locked preset is active
-    if (ctx && scene.preset.useBeatGrid) {
-      const looperBpm = anchorBpm ?? 120;
-      startBeatLooper(ctx, looperBpm, scene.preset.rhythmDivision, beatLooperRef, masterGainRef.current ?? ctx.destination);
-      setBeatLooperActive(true);
-    }
+      // AudioContext was already created above — just read the ref
+      const anchorBpm = referenceAnchor?.bpm ?? null;
+      const ctx = audioContextRef.current;
+      if (ctx && anchorBpm && anchorBpm > 0) {
+        beatClockRef.current = { originTime: ctx.currentTime, bpm: anchorBpm };
+        setBeatClockBpm(anchorBpm);
+      } else {
+        beatClockRef.current = null;
+        setBeatClockBpm(null);
+      }
+      // Start the background rhythm pulse when beat-locked preset is active
+      if (ctx && scene.preset.useBeatGrid) {
+        const looperBpm = anchorBpm ?? 120;
+        startBeatLooper(
+          ctx,
+          looperBpm,
+          scene.preset.rhythmDivision,
+          beatLooperRef,
+          masterGainRef.current ?? ctx.destination,
+        );
+        setBeatLooperActive(true);
+      }
 
       // Start background guide track if present
       if (ctx) {
@@ -2610,10 +2591,7 @@ export function LiveLogMonitorPanel({
 
     monitor.pausePlayback();
     monitor.seekPlaybackProgress(
-      resolveReplayProgressForWindow(
-        bookmark.replayWindowIndex,
-        monitor.playbackEventCount,
-      ),
+      resolveReplayProgressForWindow(bookmark.replayWindowIndex, monitor.playbackEventCount),
     );
 
     const bookmarkExplanation = recentExplanations.find(
@@ -2634,9 +2612,7 @@ export function LiveLogMonitorPanel({
   const handleToggleMute = useCallback(() => {
     setMasterVolume((current) => {
       if (current <= 0.001) {
-        return previousAudibleVolumeRef.current > 0.001
-          ? previousAudibleVolumeRef.current
-          : 0.45;
+        return previousAudibleVolumeRef.current > 0.001 ? previousAudibleVolumeRef.current : 0.45;
       }
 
       previousAudibleVolumeRef.current = current;
@@ -2645,31 +2621,33 @@ export function LiveLogMonitorPanel({
   }, []);
 
   const currentLevelCounts = lastUpdate?.levelCounts ?? {};
-  const parsedLines = lastUpdate?.parsedLines.slice(-MAX_PARSED_LINES) ?? [];
   const anomalySourceRows = resolveAnomalySourceRows(lastUpdate);
   const waveAnomalyMarkers = recentMarkers.slice(0, 4);
   const liveSourceLabel = lastUpdate?.sourcePath ?? repository.sourcePath;
   const recentSyncTailRows = syncTailRows.slice(-MAX_SYNC_TAIL_LINES);
+  const deckStatusLabel = replayActive
+    ? t.session.replay
+    : liveEnabled
+      ? t.appShell.live
+      : t.session.stopped;
+  const audioStateLabel = audioLabel(audioStatus, liveEnabled, t);
 
   if (!expanded && !liveEnabled) {
     return (
       <section className="panel live-monitor-cta">
         <div className="live-monitor-cta-content">
           <div>
-            <h2>Live monitor deck</h2>
-            <p className="support-copy">
-              Choose a listening bed, pick a live feed, and let Maia turn this
-              source into a background-safe monitoring mix.
-            </p>
+            <h2>{t.inspect.liveMonitorDeckTitle}</h2>
+            <p className="support-copy">{t.inspect.liveMonitorDeckCta}</p>
             <small className="monitor-cta-meta">
               {hasBaseListeningBed
-                ? `${baseTrackCount} base track${baseTrackCount === 1 ? "" : "s"} armed`
-                : "No base playlist armed yet"}
+                ? `${baseTrackCount} ${t.library.sounds.toLowerCase()}${baseTrackCount === 1 ? "" : "s"} ${t.session.armed.toLowerCase()}`
+                : `${t.inspect.basePlaylist} ${t.session.notArmed.toLowerCase()}`}
               {` · ${selectedStyleProfile.label} · ${selectedMutationProfile.label}`}
             </small>
           </div>
           <button type="button" className="action" onClick={() => setExpanded(true)}>
-            Open monitor deck
+            {t.inspect.liveMonitorDeckOpen}
           </button>
         </div>
       </section>
@@ -2680,32 +2658,36 @@ export function LiveLogMonitorPanel({
     <section className="panel waveform-panel">
       <div className="panel-header">
         <div>
-          <h2>Live monitor deck</h2>
+          <h2>{t.inspect.liveMonitorDeckTitle}</h2>
           <p className="support-copy">
-            {replayActive
-              ? "Replays a saved session through the same mutation engine so the team can revisit how the source bent the base groove."
-              : "Listens to a live feed, bends the selected listening bed, and keeps new operational windows audible through Web Audio."}
+            {replayActive ? t.inspect.liveMonitorReplayCopy : t.inspect.liveMonitorLiveCopy}
           </p>
         </div>
         <div className="live-log-toolbar">
           <span className={`live-log-badge ${liveEnabled ? "live" : "idle"}`}>
-            {statusLabel(liveEnabled, replayActive)}
+            {deckStatusLabel}
           </span>
           <span className="live-log-badge">{activeAdapterLabel}</span>
-          <span 
+          <span
             className={`live-log-badge ${audioStatus === "ready" ? "ready" : "warn"}`}
-            title={audioStatus === "ready" ? "Audio engine active" : "Audio blocked or errored. Click Start to resume."}
+            title={
+              audioStatus === "ready" ? t.inspect.audioEngineActive : t.inspect.audioEngineBlocked
+            }
             onClick={() => void ensureAudioReady()}
             style={{ cursor: "pointer" }}
           >
-            {audioStatus === "ready" ? "Audio: ON" : "Audio: BLOCKED"}
+            {audioStatus === "ready" ? t.inspect.audioOn : t.inspect.audioBlocked}
           </span>
-          <button type="button" className="secondary-action" onClick={() => void playPanelTestTone()}>
-            Test audio
+          <button
+            type="button"
+            className="secondary-action"
+            onClick={() => void playPanelTestTone()}
+          >
+            {t.inspect.testAudio}
           </button>
           {liveEnabled ? (
             <button type="button" className="secondary-action" onClick={handleStop}>
-              {replayActive ? "Exit replay" : "Stop monitor"}
+              {replayActive ? t.session.exitReplay : t.inspect.stopMonitor}
             </button>
           ) : null}
           {bounceWindowCount > 0 ? (
@@ -2726,33 +2708,30 @@ export function LiveLogMonitorPanel({
           <div className="workflow-strip" aria-hidden="true">
             <div className="workflow-step-wrap">
               <span className={`workflow-step${hasBaseListeningBed ? " active" : ""}`}>
-                Base Bed
+                {t.inspect.baseBedStep}
               </span>
               <span className="workflow-arrow">→</span>
             </div>
             <div className="workflow-step-wrap">
               <span className={`workflow-step${adapterConfigured ? " active" : ""}`}>
-                Source Feed
+                {t.inspect.sourceFeedStep}
               </span>
               <span className="workflow-arrow">→</span>
             </div>
             <div className="workflow-step-wrap">
-              <span className="workflow-step active">Scene</span>
+              <span className="workflow-step active">{t.inspect.sceneStep}</span>
               <span className="workflow-arrow">→</span>
             </div>
             <div className="workflow-step-wrap">
-              <span className="workflow-step">Run</span>
+              <span className="workflow-step">{t.inspect.runStep}</span>
             </div>
           </div>
 
           <div className="monitor-setup-grid">
             <div className="audio-path-card monitor-setup-card">
-              <span>1. Base listening bed</span>
-              <strong>{basePlaylist?.name ?? "Base playlist"}</strong>
-              <p className="support-copy">
-                Use a stable track or playlist so the monitor stays musical and
-                low-fatigue during long sessions.
-              </p>
+              <span>{t.inspect.baseListeningBedTitle}</span>
+              <strong>{basePlaylist?.name ?? t.inspect.basePlaylist}</strong>
+              <p className="support-copy">{t.inspect.stableBedCopy}</p>
               <div className="monitor-setup-stack">
                 <input
                   type="text"
@@ -2768,8 +2747,8 @@ export function LiveLogMonitorPanel({
                         : createBasePlaylist([], event.target.value || "Base playlist"),
                     )
                   }
-                  placeholder="Name this base playlist"
-                  aria-label="Base playlist name"
+                  placeholder={t.inspect.nameBasePlaylist}
+                  aria-label={t.inspect.basePlaylist}
                 />
                 {availableTracks.length > 0 ? (
                   <div className="monitor-setup-row">
@@ -2777,9 +2756,9 @@ export function LiveLogMonitorPanel({
                       className="compact-select"
                       value={pendingAddTrackId}
                       onChange={(e) => setPendingAddTrackId(e.target.value)}
-                      title="Pick a track to add to the base playlist"
+                      title={t.inspect.addBaseTrack}
                     >
-                      <option value="">Add base track…</option>
+                      <option value="">{t.inspect.addBaseTrack}</option>
                       {availableBaseTrackOptions.map((track) => (
                         <option
                           key={track.id}
@@ -2787,8 +2766,12 @@ export function LiveLogMonitorPanel({
                           disabled={track.file.availabilityState === "missing"}
                         >
                           {getTrackTitle(track)}
-                          {track.analysis.bpm !== null ? ` · ${track.analysis.bpm.toFixed(0)} BPM` : ""}
-                          {track.file.availabilityState === "missing" ? " · LOST" : ""}
+                          {track.analysis.bpm !== null
+                            ? ` · ${track.analysis.bpm.toFixed(0)} BPM`
+                            : ""}
+                          {track.file.availabilityState === "missing"
+                            ? ` · ${t.library.lost.toUpperCase()}`
+                            : ""}
                         </option>
                       ))}
                     </select>
@@ -2819,7 +2802,7 @@ export function LiveLogMonitorPanel({
                         setPendingAddTrackId("");
                       }}
                     >
-                      + Add
+                      {t.inspect.addAction}
                     </button>
                   </div>
                 ) : null}
@@ -2829,9 +2812,9 @@ export function LiveLogMonitorPanel({
                       className="compact-select"
                       value={pendingLoadPlaylistId}
                       onChange={(e) => setPendingLoadPlaylistId(e.target.value)}
-                      title="Load a saved base playlist from the library"
+                      title={t.inspect.loadSavedPlaylist}
                     >
-                      <option value="">Load saved playlist…</option>
+                      <option value="">{t.inspect.loadSavedPlaylist}</option>
                       {availablePlaylists.map((playlist) => (
                         <option key={playlist.id} value={playlist.id}>
                           {playlist.name} · {playlist.trackIds.length} tracks
@@ -2844,7 +2827,9 @@ export function LiveLogMonitorPanel({
                       disabled={!pendingLoadPlaylistId}
                       onClick={() => {
                         const nextPlaylist =
-                          availablePlaylists.find((playlist) => playlist.id === pendingLoadPlaylistId) ?? null;
+                          availablePlaylists.find(
+                            (playlist) => playlist.id === pendingLoadPlaylistId,
+                          ) ?? null;
                         if (!nextPlaylist) {
                           return;
                         }
@@ -2856,7 +2841,7 @@ export function LiveLogMonitorPanel({
                         });
                       }}
                     >
-                      Load
+                      {t.inspect.loadAction}
                     </button>
                   </div>
                 ) : null}
@@ -2875,7 +2860,7 @@ export function LiveLogMonitorPanel({
                           <button
                             type="button"
                             className="pill-reorder"
-                            aria-label={`Move ${getTrackTitle(track)} up`}
+                            aria-label={t.inspect.moveUp.replace("{name}", getTrackTitle(track))}
                             disabled={idx === 0}
                             onClick={() =>
                               setBasePlaylist((current) => {
@@ -2895,16 +2880,21 @@ export function LiveLogMonitorPanel({
                             ↑
                           </button>
                           {getTrackTitle(track)}
-                          {track.analysis.bpm !== null ? ` · ${track.analysis.bpm.toFixed(0)} BPM` : ""}
+                          {track.analysis.bpm !== null
+                            ? ` · ${track.analysis.bpm.toFixed(0)} BPM`
+                            : ""}
                           {track.file.availabilityState === "missing" ? (
-                            <span className="track-lost-badge" title={getTrackAvailabilityLabel(track)}>
-                              LOST
+                            <span
+                              className="track-lost-badge"
+                              title={getTrackAvailabilityLabel(track)}
+                            >
+                              {t.library.lost.toUpperCase()}
                             </span>
                           ) : null}
                           <button
                             type="button"
                             className="pill-reorder"
-                            aria-label={`Move ${getTrackTitle(track)} down`}
+                            aria-label={t.inspect.moveDown.replace("{name}", getTrackTitle(track))}
                             disabled={idx === (basePlaylist?.trackIds.length ?? 0) - 1}
                             onClick={() =>
                               setBasePlaylist((current) => {
@@ -2925,13 +2915,18 @@ export function LiveLogMonitorPanel({
                           </button>
                           <button
                             type="button"
-                            aria-label={`Remove ${getTrackTitle(track)} from base playlist`}
+                            aria-label={t.inspect.removeFromPlaylist.replace(
+                              "{name}",
+                              getTrackTitle(track),
+                            )}
                             onClick={() =>
                               setBasePlaylist((current) =>
                                 current
                                   ? {
                                       ...current,
-                                      trackIds: current.trackIds.filter((trackId) => trackId !== id),
+                                      trackIds: current.trackIds.filter(
+                                        (trackId) => trackId !== id,
+                                      ),
                                       updatedAt: new Date().toISOString(),
                                     }
                                   : current,
@@ -2945,16 +2940,13 @@ export function LiveLogMonitorPanel({
                     })}
                   </div>
                 ) : (
-                  <p className="monitor-empty-hint">
-                    Add at least one track if you want the monitor to behave like
-                    Maia's intended familiar listening bed instead of pure cue synthesis.
-                  </p>
+                  <p className="monitor-empty-hint">{t.inspect.intendedListeningBedHint}</p>
                 )}
               </div>
             </div>
 
             <div className="audio-path-card monitor-setup-card">
-              <span>2. Signal feed</span>
+              <span>{t.inspect.signalFeedTitle}</span>
               <strong>{getStreamAdapterLabel(adapterKind)}</strong>
               <p className="support-copy">{adapterDescription}</p>
               <div className="monitor-setup-stack">
@@ -2964,20 +2956,18 @@ export function LiveLogMonitorPanel({
                   onChange={(e) => setAdapterKind(e.target.value as StreamAdapterKind)}
                   disabled
                 >
-                  <option value="file">File tail</option>
+                  <option value="file">{t.library.fileTail}</option>
                 </select>
-                <p className="support-copy">
-                  Week 1 MVP runs a single verified pipeline: imported log file to live monitor.
-                </p>
+                <p className="support-copy">{t.inspect.weekOnePipeline}</p>
                 <div className="monitor-source-summary">
-                  <small>Target</small>
+                  <small>{t.inspect.targetLabel}</small>
                   <strong>{adapterTarget}</strong>
                 </div>
               </div>
             </div>
 
             <div className="audio-path-card monitor-setup-card">
-              <span>3. Scene and launch</span>
+              <span>{t.inspect.sceneLaunchTitle}</span>
               <strong>
                 {selectedStyleProfile.label} · {selectedMutationProfile.label}
               </strong>
@@ -2989,7 +2979,7 @@ export function LiveLogMonitorPanel({
                   className="compact-select"
                   value={selectedStyleProfileId}
                   onChange={(e) => setSelectedStyleProfileId(e.target.value)}
-                  title="Style profile — sets the base musical character for background listening"
+                  title={t.inspect.styleProfileTitle}
                 >
                   {STYLE_PROFILES.map((profile) => (
                     <option key={profile.id} value={profile.id}>
@@ -3001,7 +2991,7 @@ export function LiveLogMonitorPanel({
                   className="compact-select"
                   value={selectedMutationProfileId}
                   onChange={(e) => setSelectedMutationProfileId(e.target.value)}
-                  title="Mutation profile — controls how hard logs and repo activity deform the base track"
+                  title={t.inspect.mutationProfileTitle}
                 >
                   {MUTATION_PROFILES.map((profile) => (
                     <option key={profile.id} value={profile.id}>
@@ -3015,46 +3005,56 @@ export function LiveLogMonitorPanel({
                   onChange={(e) =>
                     setForcedLiveMutationState(e.target.value as ForcedLiveMutationState)
                   }
-                  title="Audition override — force a listening state without depending on the live log"
+                  title={t.inspect.auditionOverrideTitle}
                 >
-                  <option value="auto">Audition state · Auto</option>
-                  <option value="normal">Audition state · Normal</option>
-                  <option value="warning">Audition state · Warning</option>
-                  <option value="critical">Audition state · Critical</option>
+                  <option value="auto">{t.inspect.auditionAuto}</option>
+                  <option value="normal">{t.inspect.auditionNormal}</option>
+                  <option value="warning">{t.inspect.auditionWarning}</option>
+                  <option value="critical">{t.inspect.auditionCritical}</option>
                 </select>
                 <ul className="monitor-readiness-list">
                   <li className="monitor-readiness-item">
-                    <span>Base bed</span>
-                    <strong className={`monitor-readiness-state${hasBaseListeningBed ? " ready" : ""}`}>
+                    <span>{t.session.baseBed}</span>
+                    <strong
+                      className={`monitor-readiness-state${hasBaseListeningBed ? " ready" : ""}`}
+                    >
                       {hasBaseListeningBed
-                        ? `${baseTrackCount} track${baseTrackCount === 1 ? "" : "s"} armed`
-                        : "Recommended"}
+                        ? `${baseTrackCount} ${t.library.sounds.toLowerCase()}${baseTrackCount === 1 ? "" : "s"} ${t.session.armed.toLowerCase()}`
+                        : t.inspect.recommended}
                     </strong>
                   </li>
                   <li className="monitor-readiness-item">
-                    <span>Source feed</span>
-                    <strong className={`monitor-readiness-state${adapterConfigured ? " ready" : ""}`}>
-                      {adapterConfigured ? "Ready" : "Needs config"}
+                    <span>{t.session.sourceFeed}</span>
+                    <strong
+                      className={`monitor-readiness-state${adapterConfigured ? " ready" : ""}`}
+                    >
+                      {adapterConfigured ? t.inspect.ready : t.inspect.needsConfig}
                     </strong>
                   </li>
                   <li className="monitor-readiness-item">
-                    <span>Cue engine</span>
+                    <span>{t.inspect.cueEngineLabel}</span>
                     <strong className="monitor-readiness-state ready">
                       {cueEnginePreviewLabel}
                     </strong>
                   </li>
                 </ul>
                 {!hasBaseListeningBed ? (
-                  <p className="monitor-empty-hint">
-                    Maia can still run synth-only, but the intended product flow
-                    is a chosen track or playlist as the stable listening bed.
-                  </p>
+                  <p className="monitor-empty-hint">{t.inspect.synthOnlyHint}</p>
                 ) : null}
                 <p className="support-copy">
-                  Audition override: {forcedLiveMutationState === "auto" ? "Live log driven" : liveMutationStateLabel}
+                  {t.inspect.auditionOverridePrefix}{" "}
+                  {forcedLiveMutationState === "auto"
+                    ? t.inspect.liveLogDriven
+                    : liveMutationStateLabel}
                 </p>
                 <p className="support-copy">
-                  {describeForcedState(forcedLiveMutationState)}
+                  {forcedLiveMutationState === "normal"
+                    ? t.inspect.forcedStateNormal
+                    : forcedLiveMutationState === "warning"
+                      ? t.inspect.forcedStateWarning
+                      : forcedLiveMutationState === "critical"
+                        ? t.inspect.forcedStateCritical
+                        : t.inspect.liveLogDriven}
                 </p>
                 <div className="monitor-launch-row">
                   <button
@@ -3065,16 +3065,16 @@ export function LiveLogMonitorPanel({
                   >
                     {isStarting ? (
                       <>
-                        <span className="spin-ring" aria-hidden="true" /> Starting...
+                        <span className="spin-ring" aria-hidden="true" /> {t.inspect.starting}
                       </>
                     ) : (
-                      "Start monitor"
+                      t.inspect.startMonitor
                     )}
                   </button>
                   <small>
                     {adapterConfigured
-                      ? `Feed target: ${adapterTarget}`
-                      : "Configure the selected feed before starting."}
+                      ? t.inspect.feedTarget.replace("{target}", adapterTarget)
+                      : t.inspect.configureFeedBeforeStart}
                   </small>
                 </div>
               </div>
@@ -3084,66 +3084,77 @@ export function LiveLogMonitorPanel({
       ) : null}
 
       {error && (
-        <div style={{ padding: "8px 16px", background: "rgba(255,0,0,0.1)", border: "1px solid #f44", borderRadius: "4px", margin: "10px", color: "#f44", fontSize: "0.85rem" }}>
+        <div
+          style={{
+            padding: "8px 16px",
+            background: "rgba(255,0,0,0.1)",
+            border: "1px solid #f44",
+            borderRadius: "4px",
+            margin: "10px",
+            color: "#f44",
+            fontSize: "0.85rem",
+          }}
+        >
           {error}
         </div>
       )}
 
       {liveEnabled && (basePlaylist?.trackIds.length ?? 0) > 0 ? (
         <>
-        <div className="audio-path-card top-spaced">
-          <span>Base playlist</span>
-          <strong>{basePlaylist?.name ?? "Base playlist"}</strong>
-          {liveEnabled && backgroundNowPlayingTrack ? (
-            <small>
-              Now playing: {getTrackTitle(backgroundNowPlayingTrack)}
-              {backgroundNowPlayingTrack.analysis.bpm !== null
-                ? ` · ${backgroundNowPlayingTrack.analysis.bpm.toFixed(0)} BPM`
-                : ""}
-            </small>
-          ) : null}
-          {liveEnabled && backgroundTransitionPlan && backgroundTransitionNextTrack ? (
-            <small>
-              Up next: {getTrackTitle(backgroundTransitionNextTrack)} · {backgroundTransitionPlan.summary}
-            </small>
-          ) : null}
-          <p className="support-copy top-spaced">
-            {selectedStyleProfile.description} {selectedMutationProfile.description}
-          </p>
-        </div>
+          <div className="audio-path-card top-spaced">
+            <span>{t.inspect.basePlaylist}</span>
+            <strong>{basePlaylist?.name ?? t.inspect.basePlaylist}</strong>
+            {liveEnabled && backgroundNowPlayingTrack ? (
+              <small>
+                Now playing: {getTrackTitle(backgroundNowPlayingTrack)}
+                {backgroundNowPlayingTrack.analysis.bpm !== null
+                  ? ` · ${backgroundNowPlayingTrack.analysis.bpm.toFixed(0)} BPM`
+                  : ""}
+              </small>
+            ) : null}
+            {liveEnabled && backgroundTransitionPlan && backgroundTransitionNextTrack ? (
+              <small>
+                Up next: {getTrackTitle(backgroundTransitionNextTrack)} ·{" "}
+                {backgroundTransitionPlan.summary}
+              </small>
+            ) : null}
+            <p className="support-copy top-spaced">
+              {selectedStyleProfile.description} {selectedMutationProfile.description}
+            </p>
+          </div>
 
-        <p className="support-copy top-spaced">Base playlist</p>
-        <div className="pill-strip">
-          {basePlaylist?.trackIds.map((id) => {
-            const track = availableTracks.find((t) => t.id === id);
-            if (!track) {
-              return null;
-            }
-            return (
-              <span key={id}>
-                {getTrackTitle(track)}
-                {track.analysis.bpm !== null ? ` · ${track.analysis.bpm.toFixed(0)} BPM` : ""}
-                {track.file.availabilityState === "missing" ? (
-                  <span className="track-lost-badge" title={getTrackAvailabilityLabel(track)}>
-                    LOST
-                  </span>
-                ) : null}
-              </span>
-            );
-          })}
-        </div>
+          <p className="support-copy top-spaced">{t.inspect.basePlaylist}</p>
+          <div className="pill-strip">
+            {basePlaylist?.trackIds.map((id) => {
+              const track = availableTracks.find((t) => t.id === id);
+              if (!track) {
+                return null;
+              }
+              return (
+                <span key={id}>
+                  {getTrackTitle(track)}
+                  {track.analysis.bpm !== null ? ` · ${track.analysis.bpm.toFixed(0)} BPM` : ""}
+                  {track.file.availabilityState === "missing" ? (
+                    <span className="track-lost-badge" title={getTrackAvailabilityLabel(track)}>
+                      {t.library.lost.toUpperCase()}
+                    </span>
+                  ) : null}
+                </span>
+              );
+            })}
+          </div>
         </>
       ) : null}
 
       {liveEnabled && monitor.session ? (
         <div className={`audio-path-card${replayActive ? " audio-path-card--replay" : ""}`}>
-          <span>{replayActive ? "Replay session" : "Session"}</span>
+          <span>{replayActive ? t.inspect.replaySession : t.inspect.sessionLabel}</span>
           <strong>{monitor.session.repoTitle}</strong>
           <small>
             {replayActive
-              ? `Stored source replay · ${monitor.session.sourcePath}`
+              ? `${t.inspect.storedSourceReplay} · ${monitor.session.sourcePath}`
               : monitor.session.pollMode === "direct"
-                ? "Fallback — direct file poll"
+                ? t.inspect.fallbackDirectFilePoll
                 : monitor.session.pollMode === "websocket"
                   ? `${getStreamAdapterLabel("websocket")} · ${monitor.session.sourcePath}`
                   : monitor.session.pollMode === "http-poll"
@@ -3154,7 +3165,7 @@ export function LiveLogMonitorPanel({
             <div
               className="monitor-progress-track"
               role="progressbar"
-              aria-label="Replay progress"
+              aria-label={t.inspect.replayProgressAria}
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={playbackPercent}
@@ -3164,15 +3175,14 @@ export function LiveLogMonitorPanel({
           ) : null}
           {replayActive && playbackPercent !== null ? (
             <small>
-              {playbackPercent}% complete · {monitor.metrics.windowCount} windows replayed
+              {playbackPercent}% {t.session.complete} ·{" "}
+              {t.inspect.windowsReplayed.replace("{count}", String(monitor.metrics.windowCount))}
             </small>
           ) : null}
         </div>
       ) : null}
 
-      {replayActive &&
-      monitor.playbackProgress !== null &&
-      monitor.playbackEventCount !== null ? (
+      {replayActive && monitor.playbackProgress !== null && monitor.playbackEventCount !== null ? (
         <LiveMonitorReplayTimelineCard
           playbackProgress={monitor.playbackProgress}
           playbackPercent={playbackPercent ?? 0}
@@ -3187,9 +3197,7 @@ export function LiveLogMonitorPanel({
         />
       ) : null}
 
-      {replayActive &&
-      replaySessionId &&
-      monitor.playbackEventIndex !== null ? (
+      {replayActive && replaySessionId && monitor.playbackEventIndex !== null ? (
         <LiveMonitorReplayBookmarksCard
           replayWindowIndex={monitor.playbackEventIndex}
           activeReplayBookmark={activeReplayBookmark}
@@ -3233,8 +3241,8 @@ export function LiveLogMonitorPanel({
           className="audio-path-card--replay top-spaced"
           actionLabel={
             replayFeedbackRecommendation.isAligned
-              ? "Scene already aligned"
-              : "Apply feedback mix"
+              ? t.inspect.sceneAlreadyAligned
+              : t.inspect.applyFeedbackMix
           }
           actionDisabled={replayFeedbackRecommendation.isAligned}
           onApply={handleApplyReplayFeedbackRecommendation}
@@ -3243,37 +3251,35 @@ export function LiveLogMonitorPanel({
 
       <div className="metric-grid">
         <div>
-          <span>Mode</span>
-          <strong>
-            {replayActive ? "Session replay" : activeAdapterLabel}
-          </strong>
+          <span>{t.inspect.mode}</span>
+          <strong>{replayActive ? t.inspect.replaySession : activeAdapterLabel}</strong>
         </div>
         <div>
           <span>Audio</span>
-          <strong>{audioLabel(audioStatus, liveEnabled)}</strong>
+          <strong>{audioStateLabel}</strong>
         </div>
         <div>
-          <span>Style profile</span>
+          <span>{t.inspect.styleProfileTitle}</span>
           <strong>{selectedStyleProfile.label}</strong>
         </div>
         <div>
-          <span>Mutation</span>
+          <span>{t.inspect.mutationProfileTitle}</span>
           <strong>{selectedMutationProfile.label}</strong>
         </div>
         <div>
-          <span>Cue engine</span>
+          <span>{t.inspect.cueEngineLabel}</span>
           <strong>
             {sampleStatus === "ready"
               ? scene.sampleSourceCount > 1
-                ? "Base sample pack"
-                : "Base sample"
+                ? t.inspect.cueEngineBaseSamplePack
+                : t.inspect.cueEngineBaseSample
               : sampleStatus === "loading"
-                ? "Loading sample"
-                : "Internal synth"}
+                ? t.inspect.cueEngineLoadingSample
+                : t.inspect.cueEngineInternalSynth}
           </strong>
         </div>
         <div>
-          <span>Windows heard</span>
+          <span>{t.inspect.windowsHeard}</span>
           <strong>
             {replayActive && playbackWindowLabel
               ? playbackWindowLabel
@@ -3281,36 +3287,36 @@ export function LiveLogMonitorPanel({
           </strong>
         </div>
         <div>
-          <span>Cues emitted</span>
+          <span>{t.inspect.cuesEmitted}</span>
           <strong>{emittedCueCount}</strong>
         </div>
         <div>
-          <span>Lines processed</span>
+          <span>{t.session.linesProcessed}</span>
           <strong>{monitor.metrics.processedLines}</strong>
         </div>
         <div>
-          <span>Anomalies heard</span>
+          <span>{t.inspect.anomaliesHeard}</span>
           <strong>{monitor.metrics.totalAnomalies}</strong>
         </div>
         <div>
-          <span>Beat clock</span>
+          <span>{t.inspect.beatClock}</span>
           <strong>
-            {beatClockBpm !== null ? `${beatClockBpm.toFixed(0)} BPM` : "Free"}
+            {beatClockBpm !== null ? `${beatClockBpm.toFixed(0)} BPM` : t.inspect.free}
           </strong>
         </div>
         <div>
-          <span>Voices emitted</span>
+          <span>{t.inspect.voicesEmitted}</span>
           <strong>{emittedVoiceCount}</strong>
         </div>
         <div>
-          <span>Rhythm pulse</span>
-          <strong>{beatLooperActive ? "Active" : "Off"}</strong>
+          <span>{t.inspect.rhythmPulse}</span>
+          <strong>{beatLooperActive ? t.session.active : t.inspect.off}</strong>
         </div>
       </div>
 
       <div className="monitor-volume-control top-spaced">
         <label className="monitor-volume-label">
-          <span>Master Volume</span>
+          <span>{t.inspect.masterVolume}</span>
           <strong>{Math.round(masterVolume * 100)}%</strong>
         </label>
         <input
@@ -3321,15 +3327,11 @@ export function LiveLogMonitorPanel({
           step={0.01}
           value={masterVolume}
           onChange={(e) => handleSetMasterVolume(Number(e.target.value))}
-          aria-label="Master volume"
+          aria-label={t.inspect.masterVolumeAria}
         />
         <div className="monitor-volume-actions">
-          <button
-            type="button"
-            className="secondary-action"
-            onClick={handleToggleMute}
-          >
-            {masterVolume <= 0.001 ? "Unmute" : "Mute"}
+          <button type="button" className="secondary-action" onClick={handleToggleMute}>
+            {masterVolume <= 0.001 ? t.inspect.unmuteAction : t.inspect.muteAction}
           </button>
           <button
             type="button"
@@ -3356,7 +3358,7 @@ export function LiveLogMonitorPanel({
       </div>
 
       <div className="audio-path-card top-spaced">
-        <span>{replayActive ? "Replay source path" : "Live source path"}</span>
+        <span>{replayActive ? t.inspect.replaySourcePath : t.inspect.liveSourcePath}</span>
         <strong>{repository.sourcePath}</strong>
       </div>
 
@@ -3388,9 +3390,7 @@ export function LiveLogMonitorPanel({
           <div className="panel-header compact">
             <div>
               <h2>Live system rhythm</h2>
-              <p className="support-copy">
-                Real-time audio waveform from the monitor engine.
-              </p>
+              <p className="support-copy">{t.inspect.liveSystemRhythmCopy}</p>
             </div>
           </div>
           <LiveWaveformCanvas
@@ -3399,68 +3399,76 @@ export function LiveLogMonitorPanel({
             accentColor={scene.genreId === "tropical-house" ? "#ef7f45" : "#21b4b8"}
             isAnomaly={isAnomalyFlash}
           />
-          <div className={`live-scrolling-wave ${scene.genreId === "tropical-house" ? "tropical-theme" : ""}`}>
+          <div
+            className={`live-scrolling-wave ${scene.genreId === "tropical-house" ? "tropical-theme" : ""}`}
+          >
             {recentCues.map((cue, idx) => (
               <div
                 key={`${cue.id}-${idx}`}
                 className={`live-wave-bar ${cue.routeKey}${cue.accent === "anomaly" ? " is-anomaly" : ""}`}
                 title={`${cue.component} · ${cue.excerpt}`}
-                style={{
-                  "--bar-height": `${cue.accent === "anomaly" ? Math.max(60, cue.gain * 400) : Math.max(10, cue.gain * 220)}px`,
-                  "--bar-opacity": Math.max(0.3, 1 - idx / MAX_RECENT_CUES),
-                } as any}
+                style={
+                  {
+                    "--bar-height": `${cue.accent === "anomaly" ? Math.max(60, cue.gain * 400) : Math.max(10, cue.gain * 220)}px`,
+                    "--bar-opacity": Math.max(0.3, 1 - idx / MAX_RECENT_CUES),
+                  } as any
+                }
               />
             ))}
             {recentCues.length === 0 && (
-              <div className="live-wave-placeholder">Awaiting system pulse…</div>
+              <div className="live-wave-placeholder">{t.inspect.awaitingSystemPulse}</div>
             )}
           </div>
           <div className="monitor-recent-horizontal-tail">
             {recentCues.map((cue, idx) => (
-              <div 
-                key={`tail-${cue.id}-${idx}`} 
+              <div
+                key={`tail-${cue.id}-${idx}`}
                 className={`monitor-horizontal-tail-cell is-${cue.routeKey}`}
-                style={{ 
-                  "--cell-opacity": Math.max(0.3, 1 - idx / MAX_RECENT_CUES) 
-                } as any}
+                style={
+                  {
+                    "--cell-opacity": Math.max(0.3, 1 - idx / MAX_RECENT_CUES),
+                  } as any
+                }
               >
                 {cue.logLine ? (
                   <div className="monitor-horizontal-tail-text">
                     <span className="tail-component">[{cue.component}]</span> {cue.logLine}
                   </div>
                 ) : (
-                  <div className="monitor-horizontal-tail-empty">IDLE</div>
+                  <div className="monitor-horizontal-tail-empty">{t.inspect.idleUpper}</div>
                 )}
               </div>
             ))}
           </div>
           <div className="live-wave-anomaly-strip">
             <div className="monitor-parsed-lines-head">
-              <span>Wave anomaly markers</span>
+              <span>{t.inspect.waveAnomalyMarkers}</span>
               <strong>{waveAnomalyMarkers.length}/4</strong>
             </div>
             {waveAnomalyMarkers.length > 0 ? (
               <div className="live-wave-anomaly-chip-list">
                 {waveAnomalyMarkers.map((marker, index) => (
                   <div key={`${marker.eventIndex}-${index}`} className="live-wave-anomaly-chip">
-                    <span className="live-wave-anomaly-chip-level">{marker.level.toUpperCase()}</span>
+                    <span className="live-wave-anomaly-chip-level">
+                      {marker.level.toUpperCase()}
+                    </span>
                     <span className="live-wave-anomaly-chip-component">{marker.component}</span>
                     <code className="live-wave-anomaly-chip-excerpt">{marker.excerpt}</code>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="monitor-empty-hint">No anomaly markers in the latest windows.</p>
+              <p className="monitor-empty-hint">{t.inspect.noAnomalyMarkersLatestWindows}</p>
             )}
           </div>
           <div className="audio-path-card">
-            <span>Wave source stream</span>
+            <span>{t.inspect.waveSourceStream}</span>
             <strong>{liveSourceLabel}</strong>
           </div>
           <div className="monitor-lines-under-wave">
             <div className="monitor-parsed-lines">
               <div className="monitor-parsed-lines-head">
-                <span>Stream tail sync</span>
+                <span>{t.inspect.streamTailSync}</span>
                 <strong>
                   {recentSyncTailRows.length}/{MAX_SYNC_TAIL_LINES} lines
                 </strong>
@@ -3469,28 +3477,32 @@ export function LiveLogMonitorPanel({
                 ref={syncTailListRef}
                 className="monitor-parsed-lines-list monitor-sync-tail-list"
                 role="list"
-                aria-label="Synchronized stream tail lines"
+                aria-label={t.inspect.syncTailAria}
               >
-                {recentSyncTailRows.length > 0 ? recentSyncTailRows.map((row, index) => (
-                  <div
-                    key={row.id}
-                    className={`monitor-parsed-line is-${row.tone}${row.windowId === activeTailWindowId ? " is-current-window" : ""}`}
-                    role="listitem"
-                  >
-                    <span className="monitor-parsed-line-index">{String(index + 1).padStart(2, "0")}</span>
-                    <span className="monitor-parsed-line-tone">{row.level.toUpperCase()}</span>
-                    <code className="monitor-parsed-line-code">
-                      [{row.component}] {row.line}
-                      {`\n`}
-                      <span className="monitor-anomaly-source-path">{row.sourcePath}</span>
-                    </code>
-                  </div>
-                )) : (
+                {recentSyncTailRows.length > 0 ? (
+                  recentSyncTailRows.map((row, index) => (
+                    <div
+                      key={row.id}
+                      className={`monitor-parsed-line is-${row.tone}${row.windowId === activeTailWindowId ? " is-current-window" : ""}`}
+                      role="listitem"
+                    >
+                      <span className="monitor-parsed-line-index">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span className="monitor-parsed-line-tone">{row.level.toUpperCase()}</span>
+                      <code className="monitor-parsed-line-code">
+                        [{row.component}] {row.line}
+                        {`\n`}
+                        <span className="monitor-anomaly-source-path">{row.sourcePath}</span>
+                      </code>
+                    </div>
+                  ))
+                ) : (
                   <div className="monitor-parsed-line is-empty" role="listitem">
                     <span className="monitor-parsed-line-index">--</span>
-                    <span className="monitor-parsed-line-tone">IDLE</span>
+                    <span className="monitor-parsed-line-tone">{t.inspect.idleUpper}</span>
                     <code className="monitor-parsed-line-code">
-                      Waiting for synchronized stream lines from live/replay updates...
+                      {t.inspect.waitingSynchronizedLines}
                     </code>
                   </div>
                 )}
@@ -3498,20 +3510,26 @@ export function LiveLogMonitorPanel({
             </div>
             <div className="monitor-anomaly-source-lines">
               <div className="monitor-parsed-lines-head">
-                <span>Anomaly source lines</span>
+                <span>{t.inspect.anomalySourceLines}</span>
                 <strong>
                   {anomalySourceRows.length}/{MAX_ANOMALY_SOURCE_LINES}
                 </strong>
               </div>
               {anomalySourceRows.length > 0 ? (
-                <div className="monitor-parsed-lines-list" role="list" aria-label="Anomaly source lines">
+                <div
+                  className="monitor-parsed-lines-list"
+                  role="list"
+                  aria-label={t.inspect.anomalySourceAria}
+                >
                   {anomalySourceRows.map((row, index) => (
                     <div
                       key={`${lastUpdate.fromOffset}-${index}-${row.level}`}
                       className={`monitor-parsed-line is-${row.tone}`}
                       role="listitem"
                     >
-                      <span className="monitor-parsed-line-index">{String(index + 1).padStart(2, "0")}</span>
+                      <span className="monitor-parsed-line-index">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
                       <span className="monitor-parsed-line-tone">{row.level.toUpperCase()}</span>
                       <code className="monitor-parsed-line-code">
                         [{row.component}] {row.line}
@@ -3524,9 +3542,9 @@ export function LiveLogMonitorPanel({
               ) : (
                 <div className="monitor-parsed-line is-empty">
                   <span className="monitor-parsed-line-index">--</span>
-                  <span className="monitor-parsed-line-tone">IDLE</span>
+                  <span className="monitor-parsed-line-tone">{t.inspect.idleUpper}</span>
                   <code className="monitor-parsed-line-code">
-                    No anomaly-producing stream line in this window yet.
+                    {t.inspect.noAnomalyProducingLine}
                   </code>
                 </div>
               )}
@@ -3538,45 +3556,45 @@ export function LiveLogMonitorPanel({
       {lastUpdate ? (
         <>
           <div className="render-master-card top-spaced">
-            <span>Current window summary</span>
+            <span>{t.inspect.currentWindowSummary}</span>
             <strong>{lastUpdate.summary}</strong>
           </div>
 
           <div className="metric-grid top-spaced">
             <div>
-              <span>Suggested BPM</span>
+              <span>{t.inspect.suggestedBpm}</span>
               <strong>
                 {typeof lastUpdate.suggestedBpm === "number"
                   ? lastUpdate.suggestedBpm.toFixed(0)
-                  : repository.suggestedBpm?.toFixed(0) ?? "Pending"}
+                  : (repository.suggestedBpm?.toFixed(0) ?? t.inspect.pending)}
               </strong>
             </div>
             <div>
-              <span>Confidence</span>
+              <span>{t.session.confidence}</span>
               <strong>{formatConfidence(lastUpdate.confidence)}</strong>
             </div>
             <div>
-              <span>Dominant level</span>
+              <span>{t.session.dominantLevel}</span>
               <strong>{lastUpdate.dominantLevel}</strong>
             </div>
             <div>
-              <span>Chunk lines</span>
+              <span>{t.inspect.chunkLines}</span>
               <strong>{lastUpdate.lineCount}</strong>
             </div>
             <div>
-              <span>Errors</span>
+              <span>{t.inspect.errors}</span>
               <strong>{levelCount(currentLevelCounts, "error")}</strong>
             </div>
             <div>
-              <span>Warnings</span>
+              <span>{t.inspect.warnings}</span>
               <strong>{levelCount(currentLevelCounts, "warn")}</strong>
             </div>
             <div>
-              <span>Info</span>
+              <span>{t.inspect.info}</span>
               <strong>{levelCount(currentLevelCounts, "info")}</strong>
             </div>
             <div>
-              <span>Tail window</span>
+              <span>{t.inspect.tailWindow}</span>
               <strong>
                 {formatCursor(lastUpdate.fromOffset)} → {formatCursor(lastUpdate.toOffset)}
               </strong>
@@ -3587,10 +3605,8 @@ export function LiveLogMonitorPanel({
             <>
               <div className="panel-header compact top-spaced">
                 <div>
-                  <h2>Active components</h2>
-                  <p className="support-copy">
-                    Most active sources in the latest live window.
-                  </p>
+                  <h2>{t.inspect.activeComponentsTitle}</h2>
+                  <p className="support-copy">{t.inspect.activeComponentsCopy}</p>
                 </div>
               </div>
               <div className="pill-strip">
@@ -3637,19 +3653,14 @@ export function LiveLogMonitorPanel({
         </>
       ) : (
         <div className="empty-state top-spaced">
-          <p>
-            Start the live tail to listen to newly appended log lines as internal cues inside
-            Maia.
-          </p>
+          <p>{t.inspect.startLiveTailHint}</p>
         </div>
       )}
 
       <div className="panel-header compact top-spaced">
         <div>
-          <h2>Arrangement layers</h2>
-          <p className="support-copy">
-            Last scheduled foundation / motion / accent voices from the multi-track engine.
-          </p>
+          <h2>{t.inspect.arrangementLayers}</h2>
+          <p className="support-copy">{t.inspect.arrangementLayersCopy}</p>
         </div>
       </div>
 
@@ -3666,9 +3677,7 @@ export function LiveLogMonitorPanel({
                       {v.cue.component} · {v.cue.routeLabel}
                     </span>
                   ))}
-                  {trackVoices.length === 0 && (
-                    <span className="arrangement-lane-empty">—</span>
-                  )}
+                  {trackVoices.length === 0 && <span className="arrangement-lane-empty">—</span>}
                 </div>
               </div>
             );
@@ -3676,16 +3685,14 @@ export function LiveLogMonitorPanel({
         </div>
       ) : (
         <div className="empty-state">
-          <p>No arrangement voices fired yet.</p>
+          <p>{t.inspect.noArrangementVoices}</p>
         </div>
       )}
 
       <div className="panel-header compact top-spaced">
         <div>
-          <h2>Pad sequencer</h2>
-          <p className="support-copy">
-            Author a 16-step pattern per arrangement track. Use ▶ Play to audition, Fill from scene to seed from recent voices, or toggle steps manually.
-          </p>
+          <h2>{t.inspect.padSequencerTitle}</h2>
+          <p className="support-copy">{t.inspect.padSequencerCopy}</p>
         </div>
       </div>
 
@@ -3697,10 +3704,8 @@ export function LiveLogMonitorPanel({
 
       <div className="panel-header compact top-spaced">
         <div>
-          <h2>Recent cues</h2>
-          <p className="support-copy">
-            Last emitted musical events derived from appended log lines.
-          </p>
+          <h2>{t.inspect.recentCuesTitle}</h2>
+          <p className="support-copy">{t.inspect.recentCuesCopy}</p>
         </div>
       </div>
 
@@ -3723,16 +3728,14 @@ export function LiveLogMonitorPanel({
         </div>
       ) : (
         <div className="empty-state">
-          <p>No live cues emitted yet.</p>
+          <p>{t.inspect.noLiveCues}</p>
         </div>
       )}
 
       <div className="panel-header compact top-spaced">
         <div>
-          <h2>Recent anomaly markers</h2>
-          <p className="support-copy">
-            Last spikes Maia translated into stronger accents.
-          </p>
+          <h2>{t.inspect.recentAnomalyMarkersTitle}</h2>
+          <p className="support-copy">{t.inspect.recentAnomalyMarkersCopy}</p>
         </div>
       </div>
 
@@ -3741,7 +3744,8 @@ export function LiveLogMonitorPanel({
           {recentMarkers.map((marker) => (
             <li key={`${marker.eventIndex}-${marker.component}-${marker.level}`}>
               <strong>
-                Event {marker.eventIndex} · {marker.level} · {marker.component}
+                {t.inspect.eventLabel.replace("{index}", String(marker.eventIndex))} ·{" "}
+                {marker.level} · {marker.component}
               </strong>
               <small>{marker.excerpt}</small>
             </li>
@@ -3749,7 +3753,7 @@ export function LiveLogMonitorPanel({
         </ul>
       ) : (
         <div className="empty-state">
-          <p>No anomaly markers have been heard in this session.</p>
+          <p>{t.inspect.noAnomalyMarkersSession}</p>
         </div>
       )}
 
@@ -3757,22 +3761,20 @@ export function LiveLogMonitorPanel({
         <>
           <div className="panel-header compact top-spaced">
             <div>
-              <h2>Monitor notes</h2>
-              <p className="support-copy">
-                Runtime notes from the internal tail loop and audio engine.
-              </p>
+              <h2>{t.inspect.monitorNotesTitle}</h2>
+              <p className="support-copy">{t.inspect.monitorNotesCopy}</p>
             </div>
           </div>
           <ul className="stack-list live-log-warning-list">
             {error ? (
               <li key="live-log-error">
-                <strong>Runtime error</strong>
+                <strong>{t.inspect.runtimeError}</strong>
                 <small>{error}</small>
               </li>
             ) : null}
             {recentWarnings.map((warning) => (
               <li key={warning}>
-                <strong>Monitor note</strong>
+                <strong>{t.inspect.monitorNoteLabel}</strong>
                 <small>{warning}</small>
               </li>
             ))}

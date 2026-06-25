@@ -19,7 +19,7 @@ export interface LibraryViewAdapter {
   onSelectRepository: (repositoryId: string) => void;
   onImportRepository: (input: ImportRepositoryInput) => Promise<boolean>;
   onImportBaseAsset: (input: ImportBaseAssetInput) => Promise<boolean>;
-  onStartMonitoring?: (repoId: string) => void;
+  onStartMonitoring?: (repoId: string, trackId?: string) => void;
 
   // UI configuration per mode
   showAnalysisTabs: boolean; // expert: true, simple: false
@@ -32,7 +32,10 @@ export interface LibraryViewAdapter {
  */
 export function createLibraryAdapter(
   mode: "simple" | "expert",
-  config: Omit<LibraryViewAdapter, "showAnalysisTabs" | "showCompositionTools" | "showPlaylistManagement">
+  config: Omit<
+    LibraryViewAdapter,
+    "showAnalysisTabs" | "showCompositionTools" | "showPlaylistManagement"
+  >,
 ): LibraryViewAdapter {
   const baseAdapter = {
     ...config,

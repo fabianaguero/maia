@@ -13,11 +13,13 @@ poll, and Python mutates the session state held here in-process.
 Because the Python interpreter is a long-lived subprocess (service mode)
 the dict survives across requests.
 """
+
 from __future__ import annotations
 
 import subprocess
 import threading
 from collections import Counter
+from contextlib import suppress
 from datetime import UTC, datetime
 from typing import Any
 
@@ -28,7 +30,7 @@ PROCESS_READ_CHUNK_BYTES = 8_192
 # Maximum sessions to keep alive without explicit stop before LRU eviction
 MAX_SESSIONS = 32
 
-_sessions: dict[str, "_Session"] = {}
+_sessions: dict[str, _Session] = {}
 _lock = threading.Lock()
 
 
@@ -41,7 +43,7 @@ def get_or_create_session(
     session_id: str,
     adapter_kind: str,
     source: str,
-) -> "_Session":
+) -> _Session:
     with _lock:
         session = _sessions.get(session_id)
         if session is None:
@@ -51,7 +53,7 @@ def get_or_create_session(
         return session
 
 
-def get_session(session_id: str) -> "_Session | None":
+def get_session(session_id: str) -> _Session | None:
     with _lock:
         return _sessions.get(session_id)
 
@@ -107,7 +109,7 @@ def start_process_adapter(
         return False, f"Session {session_id!r} not found"
 
     try:
-        proc = subprocess.Popen(  # noqa: S603 — command validated by caller
+        proc = subprocess.Popen(
             command,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -170,15 +172,13 @@ class _Session:
         if len(self.ring_buffer) > SESSION_RING_BUFFER_LINES:
             self.ring_buffer = self.ring_buffer[-SESSION_RING_BUFFER_LINES:]
 
-    def attach_process(self, proc: "subprocess.Popen[str]") -> None:
+    def attach_process(self, proc: subprocess.Popen[str]) -> None:
         self._process = proc
 
     def close(self) -> None:
         if self._process is not None:
-            try:
+            with suppress(OSError):
                 self._process.terminate()
-            except OSError:
-                pass
             self._process = None
 
     def describe(self) -> dict[str, Any]:

@@ -1,54 +1,39 @@
 import { useUserMode } from "./features/simple/UserModeContext";
+import type { AppSection } from "./features/simple/appSections";
 import { AppShell } from "./components/AppShell";
-import { SimpleMonitorScreen } from "./features/simple/SimpleMonitorScreen";
-import { ProMonitorScreen } from "./features/simple/ProMonitorScreen";
-import { ProLibraryScreen } from "./features/simple/ProLibraryScreen";
-import { SimpleModeLibraryView } from "./features/simple/SimpleModeLibraryView";
 import { WaveformBar } from "./components/WaveformBar";
+import { useT } from "./i18n/I18nContext";
 
 interface AppUIProps {
-  currentSection: "monitor" | "library" | "inspect" | "compose";
-  onSectionChange: (section: "monitor" | "library" | "inspect" | "compose") => void;
+  currentSection: AppSection;
   isMonitoring: boolean;
   selectedItem?: string;
 }
 
-export function AppUI({
-  currentSection,
-  onSectionChange,
-  isMonitoring,
-  selectedItem = "",
-}: AppUIProps) {
+export function AppUI({ currentSection, isMonitoring, selectedItem = "" }: AppUIProps) {
   const { userMode } = useUserMode();
+  const t = useT();
 
   const renderContent = () => {
     if (currentSection === "monitor") {
-      return userMode === "simple" ? (
-        <SimpleMonitorScreen />
-      ) : (
-        <ProMonitorScreen />
+      return (
+        <div style={{ padding: "2rem", textAlign: "center", color: "#a8b3c1" }}>
+          {userMode === "simple" ? t.simpleMode.nav.monitor : t.nav.session.label}
+        </div>
       );
     }
 
     if (currentSection === "library") {
-      return userMode === "simple" ? (
-        <SimpleModeLibraryView
-          tracks={[]}
-          repositories={[]}
-          baseAssets={[]}
-          selectedRepositoryId={null}
-          onSelectRepository={() => {}}
-          onImportRepository={async () => false}
-          onImportBaseAsset={async () => false}
-        />
-      ) : (
-        <ProLibraryScreen />
+      return (
+        <div style={{ padding: "2rem", textAlign: "center", color: "#a8b3c1" }}>
+          {userMode === "simple" ? t.simpleMode.nav.files : t.nav.library.label}
+        </div>
       );
     }
 
     return (
       <div style={{ padding: "2rem", textAlign: "center", color: "#a8b3c1" }}>
-        Sección no implementada en esta versión
+        {t.simpleMode.common.comingSoon}
       </div>
     );
   };

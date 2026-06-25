@@ -21,10 +21,21 @@ export default function App() {
     <div className={`min-h-screen ${theme.shell}`}>
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className={`absolute inset-0 ${theme.bgGlow}`} />
-        <div className={`absolute left-1/2 top-[-12rem] h-[28rem] w-[28rem] -translate-x-1/2 rounded-full blur-3xl ${theme.cyanBlur}`} />
-        <div className={`absolute bottom-[-8rem] right-[-6rem] h-[24rem] w-[24rem] rounded-full blur-3xl ${theme.violetBlur}`} />
+        <div
+          className={`absolute left-1/2 top-[-12rem] h-[28rem] w-[28rem] -translate-x-1/2 rounded-full blur-3xl ${theme.cyanBlur}`}
+        />
+        <div
+          className={`absolute bottom-[-8rem] right-[-6rem] h-[24rem] w-[24rem] rounded-full blur-3xl ${theme.violetBlur}`}
+        />
       </div>
-      <Header t={t} theme={theme} lang={lang} setLang={setLang} isDark={isDark} setIsDark={setIsDark} />
+      <Header
+        t={t}
+        theme={theme}
+        lang={lang}
+        setLang={setLang}
+        isDark={isDark}
+        setIsDark={setIsDark}
+      />
       <main className="relative z-10">
         <HeroSection t={t} theme={theme} />
         <ProductSection t={t} theme={theme} />

@@ -7,6 +7,7 @@ from typing import Any
 @dataclass
 class AudioCueProfile:
     """Audio parameters for a specific log event type."""
+
     waveform: str
     freq_multiplier: float
     base_duration_ms: int
@@ -18,6 +19,7 @@ class AudioCueProfile:
 @dataclass
 class VisualPalette:
     """Color palette for a specific musical style."""
+
     primary: str
     secondary: str
     accent: str
@@ -28,6 +30,7 @@ class VisualPalette:
 @dataclass
 class StylePreset:
     """A complete aesthetic mapping for live sonification."""
+
     id: str
     label: str
     description: str
@@ -42,11 +45,11 @@ PRESETS: dict[str, StylePreset] = {
         label="Techno Grid",
         description="Rhythmic and precise. Logs act as percussion triggers.",
         palette=VisualPalette(
-            primary="#a855f7",    # Purple
+            primary="#a855f7",  # Purple
             secondary="#6b21a8",
             accent="#fb7185",
             background="#0f172a",
-            anomaly="#f43f5e",    # Rose
+            anomaly="#f43f5e",  # Rose
         ),
         mappings={
             "trace": AudioCueProfile("sine", 0.8, 100, 0.08),
@@ -63,11 +66,11 @@ PRESETS: dict[str, StylePreset] = {
         label="Oceanic Ambient",
         description="Soft textures and long decays. Logs modulate the atmosphere.",
         palette=VisualPalette(
-            primary="#0ea5e9",    # Sky Blue
+            primary="#0ea5e9",  # Sky Blue
             secondary="#0369a1",
             accent="#2dd4bf",
             background="#020617",
-            anomaly="#facc15",    # Yellow
+            anomaly="#facc15",  # Yellow
         ),
         mappings={
             "trace": AudioCueProfile("sine", 0.5, 600, 0.05),
@@ -84,11 +87,11 @@ PRESETS: dict[str, StylePreset] = {
         label="Cyberpunk Glitch",
         description="Noisy and aggressive. High-speed system activity creates digital noise.",
         palette=VisualPalette(
-            primary="#f97316",    # Orange
+            primary="#f97316",  # Orange
             secondary="#9a3412",
             accent="#bef264",
             background="#000000",
-            anomaly="#ef4444",    # Red
+            anomaly="#ef4444",  # Red
         ),
         mappings={
             "trace": AudioCueProfile("sawtooth", 1.5, 60, 0.12),
@@ -105,11 +108,11 @@ PRESETS: dict[str, StylePreset] = {
         label="Zen Heartbeat",
         description="Steady and subtle. Designed for background listening in team environments.",
         palette=VisualPalette(
-            primary="#10b981",    # Emerald
+            primary="#10b981",  # Emerald
             secondary="#064e3b",
             accent="#d1fae5",
             background="#020617",
-            anomaly="#f97316",    # Orange/Amber
+            anomaly="#f97316",  # Orange/Amber
         ),
         mappings={
             "trace": AudioCueProfile("sine", 0.4, 400, 0.04),

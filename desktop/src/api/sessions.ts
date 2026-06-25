@@ -42,15 +42,17 @@ export interface CreateSessionInput {
 
 function isTauriUnavailable(error: unknown): boolean {
   return (
-    error instanceof Error &&
-    /tauri|__TAURI_INTERNALS__|ipc|native bridge/i.test(error.message)
+    error instanceof Error && /tauri|__TAURI_INTERNALS__|ipc|native bridge/i.test(error.message)
   );
 }
 
-export async function createPersistedSession(
-  input: CreateSessionInput,
-): Promise<PersistedSession> {
-  log.info("createPersistedSession id=%s adapter=%s mode=%s", input.id, input.adapterKind, input.mode);
+export async function createPersistedSession(input: CreateSessionInput): Promise<PersistedSession> {
+  log.info(
+    "createPersistedSession id=%s adapter=%s mode=%s",
+    input.id,
+    input.adapterKind,
+    input.mode,
+  );
   try {
     const result = await invoke<PersistedSession>("create_persisted_session", { input });
     log.info("createPersistedSession → created status=%s", result.status);
@@ -196,11 +198,15 @@ export interface InsertSessionEventInput {
   warningsJson: string;
 }
 
-export async function insertSessionEvent(
-  input: InsertSessionEventInput,
-): Promise<number> {
+export async function insertSessionEvent(input: InsertSessionEventInput): Promise<number> {
   try {
-    log.trace("insertSessionEvent session=%s poll=%d lines=%d cues=%s", input.sessionId, input.pollIndex, input.lineCount, input.sonificationCuesJson.length);
+    log.trace(
+      "insertSessionEvent session=%s poll=%d lines=%d cues=%s",
+      input.sessionId,
+      input.pollIndex,
+      input.lineCount,
+      input.sonificationCuesJson.length,
+    );
     return invoke<number>("insert_session_event", { input });
   } catch (error) {
     if (isTauriUnavailable(error)) return -1;
@@ -208,9 +214,7 @@ export async function insertSessionEvent(
   }
 }
 
-export async function listSessionEvents(
-  sessionId: string,
-): Promise<SessionEvent[]> {
+export async function listSessionEvents(sessionId: string): Promise<SessionEvent[]> {
   try {
     return await invoke<SessionEvent[]>("list_session_events", { sessionId });
   } catch (error) {
@@ -230,9 +234,7 @@ export async function upsertSessionBookmark(
   }
 }
 
-export async function listSessionBookmarks(
-  sessionId: string,
-): Promise<SessionBookmark[]> {
+export async function listSessionBookmarks(sessionId: string): Promise<SessionBookmark[]> {
   try {
     return await invoke<SessionBookmark[]>("list_session_bookmarks", { sessionId });
   } catch (error) {

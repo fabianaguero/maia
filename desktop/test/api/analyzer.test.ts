@@ -8,10 +8,7 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: invokeMock,
 }));
 
-import {
-  loadBootstrapManifest,
-  runAnalyzerRequest,
-} from "../../src/api/analyzer";
+import { loadBootstrapManifest, runAnalyzerRequest } from "../../src/api/analyzer";
 import {
   CONTRACT_VERSION,
   createAnalyzeTrackRequest,
@@ -39,8 +36,7 @@ describe("desktop analyzer bridge", () => {
       musicStyleConfigPath: "/workspace/desktop/src/config/music-styles.json",
       defaultTrackMusicStyleId: "house",
       musicStyles: [],
-      baseAssetCategoryConfigPath:
-        "/workspace/desktop/src/config/base-asset-categories.json",
+      baseAssetCategoryConfigPath: "/workspace/desktop/src/config/base-asset-categories.json",
       defaultBaseAssetCategoryId: "drums",
       baseAssetCategories: [],
     };
@@ -90,9 +86,7 @@ describe("desktop analyzer bridge", () => {
   it("returns a typed analyzer error for non-health requests without Tauri", async () => {
     invokeMock.mockRejectedValue(new Error("Tauri native bridge not available"));
 
-    const response = await runAnalyzerRequest(
-      createAnalyzeTrackRequest("/tmp/demo.wav"),
-    );
+    const response = await runAnalyzerRequest(createAnalyzeTrackRequest("/tmp/demo.wav"));
 
     expect(response).toEqual({
       contractVersion: CONTRACT_VERSION,

@@ -1,3 +1,5 @@
+import type { AppTranslations } from "../i18n/en";
+
 // ---------------------------------------------------------------------------
 // Source Templates
 // Pre-configured starting points that pair a musical style with a BPM range.
@@ -118,4 +120,47 @@ export function resolveSourceTemplate(id: string | null | undefined): SourceTemp
     SOURCE_TEMPLATES.find((t) => t.id === id) ??
     SOURCE_TEMPLATES.find((t) => t.id === DEFAULT_SOURCE_TEMPLATE_ID)!
   );
+}
+
+export interface SourceTemplatePresentation {
+  label: string;
+  description: string;
+  genre: string;
+  hint: string;
+}
+
+export function resolveSourceTemplatePresentation(
+  templateOrId: SourceTemplate | string | null | undefined,
+  t: AppTranslations,
+): SourceTemplatePresentation | null {
+  if (!templateOrId) {
+    return null;
+  }
+
+  const template =
+    typeof templateOrId === "string" ? resolveSourceTemplate(templateOrId) : templateOrId;
+
+  switch (template.id) {
+    case "chill-ambient":
+      return t.sourceTemplates.chillAmbient;
+    case "deep-house":
+      return t.sourceTemplates.deepHouse;
+    case "tech-house":
+      return t.sourceTemplates.techHouse;
+    case "melodic-techno":
+      return t.sourceTemplates.melodicTechno;
+    case "peak-techno":
+      return t.sourceTemplates.peakTechno;
+    case "trance-build":
+      return t.sourceTemplates.tranceBuild;
+    case "lo-fi-watch":
+      return t.sourceTemplates.loFiWatch;
+    default:
+      return {
+        label: template.label,
+        description: template.description,
+        genre: template.genre,
+        hint: template.hint,
+      };
+  }
 }

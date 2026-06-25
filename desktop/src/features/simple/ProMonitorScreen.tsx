@@ -1,74 +1,27 @@
 import { useState } from "react";
-import {
-  Play,
-  Pause,
-  SkipBack,
-  SkipForward,
-  AlertCircle,
-  Bookmark,
-  Plus,
-} from "lucide-react";
-
-interface LogLine {
-  timestamp: string;
-  level: "info" | "warn" | "error";
-  service: string;
-  message: string;
-}
-
-interface Bookmark {
-  id: string;
-  timestamp: string;
-  tag: string;
-}
+import { Play, Pause, SkipBack, SkipForward, AlertCircle, Plus } from "lucide-react";
+import { useT } from "../../i18n/I18nContext";
+import { buildProMonitorMockData, type ProMonitorBookmark } from "./proMonitorMockData";
 
 export function ProMonitorScreen() {
+  const t = useT();
   const [isPlaying, setIsPlaying] = useState(true);
-  const [isLiveMode, setIsLiveMode] = useState(true);
-  const [bookmarks, setBookmarks] = useState<Bookmark[]>([
-    { id: "1", timestamp: "09:14:27", tag: "spike" },
-    { id: "2", timestamp: "09:14:29", tag: "anomaly" },
-    { id: "3", timestamp: "09:14:35", tag: "recovery" },
-  ]);
+  const [isLiveMode] = useState(true);
+  const mockData = buildProMonitorMockData(t);
+  const [bookmarks, setBookmarks] = useState<ProMonitorBookmark[]>(mockData.bookmarks);
 
-  const logLines: LogLine[] = [
-    {
-      timestamp: "09:14:22",
-      level: "info",
-      service: "payments-api",
-      message: "Health check OK · latency 42ms",
-    },
-    {
-      timestamp: "09:14:27",
-      level: "warn",
-      service: "payments-api",
-      message: "Retry spike detected on provider A",
-    },
-    {
-      timestamp: "09:14:29",
-      level: "error",
-      service: "payments-api",
-      message: "Timeout calling settlement gateway",
-    },
-    {
-      timestamp: "09:14:35",
-      level: "info",
-      service: "payments-api",
-      message: "Fallback route engaged",
-    },
-    {
-      timestamp: "09:14:41",
-      level: "info",
-      service: "payments-api",
-      message: "Recovery confirmed · latency 38ms",
-    },
-    {
-      timestamp: "09:14:52",
-      level: "warn",
-      service: "payments-api",
-      message: "Provider B elevated latency 180ms",
-    },
-  ];
+  const resolveBookmarkTag = (bookmark: ProMonitorBookmark): string => {
+    switch (bookmark.tagKind) {
+      case "spike":
+        return t.simpleMode.proMonitor.tagSpike;
+      case "anomaly":
+        return t.simpleMode.proMonitor.tagAnomaly;
+      case "recovery":
+        return t.simpleMode.proMonitor.tagRecovery;
+      default:
+        return t.simpleMode.proMonitor.tagCustom;
+    }
+  };
 
   const getLevelBadge = (level: string) => {
     const levelClasses: Record<string, string> = {
@@ -86,21 +39,25 @@ export function ProMonitorScreen() {
         {/* Session Header */}
         <div className="session-header">
           <div className="session-title-group">
-            <h1 className="session-title">payments-api</h1>
-            <span className="session-mode-badge">Live · 12m 34s</span>
+            <h1 className="session-title">{mockData.sessionTitle}</h1>
+            <span className="session-mode-badge">
+              {t.simpleMode.proMonitor.sessionModeLive.replace("{time}", mockData.sessionElapsed)}
+            </span>
           </div>
           <div className="session-meta">
-            <span className="meta-kind">Log file</span>
+            <span className="meta-kind">{t.simpleMode.proMonitor.logKind}</span>
             <span className="meta-sound">
               <span className="music-icon">♪</span>
-              Eurythmics - Sweet Dreams · 126 BPM
+              {t.simpleMode.proMonitor.trackMeta
+                .replace("{track}", mockData.trackTitle)
+                .replace("{bpm}", mockData.bpm)}
             </span>
           </div>
         </div>
 
         {/* Live Log Stream */}
         <div className="log-stream">
-          {logLines.map((line, idx) => (
+          {mockData.logLines.map((line, idx) => (
             <div key={idx} className="log-line">
               <span className="log-timestamp">{line.timestamp}</span>
               {getLevelBadge(line.level)}
@@ -112,16 +69,13 @@ export function ProMonitorScreen() {
 
         {/* Playback Controls */}
         <div className="playback-controls">
-          <button
-            className="btn-playback"
-            onClick={() => setIsPlaying(!isPlaying)}
-          >
+          <button className="btn-playback" onClick={() => setIsPlaying(!isPlaying)}>
             {isPlaying ? <Pause size={20} /> : <Play size={20} />}
           </button>
-          <button className="btn-playback" title="Skip back">
+          <button className="btn-playback" title={t.simpleMode.proMonitor.skipBack}>
             <SkipBack size={20} />
           </button>
-          <button className="btn-playback" title="Skip forward">
+          <button className="btn-playback" title={t.simpleMode.proMonitor.skipForward}>
             <SkipForward size={20} />
           </button>
 
@@ -131,10 +85,10 @@ export function ProMonitorScreen() {
 
           <div className="mode-badges">
             <span className={`badge-mode ${isLiveMode ? "active" : ""}`}>
-              Live
+              {t.simpleMode.proMonitor.live}
             </span>
             <span className={`badge-mode ${!isLiveMode ? "active" : ""}`}>
-              Playback
+              {t.simpleMode.proMonitor.playback}
             </span>
           </div>
         </div>
@@ -146,20 +100,20 @@ export function ProMonitorScreen() {
         <div className="metrics-panel">
           <div className="metrics-grid">
             <div className="metric-card">
-              <span className="metric-label">Anomalies</span>
-              <span className="metric-value red">4</span>
+              <span className="metric-label">{t.simpleMode.proMonitor.anomalies}</span>
+              <span className="metric-value red">{mockData.metrics.anomalies}</span>
             </div>
             <div className="metric-card">
-              <span className="metric-label">Confidence</span>
-              <span className="metric-value teal">87%</span>
+              <span className="metric-label">{t.simpleMode.proMonitor.confidence}</span>
+              <span className="metric-value teal">{mockData.metrics.confidence}</span>
             </div>
             <div className="metric-card">
-              <span className="metric-label">Polls</span>
-              <span className="metric-value muted">238</span>
+              <span className="metric-label">{t.simpleMode.proMonitor.polls}</span>
+              <span className="metric-value muted">{mockData.metrics.polls}</span>
             </div>
             <div className="metric-card">
-              <span className="metric-label">Lines read</span>
-              <span className="metric-value muted">1,847</span>
+              <span className="metric-label">{t.simpleMode.proMonitor.linesRead}</span>
+              <span className="metric-value muted">{mockData.metrics.linesRead}</span>
             </div>
           </div>
         </div>
@@ -170,27 +124,33 @@ export function ProMonitorScreen() {
             <AlertCircle size={24} className="orange" />
           </div>
           <div className="alert-info">
-            <h3 className="alert-title">Warning spike</h3>
+            <h3 className="alert-title">{t.simpleMode.proMonitor.warningSpike}</h3>
             <p className="alert-subtitle">
-              Rising tension detected · 09:14:52
+              {t.simpleMode.proMonitor.warningSpikeSubtitle.replace(
+                "{time}",
+                mockData.alertTimestamp,
+              )}
             </p>
-            <p className="alert-sound">Tonal lift + brighter percussion</p>
+            <p className="alert-sound">{t.simpleMode.proMonitor.warningSpikeSound}</p>
           </div>
         </div>
 
         {/* Bookmarks */}
         <div className="bookmarks-panel">
           <div className="bookmarks-header">
-            <h3 className="bookmarks-title">Bookmarks</h3>
+            <h3 className="bookmarks-title">{t.simpleMode.proMonitor.bookmarks}</h3>
             <span className="bookmark-count">{bookmarks.length}</span>
           </div>
           <div className="bookmarks-list">
             {bookmarks.map((bookmark) => (
               <div key={bookmark.id} className="bookmark-row">
                 <span className="bookmark-time">{bookmark.timestamp}</span>
-                <span className="bookmark-tag">{bookmark.tag}</span>
-                <button className="btn-ghost btn-small" title="Replay">
-                  Replay
+                <span className="bookmark-tag">{resolveBookmarkTag(bookmark)}</span>
+                <button
+                  className="btn-ghost btn-small"
+                  title={t.simpleMode.proMonitor.replayBookmark}
+                >
+                  {t.simpleMode.proMonitor.replayBookmark}
                 </button>
               </div>
             ))}
@@ -198,16 +158,16 @@ export function ProMonitorScreen() {
           <button
             className="btn-add-bookmark"
             onClick={() => {
-              const newBookmark: Bookmark = {
+              const newBookmark: ProMonitorBookmark = {
                 id: Date.now().toString(),
                 timestamp: "09:15:00",
-                tag: "custom",
+                tagKind: "custom",
               };
               setBookmarks([...bookmarks, newBookmark]);
             }}
           >
             <Plus size={14} />
-            Add bookmark
+            {t.simpleMode.proMonitor.addBookmark}
           </button>
         </div>
       </div>

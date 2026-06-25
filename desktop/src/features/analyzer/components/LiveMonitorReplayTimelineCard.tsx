@@ -1,3 +1,5 @@
+import { useT } from "../../../i18n/I18nContext";
+
 interface LiveMonitorReplayTimelineCardProps {
   playbackProgress: number;
   playbackPercent: number;
@@ -19,15 +21,18 @@ export function LiveMonitorReplayTimelineCard({
   onTogglePause,
   onSeekProgress,
 }: LiveMonitorReplayTimelineCardProps) {
+  const t = useT();
   const transportDisabled = playbackEventCount <= 1;
 
   return (
     <div className="audio-path-card audio-path-card--replay top-spaced">
-      <span>Replay timeline</span>
-      <strong>{playbackWindowLabel ? `Window ${playbackWindowLabel}` : "Replay timeline"}</strong>
-      <small>
-        Jump inside the stored session and re-hear how each historical window bent the base track.
-      </small>
+      <span>{t.inspect.replayTimeline}</span>
+      <strong>
+        {playbackWindowLabel
+          ? t.inspect.windowLabel.replace("{window}", playbackWindowLabel)
+          : t.inspect.replayTimeline}
+      </strong>
+      <small>{t.inspect.replayTimelineCopy}</small>
       <div className="replay-transport-row">
         <button
           type="button"
@@ -35,7 +40,7 @@ export function LiveMonitorReplayTimelineCard({
           onClick={() => onStepWindow(-1)}
           disabled={transportDisabled}
         >
-          Prev window
+          {t.session.prevWindow}
         </button>
         <button
           type="button"
@@ -43,7 +48,7 @@ export function LiveMonitorReplayTimelineCard({
           onClick={onTogglePause}
           disabled={playbackEventCount <= 0}
         >
-          {isPlaybackPaused ? "Resume replay" : "Pause replay"}
+          {isPlaybackPaused ? t.session.resumeReplay : t.session.pauseReplay}
         </button>
         <button
           type="button"
@@ -51,7 +56,7 @@ export function LiveMonitorReplayTimelineCard({
           onClick={() => onStepWindow(1)}
           disabled={transportDisabled}
         >
-          Next window
+          {t.session.nextWindow}
         </button>
       </div>
       <div className="replay-timeline-control">
@@ -62,13 +67,15 @@ export function LiveMonitorReplayTimelineCard({
           step={0.001}
           value={playbackProgress}
           onChange={(event) => onSeekProgress(Number(event.target.value))}
-          aria-label="Replay timeline"
+          aria-label={t.inspect.replayTimeline}
           disabled={transportDisabled}
         />
         <div className="replay-timeline-meta">
           <span>
-            {playbackWindowLabel ?? "Window 0/0"}
-            {isPlaybackPaused ? " · paused" : ""}
+            {playbackWindowLabel
+              ? t.inspect.windowLabel.replace("{window}", playbackWindowLabel)
+              : t.inspect.windowZero}
+            {isPlaybackPaused ? ` · ${t.inspect.paused}` : ""}
           </span>
           <strong>{playbackPercent}%</strong>
         </div>

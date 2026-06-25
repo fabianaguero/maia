@@ -40,9 +40,7 @@ export function getPlaylistMedianBpm(
   const sorted = [...bpms].sort((left, right) => left - right);
   const midpoint = Math.floor(sorted.length / 2);
   const median =
-    sorted.length % 2 === 0
-      ? (sorted[midpoint - 1] + sorted[midpoint]) / 2
-      : sorted[midpoint];
+    sorted.length % 2 === 0 ? (sorted[midpoint - 1] + sorted[midpoint]) / 2 : sorted[midpoint];
 
   return Number(median.toFixed(1));
 }
@@ -64,7 +62,5 @@ export function summarizePlaylistTracks(
   const leadTitles = playlistTracks.slice(0, 2).map((track) => getTrackTitle(track));
   const remainder = playlistTracks.length - leadTitles.length;
 
-  return remainder > 0
-    ? `${leadTitles.join(" · ")} +${remainder}`
-    : leadTitles.join(" · ");
+  return remainder > 0 ? `${leadTitles.join(" · ")} +${remainder}` : leadTitles.join(" · ");
 }

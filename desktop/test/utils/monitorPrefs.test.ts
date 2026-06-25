@@ -56,14 +56,10 @@ describe("monitorPrefs", () => {
 
     saveMonitorPrefs("repo-feedback", currentPrefs);
 
-    const nextPrefs = persistReplayFeedbackRecommendation(
-      "repo-feedback",
-      currentPrefs,
-      {
-        suggestedStyleProfileId: "ambient-watch",
-        suggestedMutationProfileId: "subtle",
-      },
-    );
+    const nextPrefs = persistReplayFeedbackRecommendation("repo-feedback", currentPrefs, {
+      suggestedStyleProfileId: "ambient-watch",
+      suggestedMutationProfileId: "subtle",
+    });
 
     expect(nextPrefs).toEqual(currentPrefs);
     expect(loadMonitorPrefs("repo-feedback")).toEqual(currentPrefs);

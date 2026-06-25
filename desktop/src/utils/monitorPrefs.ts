@@ -13,10 +13,7 @@ export interface MonitorPrefs {
   masterVolume?: number;
 }
 
-function normalizeBasePlaylist(
-  repoId: string,
-  basePlaylist: unknown,
-): BaseTrackPlaylist | null {
+function normalizeBasePlaylist(repoId: string, basePlaylist: unknown): BaseTrackPlaylist | null {
   if (!basePlaylist || typeof basePlaylist !== "object") {
     return null;
   }
@@ -49,13 +46,15 @@ function normalizeBasePlaylist(
   };
 }
 
-export function createBasePlaylist(
-  trackIds: string[],
-  name = "Base playlist",
-): BaseTrackPlaylist {
+export function createBasePlaylist(trackIds: string[], name = "Base playlist"): BaseTrackPlaylist {
   const now = new Date().toISOString();
   return {
-    id: `playlist-${Math.abs(trackIds.join("|").split("").reduce((sum, char) => sum + char.charCodeAt(0), 0))}`,
+    id: `playlist-${Math.abs(
+      trackIds
+        .join("|")
+        .split("")
+        .reduce((sum, char) => sum + char.charCodeAt(0), 0),
+    )}`,
     name,
     trackIds,
     createdAt: now,
@@ -85,13 +84,11 @@ export function loadMonitorPrefs(repoId: string): MonitorPrefs | null {
             ? parsed.selectedStyleProfileId
             : DEFAULT_STYLE_PROFILE_ID,
         selectedMutationProfileId:
-          typeof parsed.selectedMutationProfileId === "string" &&
-          parsed.selectedMutationProfileId
+          typeof parsed.selectedMutationProfileId === "string" && parsed.selectedMutationProfileId
             ? parsed.selectedMutationProfileId
             : DEFAULT_MUTATION_PROFILE_ID,
         masterVolume:
-          typeof parsed.masterVolume === "number" &&
-          Number.isFinite(parsed.masterVolume)
+          typeof parsed.masterVolume === "number" && Number.isFinite(parsed.masterVolume)
             ? Math.max(0, Math.min(1, parsed.masterVolume))
             : undefined,
       };
@@ -115,8 +112,7 @@ export function loadMonitorPrefs(repoId: string): MonitorPrefs | null {
         selectedStyleProfileId: migratedStyleProfileId,
         selectedMutationProfileId: DEFAULT_MUTATION_PROFILE_ID,
         masterVolume:
-          typeof parsed.masterVolume === "number" &&
-          Number.isFinite(parsed.masterVolume)
+          typeof parsed.masterVolume === "number" && Number.isFinite(parsed.masterVolume)
             ? Math.max(0, Math.min(1, parsed.masterVolume))
             : undefined,
       };

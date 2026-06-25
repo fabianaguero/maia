@@ -193,12 +193,8 @@ describe("PadSequencerPanel fill from scene", () => {
 
     // Foundation track = first 16 steps. Steps 0,4,8,12 should be on.
     const foundationSteps = stepButtons.slice(0, 16);
-    [0, 4, 8, 12].forEach((i) =>
-      expect(foundationSteps[i]).toHaveClass("pad-seq-step--on"),
-    );
-    [1, 2, 3, 5].forEach((i) =>
-      expect(foundationSteps[i]).not.toHaveClass("pad-seq-step--on"),
-    );
+    [0, 4, 8, 12].forEach((i) => expect(foundationSteps[i]).toHaveClass("pad-seq-step--on"));
+    [1, 2, 3, 5].forEach((i) => expect(foundationSteps[i]).not.toHaveClass("pad-seq-step--on"));
   });
 
   it("seeds an error pattern (denser) from error voices", () => {
@@ -247,9 +243,7 @@ describe("PadSequencerPanel clear", () => {
     const stepButtons = screen
       .getAllByRole("button")
       .filter((b) => b.classList.contains("pad-seq-step"));
-    stepButtons.forEach((btn) =>
-      expect(btn).not.toHaveClass("pad-seq-step--on"),
-    );
+    stepButtons.forEach((btn) => expect(btn).not.toHaveClass("pad-seq-step--on"));
   });
 });
 
@@ -262,9 +256,7 @@ describe("PadSequencerPanel onStepFire", () => {
     vi.useFakeTimers();
 
     const onStepFire = vi.fn();
-    render(
-      <PadSequencerPanel bpm={480} recentVoices={[]} onStepFire={onStepFire} />,
-    );
+    render(<PadSequencerPanel bpm={480} recentVoices={[]} onStepFire={onStepFire} />);
 
     // Enable foundation step 0
     const stepButtons = screen
@@ -281,7 +273,9 @@ describe("PadSequencerPanel onStepFire", () => {
     });
 
     expect(onStepFire).toHaveBeenCalledTimes(1);
-    const [firings] = onStepFire.mock.calls[0] as [Array<{ track: string; step: number; humanizeOffsetMs: number }>];
+    const [firings] = onStepFire.mock.calls[0] as [
+      Array<{ track: string; step: number; humanizeOffsetMs: number }>,
+    ];
     expect(firings).toHaveLength(1);
     expect(firings[0].track).toBe("foundation");
     expect(firings[0].step).toBe(0);
@@ -296,9 +290,7 @@ describe("PadSequencerPanel onStepFire", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.99);
 
     const onStepFire = vi.fn();
-    render(
-      <PadSequencerPanel bpm={480} recentVoices={[]} onStepFire={onStepFire} />,
-    );
+    render(<PadSequencerPanel bpm={480} recentVoices={[]} onStepFire={onStepFire} />);
 
     const stepButtons = screen
       .getAllByRole("button")

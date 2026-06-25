@@ -22,13 +22,7 @@ const baseCue: LiveLogCue = {
 
 describe("live sonification profiles", () => {
   it("resolves style and mutation profiles into the runtime scene", () => {
-    const scene = resolveLiveSonificationScene(
-      null,
-      null,
-      "alert-techno",
-      "volatile",
-      null,
-    );
+    const scene = resolveLiveSonificationScene(null, null, "alert-techno", "volatile", null);
 
     expect(scene.styleProfile.id).toBe("alert-techno");
     expect(scene.mutationProfile.id).toBe("volatile");
@@ -39,13 +33,7 @@ describe("live sonification profiles", () => {
   });
 
   it("amplifies cue motion and gain when the mutation profile is more aggressive", () => {
-    const subtleScene = resolveLiveSonificationScene(
-      null,
-      null,
-      "steady-house",
-      "subtle",
-      null,
-    );
+    const subtleScene = resolveLiveSonificationScene(null, null, "steady-house", "subtle", null);
     const volatileScene = resolveLiveSonificationScene(
       null,
       null,
@@ -63,25 +51,19 @@ describe("live sonification profiles", () => {
   });
 
   it("changes arrangement depth with the mutation profile", () => {
-    const fullScene = resolveLiveSonificationScene(
-      null,
-      null,
-      "steady-house",
-      "balanced",
-      null,
-    );
-    const stackedScene = resolveLiveSonificationScene(
-      null,
-      null,
-      "steady-house",
-      "volatile",
-      null,
-    );
+    const fullScene = resolveLiveSonificationScene(null, null, "steady-house", "balanced", null);
+    const stackedScene = resolveLiveSonificationScene(null, null, "steady-house", "volatile", null);
     const routedCue = routeCueThroughScene(baseCue, fullScene, 0);
 
     const minimalVoices = resolveArrangementVoices([routedCue], "minimal");
-    const fullVoices = resolveArrangementVoices([routedCue], fullScene.mutationProfile.arrangementDepth);
-    const stackedVoices = resolveArrangementVoices([routedCue], stackedScene.mutationProfile.arrangementDepth);
+    const fullVoices = resolveArrangementVoices(
+      [routedCue],
+      fullScene.mutationProfile.arrangementDepth,
+    );
+    const stackedVoices = resolveArrangementVoices(
+      [routedCue],
+      stackedScene.mutationProfile.arrangementDepth,
+    );
 
     expect(minimalVoices).toHaveLength(1);
     expect(fullVoices.length).toBeGreaterThan(minimalVoices.length);

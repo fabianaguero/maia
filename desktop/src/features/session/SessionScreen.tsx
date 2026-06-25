@@ -1,17 +1,4 @@
-import {
-  Play,
-  Pause,
-  SkipBack,
-  SkipForward,
-  Trash2,
-  Plus,
-  Activity,
-  Clock,
-  TrendingUp,
-  AlertCircle,
-  Radio,
-} from "lucide-react";
-import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
+import { AlertCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   BaseTrackPlaylist,
@@ -23,24 +10,30 @@ import type {
 } from "../../types/library";
 import type { PersistedSession, SessionBookmark, SessionEvent } from "../../api/sessions";
 import { listSessionEvents } from "../../api/sessions";
-import { ReplayFeedbackSummaryCard } from "../../components/ReplayFeedbackSummaryCard";
-import { formatShortDate, formatShortDateTime } from "../../utils/date";
 import { useT } from "../../i18n/I18nContext";
-import { resolveReplayBookmarkTagLabel } from "../../config/replayBookmarks";
-import { resolveMutationProfile, resolveStyleProfile } from "../../config/liveProfiles";
-import { SOURCE_TEMPLATES, DEFAULT_SOURCE_TEMPLATE_ID, type SourceTemplate } from "../../config/sourceTemplates";
+import {
+  SOURCE_TEMPLATES,
+  DEFAULT_SOURCE_TEMPLATE_ID,
+  resolveSourceTemplatePresentation,
+} from "../../config/sourceTemplates";
 import { useReplayFeedbackRecommendation } from "../../hooks/useReplayFeedbackRecommendation";
-import { getPlaylistMedianBpm } from "../../utils/playlist";
-import { getTrackTitle, resolvePlayableTrackPath } from "../../utils/track";
 import { useMonitor } from "../monitor/MonitorContext";
-import { getStreamAdapterLabel } from "../../utils/streamAdapter";
-
-interface BookmarkContext {
-  bpm: number | null;
-  dominantLevel: string | null;
-  anomalyCount: number | null;
-  logExcerpt: string | null;
-}
+import {
+  resolveBaseDetails,
+  resolveSelectedBaseDetails,
+  resolveSessionBedPath,
+  resolveSessionBedUrl,
+  resolveSourceDetails,
+  type QuickSessionMode,
+  type SessionBaseMode,
+} from "./sessionDisplay";
+import { SessionBoothPanel } from "./SessionBoothPanel";
+import { SessionSetupPanel } from "./SessionSetupPanel";
+import { buildSessionBoothViewModel } from "./sessionBoothViewModel";
+import {
+  SessionSavedSessionsPanel,
+  type SessionBookmarkContext,
+} from "./SessionSavedSessionsPanel";
 
 interface SessionStartDraft {
   sourceId?: string;
@@ -69,69 +62,15 @@ interface SessionScreenProps {
   onStopSession: () => Promise<void>;
   onResume: (sessionId: string) => void;
   onPlayback: (session: PersistedSession) => Promise<boolean>;
-  onReplayBookmark: (
-    session: PersistedSession,
-    replayWindowIndex: number,
-  ) => Promise<boolean>;
+  onReplayBookmark: (session: PersistedSession, replayWindowIndex: number) => Promise<boolean>;
   onDelete: (sessionId: string) => Promise<void>;
   onSelectSession: (sessionId: string) => void;
-}
-
-type QuickSessionMode = "log" | "repo";
-type SessionBaseMode = "track" | "playlist";
-
-function formatMonitorConfidence(value: number | null | undefined): string {
-  if (typeof value !== "number" || Number.isNaN(value)) {
-    return "—";
-  }
-
-  return `${Math.round(value * 100)}%`;
-}
-
-function formatMonitorLevel(level: string | null | undefined): string {
-  if (!level) {
-    return "Awaiting input";
-  }
-
-  return level
-    .split(/[-_ ]+/)
-    .filter(Boolean)
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(" ");
-}
-
-function formatSessionBpm(bpm: number | null | undefined): string {
-  return bpm != null ? `${Math.round(bpm)} BPM` : "— BPM";
-}
-
-function resolveSessionTemplateLabel(sourceTemplateId: string | null | undefined): string {
-  if (!sourceTemplateId) {
-    return "No template";
-  }
-  const found = SOURCE_TEMPLATES.find((t) => t.id === sourceTemplateId);
-  return found ? found.label : "Unknown template";
-}
-
-function formatBookmarkBpm(bpm: number | null | undefined): string {
-  return bpm != null ? `${Math.round(bpm)} BPM` : "— BPM";
-}
-
-function formatBookmarkDominantLevel(level: string | null | undefined): string {
-  if (!level || !level.trim()) {
-    return "—";
-  }
-  return level
-    .trim()
-    .split(/[-\s_]+/)
-    .filter((word) => word.length > 0)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(" ");
 }
 
 function resolveBookmarkContext(
   bookmark: SessionBookmark,
   events: SessionEvent[],
-): BookmarkContext {
+): SessionBookmarkContext {
   if (!events || bookmark.eventIndex == null) {
     return {
       bpm: null,
@@ -167,121 +106,6 @@ function resolveBookmarkContext(
     anomalyCount: event.anomalyCount,
     logExcerpt,
   };
-}
-
-function resolveModeLabel(mode: QuickSessionMode): string {
-  return mode === "log" ? "Log file" : "Repository";
-}
-
-function resolveBaseDetails(
-  session: PersistedSession | null,
-  tracks: LibraryTrack[],
-  playlists: BaseTrackPlaylist[],
-): { label: string | null; detail: string | null } {
-  if (!session) {
-    return { label: null, detail: null };
-  }
-
-  if (session.playlistId) {
-    const playlist = playlists.find((entry) => entry.id === session.playlistId) ?? null;
-    const label = playlist?.name ?? session.playlistName ?? null;
-    const medianBpm = playlist ? getPlaylistMedianBpm(playlist, tracks) : null;
-
-    return {
-      label,
-      detail: playlist
-        ? `${playlist.trackIds.length} tracks · median ${medianBpm?.toFixed(0) ?? "?"} BPM`
-        : null,
-    };
-  }
-
-  if (session.trackId) {
-    const track = tracks.find((entry) => entry.id === session.trackId) ?? null;
-    const label = track ? getTrackTitle(track) : session.trackTitle ?? null;
-
-    return {
-      label,
-      detail:
-        typeof track?.analysis.bpm === "number"
-          ? `${track.analysis.bpm.toFixed(0)} BPM`
-          : null,
-    };
-  }
-
-  return { label: null, detail: null };
-}
-
-function resolveSourceDetails(
-  session: PersistedSession | null,
-  repositories: RepositoryAnalysis[],
-): { label: string | null; path: string | null } {
-  if (!session) {
-    return { label: null, path: null };
-  }
-
-  const repository =
-    (session.sourceId
-      ? repositories.find((entry) => entry.id === session.sourceId)
-      : null) ??
-    repositories.find(
-      (entry) => session.sourcePath !== null && entry.sourcePath === session.sourcePath,
-    ) ??
-    null;
-
-  return {
-    label: repository?.title ?? session.sourceTitle ?? null,
-    path: repository?.sourcePath ?? session.sourcePath ?? null,
-  };
-}
-
-function resolveSessionBedPath(
-  session: PersistedSession | null,
-  tracks: LibraryTrack[],
-  playlists: BaseTrackPlaylist[],
-): string | null {
-  if (!session) {
-    return null;
-  }
-
-  if (session.playlistId) {
-    const playlist = playlists.find((entry) => entry.id === session.playlistId) ?? null;
-    if (!playlist) {
-      return null;
-    }
-
-    for (const trackId of playlist.trackIds) {
-      const track = tracks.find((entry) => entry.id === trackId) ?? null;
-      const path = track ? resolvePlayableTrackPath(track) : null;
-      if (path) {
-        return path;
-      }
-    }
-
-    return null;
-  }
-
-  if (!session.trackId) {
-    return null;
-  }
-
-  const track = tracks.find((entry) => entry.id === session.trackId) ?? null;
-  return track ? resolvePlayableTrackPath(track) : null;
-}
-
-function resolveSessionBedUrl(path: string | null): string | null {
-  if (!path) {
-    return null;
-  }
-
-  if (/^https?:\/\//i.test(path)) {
-    return path;
-  }
-
-  if (isTauri()) {
-    return convertFileSrc(path);
-  }
-
-  return null;
 }
 
 export function SessionScreen({
@@ -323,6 +147,7 @@ export function SessionScreen({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(DEFAULT_SOURCE_TEMPLATE_ID);
   const [selectedSessionEvents, setSelectedSessionEvents] = useState<SessionEvent[]>([]);
   const boothBedAudioRef = useRef<HTMLAudioElement | null>(null);
+  const subscribeToMonitor = monitor.subscribe;
 
   const logSources = useMemo(
     () => repositories.filter((entry) => entry.sourceKind === "file"),
@@ -336,21 +161,13 @@ export function SessionScreen({
   const selectedSource =
     repositories.find((repository) => repository.id === selectedSourceId) ?? null;
   const selectedTrack = tracks.find((track) => track.id === selectedTrackId) ?? null;
-  const selectedPlaylist =
-    playlists.find((playlist) => playlist.id === selectedPlaylistId) ?? null;
-  const selectedPlaylistBpm = getPlaylistMedianBpm(selectedPlaylist, tracks);
-  const selectedBaseLabel =
-    baseMode === "playlist"
-      ? selectedPlaylist?.name ?? null
-      : selectedTrack?.tags.title ?? null;
-  const selectedBaseDetail =
-    baseMode === "playlist"
-      ? selectedPlaylist
-        ? `${selectedPlaylist.trackIds.length} tracks · median ${selectedPlaylistBpm?.toFixed(0) ?? "?"} BPM`
-        : null
-      : selectedTrack
-        ? `${selectedTrack.analysis.bpm?.toFixed(0) ?? "?"} BPM`
-        : null;
+  const selectedPlaylist = playlists.find((playlist) => playlist.id === selectedPlaylistId) ?? null;
+  const selectedBaseDetails = resolveSelectedBaseDetails(
+    baseMode,
+    selectedTrack,
+    selectedPlaylist,
+    tracks,
+  );
 
   const handleCreateSession = useCallback(async () => {
     try {
@@ -358,34 +175,28 @@ export function SessionScreen({
       setCreating(true);
 
       if (!selectedSourceId) {
-        setCreateError(
-          mode === "log"
-            ? "Select a log source to monitor."
-            : "Select a repository source to monitor.",
-        );
+        setCreateError(mode === "log" ? t.session.selectLogSource : t.session.selectRepoSource);
         return;
       }
 
       if (baseMode === "track" && !selectedTrackId) {
-        setCreateError("Select a base track for the session.");
+        setCreateError(t.session.selectBaseTrack);
         return;
       }
 
       if (baseMode === "playlist" && !selectedPlaylistId) {
-        setCreateError("Select a base playlist for the session.");
+        setCreateError(t.session.selectBasePlaylist);
         return;
       }
 
       const source = repositories.find((entry) => entry.id === selectedSourceId);
       if (!source) {
-        setCreateError("Source asset not found.");
+        setCreateError(t.session.sourceNotFound);
         return;
       }
 
       if (source.sourceKind !== "file") {
-        setCreateError(
-          "Live booth sessions currently support file-backed feeds only. Repository folders stay selectable in the UI, but need a dedicated live adapter before they can run.",
-        );
+        setCreateError(t.session.fileOnlyLiveBooth);
         return;
       }
 
@@ -400,9 +211,8 @@ export function SessionScreen({
 
       const success = await onStartSession(input, sessionId, {
         sourceId: source.id,
-        trackId: baseMode === "track" ? selectedTrackId ?? undefined : undefined,
-        playlistId:
-          baseMode === "playlist" ? selectedPlaylistId ?? undefined : undefined,
+        trackId: baseMode === "track" ? (selectedTrackId ?? undefined) : undefined,
+        playlistId: baseMode === "playlist" ? (selectedPlaylistId ?? undefined) : undefined,
       });
 
       if (success) {
@@ -412,7 +222,7 @@ export function SessionScreen({
         setSelectedPlaylistId(null);
       }
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : "Failed to create session");
+      setCreateError(err instanceof Error ? err.message : t.session.failedCreateSession);
     } finally {
       setCreating(false);
     }
@@ -425,6 +235,7 @@ export function SessionScreen({
     selectedSourceId,
     selectedTrackId,
     sessionLabel,
+    t,
   ]);
 
   const handleDirectLaunch = useCallback(async () => {
@@ -437,7 +248,7 @@ export function SessionScreen({
         sessionId: `direct_${Date.now()}`,
         adapterKind: "file",
         source: directPath.trim(),
-        label: directPath.split("/").pop() || "Direct Feed",
+        label: directPath.split("/").pop() || t.session.directFeed,
         startFromBeginning: true,
       };
 
@@ -450,11 +261,11 @@ export function SessionScreen({
         setDirectPath("");
       }
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : "Direct launch failed");
+      setCreateError(err instanceof Error ? err.message : t.session.failedCreateSession);
     } finally {
       setIsDirectLoading(false);
     }
-  }, [directPath, onStartSession, selectedTrackId, selectedPlaylistId]);
+  }, [directPath, onStartSession, selectedPlaylistId, selectedTrackId, t]);
 
   const handleResumeSession = useCallback(
     async (sessionId: string) => {
@@ -475,13 +286,11 @@ export function SessionScreen({
 
         const sourcePath = source?.sourcePath ?? session.sourcePath;
         if (!sourcePath) {
-          setCreateError("This session has no stored source path to resume from.");
+          setCreateError(t.session.noStoredSourceResume);
           return;
         }
         if ((session.adapterKind || "file") !== "file") {
-          setCreateError(
-            "This saved session uses an adapter outside the Week 1 MVP. Resume it from an imported log file instead.",
-          );
+          setCreateError(t.session.unsupportedAdapterResume);
           return;
         }
 
@@ -489,7 +298,7 @@ export function SessionScreen({
           sessionId: session.id,
           adapterKind: "file",
           source: sourcePath,
-          label: session.label || source?.title || session.sourceTitle || "Resumed session",
+          label: session.label || source?.title || session.sourceTitle || t.session.resumedSession,
         };
 
         const success = await onStartSession(input, session.id, {
@@ -502,12 +311,10 @@ export function SessionScreen({
           onSelectSession(sessionId);
         }
       } catch (err) {
-        setCreateError(
-          err instanceof Error ? err.message : "Failed to resume session",
-        );
+        setCreateError(err instanceof Error ? err.message : t.session.failedResumeSession);
       }
     },
-    [onResume, onSelectSession, onStartSession, repositories, sessions],
+    [onResume, onSelectSession, onStartSession, repositories, sessions, t],
   );
 
   const activeSession = sessions.find((session) => session.id === activeSessionId);
@@ -516,6 +323,7 @@ export function SessionScreen({
     activeSession ??
     sessions[0] ??
     null;
+  const selectedSessionIdForEvents = selectedSession?.id ?? null;
   const playbackActive = activeSessionMode === "playback" && Boolean(activeSession);
   const liveMonitorActive = Boolean(monitor.session) && !playbackActive;
   const activeBedUrl = resolveSessionBedUrl(
@@ -529,29 +337,29 @@ export function SessionScreen({
   }, [monitor.session?.sessionId]);
 
   useEffect(() => {
-    return monitor.subscribe((update) => {
+    return subscribeToMonitor((update) => {
       setLatestUpdate(update);
     });
-  }, [monitor.subscribe]);
+  }, [subscribeToMonitor]);
 
   useEffect(() => {
-    if (!selectedSession) {
+    if (!selectedSessionIdForEvents) {
       setSelectedSessionEvents([]);
       return;
     }
 
     const loadEvents = async () => {
       try {
-        const events = await listSessionEvents(selectedSession.id);
+        const events = await listSessionEvents(selectedSessionIdForEvents);
         setSelectedSessionEvents(events);
-      } catch (err) {
+      } catch {
         // Silent fail on event load
         setSelectedSessionEvents([]);
       }
     };
 
     void loadEvents();
-  }, [selectedSession?.id]);
+  }, [selectedSessionIdForEvents]);
 
   useEffect(() => {
     return () => {
@@ -595,19 +403,30 @@ export function SessionScreen({
       // Ignore autoplay failures; the next button interaction will retry.
     });
   }, [activeBedUrl]);
-  const selectedSessionBookmarks = selectedSession
-    ? sessionBookmarksBySessionId[selectedSession.id] ?? []
-    : [];
+  const selectedSessionBookmarks = useMemo(
+    () => (selectedSession ? (sessionBookmarksBySessionId[selectedSession.id] ?? []) : []),
+    [selectedSession, sessionBookmarksBySessionId],
+  );
   const bookmarkContexts = useMemo(() => {
-    const contexts: Record<number, BookmarkContext> = {};
+    const contexts: Record<number, SessionBookmarkContext> = {};
     for (const bookmark of selectedSessionBookmarks) {
       contexts[bookmark.id] = resolveBookmarkContext(bookmark, selectedSessionEvents);
     }
     return contexts;
   }, [selectedSessionBookmarks, selectedSessionEvents]);
-  const selectedSessionReplayFeedbackRecommendation = useReplayFeedbackRecommendation(
-    selectedSessionBookmarks,
-  );
+  const selectedSessionReplayFeedbackRecommendation =
+    useReplayFeedbackRecommendation(selectedSessionBookmarks);
+  const selectedTemplate =
+    SOURCE_TEMPLATES.find((template) => template.id === selectedTemplateId) ?? null;
+  const selectedTemplatePresentation = selectedTemplate
+    ? resolveSourceTemplatePresentation(selectedTemplate, t)
+    : null;
+  const sessionLabelPlaceholder =
+    selectedSource && selectedBaseDetails.label
+      ? `${selectedSource.title} · ${selectedBaseDetails.label} · ${selectedTemplatePresentation?.genre ?? selectedTemplate?.genre ?? ""}`
+      : (selectedTemplatePresentation?.label ??
+        selectedTemplate?.label ??
+        t.session.sessionPlaceholder);
   const playbackPercent =
     typeof activePlaybackProgress === "number"
       ? Math.max(0, Math.min(100, Math.round(activePlaybackProgress * 100)))
@@ -619,128 +438,34 @@ export function SessionScreen({
   const selectedSessionBaseDetails = resolveBaseDetails(selectedSession, tracks, playlists);
   const activeSourceDetails = resolveSourceDetails(activeSession ?? null, repositories);
   const selectedSessionSourceDetails = resolveSourceDetails(selectedSession, repositories);
-  const boothSourceLabel = liveMonitorActive
-    ? activeSourceDetails.label ?? monitor.session?.repoTitle ?? null
-    : selectedSource?.title ?? selectedSessionSourceDetails.label;
-  const boothSourcePath = liveMonitorActive
-    ? activeSourceDetails.path ?? monitor.session?.sourcePath ?? null
-    : selectedSource?.sourcePath ?? selectedSessionSourceDetails.path;
-  const boothBaseLabel = liveMonitorActive
-    ? activeBaseDetails.label ?? null
-    : selectedBaseLabel ?? selectedSessionBaseDetails.label;
-  const boothBaseDetail = liveMonitorActive
-    ? activeBaseDetails.detail
-    : selectedBaseDetail ?? selectedSessionBaseDetails.detail;
-  const boothAdapterLabel = monitor.session
-    ? getStreamAdapterLabel(monitor.session.adapterKind)
-    : resolveModeLabel(mode);
-  const boothSignalBpm =
-    latestUpdate?.suggestedBpm ??
-    (liveMonitorActive ? activeSession?.lastBpm ?? null : selectedSource?.suggestedBpm ?? null);
-  const boothState = playbackActive
-    ? monitor.isPlaybackPaused
-      ? { tone: "replay", label: "Replay paused" }
-      : { tone: "replay", label: "Replay active" }
-    : liveMonitorActive
-      ? latestUpdate?.hasData
-        ? { tone: "live", label: "Live hot" }
-        : { tone: "armed", label: "Listening" }
-      : readyToRun
-        ? { tone: "armed", label: "Booth armed" }
-        : { tone: "idle", label: "Booth idle" };
-  const boothHeadline = playbackActive
-    ? activeSession?.label || "Replay deck"
-    : liveMonitorActive
-      ? activeSession?.label || monitor.session?.repoTitle || "Live monitor"
-      : boothSourceLabel || "Arm a live monitor";
-  const boothSummary = playbackActive
-    ? latestUpdate?.summary ||
-      `${playbackPercent ?? 0}% of the saved session is back on deck.`
-    : liveMonitorActive
-      ? latestUpdate?.hasData
-        ? latestUpdate.summary
-        : "Maia is waiting for the next live window from the selected source."
-      : readyToRun
-        ? "Base bed and source feed are armed. Start the booth to begin capturing live windows."
-        : "Choose a musical bed and a source feed to turn this lane into a live booth.";
-  const levelCountEntries = Object.entries(latestUpdate?.levelCounts ?? {}).filter(
-    ([, count]) => count > 0,
-  );
-  const topComponents = latestUpdate?.topComponents.slice(0, 5) ?? [];
-  const warningItems = latestUpdate?.warnings.slice(0, 4) ?? [];
-  const anomalyMarkers = latestUpdate?.anomalyMarkers.slice(0, 4) ?? [];
-  const boothStats = playbackActive
-    ? [
-        {
-          label: "Replay",
-          value: `${monitor.playbackEventIndex ?? 0}/${monitor.playbackEventCount ?? activeSession?.totalPolls ?? 0}`,
-          helper: "windows",
-        },
-        {
-          label: "Progress",
-          value: `${playbackPercent ?? 0}%`,
-          helper: "complete",
-        },
-        {
-          label: "Stored lines",
-          value: `${activeSession?.totalLines ?? 0}`,
-          helper: "captured",
-        },
-        {
-          label: "Stored anomalies",
-          value: `${activeSession?.totalAnomalies ?? 0}`,
-          helper: "saved",
-        },
-        {
-          label: "Signal BPM",
-          value: boothSignalBpm ? `${boothSignalBpm.toFixed(0)}` : "—",
-          helper: boothSignalBpm ? "bpm" : "waiting",
-        },
-        {
-          label: "Confidence",
-          value: formatMonitorConfidence(latestUpdate?.confidence),
-          helper: "match",
-        },
-      ]
-    : [
-        {
-          label: "Signal BPM",
-          value: boothSignalBpm ? `${boothSignalBpm.toFixed(0)}` : "—",
-          helper: boothSignalBpm ? "bpm" : "waiting",
-        },
-        {
-          label: "Windows",
-          value: `${monitor.metrics.windowCount}`,
-          helper: "processed",
-        },
-        {
-          label: "Lines",
-          value: `${monitor.metrics.processedLines}`,
-          helper: "streamed",
-        },
-        {
-          label: "Anomalies",
-          value: `${monitor.metrics.totalAnomalies}`,
-          helper: "detected",
-        },
-        {
-          label: "Dominant level",
-          value: formatMonitorLevel(latestUpdate?.dominantLevel),
-          helper: latestUpdate?.hasData ? "latest window" : "idle",
-        },
-        {
-          label: "Confidence",
-          value: formatMonitorConfidence(latestUpdate?.confidence),
-          helper: "match",
-        },
-      ];
-
-  const statusLabel = (status: string) =>
-    status === "active"
-      ? t.session.active
-      : status === "paused"
-        ? t.session.paused
-        : t.session.stopped;
+  const booth = buildSessionBoothViewModel({
+    t,
+    mode,
+    latestUpdate,
+    playbackActive,
+    liveMonitorActive,
+    readyToRun,
+    playbackPercent,
+    activeSession: activeSession ?? null,
+    selectedSourceTitle: selectedSource?.title ?? null,
+    selectedSourcePath: selectedSource?.sourcePath ?? null,
+    selectedSourceSuggestedBpm: selectedSource?.suggestedBpm ?? null,
+    selectedSessionSourceLabel: selectedSessionSourceDetails.label,
+    selectedSessionSourcePath: selectedSessionSourceDetails.path,
+    selectedBaseLabel: selectedBaseDetails.label,
+    selectedBaseDetail: selectedBaseDetails.detail,
+    selectedSessionBaseLabel: selectedSessionBaseDetails.label,
+    selectedSessionBaseDetail: selectedSessionBaseDetails.detail,
+    activeBaseLabel: activeBaseDetails.label,
+    activeBaseDetail: activeBaseDetails.detail,
+    activeSourceLabel: activeSourceDetails.label,
+    activeSourcePath: activeSourceDetails.path,
+    monitorSession: monitor.session,
+    monitorMetrics: monitor.metrics,
+    isPlaybackPaused: monitor.isPlaybackPaused,
+    playbackEventIndex: monitor.playbackEventIndex,
+    playbackEventCount: monitor.playbackEventCount,
+  });
 
   return (
     <section className="screen">
@@ -796,796 +521,130 @@ export function SessionScreen({
         </div>
       )}
 
-      <section className="panel session-booth-panel">
-        <div className="session-booth-head">
-          <div className="session-booth-head-copy">
-            <span className={`session-booth-status-badge ${boothState.tone}`}>
-              {boothState.label}
-            </span>
-            <p className="eyebrow">Live booth</p>
-            <h3>{boothHeadline}</h3>
-            <p className="support-copy">{boothSummary}</p>
-          </div>
-
-          <div className="session-booth-actions">
-            {playbackActive ? (
-              <>
-                <button
-                  type="button"
-                  className="secondary-action"
-                  onClick={() => monitor.stepPlaybackWindow(-1)}
-                  disabled={mutating}
-                >
-                  <SkipBack size={14} />
-                  Prev window
-                </button>
-                <button
-                  type="button"
-                  className="secondary-action"
-                  onClick={() =>
-                    monitor.isPlaybackPaused
-                      ? monitor.resumePlayback()
-                      : monitor.pausePlayback()
-                  }
-                  disabled={mutating}
-                >
-                  {monitor.isPlaybackPaused ? <Play size={14} /> : <Pause size={14} />}
-                  {monitor.isPlaybackPaused ? "Resume replay" : "Pause replay"}
-                </button>
-                <button
-                  type="button"
-                  className="secondary-action"
-                  onClick={() => monitor.stepPlaybackWindow(1)}
-                  disabled={mutating}
-                >
-                  <SkipForward size={14} />
-                  Next window
-                </button>
-                <button
-                  type="button"
-                  className="action"
-                  onClick={() => {
-                    void onStopSession();
-                  }}
-                  disabled={mutating}
-                >
-                  <Pause size={14} />
-                  Exit replay
-                </button>
-              </>
-            ) : liveMonitorActive ? (
-              <button
-                type="button"
-                className="action"
-                onClick={() => {
-                  void onStopSession();
-                }}
-                disabled={mutating}
-              >
-                <Pause size={14} />
-                {t.session.stopSession}
-              </button>
-            ) : (
-              <>
-                <div className="direct-feed-input-group">
-                   <input 
-                    type="text" 
-                    className="direct-feed-input"
-                    placeholder="Paste log path or URL (e.g. /var/log/syslog)..."
-                    value={directPath}
-                    onChange={(e) => setDirectPath(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleDirectLaunch()}
-                   />
-                   <button 
-                    className="direct-launch-btn"
-                    onClick={handleDirectLaunch}
-                    disabled={isDirectLoading || !directPath.trim()}
-                   >
-                    {isDirectLoading ? "..." : "Launch"}
-                   </button>
-                </div>
-                {selectedSession && selectedSession.status === "paused" && (
-                  <button
-                    type="button"
-                    className="secondary-action"
-                    onClick={() => {
-                      void handleResumeSession(selectedSession.id);
-                    }}
-                    disabled={mutating}
-                  >
-                    <Play size={14} />
-                    Resume selected
-                  </button>
-                )}
-                {selectedSession && selectedSession.totalPolls > 0 && (
-                  <button
-                    type="button"
-                    className="secondary-action"
-                    onClick={async () => {
-                      setCreateError(null);
-                      if (!selectedSession.sourcePath) {
-                        setCreateError("This session has no stored source path for replay.");
-                        return;
-                      }
-
-                      const success = await onPlayback(selectedSession);
-                      if (!success) {
-                        setCreateError("Maia could not start the session replay.");
-                        return;
-                      }
-
-                      onSelectSession(selectedSession.id);
-                    }}
-                    disabled={mutating}
-                  >
-                    <Radio size={14} />
-                    Replay selected
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="action"
-                  onClick={handleCreateSession}
-                  disabled={creating || mutating || !readyToRun}
-                >
-                  <Play size={14} />
-                  {t.session.startSession}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {(playbackActive || liveMonitorActive) && (
-          <div
-            className="session-booth-progress"
-            aria-label={playbackActive ? "Replay progress" : "Live monitoring activity"}
-          >
-            <span
-              style={{
-                width: playbackActive
-                  ? `${playbackPercent ?? 0}%`
-                  : `${Math.max(
-                      12,
-                      Math.min(
-                        100,
-                        latestUpdate?.hasData
-                          ? latestUpdate.anomalyCount * 22 + latestUpdate.lineCount
-                          : monitor.metrics.windowCount * 12,
-                      ),
-                    )}%`,
-              }}
-            />
-          </div>
-        )}
-
-        <div className="session-booth-grid">
-          <div className="session-booth-route">
-            <div className="session-booth-route-item">
-              <span>Source feed</span>
-              <strong>{boothSourceLabel ?? "Not selected"}</strong>
-              <small>{boothSourcePath ?? "Pick a log file or repository to monitor."}</small>
-            </div>
-            <div className="session-booth-route-item">
-              <span>Base bed</span>
-              <strong>{boothBaseLabel ?? "Not armed"}</strong>
-              <small>{boothBaseDetail ?? "Track or playlist will sit under the live data."}</small>
-            </div>
-            <div className="session-booth-route-item">
-              <span>Adapter</span>
-              <strong>{boothAdapterLabel}</strong>
-              <small>
-                {monitor.session
-                  ? `Session ${monitor.session.sessionId}`
-                  : `Ready to launch in ${resolveModeLabel(mode).toLowerCase()} mode.`}
-              </small>
-            </div>
-          </div>
-
-          <div className="session-booth-stat-grid">
-            {boothStats.map((item) => (
-              <article key={item.label} className="session-booth-stat">
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-                <small>{item.helper}</small>
-              </article>
-            ))}
-          </div>
-        </div>
-
-        <div className="session-booth-detail-grid">
-          <section className="session-booth-card">
-            <div className="session-booth-card-header">
-              <strong>Signal snapshot</strong>
-              <span>
-                {latestUpdate?.hasData
-                  ? `${latestUpdate.lineCount} lines in latest window`
-                  : "Waiting for stream data"}
-              </span>
-            </div>
-            <div className="session-signal-chip-row">
-              {levelCountEntries.length > 0 ? (
-                levelCountEntries.map(([level, count]) => (
-                  <span key={level} className="session-signal-chip">
-                    {formatMonitorLevel(level)} · {count}
-                  </span>
-                ))
-              ) : (
-                <span className="session-signal-chip muted">No level breakdown yet</span>
-              )}
-            </div>
-            <div className="session-signal-chip-row">
-              {topComponents.length > 0 ? (
-                topComponents.map((component) => (
-                  <span key={component.component} className="session-signal-chip">
-                    {component.component} · {component.count}
-                  </span>
-                ))
-              ) : (
-                <span className="session-signal-chip muted">Top components will appear here</span>
-              )}
-            </div>
-          </section>
-
-          <section className="session-booth-card">
-            <div className="session-booth-card-header">
-              <strong>{playbackActive ? "Replay notes" : "Watchouts"}</strong>
-              <span>
-                {latestUpdate?.anomalyCount
-                  ? `${latestUpdate.anomalyCount} anomalies in latest window`
-                  : "No current anomaly burst"}
-              </span>
-            </div>
-            {warningItems.length > 0 || anomalyMarkers.length > 0 ? (
-              <div className="session-booth-list">
-                {warningItems.map((warning) => (
-                  <div key={warning} className="session-booth-list-item">
-                    <AlertCircle size={14} />
-                    <span>{warning}</span>
-                  </div>
-                ))}
-                {anomalyMarkers.map((marker) => (
-                  <div
-                    key={`${marker.eventIndex}-${marker.component}-${marker.excerpt}`}
-                    className="session-booth-list-item"
-                  >
-                    <TrendingUp size={14} />
-                    <span>
-                      {formatMonitorLevel(marker.level)} · {marker.component} · {marker.excerpt}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="session-booth-list-item muted">
-                <Activity size={14} />
-                <span>
-                  {readyToRun
-                    ? "Run the booth to start collecting warnings, anomaly markers, and playback notes."
-                    : "The booth will surface warnings and anomaly markers once a source is active."}
-                </span>
-              </div>
-            )}
-          </section>
-        </div>
-      </section>
+      <SessionBoothPanel
+        booth={booth}
+        playbackActive={playbackActive}
+        liveMonitorActive={liveMonitorActive}
+        mutating={mutating}
+        readyToRun={readyToRun}
+        mode={mode}
+        latestUpdate={latestUpdate}
+        monitorSessionId={monitor.session?.sessionId ?? null}
+        isPlaybackPaused={monitor.isPlaybackPaused}
+        directPath={directPath}
+        isDirectLoading={isDirectLoading}
+        selectedSession={selectedSession}
+        creating={creating}
+        onDirectPathChange={setDirectPath}
+        onDirectLaunch={handleDirectLaunch}
+        onResumeSelected={() => {
+          if (selectedSession) {
+            void handleResumeSession(selectedSession.id);
+          }
+        }}
+        onReplaySelected={async () => {
+          setCreateError(null);
+          if (!selectedSession?.sourcePath) {
+            setCreateError(t.session.noStoredSourceReplay);
+            return;
+          }
+          const success = await onPlayback(selectedSession);
+          if (!success) {
+            setCreateError(t.session.failedReplay);
+            return;
+          }
+          onSelectSession(selectedSession.id);
+        }}
+        onCreateSession={handleCreateSession}
+        onStepPlaybackWindow={(direction) => monitor.stepPlaybackWindow(direction)}
+        onToggleReplayPlayback={() =>
+          monitor.isPlaybackPaused ? monitor.resumePlayback() : monitor.pausePlayback()
+        }
+        onStopSession={() => {
+          void onStopSession();
+        }}
+      />
 
       <div className="session-layout">
-        <section className="panel session-form-panel">
-          <div className="panel-header">
-            <h3>New session</h3>
-            <p className="support-copy">
-              Arm a listening bed, pick a live source, then run.
-            </p>
-          </div>
+        <SessionSetupPanel
+          tracks={tracks}
+          playlists={playlists}
+          sourceOptions={sourceOptions}
+          mode={mode}
+          baseMode={baseMode}
+          selectedTemplateId={selectedTemplateId}
+          selectedSourceId={selectedSourceId}
+          selectedTrackId={selectedTrackId}
+          selectedPlaylistId={selectedPlaylistId}
+          selectedSource={selectedSource}
+          selectedTrack={selectedTrack}
+          selectedPlaylist={selectedPlaylist}
+          selectedBaseLabel={selectedBaseDetails.label}
+          selectedBaseDetail={selectedBaseDetails.detail}
+          sessionLabel={sessionLabel}
+          sessionLabelPlaceholder={sessionLabelPlaceholder}
+          creating={creating}
+          mutating={mutating}
+          onTemplateSelect={setSelectedTemplateId}
+          onBaseModeChange={setBaseMode}
+          onTrackSelect={setSelectedTrackId}
+          onPlaylistSelect={setSelectedPlaylistId}
+          onModeChange={(nextMode) => {
+            setMode(nextMode);
+            setSelectedSourceId(null);
+          }}
+          onSourceSelect={setSelectedSourceId}
+          onSessionLabelChange={setSessionLabel}
+          onCreateSession={handleCreateSession}
+        />
 
-          {/* Source Templates */}
-          <div className="source-templates">
-            <span className="source-templates-label">Style preset</span>
-            <div className="source-template-list">
-              {SOURCE_TEMPLATES.map((tpl: SourceTemplate) => (
-                <button
-                  key={tpl.id}
-                  type="button"
-                  className={`source-template-card${selectedTemplateId === tpl.id ? " selected" : ""}`}
-                  onClick={() => setSelectedTemplateId(tpl.id)}
-                  title={tpl.hint}
-                >
-                  <span className="source-template-icon">{tpl.icon}</span>
-                  <span className="source-template-name">{tpl.label}</span>
-                  <span className="source-template-bpm">{tpl.bpm} BPM</span>
-                  <span className="source-template-genre">{tpl.genre}</span>
-                </button>
-              ))}
-            </div>
-            {(() => {
-              const tpl = SOURCE_TEMPLATES.find((t) => t.id === selectedTemplateId);
-              return tpl ? (
-                <p className="source-template-hint">{tpl.hint}</p>
-              ) : null;
-            })()}
-          </div>
+        <SessionSavedSessionsPanel
+          sessions={sessions}
+          loading={loading}
+          mutating={mutating}
+          selectedSessionId={selectedSessionId}
+          selectedSession={selectedSession}
+          selectedSessionBookmarks={selectedSessionBookmarks}
+          selectedSessionReplayFeedbackRecommendation={selectedSessionReplayFeedbackRecommendation}
+          sessionBookmarksBySessionId={sessionBookmarksBySessionId}
+          bookmarkContexts={bookmarkContexts}
+          activeSessionId={activeSessionId}
+          activeSessionMode={activeSessionMode}
+          liveWindowCount={monitor.metrics.windowCount}
+          liveProcessedLines={monitor.metrics.processedLines}
+          liveTotalAnomalies={monitor.metrics.totalAnomalies}
+          onSelectSession={onSelectSession}
+          onResumeSession={(sessionId) => {
+            void handleResumeSession(sessionId);
+          }}
+          onPlaybackSession={async (session) => {
+            setCreateError(null);
+            if (!session.sourcePath) {
+              setCreateError(t.session.noStoredSourceReplay);
+              return;
+            }
 
-          {/* Progress strip — same vocabulary as the monitor deck */}
-          <div className="workflow-strip" aria-hidden="true">
-            <div className="workflow-step-wrap">
-              <span
-                className={`workflow-step${
-                  (baseMode === "track" && selectedTrackId) ||
-                  (baseMode === "playlist" && selectedPlaylistId)
-                    ? " active"
-                    : ""
-                }`}
-              >
-                Base Bed
-              </span>
-              <span className="workflow-arrow">→</span>
-            </div>
-            <div className="workflow-step-wrap">
-              <span
-                className={`workflow-step${selectedSourceId ? " active" : ""}`}
-              >
-                Source Feed
-              </span>
-              <span className="workflow-arrow">→</span>
-            </div>
-            <div className="workflow-step-wrap">
-              <span className="workflow-step active">Name</span>
-              <span className="workflow-arrow">→</span>
-            </div>
-            <div className="workflow-step-wrap">
-              <span className="workflow-step">Run</span>
-            </div>
-          </div>
+            const success = await onPlayback(session);
+            if (!success) {
+              setCreateError(t.session.failedReplay);
+              return;
+            }
 
-          <div className="monitor-setup-grid">
-            {/* ── Step 1: Base listening bed ─────────────────────────── */}
-            <div className="audio-path-card monitor-setup-card">
-              <span>1. Base listening bed</span>
-              <p className="monitor-empty-hint">
-                <strong>Required:</strong> Select a track or playlist. This plays as your musical foundation while logs modulate anomalies on top.
-              </p>
-
-              <div className="session-mode-tabs">
-                <button
-                  type="button"
-                  className={`session-mode-tab${baseMode === "track" ? " active" : ""}`}
-                  onClick={() => setBaseMode("track")}
-                  disabled={tracks.length === 0}
-                >
-                  Track
-                </button>
-                <button
-                  type="button"
-                  className={`session-mode-tab${baseMode === "playlist" ? " active" : ""}`}
-                  onClick={() => setBaseMode("playlist")}
-                  disabled={playlists.length === 0}
-                >
-                  Playlist
-                </button>
-              </div>
-
-              {baseMode === "track" ? (
-                tracks.length === 0 ? (
-                  <p className="placeholder">{t.session.noTracks}</p>
-                ) : (
-                  <div className="session-asset-options">
-                    {tracks.map((track) => (
-                      <button
-                        key={track.id}
-                        type="button"
-                        className={`session-asset-option${selectedTrackId === track.id ? " selected" : ""}`}
-                        onClick={() => setSelectedTrackId(track.id)}
-                      >
-                        <span className="session-asset-title">{getTrackTitle(track)}</span>
-                        <span className="session-asset-path">
-                          {track.analysis.bpm?.toFixed(0) ?? "—"} BPM
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )
-              ) : playlists.length === 0 ? (
-                <p className="placeholder">No saved playlists yet.</p>
-              ) : (
-                <div className="session-asset-options">
-                  {playlists.map((playlist) => (
-                    <button
-                      key={playlist.id}
-                      type="button"
-                      className={`session-asset-option${selectedPlaylistId === playlist.id ? " selected" : ""}`}
-                      onClick={() => setSelectedPlaylistId(playlist.id)}
-                    >
-                      <span className="session-asset-title">{playlist.name}</span>
-                      <span className="session-asset-path">
-                        {playlist.trackIds.length} tracks · median{" "}
-                        {getPlaylistMedianBpm(playlist, tracks)?.toFixed(0) ?? "?"} BPM
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {(selectedTrack || selectedPlaylist) && (
-                <div className="monitor-source-summary">
-                  <small>Armed</small>
-                  <strong>{selectedBaseLabel}</strong>
-                  <small style={{ marginTop: 4 }}>
-                    {baseMode === "playlist"
-                      ? `${selectedPlaylist?.trackIds.length ?? 0} tracks · median ${selectedPlaylistBpm?.toFixed(0) ?? "?"} BPM`
-                      : `${selectedTrack?.analysis.bpm?.toFixed(0) ?? "?"} BPM`}
-                  </small>
-                </div>
-              )}
-            </div>
-
-            {/* ── Step 2: Source feed ────────────────────────────────── */}
-            <div className="audio-path-card monitor-setup-card">
-              <span>2. Source feed</span>
-              <p className="monitor-empty-hint">
-                The live data stream Maia will listen to and translate.
-              </p>
-
-              <div className="session-mode-tabs">
-                <button
-                  type="button"
-                  className={`session-mode-tab${mode === "log" ? " active" : ""}`}
-                  onClick={() => {
-                    setMode("log");
-                    setSelectedSourceId(null);
-                  }}
-                >
-                  Log file
-                </button>
-                <button
-                  type="button"
-                  className={`session-mode-tab${mode === "repo" ? " active" : ""}`}
-                  onClick={() => {
-                    setMode("repo");
-                    setSelectedSourceId(null);
-                  }}
-                >
-                  Repository
-                </button>
-              </div>
-
-              {sourceOptions.length === 0 ? (
-                <p className="placeholder">
-                  {mode === "log"
-                    ? "No imported log files yet."
-                    : "No imported repositories yet."}
-                </p>
-              ) : (
-                <div className="session-asset-options">
-                  {sourceOptions.map((source) => (
-                    <button
-                      key={source.id}
-                      type="button"
-                      className={`session-asset-option${selectedSourceId === source.id ? " selected" : ""}`}
-                      onClick={() => setSelectedSourceId(source.id)}
-                    >
-                      <span className="session-asset-title">{source.title}</span>
-                      <span className="session-asset-path">{source.sourcePath}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {selectedSource && (
-                <div className="monitor-source-summary">
-                  <small>Selected</small>
-                  <strong>{selectedSource.title}</strong>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ── Steps 3 + 4: Name and Run ─────────────────────────────── */}
-          <div className="session-create-footer">
-            <label className="field-label">3. Session name (optional)</label>
-            <input
-              type="text"
-              value={sessionLabel}
-              onChange={(event) => setSessionLabel(event.target.value)}
-              placeholder={
-                selectedSource && selectedBaseLabel
-                  ? `${selectedSource.title} · ${selectedBaseLabel} · ${SOURCE_TEMPLATES.find(t => t.id === selectedTemplateId)?.genre ?? ""}`
-                  : SOURCE_TEMPLATES.find(t => t.id === selectedTemplateId)?.label ?? "Give this session a name…"
-              }
-              className="field-input"
-            />
-
-            <div className="monitor-readiness-list" role="list">
-              <div
-                className="monitor-readiness-item"
-                role="listitem"
-              >
-                <span>Base bed</span>
-                <span
-                  className={`monitor-readiness-state${
-                    (baseMode === "track" && selectedTrackId) ||
-                    (baseMode === "playlist" && selectedPlaylistId)
-                      ? " ready"
-                      : ""
-                  }`}
-                >
-                  {(baseMode === "track" && selectedTrackId) ||
-                  (baseMode === "playlist" && selectedPlaylistId)
-                    ? selectedBaseLabel ?? "Armed"
-                    : "Not selected"}
-                </span>
-              </div>
-              <div className="monitor-readiness-item" role="listitem">
-                <span>Source feed</span>
-                <span
-                  className={`monitor-readiness-state${selectedSource ? " ready" : ""}`}
-                >
-                  {selectedSource ? selectedSource.title : "Not selected"}
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              className="action"
-              onClick={handleCreateSession}
-              disabled={
-                creating ||
-                mutating ||
-                !selectedSourceId ||
-                (baseMode === "track" ? !selectedTrackId : !selectedPlaylistId)
-              }
-            >
-              <Plus size={14} />
-              4. Run — {t.session.startSession}
-            </button>
-          </div>
-        </section>
-
-        <section className="panel session-list-panel">
-          <div className="panel-header">
-            <h3>{t.session.savedSessions}</h3>
-            <p className="support-copy">
-              {sessions.length} session{sessions.length !== 1 ? "s" : ""}
-            </p>
-          </div>
-
-          <div className="session-card-list">
-            {loading ? (
-              <p className="placeholder">{t.session.loading}</p>
-            ) : sessions.length === 0 ? (
-              <div className="empty-state">
-                <Activity size={28} style={{ opacity: 0.3 }} />
-                <p>{t.session.noSessions}</p>
-              </div>
-            ) : (
-              sessions.map((session) => {
-                const isActive = session.id === activeSessionId;
-                const isPlaybackSession =
-                  isActive && activeSessionMode === "playback";
-                const sessionBookmarks = sessionBookmarksBySessionId[session.id] ?? [];
-
-                return (
-                  <div
-                    key={session.id}
-                    className={`session-card${selectedSessionId === session.id ? " selected" : ""}${isActive ? " active" : ""}`}
-                  >
-                    <div
-                      className="session-card-header"
-                      onClick={() => onSelectSession(session.id)}
-                    >
-                      <div className="session-card-title-row">
-                        <h4>{session.label || "Unnamed session"}</h4>
-                        <span
-                          className={`session-status-badge status-${session.status}${
-                            isPlaybackSession ? " status-playback" : ""
-                          }`}
-                        >
-                          {isPlaybackSession ? "Replay" : statusLabel(session.status)}
-                        </span>
-                      </div>
-                      <p className="session-card-source">
-                        {session.sourceTitle || session.sourceId || "Unknown source"}
-                      </p>
-                      {(session.playlistName || session.trackTitle) && (
-                        <p className="session-card-base">
-                          Base: {session.playlistName || session.trackTitle}
-                        </p>
-                      )}
-                      {sessionBookmarks.length > 0 && (
-                        <p className="session-card-bookmarks">
-                          {sessionBookmarks.length} replay note
-                          {sessionBookmarks.length !== 1 ? "s" : ""}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="session-card-metrics">
-                      <div className="session-metric">
-                        <TrendingUp size={12} />
-                        <span>
-                          {isActive && !isPlaybackSession
-                            ? monitor.metrics.windowCount
-                            : session.totalPolls}{" "}
-                          {t.session.polls}
-                        </span>
-                      </div>
-                      <div className="session-metric">
-                        <Clock size={12} />
-                        <span>
-                          {isActive && !isPlaybackSession
-                            ? monitor.metrics.processedLines
-                            : session.totalLines}{" "}
-                          {t.session.lines}
-                        </span>
-                      </div>
-                      <div className="session-metric">
-                        <AlertCircle size={12} />
-                        <span>
-                          {isActive && !isPlaybackSession
-                            ? monitor.metrics.totalAnomalies
-                            : session.totalAnomalies}{" "}
-                          {t.session.anomalies}
-                        </span>
-                      </div>
-                      <div className="session-metric">
-                        <span className="session-chip">{formatSessionBpm(session.lastBpm)}</span>
-                      </div>
-                      <div className="session-metric">
-                        <span className="session-chip">{resolveSessionTemplateLabel(session.sourceTemplateId)}</span>
-                      </div>
-                    </div>
-
-                    <p className="session-card-date">{formatShortDate(session.updatedAt)}</p>
-
-                    <div className="session-card-actions">
-                      {!isActive && session.totalPolls > 0 && (
-                        <button
-                          type="button"
-                          className="action session-playback-action"
-                          onClick={async () => {
-                            setCreateError(null);
-                            if (!session.sourcePath) {
-                              setCreateError("This session has no stored source path for replay.");
-                              return;
-                            }
-
-                            const success = await onPlayback(session);
-                            if (!success) {
-                              setCreateError("Maia could not start the session replay.");
-                              return;
-                            }
-
-                            onSelectSession(session.id);
-                          }}
-                          disabled={mutating}
-                        >
-                          <Radio size={12} />
-                          {t.session.playback}
-                        </button>
-                      )}
-                      {!isActive && (
-                        <button
-                          type="button"
-                          className="action session-resume-action"
-                          onClick={() => handleResumeSession(session.id)}
-                          disabled={mutating}
-                        >
-                          <Play size={12} />
-                          {t.session.resume}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className="secondary-action session-delete-action"
-                        onClick={() => onDelete(session.id)}
-                        disabled={mutating || isActive}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          {selectedSession ? (
-            <div className="session-bookmark-panel">
-              <div className="panel-header compact">
-                <div>
-                  <h3>Replay notes</h3>
-                  <p className="support-copy">
-                    Marked windows for {selectedSession.label || "this session"}.
-                  </p>
-                </div>
-              </div>
-              {selectedSessionReplayFeedbackRecommendation ? (
-                <ReplayFeedbackSummaryCard
-                  recommendation={selectedSessionReplayFeedbackRecommendation}
-                  title="Recommended mix"
-                  className="top-spaced"
-                />
-              ) : null}
-              {selectedSessionBookmarks.length > 0 ? (
-                <div className="session-bookmark-list">
-                  {selectedSessionBookmarks.map((bookmark) => (
-                    <div key={bookmark.id} className="session-bookmark-card">
-                      <div className="session-bookmark-card-copy">
-                        <div className="session-bookmark-card-head">
-                          <strong>{bookmark.label}</strong>
-                          <span>W{bookmark.replayWindowIndex}</span>
-                        </div>
-                        <p>
-                          {bookmark.note || "Saved without note. Use as a replay marker."}
-                        </p>
-                        <div className="session-bookmark-card-meta">
-                          {bookmark.bookmarkTag ? (
-                            <span>{resolveReplayBookmarkTagLabel(bookmark.bookmarkTag)}</span>
-                          ) : null}
-                          {bookmark.suggestedStyleProfileId ? (
-                            <span>{resolveStyleProfile(bookmark.suggestedStyleProfileId).label}</span>
-                          ) : null}
-                          {bookmark.suggestedMutationProfileId ? (
-                            <span>
-                              {resolveMutationProfile(bookmark.suggestedMutationProfileId).label}
-                            </span>
-                          ) : null}
-                          <span>{formatShortDateTime(bookmark.updatedAt)}</span>
-                          {bookmark.trackTitle ? <span>{bookmark.trackTitle}</span> : null}
-                          {typeof bookmark.trackSecond === "number" ? (
-                            <span>{bookmark.trackSecond.toFixed(2)}s</span>
-                          ) : null}
-                        </div>
-                        {bookmarkContexts[bookmark.id] && (
-                          <div className="session-bookmark-card-context">
-                            <span className="context-field">
-                              {formatBookmarkBpm(bookmarkContexts[bookmark.id].bpm)}
-                            </span>
-                            <span className="context-field">
-                              {formatBookmarkDominantLevel(bookmarkContexts[bookmark.id].dominantLevel)}
-                            </span>
-                            <span className="context-field">
-                              {bookmarkContexts[bookmark.id].anomalyCount ?? 0} anomalies
-                            </span>
-                            <span className="context-field context-field--excerpt">
-                              {bookmarkContexts[bookmark.id].logExcerpt ?? "No log excerpt available"}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        className="secondary-action"
-                        onClick={async () => {
-                          setCreateError(null);
-                          const success = await onReplayBookmark(
-                            selectedSession,
-                            bookmark.replayWindowIndex,
-                          );
-                          if (!success) {
-                            setCreateError("Maia could not jump to the saved replay note.");
-                            return;
-                          }
-                          onSelectSession(selectedSession.id);
-                        }}
-                        disabled={mutating || selectedSession.totalPolls === 0}
-                      >
-                        <Radio size={12} />
-                        Replay here
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="empty-state session-bookmark-empty">
-                  <Radio size={24} style={{ opacity: 0.28 }} />
-                  <p>No replay notes saved for this session yet.</p>
-                </div>
-              )}
-            </div>
-          ) : null}
-        </section>
+            onSelectSession(session.id);
+          }}
+          onReplayBookmark={async (session, replayWindowIndex) => {
+            setCreateError(null);
+            const success = await onReplayBookmark(session, replayWindowIndex);
+            if (!success) {
+              setCreateError(t.session.failedReplayJump);
+              return;
+            }
+            onSelectSession(session.id);
+          }}
+          onDeleteSession={(sessionId) => {
+            void onDelete(sessionId);
+          }}
+        />
       </div>
     </section>
   );

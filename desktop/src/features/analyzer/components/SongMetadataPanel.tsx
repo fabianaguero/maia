@@ -1,6 +1,7 @@
 import { Loader2, Music, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { fetchSongMetadata, type SongMetadata } from "../../../api/musicMetadata";
+import { useT } from "../../../i18n/I18nContext";
 import type { LibraryTrack } from "../../../types/library";
 import { getTrackSourcePath } from "../../../utils/track";
 
@@ -9,9 +10,13 @@ interface SongMetadataPanelProps {
 }
 
 export function SongMetadataPanel({ track }: SongMetadataPanelProps) {
+  const t = useT();
   const [metadata, setMetadata] = useState<SongMetadata | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const taggedTitle = track.tags.title;
+  const taggedArtist = track.tags.artist ?? "";
+  const trackSourcePath = getTrackSourcePath(track);
 
   useEffect(() => {
     let active = true;
@@ -22,12 +27,12 @@ export function SongMetadataPanel({ track }: SongMetadataPanelProps) {
 
       try {
         // Prefer persisted track tags before falling back to filename parsing.
-        const taggedTitle = track.tags.title.trim();
-        const taggedArtist = track.tags.artist?.trim();
-        const filename = taggedTitle || getTrackSourcePath(track).split("/").pop() || "";
+        const trimmedTitle = taggedTitle.trim();
+        const trimmedArtist = taggedArtist.trim();
+        const filename = trimmedTitle || trackSourcePath.split("/").pop() || "";
         const titleMatch = filename.match(/^([^-]+)(?:\s*-\s*(.+))?/);
-        const title = taggedTitle || titleMatch?.[1]?.trim() || filename;
-        const artist = taggedArtist || titleMatch?.[2]?.trim() || "Unknown Artist";
+        const title = trimmedTitle || titleMatch?.[1]?.trim() || filename;
+        const artist = trimmedArtist || titleMatch?.[2]?.trim() || "Unknown Artist";
 
         const data = await fetchSongMetadata(title, artist, {
           sources: ["musicbrainz"],
@@ -36,12 +41,12 @@ export function SongMetadataPanel({ track }: SongMetadataPanelProps) {
         if (active) {
           setMetadata(data);
           if (!data) {
-            setError("No metadata found for this track");
+            setError(t.inspect.noMetadataFound);
           }
         }
       } catch (err) {
         if (active) {
-          setError(err instanceof Error ? err.message : "Failed to fetch metadata");
+          setError(err instanceof Error ? err.message : t.inspect.failedMetadataFetch);
         }
       } finally {
         if (active) {
@@ -55,14 +60,20 @@ export function SongMetadataPanel({ track }: SongMetadataPanelProps) {
     return () => {
       active = false;
     };
-  }, [track.tags.title, track.tags.artist, track.file.sourcePath]);
+  }, [
+    taggedArtist,
+    taggedTitle,
+    t.inspect.failedMetadataFetch,
+    t.inspect.noMetadataFound,
+    trackSourcePath,
+  ]);
 
   return (
     <div className="panel analyzer-panel song-metadata-panel">
       <div className="panel-header">
         <h3>
           <Music size={16} />
-          Song Info
+          {t.inspect.songInfo}
         </h3>
       </div>
 
@@ -70,7 +81,7 @@ export function SongMetadataPanel({ track }: SongMetadataPanelProps) {
         {loading && (
           <div className="metadata-loading">
             <Loader2 size={16} className="spin-ring" />
-            <span>Fetching metadata...</span>
+            <span>{t.inspect.fetchingMetadata}</span>
           </div>
         )}
 
@@ -83,34 +94,34 @@ export function SongMetadataPanel({ track }: SongMetadataPanelProps) {
         {metadata && !loading && (
           <div className="metadata-content">
             <div className="metadata-item">
-              <label>Title</label>
+              <label>{t.inspect.titleLabel}</label>
               <p>{metadata.title}</p>
             </div>
 
             {metadata.artist && (
               <div className="metadata-item">
-                <label>Artist</label>
+                <label>{t.inspect.artist}</label>
                 <p>{metadata.artist}</p>
               </div>
             )}
 
             {metadata.album && (
               <div className="metadata-item">
-                <label>Album</label>
+                <label>{t.inspect.album}</label>
                 <p>{metadata.album}</p>
               </div>
             )}
 
             {metadata.releaseYear && (
               <div className="metadata-item">
-                <label>Released</label>
+                <label>{t.inspect.released}</label>
                 <p>{metadata.releaseYear}</p>
               </div>
             )}
 
             {metadata.genres && metadata.genres.length > 0 && (
               <div className="metadata-item">
-                <label>Genres</label>
+                <label>{t.inspect.genres}</label>
                 <div className="metadata-tags">
                   {metadata.genres.map((genre) => (
                     <span key={genre} className="metadata-tag">
@@ -129,21 +140,21 @@ export function SongMetadataPanel({ track }: SongMetadataPanelProps) {
                   rel="noopener noreferrer"
                   className="metadata-link"
                 >
-                  View on Spotify
+                  {t.inspect.viewOnSpotify}
                   <ExternalLink size={12} />
                 </a>
               </div>
             )}
 
             <div className="metadata-source">
-              <small>Source: {metadata.source}</small>
+              <small>{t.inspect.sourceLabel.replace("{source}", metadata.source)}</small>
             </div>
           </div>
         )}
 
         {!metadata && !loading && !error && (
           <div className="metadata-empty">
-            <p>No metadata available</p>
+            <p>{t.inspect.noMetadataAvailable}</p>
           </div>
         )}
       </div>

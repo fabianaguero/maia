@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useT } from "../../../i18n/I18nContext";
 import type {
   LibraryTrack,
   TrackCuePoint,
@@ -15,7 +16,6 @@ import {
   createTrackSavedLoop,
   createTrackSavedLoopFromRange,
   formatTrackTime,
-  getTrackAvailabilityLabel,
   hasUsableBeatGrid,
   removeTrackCuePoint,
   removeTrackSavedLoop,
@@ -34,25 +34,23 @@ interface TrackPerformancePanelProps {
   onUpdatePerformance?: (input: UpdateTrackPerformanceInput) => Promise<void>;
 }
 
-const TRACK_COLOR_OPTIONS = [
-  { value: "", label: "None" },
-  { value: "#f59e0b", label: "Amber" },
-  { value: "#22d3ee", label: "Cyan" },
-  { value: "#ef4444", label: "Red" },
-  { value: "#8b5cf6", label: "Violet" },
-  { value: "#84cc16", label: "Lime" },
-];
-
 const LOOP_BEAT_PRESETS = [4, 8, 16];
 
-function renderCueLabel(cue: TrackCuePoint): string {
-  const slotLabel = cue.slot !== null ? `Slot ${cue.slot}` : cue.kind;
+function renderCueLabel(cue: TrackCuePoint, slotTemplate: string): string {
+  const slotLabel = cue.slot !== null ? slotTemplate.replace("{slot}", String(cue.slot)) : cue.kind;
   return `${cue.label} · ${formatTrackTime(cue.second)} · ${slotLabel}`;
 }
 
-function renderLoopLabel(loop: TrackSavedLoop): string {
-  const slotLabel = loop.slot !== null ? `Slot ${loop.slot}` : "Loop";
-  const lockLabel = loop.locked ? "Locked" : "Editable";
+function renderLoopLabel(
+  loop: TrackSavedLoop,
+  slotTemplate: string,
+  loopWord: string,
+  lockedLabel: string,
+  editableLabel: string,
+): string {
+  const slotLabel =
+    loop.slot !== null ? slotTemplate.replace("{slot}", String(loop.slot)) : loopWord;
+  const lockLabel = loop.locked ? lockedLabel : editableLabel;
   return `${loop.label} · ${formatTrackTime(loop.startSecond)} -> ${formatTrackTime(loop.endSecond)} · ${slotLabel} · ${lockLabel}`;
 }
 
@@ -63,7 +61,16 @@ export function TrackPerformancePanel({
   selectedPhraseRange = null,
   onUpdatePerformance,
 }: TrackPerformancePanelProps) {
+  const t = useT();
   const { performance } = track;
+  const TRACK_COLOR_OPTIONS = [
+    { value: "", label: t.inspect.none },
+    { value: "#f59e0b", label: t.inspect.amber },
+    { value: "#22d3ee", label: t.inspect.cyan },
+    { value: "#ef4444", label: t.inspect.red },
+    { value: "#8b5cf6", label: t.inspect.violet },
+    { value: "#84cc16", label: t.inspect.lime },
+  ];
   const durationSeconds = track.analysis.durationSeconds;
   const bpm = track.analysis.bpm;
   const beatGrid = track.analysis.beatGrid;
@@ -93,14 +100,8 @@ export function TrackPerformancePanel({
   };
 
   const addCue = (kind: "hot" | "memory") => {
-    const existingCues =
-      kind === "hot" ? performance.hotCues : performance.memoryCues;
-    const nextCue = createTrackCuePoint(
-      kind,
-      placementSecond,
-      existingCues,
-      durationSeconds,
-    );
+    const existingCues = kind === "hot" ? performance.hotCues : performance.memoryCues;
+    const nextCue = createTrackCuePoint(kind, placementSecond, existingCues, durationSeconds);
 
     return updatePerformance({
       [kind === "hot" ? "hotCues" : "memoryCues"]: [...existingCues, nextCue],
@@ -108,14 +109,10 @@ export function TrackPerformancePanel({
   };
 
   const removeCue = (kind: "hot" | "memory", cueId: string) => {
-    const existingCues =
-      kind === "hot" ? performance.hotCues : performance.memoryCues;
+    const existingCues = kind === "hot" ? performance.hotCues : performance.memoryCues;
 
     return updatePerformance({
-      [kind === "hot" ? "hotCues" : "memoryCues"]: removeTrackCuePoint(
-        existingCues,
-        cueId,
-      ),
+      [kind === "hot" ? "hotCues" : "memoryCues"]: removeTrackCuePoint(existingCues, cueId),
     });
   };
 
@@ -161,15 +158,10 @@ export function TrackPerformancePanel({
     cueId: string,
     patch: Partial<Pick<TrackCuePoint, "label" | "color">>,
   ) => {
-    const existingCues =
-      kind === "hot" ? performance.hotCues : performance.memoryCues;
+    const existingCues = kind === "hot" ? performance.hotCues : performance.memoryCues;
 
     return updatePerformance({
-      [kind === "hot" ? "hotCues" : "memoryCues"]: updateTrackCuePoint(
-        existingCues,
-        cueId,
-        patch,
-      ),
+      [kind === "hot" ? "hotCues" : "memoryCues"]: updateTrackCuePoint(existingCues, cueId, patch),
     });
   };
 
@@ -181,88 +173,83 @@ export function TrackPerformancePanel({
       savedLoops: updateTrackSavedLoop(performance.savedLoops, loopId, patch),
     });
 
-  const setSavedLoopBoundary = (
-    loopId: string,
-    boundary: "start" | "end",
-  ) =>
+  const setSavedLoopBoundary = (loopId: string, boundary: "start" | "end") =>
     updatePerformance({
-      savedLoops: setTrackSavedLoopBoundary(
-        performance.savedLoops,
-        loopId,
-        boundary,
-        currentTime,
-        {
-          bpm,
-          durationSeconds,
-          beatGrid,
-          quantizeEnabled,
-        },
-      ),
+      savedLoops: setTrackSavedLoopBoundary(performance.savedLoops, loopId, boundary, currentTime, {
+        bpm,
+        durationSeconds,
+        beatGrid,
+        quantizeEnabled,
+      }),
     });
 
   return (
     <section className="panel metric-panel">
       <div className="panel-header compact">
         <div>
-          <h2>Performance</h2>
-          <p className="support-copy">
-            DJ-style library state persisted separately from analysis artifacts.
-          </p>
+          <h2>{t.inspect.performanceTitle}</h2>
+          <p className="support-copy">{t.inspect.performanceCopy}</p>
         </div>
       </div>
 
       <div className="metric-grid">
         <div>
-          <span>Availability</span>
-          <strong>{getTrackAvailabilityLabel(track)}</strong>
+          <span>{t.inspect.availability}</span>
+          <strong>
+            {track.file.availabilityState === "missing" ? t.inspect.missing : t.inspect.available}
+          </strong>
         </div>
         <div>
-          <span>Main cue</span>
+          <span>{t.inspect.mainCue}</span>
           <strong>{formatTrackTime(performance.mainCueSecond)}</strong>
         </div>
         <div>
-          <span>Hot cues</span>
+          <span>{t.inspect.hotCues}</span>
           <strong>{performance.hotCues.length}</strong>
         </div>
         <div>
-          <span>Memory cues</span>
+          <span>{t.inspect.memoryCues}</span>
           <strong>{performance.memoryCues.length}</strong>
         </div>
         <div>
-          <span>Saved loops</span>
+          <span>{t.inspect.savedLoops}</span>
           <strong>{performance.savedLoops.length}</strong>
         </div>
         <div>
-          <span>Rating</span>
+          <span>{t.inspect.rating}</span>
           <strong>{performance.rating}/5</strong>
         </div>
         <div>
-          <span>Play count</span>
+          <span>{t.inspect.playCount}</span>
           <strong>{performance.playCount}</strong>
         </div>
         <div>
-          <span>Last played</span>
-          <strong>{performance.lastPlayedAt ? formatShortDateTime(performance.lastPlayedAt) : "Never"}</strong>
+          <span>{t.inspect.lastPlayed}</span>
+          <strong>
+            {performance.lastPlayedAt
+              ? formatShortDateTime(performance.lastPlayedAt)
+              : t.inspect.never}
+          </strong>
         </div>
         <div>
-          <span>BPM lock</span>
-          <strong>{performance.bpmLock ? "Locked" : "Open"}</strong>
+          <span>{t.inspect.bpmLockLabel}</span>
+          <strong>{performance.bpmLock ? t.inspect.locked : t.inspect.open}</strong>
         </div>
         <div>
-          <span>Grid lock</span>
-          <strong>{performance.gridLock ? "Locked" : "Open"}</strong>
+          <span>{t.inspect.gridLockLabel}</span>
+          <strong>{performance.gridLock ? t.inspect.locked : t.inspect.open}</strong>
         </div>
       </div>
 
       <div className="top-spaced">
-        <p className="support-copy">Performance controls</p>
+        <p className="support-copy">{t.inspect.performanceControls}</p>
         <div className="pill-strip top-spaced">
           <span>
             <label>
-              Rating
+              {t.inspect.rating}
               <select
                 className="compact-select"
-                aria-label="Performance rating"
+                aria-label={t.inspect.performanceTitle}
                 value={performance.rating}
                 disabled={!canEditPerformance}
                 onChange={(event) =>
@@ -281,10 +268,10 @@ export function TrackPerformancePanel({
           </span>
           <span>
             <label>
-              Color
+              {t.inspect.color}
               <select
                 className="compact-select"
-                aria-label="Performance color"
+                aria-label={t.inspect.color}
                 value={performance.color ?? ""}
                 disabled={!canEditPerformance}
                 onChange={(event) =>
@@ -312,7 +299,7 @@ export function TrackPerformancePanel({
                 })
               }
             >
-              {performance.bpmLock ? "Unlock BPM" : "Lock BPM"}
+              {performance.bpmLock ? t.inspect.unlockBpm : t.inspect.lockBpm}
             </button>
           </span>
           <span>
@@ -326,7 +313,7 @@ export function TrackPerformancePanel({
                 })
               }
             >
-              {performance.gridLock ? "Unlock grid" : "Lock grid"}
+              {performance.gridLock ? t.inspect.unlockGrid : t.inspect.lockGrid}
             </button>
           </span>
           <span>
@@ -340,30 +327,30 @@ export function TrackPerformancePanel({
                 })
               }
             >
-              Mark played
+              {t.inspect.markPlayed}
             </button>
           </span>
         </div>
       </div>
 
       <details className="panel-collapsible top-spaced">
-        <summary className="panel-collapsible-summary">Cues &amp; loops</summary>
+        <summary className="panel-collapsible-summary">{t.inspect.cuesLoops}</summary>
         <div className="panel-collapsible-body">
           <div className="status-stack">
             <div className="status-row">
-              <span>Color tag</span>
-              <strong>{performance.color ?? "None"}</strong>
+              <span>{t.inspect.colorTag}</span>
+              <strong>{performance.color ?? t.inspect.none}</strong>
             </div>
             <div className="status-row">
-              <span>Quantize</span>
-              <strong>{quantizeEnabled && quantizeAvailable ? "On" : "Off"}</strong>
+              <span>{t.inspect.quantize}</span>
+              <strong>{quantizeEnabled && quantizeAvailable ? t.inspect.on : t.inspect.off}</strong>
             </div>
           </div>
 
           <p className="support-copy top-spaced">
-            Playhead cue tools at {formatTrackTime(currentTime)}
+            {t.inspect.playheadCueToolsAt.replace("{time}", formatTrackTime(currentTime))}
             {placementSecond !== snapTrackSecond(currentTime, durationSeconds)
-              ? ` → ${formatTrackTime(placementSecond)}`
+              ? ` ${t.inspect.quantizedTo.replace("{time}", formatTrackTime(placementSecond))}`
               : ""}
           </p>
           <div className="pill-strip top-spaced">
@@ -375,7 +362,9 @@ export function TrackPerformancePanel({
                 disabled={!quantizeAvailable}
                 onClick={() => setQuantizeEnabled((value) => !value)}
               >
-                {quantizeEnabled && quantizeAvailable ? "Quantize on" : "Quantize off"}
+                {quantizeEnabled && quantizeAvailable
+                  ? t.inspect.quantizeOn
+                  : t.inspect.quantizeOff}
               </button>
             </span>
             <span>
@@ -389,7 +378,7 @@ export function TrackPerformancePanel({
                   })
                 }
               >
-                Set main cue
+                {t.inspect.setMainCue}
               </button>
             </span>
             <span>
@@ -403,7 +392,7 @@ export function TrackPerformancePanel({
                   })
                 }
               >
-                Clear main cue
+                {t.inspect.clearMainCue}
               </button>
             </span>
             <span>
@@ -413,7 +402,7 @@ export function TrackPerformancePanel({
                 disabled={!canEditPerformance || !canAddHot}
                 onClick={() => void addCue("hot")}
               >
-                Add hot cue
+                {t.inspect.addHotCue}
               </button>
             </span>
             <span>
@@ -423,13 +412,16 @@ export function TrackPerformancePanel({
                 disabled={!canEditPerformance}
                 onClick={() => void addCue("memory")}
               >
-                Add memory cue
+                {t.inspect.addMemoryCue}
               </button>
             </span>
           </div>
 
           <p className="support-copy top-spaced">
-            Beat loops from detected BPM {typeof bpm === "number" ? bpm.toFixed(1) : "Pending"}
+            {t.inspect.beatLoopsFromDetectedBpm.replace(
+              "{bpm}",
+              typeof bpm === "number" ? bpm.toFixed(1) : t.inspect.pending,
+            )}
           </p>
           <div className="pill-strip top-spaced">
             {LOOP_BEAT_PRESETS.map((beatCount) => (
@@ -440,16 +432,11 @@ export function TrackPerformancePanel({
                   disabled={
                     !canEditPerformance ||
                     !canAddLoop ||
-                    !canCreateBeatLoop(
-                      bpm,
-                      placementSecond,
-                      beatCount,
-                      durationSeconds,
-                    )
+                    !canCreateBeatLoop(bpm, placementSecond, beatCount, durationSeconds)
                   }
                   onClick={() => void addSavedLoop(beatCount)}
                 >
-                  Save {beatCount}-beat loop
+                  {t.inspect.saveBeatLoop.replace("{count}", String(beatCount))}
                 </button>
               </span>
             ))}
@@ -458,8 +445,10 @@ export function TrackPerformancePanel({
           {selectedPhraseRange ? (
             <>
               <p className="support-copy top-spaced">
-                {selectedPhraseRange.label} selected
-                {` · ${formatTrackTime(selectedPhraseRange.startSecond)} -> ${formatTrackTime(selectedPhraseRange.endSecond)}`}
+                {t.inspect.phraseSelected
+                  .replace("{label}", selectedPhraseRange.label)
+                  .replace("{start}", formatTrackTime(selectedPhraseRange.startSecond))
+                  .replace("{end}", formatTrackTime(selectedPhraseRange.endSecond))}
               </p>
               <div className="pill-strip top-spaced">
                 <span>
@@ -473,7 +462,7 @@ export function TrackPerformancePanel({
                       })
                     }
                   >
-                    Set cue to phrase start
+                    {t.inspect.setCuePhraseStart}
                   </button>
                 </span>
                 <span>
@@ -495,7 +484,7 @@ export function TrackPerformancePanel({
                       })
                     }
                   >
-                    Add phrase memory cue
+                    {t.inspect.addPhraseMemoryCue}
                   </button>
                 </span>
                 <span>
@@ -505,31 +494,29 @@ export function TrackPerformancePanel({
                     disabled={!canEditPerformance || !canAddLoop}
                     onClick={() => void addSelectedPhraseLoop()}
                   >
-                    Save phrase loop
+                    {t.inspect.savePhraseLoop}
                   </button>
                 </span>
               </div>
             </>
           ) : (
-            <p className="support-copy top-spaced">
-              Arm phrase select on the waveform to capture phrase-aligned cues and loops.
-            </p>
+            <p className="support-copy top-spaced">{t.inspect.armPhraseSelect}</p>
           )}
 
-          <p className="support-copy top-spaced">Hot cues</p>
+          <p className="support-copy top-spaced">{t.inspect.hotCues}</p>
           {performance.hotCues.length > 0 ? (
             <ul className="stack-list">
               {performance.hotCues.map((cue) => (
                 <li key={cue.id}>
                   <div className="pill-strip">
-                    <span>{renderCueLabel(cue)}</span>
+                    <span>{renderCueLabel(cue, t.inspect.slot)}</span>
                     <span>
                       <label>
-                        Label
+                        {t.inspect.label}
                         <input
                           key={`${cue.id}:${cue.label}`}
                           className="compact-input"
-                          aria-label={`Cue label ${cue.id}`}
+                          aria-label={`${t.inspect.label} ${cue.id}`}
                           defaultValue={cue.label}
                           disabled={!canEditPerformance}
                           onBlur={(event) =>
@@ -542,10 +529,10 @@ export function TrackPerformancePanel({
                     </span>
                     <span>
                       <label>
-                        Color
+                        {t.inspect.color}
                         <select
                           className="compact-select"
-                          aria-label={`Cue color ${cue.id}`}
+                          aria-label={`${t.inspect.color} ${cue.id}`}
                           value={cue.color ?? ""}
                           disabled={!canEditPerformance}
                           onChange={(event) =>
@@ -569,7 +556,7 @@ export function TrackPerformancePanel({
                         disabled={!canEditPerformance}
                         onClick={() => void removeCue("hot", cue.id)}
                       >
-                        Remove {cue.label}
+                        {t.inspect.removeNamed.replace("{name}", cue.label)}
                       </button>
                     </span>
                   </div>
@@ -577,23 +564,23 @@ export function TrackPerformancePanel({
               ))}
             </ul>
           ) : (
-            <p className="support-copy">No hot cues stored.</p>
+            <p className="support-copy">{t.inspect.noHotCuesStored}</p>
           )}
 
-          <p className="support-copy top-spaced">Memory cues</p>
+          <p className="support-copy top-spaced">{t.inspect.memoryCues}</p>
           {performance.memoryCues.length > 0 ? (
             <ul className="stack-list">
               {performance.memoryCues.map((cue) => (
                 <li key={cue.id}>
                   <div className="pill-strip">
-                    <span>{renderCueLabel(cue)}</span>
+                    <span>{renderCueLabel(cue, t.inspect.slot)}</span>
                     <span>
                       <label>
-                        Label
+                        {t.inspect.label}
                         <input
                           key={`${cue.id}:${cue.label}`}
                           className="compact-input"
-                          aria-label={`Cue label ${cue.id}`}
+                          aria-label={`${t.inspect.label} ${cue.id}`}
                           defaultValue={cue.label}
                           disabled={!canEditPerformance}
                           onBlur={(event) =>
@@ -606,10 +593,10 @@ export function TrackPerformancePanel({
                     </span>
                     <span>
                       <label>
-                        Color
+                        {t.inspect.color}
                         <select
                           className="compact-select"
-                          aria-label={`Cue color ${cue.id}`}
+                          aria-label={`${t.inspect.color} ${cue.id}`}
                           value={cue.color ?? ""}
                           disabled={!canEditPerformance}
                           onChange={(event) =>
@@ -633,7 +620,7 @@ export function TrackPerformancePanel({
                         disabled={!canEditPerformance}
                         onClick={() => void removeCue("memory", cue.id)}
                       >
-                        Remove {cue.label}
+                        {t.inspect.removeNamed.replace("{name}", cue.label)}
                       </button>
                     </span>
                   </div>
@@ -641,45 +628,53 @@ export function TrackPerformancePanel({
               ))}
             </ul>
           ) : (
-            <p className="support-copy">No memory cues stored.</p>
+            <p className="support-copy">{t.inspect.noMemoryCuesStored}</p>
           )}
 
-          <p className="support-copy top-spaced">Saved loops</p>
+          <p className="support-copy top-spaced">{t.inspect.savedLoops}</p>
           {performance.savedLoops.length > 0 ? (
             <ul className="stack-list">
               {performance.savedLoops.map((loop) => (
                 <li key={loop.id}>
                   <div className="pill-strip">
-                    <span>{renderLoopLabel(loop)}</span>
+                    <span>
+                      {renderLoopLabel(
+                        loop,
+                        t.inspect.slot,
+                        t.inspect.loopWord,
+                        t.inspect.locked,
+                        t.inspect.editable,
+                      )}
+                    </span>
                     <span>
                       <button
                         type="button"
                         className="compact-action"
-                        aria-label={`Set loop start ${loop.id}`}
+                        aria-label={`${t.inspect.setStart} ${loop.id}`}
                         disabled={!canEditPerformance}
                         onClick={() => void setSavedLoopBoundary(loop.id, "start")}
                       >
-                        Set start
+                        {t.inspect.setStart}
                       </button>
                     </span>
                     <span>
                       <button
                         type="button"
                         className="compact-action"
-                        aria-label={`Set loop end ${loop.id}`}
+                        aria-label={`${t.inspect.setEnd} ${loop.id}`}
                         disabled={!canEditPerformance}
                         onClick={() => void setSavedLoopBoundary(loop.id, "end")}
                       >
-                        Set end
+                        {t.inspect.setEnd}
                       </button>
                     </span>
                     <span>
                       <label>
-                        Label
+                        {t.inspect.label}
                         <input
                           key={`${loop.id}:${loop.label}`}
                           className="compact-input"
-                          aria-label={`Loop label ${loop.id}`}
+                          aria-label={`${t.inspect.label} ${loop.id}`}
                           defaultValue={loop.label}
                           disabled={!canEditPerformance}
                           onBlur={(event) =>
@@ -692,10 +687,10 @@ export function TrackPerformancePanel({
                     </span>
                     <span>
                       <label>
-                        Color
+                        {t.inspect.color}
                         <select
                           className="compact-select"
-                          aria-label={`Loop color ${loop.id}`}
+                          aria-label={`${t.inspect.color} ${loop.id}`}
                           value={loop.color ?? ""}
                           disabled={!canEditPerformance}
                           onChange={(event) =>
@@ -716,7 +711,7 @@ export function TrackPerformancePanel({
                       <button
                         type="button"
                         className="compact-action"
-                        aria-label={`Toggle loop lock ${loop.id}`}
+                        aria-label={`${loop.locked ? t.inspect.unlockLoop : t.inspect.lockLoop} ${loop.id}`}
                         disabled={!canEditPerformance}
                         onClick={() =>
                           void patchSavedLoop(loop.id, {
@@ -724,7 +719,7 @@ export function TrackPerformancePanel({
                           })
                         }
                       >
-                        {loop.locked ? "Unlock loop" : "Lock loop"}
+                        {loop.locked ? t.inspect.unlockLoop : t.inspect.lockLoop}
                       </button>
                     </span>
                     <span>
@@ -734,7 +729,7 @@ export function TrackPerformancePanel({
                         disabled={!canEditPerformance}
                         onClick={() => void removeSavedLoop(loop.id)}
                       >
-                        Remove {loop.label}
+                        {t.inspect.removeNamed.replace("{name}", loop.label)}
                       </button>
                     </span>
                   </div>
@@ -742,7 +737,7 @@ export function TrackPerformancePanel({
               ))}
             </ul>
           ) : (
-            <p className="support-copy">No saved loops stored.</p>
+            <p className="support-copy">{t.inspect.noSavedLoopsStored}</p>
           )}
         </div>
       </details>

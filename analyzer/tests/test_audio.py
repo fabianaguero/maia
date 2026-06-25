@@ -115,7 +115,7 @@ def test_analyze_track_separate_source_adds_stems_tag(tmp_path, monkeypatch):
         lambda *_args, **_kwargs: {},
     )
 
-    asset, warnings = analyze_track(
+    _asset, warnings = analyze_track(
         str(track_path),
         options={"separateSource": True},
     )

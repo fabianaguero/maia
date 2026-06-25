@@ -108,7 +108,7 @@ describe("BeatGridEditorPanel", () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText("Beat grid BPM"), {
+    fireEvent.change(screen.getByLabelText("Grid BPM"), {
       target: { value: "124" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Apply BPM" }));
@@ -125,9 +125,7 @@ describe("BeatGridEditorPanel", () => {
       2,
       expect.objectContaining({
         bpm: 124,
-        beatGrid: expect.arrayContaining([
-          expect.objectContaining({ second: 12.75 }),
-        ]),
+        beatGrid: expect.arrayContaining([expect.objectContaining({ second: 12.75 })]),
       }),
     );
   });

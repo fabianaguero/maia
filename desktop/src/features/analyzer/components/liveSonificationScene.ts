@@ -4,14 +4,8 @@ import type {
   LibraryTrack,
   LiveLogCue,
 } from "../../../types/library";
-import {
-  resolveMutationProfile,
-  resolveStyleProfile,
-} from "../../../config/liveProfiles";
-import type {
-  MutationProfileOption,
-  StyleProfileOption,
-} from "../../../types/music";
+import { resolveMutationProfile, resolveStyleProfile } from "../../../config/liveProfiles";
+import type { MutationProfileOption, StyleProfileOption } from "../../../types/music";
 import {
   resolveArrangementSections,
   resolveCuePoints,
@@ -94,15 +88,11 @@ export function blendAnchors(anchors: readonly ReferenceAnchor[]): ReferenceAnch
   if (bpms.length > 0) {
     const sorted = [...bpms].sort((a, b) => a - b);
     const mid = Math.floor(sorted.length / 2);
-    blendedBpm =
-      sorted.length % 2 === 0
-        ? (sorted[mid - 1] + sorted[mid]) / 2
-        : sorted[mid];
+    blendedBpm = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
   }
 
   // Energy — mean
-  const blendedEnergy =
-    anchors.reduce((sum, a) => sum + a.energyLevel, 0) / anchors.length;
+  const blendedEnergy = anchors.reduce((sum, a) => sum + a.energyLevel, 0) / anchors.length;
 
   // musicStyleId — mode (most frequent), null if no winner
   const styleCounts = new Map<string, number>();
@@ -162,7 +152,7 @@ export interface ComponentRoute {
 }
 
 export interface ComponentOverride {
-  gainMult: number;   // 0.0 = muted, 1.0 = unity, >1.0 = boost
+  gainMult: number; // 0.0 = muted, 1.0 = unity, >1.0 = boost
   muted: boolean;
 }
 
@@ -389,9 +379,9 @@ interface GenreProfile {
   warnWaveform: OscillatorType;
   errorWaveform: OscillatorType;
   anomalyWaveform: OscillatorType;
-  noteMultiplier: number;   // shifts the overall pitch register
-  durationScale: number;    // longer = classical, shorter = techno
-  gainScale: number;        // jazz is subtle, EDM is loud
+  noteMultiplier: number; // shifts the overall pitch register
+  durationScale: number; // longer = classical, shorter = techno
+  gainScale: number; // jazz is subtle, EDM is loud
   infoLabel: string;
   warnLabel: string;
   errorLabel: string;
@@ -592,7 +582,7 @@ const SEQUENCER_PRESETS: Record<string, SequencerPreset> = {
   },
 };
 
-  const BALANCED_PRESET: SequencerPreset = {
+const BALANCED_PRESET: SequencerPreset = {
   label: "Balanced",
   descriptor: "All severity levels at natural gain spread with even spacing",
   maxCuesPerWindow: 8,
@@ -618,10 +608,7 @@ function withMutationPreset(
 
   return {
     ...preset,
-    maxCuesPerWindow: Math.max(
-      3,
-      Math.round(preset.maxCuesPerWindow * density),
-    ),
+    maxCuesPerWindow: Math.max(3, Math.round(preset.maxCuesPerWindow * density)),
     scheduleGapMs: Math.max(22, Math.round(preset.scheduleGapMs * spacing)),
     infoGainMultiplier: Number(
       (preset.infoGainMultiplier * mutationProfile.routeGainMultiplier).toFixed(2),
@@ -760,8 +747,7 @@ function resolveSceneSampleSources(
         ...metricPlayableAudioEntries(baseAsset),
         ...metricPreviewEntries(baseAsset),
       ].filter(
-        (entry, index, entries) =>
-          isPlayableAudioPath(entry) && entries.indexOf(entry) === index,
+        (entry, index, entries) => isPlayableAudioPath(entry) && entries.indexOf(entry) === index,
       );
 
       if (playableEntries.length > 0) {
@@ -794,16 +780,14 @@ function resolveSceneSampleSources(
     return {
       sources: [{ path: composition.previewAudioPath, label: composition.title }],
       mode: "single-sample",
-      detail:
-        "Live cues trigger the composition preview WAV — hybrid mixer mode.",
+      detail: "Live cues trigger the composition preview WAV — hybrid mixer mode.",
     };
   }
 
   return {
     sources: [],
     mode: "synth",
-    detail:
-      "No playable managed audio found; live cues stay on internal synthesis.",
+    detail: "No playable managed audio found; live cues stay on internal synthesis.",
   };
 }
 
@@ -862,31 +846,22 @@ export function resolveLiveSonificationScene(
   // when the style IDs match a known genre profile; otherwise fall back to
   // whatever the user selected.
   const resolvedGenreId =
-    (referenceAnchor?.musicStyleId?.trim() && GENRE_PROFILES[referenceAnchor.musicStyleId])
+    referenceAnchor?.musicStyleId?.trim() && GENRE_PROFILES[referenceAnchor.musicStyleId]
       ? referenceAnchor.musicStyleId
       : styleProfile.genreId;
 
   // Preset: anchor suggestion wins if user left it on "balanced" (default),
   // otherwise the explicit user choice stays.
   const resolvedPresetId =
-    referenceAnchor &&
-    (styleProfile.presetId === "balanced" || !styleProfile.presetId)
+    referenceAnchor && (styleProfile.presetId === "balanced" || !styleProfile.presetId)
       ? referenceAnchor.suggestedPresetId
       : styleProfile.presetId;
 
-  const preset = withMutationPreset(
-    fallbackSequencerPreset(resolvedPresetId),
-    mutationProfile,
-  );
+  const preset = withMutationPreset(fallbackSequencerPreset(resolvedPresetId), mutationProfile);
   const genreProfile = fallbackGenreProfile(resolvedGenreId);
-  const categoryId =
-    baseAsset?.categoryId ??
-    composition?.baseAssetCategoryId ??
-    "collection";
+  const categoryId = baseAsset?.categoryId ?? composition?.baseAssetCategoryId ?? "collection";
   const categoryLabel =
-    baseAsset?.categoryLabel ??
-    composition?.baseAssetCategoryLabel ??
-    "Collection";
+    baseAsset?.categoryLabel ?? composition?.baseAssetCategoryLabel ?? "Collection";
   const strategy = composition?.strategy ?? "layered-pack";
   const referenceTitle = composition?.referenceTitle ?? "Live log signal";
   const categoryProfile = fallbackCategoryProfile(categoryId);
@@ -895,18 +870,19 @@ export function resolveLiveSonificationScene(
   const sampleSource = resolveSceneSampleSources(baseAsset, composition);
   const sections = composition ? resolveArrangementSections(composition) : [];
   const cuePoints = composition ? resolveCuePoints(composition) : [];
-  const foundationStem = renderPreview?.stems.find((stem) => stem.role === "foundation")
-    ?? renderPreview?.stems[0];
-  const supportStem = renderPreview?.stems.find((stem) => stem.role === "support")
-    ?? renderPreview?.stems[1]
-    ?? foundationStem;
-  const glueStem = renderPreview?.stems.find((stem) => stem.role === "glue")
-    ?? renderPreview?.stems[renderPreview.stems.length - 1]
-    ?? supportStem
-    ?? foundationStem;
-  const spotlightStem = renderPreview?.stems.find((stem) => stem.role === "spotlight")
-    ?? glueStem
-    ?? foundationStem;
+  const foundationStem =
+    renderPreview?.stems.find((stem) => stem.role === "foundation") ?? renderPreview?.stems[0];
+  const supportStem =
+    renderPreview?.stems.find((stem) => stem.role === "support") ??
+    renderPreview?.stems[1] ??
+    foundationStem;
+  const glueStem =
+    renderPreview?.stems.find((stem) => stem.role === "glue") ??
+    renderPreview?.stems[renderPreview.stems.length - 1] ??
+    supportStem ??
+    foundationStem;
+  const spotlightStem =
+    renderPreview?.stems.find((stem) => stem.role === "spotlight") ?? glueStem ?? foundationStem;
   const introSection = sections[0];
   const buildSection = sections[1] ?? introSection;
   const mainSection = sections[2] ?? buildSection ?? introSection;
@@ -916,76 +892,78 @@ export function resolveLiveSonificationScene(
   const mainCue = cuePoints[2] ?? buildCue ?? introCue;
   const outroCue = cuePoints[cuePoints.length - 1] ?? mainCue ?? buildCue ?? introCue;
 
-  const routes: LiveSonificationRoute[] = ([
-    {
-      key: "info",
-      label: genreProfile.infoLabel,
-      stemLabel: foundationStem?.label ?? `${categoryLabel} foundation`,
-      sectionLabel: introSection?.label ?? "Baseline window",
-      cueLabel: introCue?.label ?? "Baseline cue",
-      focus:
-        foundationStem?.focus ??
-        "Keep a continuous representation of nominal system activity in the background.",
-      waveform: genreProfile.infoWaveform,
-      noteMultiplier: 0.96,
-      durationScale: 1,
-      gainScale: 0.92,
-      pan: foundationStem?.pan ?? 0,
-      samplePath: null,
-      sampleLabel: null,
-    },
-    {
-      key: "warn",
-      label: genreProfile.warnLabel,
-      stemLabel: supportStem?.label ?? `${categoryLabel} motion`,
-      sectionLabel: buildSection?.label ?? "Build window",
-      cueLabel: buildCue?.label ?? "Build cue",
-      focus:
-        supportStem?.focus ??
-        "Push warning pressure forward before the system crosses into a harder anomaly state.",
-      waveform: genreProfile.warnWaveform,
-      noteMultiplier: 1.08,
-      durationScale: 1.06,
-      gainScale: 1.08,
-      pan: supportStem?.pan ?? 0.08,
-      samplePath: null,
-      sampleLabel: null,
-    },
-    {
-      key: "error",
-      label: genreProfile.errorLabel,
-      stemLabel: spotlightStem?.label ?? `${categoryLabel} impact`,
-      sectionLabel: mainSection?.label ?? "Impact window",
-      cueLabel: mainCue?.label ?? "Impact cue",
-      focus:
-        spotlightStem?.focus ??
-        "Make clear when the live stream shifts from pressure into a real failure state.",
-      waveform: genreProfile.errorWaveform,
-      noteMultiplier: 1.22,
-      durationScale: 0.96,
-      gainScale: 1.16,
-      pan: spotlightStem?.pan ?? 0,
-      samplePath: null,
-      sampleLabel: null,
-    },
-    {
-      key: "anomaly",
-      label: genreProfile.anomalyLabel,
-      stemLabel: glueStem?.label ?? `${categoryLabel} anomaly accent`,
-      sectionLabel: outroSection?.label ?? "Accent window",
-      cueLabel: outroCue?.label ?? "Accent cue",
-      focus:
-        glueStem?.focus ??
-        "Mark bursts, exceptions, or drift spikes with a clearly distinct accent.",
-      waveform: genreProfile.anomalyWaveform,
-      noteMultiplier: 1.38,
-      durationScale: 0.84,
-      gainScale: 1.24,
-      pan: glueStem?.pan ?? 0.18,
-      samplePath: null,
-      sampleLabel: null,
-    },
-  ] satisfies LiveSonificationRoute[]).map((route) => ({
+  const routes: LiveSonificationRoute[] = (
+    [
+      {
+        key: "info",
+        label: genreProfile.infoLabel,
+        stemLabel: foundationStem?.label ?? `${categoryLabel} foundation`,
+        sectionLabel: introSection?.label ?? "Baseline window",
+        cueLabel: introCue?.label ?? "Baseline cue",
+        focus:
+          foundationStem?.focus ??
+          "Keep a continuous representation of nominal system activity in the background.",
+        waveform: genreProfile.infoWaveform,
+        noteMultiplier: 0.96,
+        durationScale: 1,
+        gainScale: 0.92,
+        pan: foundationStem?.pan ?? 0,
+        samplePath: null,
+        sampleLabel: null,
+      },
+      {
+        key: "warn",
+        label: genreProfile.warnLabel,
+        stemLabel: supportStem?.label ?? `${categoryLabel} motion`,
+        sectionLabel: buildSection?.label ?? "Build window",
+        cueLabel: buildCue?.label ?? "Build cue",
+        focus:
+          supportStem?.focus ??
+          "Push warning pressure forward before the system crosses into a harder anomaly state.",
+        waveform: genreProfile.warnWaveform,
+        noteMultiplier: 1.08,
+        durationScale: 1.06,
+        gainScale: 1.08,
+        pan: supportStem?.pan ?? 0.08,
+        samplePath: null,
+        sampleLabel: null,
+      },
+      {
+        key: "error",
+        label: genreProfile.errorLabel,
+        stemLabel: spotlightStem?.label ?? `${categoryLabel} impact`,
+        sectionLabel: mainSection?.label ?? "Impact window",
+        cueLabel: mainCue?.label ?? "Impact cue",
+        focus:
+          spotlightStem?.focus ??
+          "Make clear when the live stream shifts from pressure into a real failure state.",
+        waveform: genreProfile.errorWaveform,
+        noteMultiplier: 1.22,
+        durationScale: 0.96,
+        gainScale: 1.16,
+        pan: spotlightStem?.pan ?? 0,
+        samplePath: null,
+        sampleLabel: null,
+      },
+      {
+        key: "anomaly",
+        label: genreProfile.anomalyLabel,
+        stemLabel: glueStem?.label ?? `${categoryLabel} anomaly accent`,
+        sectionLabel: outroSection?.label ?? "Accent window",
+        cueLabel: outroCue?.label ?? "Accent cue",
+        focus:
+          glueStem?.focus ??
+          "Mark bursts, exceptions, or drift spikes with a clearly distinct accent.",
+        waveform: genreProfile.anomalyWaveform,
+        noteMultiplier: 1.38,
+        durationScale: 0.84,
+        gainScale: 1.24,
+        pan: glueStem?.pan ?? 0.18,
+        samplePath: null,
+        sampleLabel: null,
+      },
+    ] satisfies LiveSonificationRoute[]
+  ).map((route) => ({
     ...route,
     pan: clampPan(route.pan + categoryProfile.panBias + strategyProfile.panBias),
     ...routeSampleAssignment(sampleSource.sources, route.key),
@@ -1162,21 +1140,69 @@ interface VoiceDef {
  */
 const ARRANGEMENT_VOICE_MAP: Record<string, VoiceDef[]> = {
   info: [
-    { track: "foundation", panOffset: 0,     noteMultiplier: 1.0,   gainMultiplier: 1.0,  timeOffsetMs: 0  },
+    {
+      track: "foundation",
+      panOffset: 0,
+      noteMultiplier: 1.0,
+      gainMultiplier: 1.0,
+      timeOffsetMs: 0,
+    },
   ],
   warn: [
-    { track: "foundation", panOffset: -0.18, noteMultiplier: 1.0,   gainMultiplier: 0.9,  timeOffsetMs: 0  },
-    { track: "motion",     panOffset:  0.22, noteMultiplier: 1.498, gainMultiplier: 0.52, timeOffsetMs: 14 },
+    {
+      track: "foundation",
+      panOffset: -0.18,
+      noteMultiplier: 1.0,
+      gainMultiplier: 0.9,
+      timeOffsetMs: 0,
+    },
+    {
+      track: "motion",
+      panOffset: 0.22,
+      noteMultiplier: 1.498,
+      gainMultiplier: 0.52,
+      timeOffsetMs: 14,
+    },
   ],
   error: [
-    { track: "foundation", panOffset: -0.24, noteMultiplier: 1.0,   gainMultiplier: 0.88, timeOffsetMs: 0  },
-    { track: "motion",     panOffset:  0,    noteMultiplier: 1.498, gainMultiplier: 0.60, timeOffsetMs: 10 },
-    { track: "accent",     panOffset:  0.26, noteMultiplier: 2.0,   gainMultiplier: 0.40, timeOffsetMs: 20 },
+    {
+      track: "foundation",
+      panOffset: -0.24,
+      noteMultiplier: 1.0,
+      gainMultiplier: 0.88,
+      timeOffsetMs: 0,
+    },
+    { track: "motion", panOffset: 0, noteMultiplier: 1.498, gainMultiplier: 0.6, timeOffsetMs: 10 },
+    {
+      track: "accent",
+      panOffset: 0.26,
+      noteMultiplier: 2.0,
+      gainMultiplier: 0.4,
+      timeOffsetMs: 20,
+    },
   ],
   anomaly: [
-    { track: "motion",     panOffset: -0.28, noteMultiplier: 1.498, gainMultiplier: 0.78, timeOffsetMs: 0  },
-    { track: "accent",     panOffset:  0.24, noteMultiplier: 2.0,   gainMultiplier: 0.82, timeOffsetMs: 8  },
-    { track: "accent",     panOffset:  0.12, noteMultiplier: 2.245, gainMultiplier: 0.36, timeOffsetMs: 24 },
+    {
+      track: "motion",
+      panOffset: -0.28,
+      noteMultiplier: 1.498,
+      gainMultiplier: 0.78,
+      timeOffsetMs: 0,
+    },
+    {
+      track: "accent",
+      panOffset: 0.24,
+      noteMultiplier: 2.0,
+      gainMultiplier: 0.82,
+      timeOffsetMs: 8,
+    },
+    {
+      track: "accent",
+      panOffset: 0.12,
+      noteMultiplier: 2.245,
+      gainMultiplier: 0.36,
+      timeOffsetMs: 24,
+    },
   ],
 };
 

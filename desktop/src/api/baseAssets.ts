@@ -1,26 +1,13 @@
-import type {
-  BaseAssetRecord,
-  BaseAssetSourceKind,
-  ImportBaseAssetInput,
-} from "../types/library";
+import type { BaseAssetRecord, BaseAssetSourceKind, ImportBaseAssetInput } from "../types/library";
 import { invokeOrFallback } from "./tauri";
-import {
-  importMockBaseAsset,
-  listMockBaseAssets,
-} from "./mockBaseAssets";
+import { importMockBaseAsset, listMockBaseAssets } from "./mockBaseAssets";
 
 export async function listBaseAssets(): Promise<BaseAssetRecord[]> {
   return invokeOrFallback("list_base_assets", undefined, () => listMockBaseAssets());
 }
 
-export async function importBaseAsset(
-  input: ImportBaseAssetInput,
-): Promise<BaseAssetRecord> {
-  return invokeOrFallback(
-    "import_base_asset",
-    { input },
-    () => importMockBaseAsset(input),
-  );
+export async function importBaseAsset(input: ImportBaseAssetInput): Promise<BaseAssetRecord> {
+  return invokeOrFallback("import_base_asset", { input }, () => importMockBaseAsset(input));
 }
 
 export async function pickBaseAssetPath(

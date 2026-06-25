@@ -14,9 +14,7 @@ function toMessage(error: unknown, fallback: string): string {
 }
 
 function sortBaseAssets(baseAssets: BaseAssetRecord[]): BaseAssetRecord[] {
-  return [...baseAssets].sort((left, right) =>
-    right.importedAt.localeCompare(left.importedAt),
-  );
+  return [...baseAssets].sort((left, right) => right.importedAt.localeCompare(left.importedAt));
 }
 
 export function useBaseAssets() {
@@ -54,7 +52,7 @@ export function useBaseAssets() {
         if (!active) {
           return;
         }
-  
+
         startTransition(() => {
           setError(toMessage(nextError, "Unexpected base asset failure."));
           setLoading(false);

@@ -83,17 +83,13 @@ function triggerDetailForCue(
   return marker?.excerpt || cue.excerpt || cue.component;
 }
 
-function resultLabelForCue(
-  cue: Pick<ExplainableLiveCue, "routeLabel" | "stemLabel">,
-): string {
+function resultLabelForCue(cue: Pick<ExplainableLiveCue, "routeLabel" | "stemLabel">): string {
   const routeLabel = cue.routeLabel.trim() || "Routed layer";
   const stemLabel = cue.stemLabel.trim();
   return stemLabel ? `${routeLabel} → ${stemLabel}` : routeLabel;
 }
 
-function resultDetailForCue(
-  cue: Pick<ExplainableLiveCue, "sectionLabel" | "focus">,
-): string {
+function resultDetailForCue(cue: Pick<ExplainableLiveCue, "sectionLabel" | "focus">): string {
   const sectionLabel = cue.sectionLabel.trim();
   const focus = cue.focus.trim();
 
@@ -115,8 +111,7 @@ export function deriveLiveMutationExplanations(
   markers: readonly LiveLogMarker[],
   options: number | LiveMutationExplainabilityOptions = 6,
 ): LiveMutationExplanation[] {
-  const resolvedOptions =
-    typeof options === "number" ? { limit: options } : options;
+  const resolvedOptions = typeof options === "number" ? { limit: options } : options;
   const markersByEvent = new Map<string, LiveLogMarker>();
   const firstMarkerByIndex = new Map<number, LiveLogMarker>();
 
@@ -131,8 +126,7 @@ export function deriveLiveMutationExplanations(
   }
 
   return cues.slice(0, Math.max(0, resolvedOptions.limit ?? 6)).map((cue) => {
-    const marker =
-      markersByEvent.get(markerKey(cue)) ?? firstMarkerByIndex.get(cue.eventIndex);
+    const marker = markersByEvent.get(markerKey(cue)) ?? firstMarkerByIndex.get(cue.eventIndex);
     const isAnomalyDriven = Boolean(marker) || cue.accent === "anomaly";
 
     return {
@@ -144,9 +138,7 @@ export function deriveLiveMutationExplanations(
       trackId: resolvedOptions.trackId ?? null,
       trackTitle: resolvedOptions.trackTitle ?? null,
       trackSecond:
-        typeof resolvedOptions.trackSecond === "number"
-          ? resolvedOptions.trackSecond
-          : null,
+        typeof resolvedOptions.trackSecond === "number" ? resolvedOptions.trackSecond : null,
       sourceExcerpt: triggerDetailForCue(cue, marker),
       triggerLabel: triggerLabelForCue(cue, marker),
       triggerDetail: triggerDetailForCue(cue, marker),
@@ -169,8 +161,7 @@ export function toLiveMutationVisualizationCues(
   return explanations
     .filter(
       (explanation): explanation is LiveMutationExplanation & { trackSecond: number } =>
-        typeof explanation.trackSecond === "number" &&
-        Number.isFinite(explanation.trackSecond),
+        typeof explanation.trackSecond === "number" && Number.isFinite(explanation.trackSecond),
     )
     .map((explanation) => ({
       second: explanation.trackSecond,

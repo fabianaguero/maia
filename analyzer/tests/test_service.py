@@ -45,7 +45,9 @@ def test_handle_request_session_start_process_adapter_failure(monkeypatch):
         def describe(self) -> dict[str, str]:
             return {"sessionId": "proc-2", "adapterKind": "process"}
 
-    monkeypatch.setattr("maia_analyzer.service.get_or_create_session", lambda *_args: DummySession())
+    monkeypatch.setattr(
+        "maia_analyzer.service.get_or_create_session", lambda *_args: DummySession()
+    )
     monkeypatch.setattr(
         "maia_analyzer.service.start_process_adapter",
         lambda _session_id, _command: (False, "spawn failed"),
@@ -142,9 +144,7 @@ def test_handle_request_session_poll_with_data(monkeypatch):
         ),
     )
 
-    result = handle_request(
-        _req("session_poll", {"sessionId": "sess-data", "presetId": "ambient"})
-    )
+    result = handle_request(_req("session_poll", {"sessionId": "sess-data", "presetId": "ambient"}))
 
     assert result["status"] == "ok"
     assert result["payload"]["hasData"] is True
@@ -310,26 +310,54 @@ def test_handle_request_maps_unexpected_exception_to_internal_error(monkeypatch)
 
 
 def test_build_summary_covers_non_repo_asset_types():
-    assert _build_summary(
-        {"assetType": "track_analysis", "title": "Track A", "suggestedBpm": 125.0, "metrics": {}}
-    ) == "Track analysis completed for Track A with heuristic BPM 125."
-    assert _build_summary(
-        {"assetType": "track_analysis", "title": "Track B", "suggestedBpm": None, "metrics": {}}
-    ) == "Track intake completed for Track B with waveform heuristics only."
-    assert _build_summary(
-        {"assetType": "repo_analysis", "title": "Repo A", "suggestedBpm": 120.0, "metrics": {}}
-    ) == "Repository analysis completed for Repo A with suggested BPM 120."
-    assert _build_summary(
-        {"assetType": "base_asset", "title": "Pack A", "suggestedBpm": None, "metrics": {}}
-    ) == "Base asset Pack A registered for local reuse."
-    assert _build_summary(
-        {"assetType": "composition_result", "title": "Plan A", "suggestedBpm": 128.0, "metrics": {}}
-    ) == "Composition plan completed for Plan A at target BPM 128."
-    assert _build_summary(
-        {
-            "assetType": "composition_result",
-            "title": "Plan B",
-            "suggestedBpm": None,
-            "metrics": {},
-        }
-    ) == "Composition plan completed for Plan B."
+    assert (
+        _build_summary(
+            {
+                "assetType": "track_analysis",
+                "title": "Track A",
+                "suggestedBpm": 125.0,
+                "metrics": {},
+            }
+        )
+        == "Track analysis completed for Track A with heuristic BPM 125."
+    )
+    assert (
+        _build_summary(
+            {"assetType": "track_analysis", "title": "Track B", "suggestedBpm": None, "metrics": {}}
+        )
+        == "Track intake completed for Track B with waveform heuristics only."
+    )
+    assert (
+        _build_summary(
+            {"assetType": "repo_analysis", "title": "Repo A", "suggestedBpm": 120.0, "metrics": {}}
+        )
+        == "Repository analysis completed for Repo A with suggested BPM 120."
+    )
+    assert (
+        _build_summary(
+            {"assetType": "base_asset", "title": "Pack A", "suggestedBpm": None, "metrics": {}}
+        )
+        == "Base asset Pack A registered for local reuse."
+    )
+    assert (
+        _build_summary(
+            {
+                "assetType": "composition_result",
+                "title": "Plan A",
+                "suggestedBpm": 128.0,
+                "metrics": {},
+            }
+        )
+        == "Composition plan completed for Plan A at target BPM 128."
+    )
+    assert (
+        _build_summary(
+            {
+                "assetType": "composition_result",
+                "title": "Plan B",
+                "suggestedBpm": None,
+                "metrics": {},
+            }
+        )
+        == "Composition plan completed for Plan B."
+    )

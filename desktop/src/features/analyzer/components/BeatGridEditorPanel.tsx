@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
+import { useT } from "../../../i18n/I18nContext";
 
-import type {
-  LibraryTrack,
-  UpdateTrackAnalysisInput,
-} from "../../../types/library";
+import type { LibraryTrack, UpdateTrackAnalysisInput } from "../../../types/library";
 import {
   createAnchoredBeatGridUpdate,
   createNudgedBeatGridUpdate,
@@ -20,9 +18,9 @@ interface BeatGridEditorPanelProps {
   onUpdateAnalysis?: (input: UpdateTrackAnalysisInput) => Promise<void>;
 }
 
-function formatBeatSpacing(value: number | null): string {
+function formatBeatSpacing(value: number | null, pendingLabel: string): string {
   if (value === null) {
-    return "Pending";
+    return pendingLabel;
   }
 
   return `${value.toFixed(3)}s`;
@@ -47,6 +45,7 @@ export function BeatGridEditorPanel({
   currentTime = 0,
   onUpdateAnalysis,
 }: BeatGridEditorPanelProps) {
+  const t = useT();
   const [bpmInput, setBpmInput] = useState(() => formatBpmInputValue(track.analysis.bpm));
   const durationSeconds = track.analysis.durationSeconds;
   const beatGrid = track.analysis.beatGrid;
@@ -60,12 +59,8 @@ export function BeatGridEditorPanel({
   const hasGrid = beatGrid.length > 0;
   const canSetGrid = canEditGrid && isEditableBpm(effectiveBpm) && durationSeconds !== null;
   const canNudgeGrid = canSetGrid && hasGrid;
-  const canHalveBpm = isEditableBpm(effectiveBpm)
-    ? isEditableBpm(effectiveBpm / 2)
-    : false;
-  const canDoubleBpm = isEditableBpm(effectiveBpm)
-    ? isEditableBpm(effectiveBpm * 2)
-    : false;
+  const canHalveBpm = isEditableBpm(effectiveBpm) ? isEditableBpm(effectiveBpm / 2) : false;
+  const canDoubleBpm = isEditableBpm(effectiveBpm) ? isEditableBpm(effectiveBpm * 2) : false;
 
   useEffect(() => {
     setBpmInput(formatBpmInputValue(track.analysis.bpm));
@@ -85,9 +80,7 @@ export function BeatGridEditorPanel({
     }
 
     const anchorSecond = resolveBeatGridAnchorSecond(beatGrid, currentTime);
-    return updateAnalysis(
-      createAnchoredBeatGridUpdate(parsedBpm, durationSeconds, anchorSecond),
-    );
+    return updateAnalysis(createAnchoredBeatGridUpdate(parsedBpm, durationSeconds, anchorSecond));
   };
 
   const setDownbeatHere = () => {
@@ -95,9 +88,7 @@ export function BeatGridEditorPanel({
       return;
     }
 
-    return updateAnalysis(
-      createAnchoredBeatGridUpdate(effectiveBpm, durationSeconds, currentTime),
-    );
+    return updateAnalysis(createAnchoredBeatGridUpdate(effectiveBpm, durationSeconds, currentTime));
   };
 
   const nudgeGrid = (beatDelta: number) => {
@@ -106,12 +97,7 @@ export function BeatGridEditorPanel({
     }
 
     return updateAnalysis(
-      createNudgedBeatGridUpdate(
-        beatGrid,
-        effectiveBpm,
-        beatDelta,
-        durationSeconds,
-      ),
+      createNudgedBeatGridUpdate(beatGrid, effectiveBpm, beatDelta, durationSeconds),
     );
   };
 
@@ -119,46 +105,48 @@ export function BeatGridEditorPanel({
     <section className="panel metric-panel">
       <div className="panel-header compact">
         <div>
-          <h2>Beat grid edit</h2>
-          <p className="support-copy">
-            Manual DJ-style grid correction persisted into track analysis artifacts.
-          </p>
+          <h2>{t.inspect.beatGridEditTitle}</h2>
+          <p className="support-copy">{t.inspect.beatGridEditCopy}</p>
         </div>
       </div>
 
       <div className="metric-grid">
         <div>
-          <span>Grid BPM</span>
+          <span>{t.inspect.gridBpm}</span>
           <strong>
-            {isEditableBpm(track.analysis.bpm) ? track.analysis.bpm.toFixed(2) : "Pending"}
+            {isEditableBpm(track.analysis.bpm) ? track.analysis.bpm.toFixed(2) : t.inspect.pending}
           </strong>
         </div>
         <div>
-          <span>Beat markers</span>
+          <span>{t.inspect.beatMarkers}</span>
           <strong>{beatGrid.length}</strong>
         </div>
         <div>
-          <span>Grid anchor</span>
+          <span>{t.inspect.gridAnchor}</span>
           <strong>{formatTrackTime(hasGrid ? gridAnchorSecond : null)}</strong>
         </div>
         <div>
-          <span>Beat spacing</span>
-          <strong>{formatBeatSpacing(beatSpacing)}</strong>
+          <span>{t.inspect.beatSpacing}</span>
+          <strong>{formatBeatSpacing(beatSpacing, t.inspect.pending)}</strong>
         </div>
         <div>
-          <span>Playhead</span>
+          <span>{t.inspect.playhead}</span>
           <strong>{formatTrackTime(currentTime)}</strong>
         </div>
         <div>
-          <span>Edit state</span>
+          <span>{t.inspect.editState}</span>
           <strong>
-            {!canPersist ? "Unavailable" : gridLocked ? "Grid locked" : "Ready"}
+            {!canPersist
+              ? t.inspect.unavailable
+              : gridLocked
+                ? t.inspect.gridLockedState
+                : t.inspect.ready}
           </strong>
         </div>
       </div>
 
       <div className="top-spaced">
-        <p className="support-copy">Grid controls</p>
+        <p className="support-copy">{t.inspect.gridControls}</p>
         <div className="pill-strip top-spaced">
           <span>
             <label>
@@ -169,7 +157,7 @@ export function BeatGridEditorPanel({
                 min="40"
                 max="240"
                 className="compact-input"
-                aria-label="Beat grid BPM"
+                aria-label={t.inspect.gridBpm}
                 value={bpmInput}
                 disabled={!canEditGrid}
                 onChange={(event) => setBpmInput(event.target.value)}
@@ -182,7 +170,7 @@ export function BeatGridEditorPanel({
             disabled={!canSetGrid || !isEditableBpm(parsedBpm)}
             onClick={() => void applyBpm()}
           >
-            Apply BPM
+            {t.inspect.applyBpm}
           </button>
           <button
             type="button"
@@ -201,7 +189,7 @@ export function BeatGridEditorPanel({
               }
             }}
           >
-            Half BPM
+            {t.inspect.halfBpm}
           </button>
           <button
             type="button"
@@ -220,7 +208,7 @@ export function BeatGridEditorPanel({
               }
             }}
           >
-            Double BPM
+            {t.inspect.doubleBpm}
           </button>
         </div>
 
@@ -231,7 +219,7 @@ export function BeatGridEditorPanel({
             disabled={!canSetGrid}
             onClick={() => void setDownbeatHere()}
           >
-            Set downbeat here
+            {t.inspect.setDownbeatHere}
           </button>
           <button
             type="button"
@@ -239,7 +227,7 @@ export function BeatGridEditorPanel({
             disabled={!canNudgeGrid}
             onClick={() => void nudgeGrid(-0.25)}
           >
-            Nudge -1/4
+            {t.inspect.nudgeQuarterBack}
           </button>
           <button
             type="button"
@@ -247,7 +235,7 @@ export function BeatGridEditorPanel({
             disabled={!canNudgeGrid}
             onClick={() => void nudgeGrid(0.25)}
           >
-            Nudge +1/4
+            {t.inspect.nudgeQuarterForward}
           </button>
           <button
             type="button"
@@ -255,7 +243,7 @@ export function BeatGridEditorPanel({
             disabled={!canNudgeGrid}
             onClick={() => void nudgeGrid(-1)}
           >
-            Nudge -1 beat
+            {t.inspect.nudgeBeatBack}
           </button>
           <button
             type="button"
@@ -263,15 +251,11 @@ export function BeatGridEditorPanel({
             disabled={!canNudgeGrid}
             onClick={() => void nudgeGrid(1)}
           >
-            Nudge +1 beat
+            {t.inspect.nudgeBeatForward}
           </button>
         </div>
 
-        {gridLocked ? (
-          <p className="support-copy top-spaced">
-            Unlock grid in the Performance panel before editing beat markers.
-          </p>
-        ) : null}
+        {gridLocked ? <p className="support-copy top-spaced">{t.inspect.unlockGridHint}</p> : null}
       </div>
     </section>
   );

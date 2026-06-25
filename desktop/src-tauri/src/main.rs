@@ -399,12 +399,7 @@ struct StreamSessionState {
 
 impl StreamSessionState {
     fn new(record: StreamSessionRecord) -> Self {
-        Self {
-            record,
-            ring_buffer: Vec::new(),
-            pending_lines: Vec::new(),
-            process: None,
-        }
+        Self { record, ring_buffer: Vec::new(), pending_lines: Vec::new(), process: None }
     }
 
     fn append_lines<I>(&mut self, lines: I)
@@ -428,10 +423,7 @@ impl StreamSessionState {
         }
 
         let drain_count = self.pending_lines.len().min(SESSION_POLL_BATCH_LINES);
-        self.pending_lines
-            .drain(0..drain_count)
-            .collect::<Vec<String>>()
-            .join("\n")
+        self.pending_lines.drain(0..drain_count).collect::<Vec<String>>().join("\n")
     }
 }
 
@@ -496,9 +488,7 @@ fn append_lines_to_session<I>(
 where
     I: IntoIterator<Item = String>,
 {
-    let mut reg = registry
-        .lock()
-        .map_err(|e| format!("Registry lock failed: {e}"))?;
+    let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
     let session = reg
         .sessions
         .get_mut(session_id)
@@ -515,9 +505,7 @@ fn update_session_metadata<F>(
 where
     F: FnOnce(&mut StreamSessionState),
 {
-    let mut reg = registry
-        .lock()
-        .map_err(|e| format!("Registry lock failed: {e}"))?;
+    let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
     let session = reg
         .sessions
         .get_mut(session_id)
@@ -530,9 +518,7 @@ fn drain_pending_chunk(
     registry: &SessionRegistryState,
     session_id: &str,
 ) -> Result<(StreamSessionRecord, String), String> {
-    let mut reg = registry
-        .lock()
-        .map_err(|e| format!("Registry lock failed: {e}"))?;
+    let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
     let session = reg
         .sessions
         .get_mut(session_id)
@@ -581,11 +567,7 @@ fn analyze_stream_chunk(
     warnings: Vec<String>,
 ) -> Result<StreamSessionPollResult, String> {
     if chunk.trim().is_empty() {
-        return Ok(waiting_stream_poll_result(
-            session,
-            "Waiting for new log lines.",
-            warnings,
-        ));
+        return Ok(waiting_stream_poll_result(session, "Waiting for new log lines.", warnings));
     }
 
     let request = json!({
@@ -617,9 +599,8 @@ fn analyze_stream_chunk(
         return Err(message);
     }
 
-    let payload = parsed
-        .payload
-        .ok_or_else(|| "Analyzer did not return a stream payload.".to_string())?;
+    let payload =
+        parsed.payload.ok_or_else(|| "Analyzer did not return a stream payload.".to_string())?;
     let mut merged_warnings = warnings;
     merged_warnings.extend(parsed.warnings);
 
@@ -658,7 +639,8 @@ fn should_ignore_process_line(line: &str) -> bool {
         || trimmed.contains("pkg_resources is deprecated as an API")
         || trimmed.starts_with("WARNING: Could not setup log file")
         || trimmed.starts_with("The configuration directory may not be writable")
-        || trimmed.starts_with("To learn more, see https://cloud.google.com/sdk/docs/configurations")
+        || trimmed
+            .starts_with("To learn more, see https://cloud.google.com/sdk/docs/configurations")
         || trimmed.starts_with("/usr/bin/../lib/google-cloud-sdk/")
         || trimmed == "import pkg_resources"
         || trimmed.starts_with("__doc__")
@@ -688,10 +670,8 @@ fn normalize_gcloud_log_line(line: &str) -> Option<String> {
     if fields.len() >= 3 && looks_like_iso_timestamp(fields[0]) {
         let timestamp = fields[0].trim();
         let severity = fields[1].trim();
-        let message = fields[2..]
-            .iter()
-            .map(|field| field.trim())
-            .find(|field| !field.is_empty())?;
+        let message =
+            fields[2..].iter().map(|field| field.trim()).find(|field| !field.is_empty())?;
         let normalized_severity = if severity.is_empty() { "DEFAULT" } else { severity };
         return Some(format!("{normalized_severity} {timestamp} {message}"));
     }
@@ -699,10 +679,8 @@ fn normalize_gcloud_log_line(line: &str) -> Option<String> {
     if fields.len() >= 3 && looks_like_iso_timestamp(fields[1]) {
         let severity = fields[0].trim();
         let timestamp = fields[1].trim();
-        let message = fields[2..]
-            .iter()
-            .map(|field| field.trim())
-            .find(|field| !field.is_empty())?;
+        let message =
+            fields[2..].iter().map(|field| field.trim()).find(|field| !field.is_empty())?;
         let normalized_severity = if severity.is_empty() { "DEFAULT" } else { severity };
         return Some(format!("{normalized_severity} {timestamp} {message}"));
     }
@@ -897,8 +875,7 @@ fn db_list_sessions(conn: &Connection) -> Result<Vec<PersistedSession>, String> 
         .query_map([], row_to_persisted_session)
         .map_err(|e| format!("Failed to query sessions: {e}"))?;
 
-    rows.map(|r| r.map_err(|e| format!("Row error: {e}")))
-        .collect()
+    rows.map(|r| r.map_err(|e| format!("Row error: {e}"))).collect()
 }
 
 fn db_update_session_status(conn: &Connection, id: &str, status: &str) -> Result<(), String> {
@@ -1094,8 +1071,7 @@ fn db_list_session_events(
         })
         .map_err(|e| format!("Failed to query session events: {e}"))?;
 
-    rows.map(|r| r.map_err(|e| format!("Row error: {e}")))
-        .collect()
+    rows.map(|r| r.map_err(|e| format!("Row error: {e}"))).collect()
 }
 
 fn row_to_session_bookmark(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionBookmark> {
@@ -1156,11 +1132,7 @@ fn db_upsert_session_bookmark(
             input.event_index.map(|value| value as i64),
             input.label.trim(),
             input.note.trim(),
-            input
-                .bookmark_tag
-                .as_ref()
-                .map(|value| value.trim())
-                .filter(|value| !value.is_empty()),
+            input.bookmark_tag.as_ref().map(|value| value.trim()).filter(|value| !value.is_empty()),
             input
                 .suggested_style_profile_id
                 .as_ref()
@@ -1210,16 +1182,12 @@ fn db_list_session_bookmarks(
         .query_map(rusqlite::params![session_id], row_to_session_bookmark)
         .map_err(|e| format!("Failed to query session bookmarks: {e}"))?;
 
-    rows.map(|r| r.map_err(|e| format!("Row error: {e}")))
-        .collect()
+    rows.map(|r| r.map_err(|e| format!("Row error: {e}"))).collect()
 }
 
 fn db_delete_session_bookmark(conn: &Connection, id: i64) -> Result<bool, String> {
     let deleted = conn
-        .execute(
-            "DELETE FROM session_bookmarks WHERE id = ?1",
-            rusqlite::params![id],
-        )
+        .execute("DELETE FROM session_bookmarks WHERE id = ?1", rusqlite::params![id])
         .map_err(|e| format!("Failed to delete session bookmark: {e}"))?;
     Ok(deleted > 0)
 }
@@ -1608,22 +1576,12 @@ fn pick_track_source_path(initial_path: Option<String>) -> Result<Option<String>
 
 #[tauri::command]
 fn pick_track_source_directory(initial_path: Option<String>) -> Result<Option<String>, String> {
-    pick_native_path(
-        NativePickerKind::Directory,
-        initial_path,
-        "Select music folder",
-        None,
-    )
+    pick_native_path(NativePickerKind::Directory, initial_path, "Select music folder", None)
 }
 
 #[tauri::command]
 fn pick_repository_directory(initial_path: Option<String>) -> Result<Option<String>, String> {
-    pick_native_path(
-        NativePickerKind::Directory,
-        initial_path,
-        "Select repository directory",
-        None,
-    )
+    pick_native_path(NativePickerKind::Directory, initial_path, "Select repository directory", None)
 }
 
 #[tauri::command]
@@ -1642,10 +1600,7 @@ fn poll_log_stream(
     cursor: Option<u64>,
     max_bytes: Option<u64>,
 ) -> Result<LiveLogStreamUpdate, String> {
-    eprintln!(
-        "[MAIA:Rust] poll_log_stream path={} cursor={:?}",
-        source_path, cursor
-    );
+    eprintln!("[MAIA:Rust] poll_log_stream path={} cursor={:?}", source_path, cursor);
     let (resolved_path, from_offset, to_offset, chunk, local_warnings) =
         read_log_stream_chunk(&source_path, cursor, max_bytes)?;
 
@@ -1712,9 +1667,8 @@ fn poll_log_stream(
         return Err(message);
     }
 
-    let payload = parsed
-        .payload
-        .ok_or_else(|| "Analyzer did not return a log-tail payload.".to_string())?;
+    let payload =
+        parsed.payload.ok_or_else(|| "Analyzer did not return a log-tail payload.".to_string())?;
     warnings.extend(parsed.warnings.clone());
 
     let metrics = &payload.musical_asset.metrics;
@@ -1777,20 +1731,17 @@ fn normalize_gcp_backfill_freshness(raw: Option<String>) -> Result<Option<String
     }
 
     let mut chars = value.chars();
-    let unit = chars
-        .next_back()
-        .ok_or_else(|| "GCP backfill lookback cannot be empty.".to_string())?;
+    let unit =
+        chars.next_back().ok_or_else(|| "GCP backfill lookback cannot be empty.".to_string())?;
     if !matches!(unit, 's' | 'm' | 'h' | 'd') {
         return Err(
-            "GCP backfill lookback must end with s, m, h or d. Example: 10m, 2h, 1d."
-                .to_string(),
+            "GCP backfill lookback must end with s, m, h or d. Example: 10m, 2h, 1d.".to_string()
         );
     }
     let amount = chars.as_str();
     if amount.is_empty() || !amount.chars().all(|char| char.is_ascii_digit()) {
         return Err(
-            "GCP backfill lookback must start with a positive number. Example: 10m."
-                .to_string(),
+            "GCP backfill lookback must start with a positive number. Example: 10m.".to_string()
         );
     }
     if amount.parse::<u64>().unwrap_or(0) == 0 {
@@ -1806,9 +1757,8 @@ fn gcp_backfill_freshness_to_seconds(freshness: &str) -> Result<u64, String> {
         return Err("GCP backfill lookback cannot be empty.".to_string());
     }
     let mut chars = trimmed.chars();
-    let unit = chars
-        .next_back()
-        .ok_or_else(|| "GCP backfill lookback cannot be empty.".to_string())?;
+    let unit =
+        chars.next_back().ok_or_else(|| "GCP backfill lookback cannot be empty.".to_string())?;
     let amount_str = chars.as_str();
     let amount = amount_str
         .parse::<u64>()
@@ -1823,16 +1773,12 @@ fn gcp_backfill_freshness_to_seconds(freshness: &str) -> Result<u64, String> {
         'h' => 60 * 60,
         'd' => 60 * 60 * 24,
         _ => {
-            return Err(
-                "GCP backfill lookback must end with s, m, h or d. Example: 10m, 2h, 1d."
-                    .to_string(),
-            )
+            return Err("GCP backfill lookback must end with s, m, h or d. Example: 10m, 2h, 1d."
+                .to_string())
         }
     };
 
-    amount
-        .checked_mul(multiplier)
-        .ok_or_else(|| "GCP backfill lookback is too large.".to_string())
+    amount.checked_mul(multiplier).ok_or_else(|| "GCP backfill lookback is too large.".to_string())
 }
 
 fn iso_from_unix_secs(secs: u64) -> String {
@@ -1880,17 +1826,9 @@ fn normalize_log_source_connection(
             }
             if let Some(map) = config.as_object_mut() {
                 map.insert("path".to_string(), Value::String(source_uri.clone()));
-                map.insert(
-                    "standard".to_string(),
-                    Value::String("filesystem-tail".to_string()),
-                );
+                map.insert("standard".to_string(), Value::String("filesystem-tail".to_string()));
             }
-            Ok((
-                "file_log".to_string(),
-                "file".to_string(),
-                source_uri,
-                config,
-            ))
+            Ok(("file_log".to_string(), "file".to_string(), source_uri, config))
         }
         "gcp_cloud_run" => {
             let project_id = config_string(&input.config, "projectId")
@@ -1899,8 +1837,10 @@ fn normalize_log_source_connection(
                 "GCP Cloud Run connections require config.serviceName.".to_string()
             })?;
             let region = config_string(&input.config, "region");
-            let backfill_freshness =
-                normalize_gcp_backfill_freshness(config_string(&input.config, "backfillFreshness"))?;
+            let backfill_freshness = normalize_gcp_backfill_freshness(config_string(
+                &input.config,
+                "backfillFreshness",
+            ))?;
             let source_uri = input.source_uri.clone().unwrap_or_else(|| match &region {
                 Some(region) => format!("gcp-cloud-run://{project_id}/{region}/{service_name}"),
                 None => format!("gcp-cloud-run://{project_id}/{service_name}"),
@@ -1923,7 +1863,10 @@ fn normalize_log_source_connection(
                         );
                     }
                     None => {
-                        map.insert("backfillFreshness".to_string(), Value::String("off".to_string()));
+                        map.insert(
+                            "backfillFreshness".to_string(),
+                            Value::String("off".to_string()),
+                        );
                     }
                 }
                 map.insert(
@@ -1931,12 +1874,7 @@ fn normalize_log_source_connection(
                     Value::String("gcloud-logging-tail".to_string()),
                 );
             }
-            Ok((
-                "gcp_cloud_run".to_string(),
-                "process".to_string(),
-                source_uri,
-                config,
-            ))
+            Ok(("gcp_cloud_run".to_string(), "process".to_string(), source_uri, config))
         }
         _ => Err("Unsupported log connection kind. Use file_log or gcp_cloud_run.".to_string()),
     }
@@ -2054,10 +1992,7 @@ fn build_gcp_cloud_run_filter(connection: &LogSourceConnection) -> Result<String
         ));
     }
     if let Some(severity) = config_string(&connection.config, "minimumSeverity") {
-        filter.push_str(&format!(
-            " AND severity>=\"{}\"",
-            severity.replace('"', "\\\"")
-        ));
+        filter.push_str(&format!(" AND severity>=\"{}\"", severity.replace('"', "\\\"")));
     }
     filter.push_str(
         " AND (logName:\"run.googleapis.com%2Fstdout\" OR logName:\"run.googleapis.com%2Fstderr\")",
@@ -2099,11 +2034,8 @@ fn gcp_cloud_run_backfill_lines(
         .unwrap_or(0);
     let since_secs = now_secs.saturating_sub(lookback_secs);
     let since_iso = iso_from_unix_secs(since_secs);
-    let filter = format!(
-        "{} AND timestamp>=\"{}\"",
-        build_gcp_cloud_run_filter(connection)?,
-        since_iso
-    );
+    let filter =
+        format!("{} AND timestamp>=\"{}\"", build_gcp_cloud_run_filter(connection)?, since_iso);
 
     let output = Command::new("gcloud")
         .args([
@@ -2131,8 +2063,9 @@ fn gcp_cloud_run_backfill_lines(
         return Err(format!("gcloud logging read backfill failed: {}", stderr.trim()));
     }
 
-    let stdout = String::from_utf8(output.stdout)
-        .map_err(|error| format!("gcloud logging read backfill stdout was not valid UTF-8: {error}"))?;
+    let stdout = String::from_utf8(output.stdout).map_err(|error| {
+        format!("gcloud logging read backfill stdout was not valid UTF-8: {error}")
+    })?;
 
     let mut lines: Vec<String> = stdout
         .lines()
@@ -2162,10 +2095,7 @@ fn upsert_log_source_connection(
 fn delete_log_source_connection(app_handle: AppHandle, id: String) -> Result<bool, String> {
     let conn = open_database(&app_handle)?;
     let changed = conn
-        .execute(
-            "DELETE FROM log_source_connections WHERE id = ?1",
-            params![id],
-        )
+        .execute("DELETE FROM log_source_connections WHERE id = ?1", params![id])
         .map_err(|e| format!("Failed to delete log source connection: {e}"))?;
     Ok(changed > 0)
 }
@@ -2211,7 +2141,8 @@ fn start_log_source_connection(
                 GCLOUD_BACKFILL_LINE_LIMIT,
             ) {
                 Ok(lines) if !lines.is_empty() => {
-                    let _ = append_lines_to_session(&backfill_registry, &backfill_session_id, lines);
+                    let _ =
+                        append_lines_to_session(&backfill_registry, &backfill_session_id, lines);
                 }
                 Ok(_) => {}
                 Err(error) => {
@@ -2274,11 +2205,8 @@ fn start_stream_session(
     };
 
     {
-        let mut reg = registry
-            .lock()
-            .map_err(|e| format!("Registry lock failed: {e}"))?;
-        reg.sessions
-            .insert(session_id.clone(), StreamSessionState::new(record.clone()));
+        let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+        reg.sessions.insert(session_id.clone(), StreamSessionState::new(record.clone()));
     }
 
     if input.adapter_kind == "journald" {
@@ -2299,25 +2227,19 @@ fn start_stream_session(
         let child = match spawn_process_session(registry_handle, session_id.clone(), cmd) {
             Ok(child) => child,
             Err(error) => {
-                let mut reg = registry
-                    .lock()
-                    .map_err(|e| format!("Registry lock failed: {e}"))?;
+                let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
                 reg.sessions.remove(&session_id);
                 return Err(error);
             }
         };
-        let mut reg = registry
-            .lock()
-            .map_err(|e| format!("Registry lock failed: {e}"))?;
+        let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
         if let Some(session) = reg.sessions.get_mut(&session_id) {
             session.process = Some(child);
         }
     } else if input.adapter_kind == "process" {
         let command = input.command.clone().unwrap_or_default();
         if command.is_empty() {
-            let mut reg = registry
-                .lock()
-                .map_err(|e| format!("Registry lock failed: {e}"))?;
+            let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
             reg.sessions.remove(&session_id);
             return Err("command list required for process adapter".to_string());
         }
@@ -2326,17 +2248,13 @@ fn start_stream_session(
         let child = match spawn_process_session(registry_handle, session_id.clone(), command) {
             Ok(child) => child,
             Err(error) => {
-                let mut reg = registry
-                    .lock()
-                    .map_err(|e| format!("Registry lock failed: {e}"))?;
+                let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
                 reg.sessions.remove(&session_id);
                 return Err(error);
             }
         };
 
-        let mut reg = registry
-            .lock()
-            .map_err(|e| format!("Registry lock failed: {e}"))?;
+        let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
         if let Some(session) = reg.sessions.get_mut(&session_id) {
             session.process = Some(child);
         }
@@ -2350,9 +2268,7 @@ fn stop_stream_session(
     session_id: String,
     registry: State<'_, SessionRegistryState>,
 ) -> Result<bool, String> {
-    let mut reg = registry
-        .lock()
-        .map_err(|e| format!("Registry lock failed: {e}"))?;
+    let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
     let mut removed = reg.sessions.remove(&session_id);
     if let Some(session) = removed.as_mut() {
         if let Some(process) = session.process.as_mut() {
@@ -2367,14 +2283,9 @@ fn stop_stream_session(
 fn list_stream_sessions(
     registry: State<'_, SessionRegistryState>,
 ) -> Result<Vec<StreamSessionRecord>, String> {
-    let reg = registry
-        .lock()
-        .map_err(|e| format!("Registry lock failed: {e}"))?;
-    let mut sessions: Vec<StreamSessionRecord> = reg
-        .sessions
-        .values()
-        .map(|state| state.record.clone())
-        .collect();
+    let reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+    let mut sessions: Vec<StreamSessionRecord> =
+        reg.sessions.values().map(|state| state.record.clone()).collect();
     sessions.sort_by(|a, b| a.created_at.cmp(&b.created_at));
     Ok(sessions)
 }
@@ -2482,9 +2393,7 @@ fn poll_stream_session(
 ) -> Result<StreamSessionPollResult, String> {
     eprintln!("[MAIA:Rust] poll_stream_session id={}", session_id);
     let (adapter_kind, source, cursor) = {
-        let reg = registry
-            .lock()
-            .map_err(|e| format!("Registry lock failed: {e}"))?;
+        let reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
         let session = reg
             .sessions
             .get(&session_id)
@@ -2752,10 +2661,8 @@ fn resolve_missing_tracks_from_directory(
     }
 
     let tracks = read_tracks(&conn)?;
-    let missing_tracks: Vec<LibraryTrack> = tracks
-        .into_iter()
-        .filter(|track| track.file.availability_state == "missing")
-        .collect();
+    let missing_tracks: Vec<LibraryTrack> =
+        tracks.into_iter().filter(|track| track.file.availability_state == "missing").collect();
 
     let mut candidates = HashMap::new();
     collect_audio_files_recursive(&expanded, &mut candidates)
@@ -2783,19 +2690,14 @@ fn resolve_missing_tracks_from_directory(
         match persist_track_source_update(
             &conn,
             &track.id,
-            UpdateTrackSourceInput {
-                source_path: matched_path.clone(),
-            },
+            UpdateTrackSourceInput { source_path: matched_path.clone() },
         ) {
             Ok(updated_track) => relinked_tracks.push(updated_track),
             Err(_) => unresolved_track_ids.push(track.id.clone()),
         }
     }
 
-    Ok(RelinkMissingTracksResult {
-        relinked_tracks,
-        unresolved_track_ids,
-    })
+    Ok(RelinkMissingTracksResult { relinked_tracks, unresolved_track_ids })
 }
 
 fn find_logs_recursive(dir: &Path, logs: &mut Vec<String>) -> std::io::Result<()> {
@@ -2868,14 +2770,10 @@ fn collect_audio_files_recursive(
             continue;
         }
 
-        let file_name = path
-            .file_name()
-            .and_then(|name| name.to_str())
-            .map(|name| name.to_ascii_lowercase());
+        let file_name =
+            path.file_name().and_then(|name| name.to_str()).map(|name| name.to_ascii_lowercase());
         if let Some(file_name) = file_name {
-            files
-                .entry(file_name)
-                .or_insert_with(|| path.to_string_lossy().to_string());
+            files.entry(file_name).or_insert_with(|| path.to_string_lossy().to_string());
         }
     }
 
@@ -2895,14 +2793,10 @@ fn discover_repository_logs(path: String) -> Result<Vec<String>, String> {
 
 #[tauri::command]
 fn pick_export_save_path(default_name: String) -> Result<Option<String>, String> {
-    let home = home_dir()
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_else(|| "/tmp".to_string());
+    let home =
+        home_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_else(|| "/tmp".to_string());
     let default_path = format!("{home}/{default_name}");
-    let ext = Path::new(&default_name)
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("*");
+    let ext = Path::new(&default_name).extension().and_then(|e| e.to_str()).unwrap_or("*");
     let filter = format!("Export files (*.{ext})");
     pick_native_path(
         NativePickerKind::SaveFile,
@@ -2914,12 +2808,7 @@ fn pick_export_save_path(default_name: String) -> Result<Option<String>, String>
 
 #[tauri::command]
 fn pick_stems_export_directory() -> Result<Option<String>, String> {
-    pick_native_path(
-        NativePickerKind::Directory,
-        None,
-        "Choose stems output folder",
-        None,
-    )
+    pick_native_path(NativePickerKind::Directory, None, "Choose stems output folder", None)
 }
 
 #[tauri::command]
@@ -2986,9 +2875,8 @@ fn export_composition_stems(
             .map_err(|e| format!("Failed to write stems payload: {e}"))?;
     }
 
-    let output = child
-        .wait_with_output()
-        .map_err(|e| format!("Stems export process error: {e}"))?;
+    let output =
+        child.wait_with_output().map_err(|e| format!("Stems export process error: {e}"))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let response: Value = serde_json::from_str(stdout.trim())
@@ -2997,10 +2885,7 @@ fn export_composition_stems(
     if response.get("status").and_then(Value::as_str) == Some("ok") {
         Ok(response)
     } else {
-        let msg = response
-            .get("error")
-            .and_then(Value::as_str)
-            .unwrap_or("Unknown error");
+        let msg = response.get("error").and_then(Value::as_str).unwrap_or("Unknown error");
         Err(format!("Stems export failed: {msg}"))
     }
 }
@@ -3025,10 +2910,7 @@ fn export_composition_file(source_path: String, dest_path: String) -> Result<Str
 }
 
 fn execute_analyzer_request(request: &Value) -> Result<Value, String> {
-    eprintln!(
-        "[MAIA:Debug] execute_analyzer_request: action={:?}",
-        request.get("action")
-    );
+    eprintln!("[MAIA:Debug] execute_analyzer_request: action={:?}", request.get("action"));
     let repo_root = repo_root();
     let analyzer_src = repo_root.join("analyzer/src");
     let python_bin = analyzer_python(&repo_root);
@@ -3140,17 +3022,12 @@ fn resolve_existing_input_path(raw_path: &str) -> Result<PathBuf, String> {
     let expanded = expanded_input_path(raw_path)?;
 
     expanded.canonicalize().map_err(|error| {
-        format!(
-            "Failed to resolve base asset path {}: {error}",
-            expanded.display()
-        )
+        format!("Failed to resolve base asset path {}: {error}", expanded.display())
     })
 }
 
 fn home_dir() -> Option<PathBuf> {
-    env::var_os("HOME")
-        .or_else(|| env::var_os("USERPROFILE"))
-        .map(PathBuf::from)
+    env::var_os("HOME").or_else(|| env::var_os("USERPROFILE")).map(PathBuf::from)
 }
 
 fn copy_track_to_managed_storage(
@@ -3164,16 +3041,10 @@ fn copy_track_to_managed_storage(
     }
 
     let resolved_source = expanded.canonicalize().map_err(|error| {
-        format!(
-            "Failed to resolve track source path {}: {error}",
-            expanded.display()
-        )
+        format!("Failed to resolve track source path {}: {error}", expanded.display())
     })?;
     if !resolved_source.is_file() {
-        return Err(format!(
-            "Selected track source is not a file: {}",
-            resolved_source.display()
-        ));
+        return Err(format!("Selected track source is not a file: {}", resolved_source.display()));
     }
 
     let asset_name = resolved_source
@@ -3186,18 +3057,12 @@ fn copy_track_to_managed_storage(
 
     if let Some(parent) = managed_path.parent() {
         fs::create_dir_all(parent).map_err(|error| {
-            format!(
-                "Failed to create managed track directory {}: {error}",
-                parent.display()
-            )
+            format!("Failed to create managed track directory {}: {error}", parent.display())
         })?;
     }
 
     fs::copy(&resolved_source, &managed_path).map_err(|error| {
-        format!(
-            "Failed to copy track into managed storage {}: {error}",
-            managed_path.display()
-        )
+        format!("Failed to copy track into managed storage {}: {error}", managed_path.display())
     })?;
 
     Ok(Some((resolved_source, managed_path)))
@@ -3215,10 +3080,7 @@ fn copy_repository_source_to_managed_storage(
     }
 
     let resolved_source = expanded.canonicalize().map_err(|error| {
-        format!(
-            "Failed to resolve repository path {}: {error}",
-            expanded.display()
-        )
+        format!("Failed to resolve repository path {}: {error}", expanded.display())
     })?;
 
     let asset_name = resolved_source
@@ -3294,10 +3156,7 @@ fn copy_base_asset_to_managed_storage(
 
     if let Some(parent) = managed_path.parent() {
         fs::create_dir_all(parent).map_err(|error| {
-            format!(
-                "Failed to create managed base asset directory {}: {error}",
-                parent.display()
-            )
+            format!("Failed to create managed base asset directory {}: {error}", parent.display())
         })?;
     }
 
@@ -3329,17 +3188,11 @@ fn copy_base_asset_to_managed_storage(
 
 fn copy_directory_recursively(source: &Path, destination: &Path) -> Result<(), String> {
     fs::create_dir_all(destination).map_err(|error| {
-        format!(
-            "Failed to create managed directory snapshot {}: {error}",
-            destination.display()
-        )
+        format!("Failed to create managed directory snapshot {}: {error}", destination.display())
     })?;
 
     for entry in fs::read_dir(source).map_err(|error| {
-        format!(
-            "Failed to enumerate base asset directory {}: {error}",
-            source.display()
-        )
+        format!("Failed to enumerate base asset directory {}: {error}", source.display())
     })? {
         let entry = entry.map_err(|error| {
             format!(
@@ -3395,17 +3248,11 @@ fn read_log_stream_chunk(
         {
             warnings.push(format!(
                 "Log Hub Mode: Monitoring newest activity in {}",
-                newest_log
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("log file")
+                newest_log.file_name().and_then(|n| n.to_str()).unwrap_or("log file")
             ));
             resolved_source = newest_log;
         } else {
-            return Err(format!(
-                "No .log files found in directory: {}",
-                resolved_source.display()
-            ));
+            return Err(format!("No .log files found in directory: {}", resolved_source.display()));
         }
     } else if !resolved_source.is_file() {
         return Err(format!(
@@ -3417,10 +3264,7 @@ fn read_log_stream_chunk(
     let file_size = resolved_source
         .metadata()
         .map_err(|error| {
-            format!(
-                "Failed to stat log source {}: {error}",
-                resolved_source.display()
-            )
+            format!("Failed to stat log source {}: {error}", resolved_source.display())
         })?
         .len();
 
@@ -3465,24 +3309,15 @@ fn read_log_stream_chunk(
     }
 
     let mut file = fs::File::open(&resolved_source).map_err(|error| {
-        format!(
-            "Failed to open log source {} for live tailing: {error}",
-            resolved_source.display()
-        )
+        format!("Failed to open log source {} for live tailing: {error}", resolved_source.display())
     })?;
     file.seek(SeekFrom::Start(start_offset)).map_err(|error| {
-        format!(
-            "Failed to seek log source {}: {error}",
-            resolved_source.display()
-        )
+        format!("Failed to seek log source {}: {error}", resolved_source.display())
     })?;
 
     let mut buffer = vec![0_u8; bytes_to_read as usize];
     let bytes_read = file.read(&mut buffer).map_err(|error| {
-        format!(
-            "Failed to read log source {}: {error}",
-            resolved_source.display()
-        )
+        format!("Failed to read log source {}: {error}", resolved_source.display())
     })?;
     buffer.truncate(bytes_read);
     let mut chunk = String::from_utf8_lossy(&buffer).to_string();
@@ -3499,13 +3334,7 @@ fn read_log_stream_chunk(
 
     let end_offset = start_offset + bytes_read as u64;
 
-    Ok((
-        resolved_source.to_string_lossy().to_string(),
-        start_offset,
-        end_offset,
-        chunk,
-        warnings,
-    ))
+    Ok((resolved_source.to_string_lossy().to_string(), start_offset, end_offset, chunk, warnings))
 }
 
 fn open_database(app_handle: &AppHandle) -> Result<Connection, String> {
@@ -3638,9 +3467,8 @@ fn ensure_track_storage_path_column(conn: &Connection) -> Result<(), String> {
         .map_err(|error| format!("Failed to query track_analyses columns: {error}"))?;
     let mut has_storage_path = false;
 
-    while let Some(row) = rows
-        .next()
-        .map_err(|error| format!("Failed to iterate track_analyses columns: {error}"))?
+    while let Some(row) =
+        rows.next().map_err(|error| format!("Failed to iterate track_analyses columns: {error}"))?
     {
         let name: String = row
             .get(1)
@@ -3705,9 +3533,8 @@ fn ensure_repository_storage_path_column(conn: &Connection) -> Result<(), String
         .map_err(|error| format!("Failed to query repo_analyses columns: {error}"))?;
     let mut has_storage_path = false;
 
-    while let Some(row) = rows
-        .next()
-        .map_err(|error| format!("Failed to iterate repo_analyses columns: {error}"))?
+    while let Some(row) =
+        rows.next().map_err(|error| format!("Failed to iterate repo_analyses columns: {error}"))?
     {
         let name: String = row
             .get(1)
@@ -3780,13 +3607,11 @@ fn ensure_session_playlist_column(conn: &Connection) -> Result<(), String> {
         .map_err(|error| format!("Failed to query sessions columns: {error}"))?;
     let mut has_playlist_id = false;
 
-    while let Some(row) = rows
-        .next()
-        .map_err(|error| format!("Failed to iterate sessions columns: {error}"))?
+    while let Some(row) =
+        rows.next().map_err(|error| format!("Failed to iterate sessions columns: {error}"))?
     {
-        let name: String = row
-            .get(1)
-            .map_err(|error| format!("Failed to read sessions column name: {error}"))?;
+        let name: String =
+            row.get(1).map_err(|error| format!("Failed to read sessions column name: {error}"))?;
         if name == "playlist_id" {
             has_playlist_id = true;
             break;
@@ -3812,13 +3637,11 @@ fn ensure_session_source_template_id_column(conn: &Connection) -> Result<(), Str
         .map_err(|error| format!("Failed to query sessions columns: {error}"))?;
     let mut has_source_template_id = false;
 
-    while let Some(row) = rows
-        .next()
-        .map_err(|error| format!("Failed to iterate sessions columns: {error}"))?
+    while let Some(row) =
+        rows.next().map_err(|error| format!("Failed to iterate sessions columns: {error}"))?
     {
-        let name: String = row
-            .get(1)
-            .map_err(|error| format!("Failed to read sessions column name: {error}"))?;
+        let name: String =
+            row.get(1).map_err(|error| format!("Failed to read sessions column name: {error}"))?;
         if name == "source_template_id" {
             has_source_template_id = true;
             break;
@@ -3862,10 +3685,9 @@ fn ensure_session_bookmark_feedback_columns(conn: &Connection) -> Result<(), Str
     }
 
     if !has_bookmark_tag {
-        conn.execute_batch("ALTER TABLE session_bookmarks ADD COLUMN bookmark_tag TEXT;")
-            .map_err(|error| {
-                format!("Failed to add session_bookmarks bookmark_tag column: {error}")
-            })?;
+        conn.execute_batch("ALTER TABLE session_bookmarks ADD COLUMN bookmark_tag TEXT;").map_err(
+            |error| format!("Failed to add session_bookmarks bookmark_tag column: {error}"),
+        )?;
     }
 
     if !has_suggested_style_profile_id {
@@ -3898,9 +3720,8 @@ fn ensure_session_event_parsed_lines_column(conn: &Connection) -> Result<(), Str
         .map_err(|error| format!("Failed to query session_events columns: {error}"))?;
     let mut has_parsed_lines_json = false;
 
-    while let Some(row) = rows
-        .next()
-        .map_err(|error| format!("Failed to iterate session_events columns: {error}"))?
+    while let Some(row) =
+        rows.next().map_err(|error| format!("Failed to iterate session_events columns: {error}"))?
     {
         let name: String = row
             .get(1)
@@ -3969,10 +3790,7 @@ fn apply_composition_export_metadata(
 
     if let Some(metrics) = composition.metrics.as_object_mut() {
         metrics.insert("managedPlanPath".to_string(), Value::String(export_path));
-        metrics.insert(
-            "storageMode".to_string(),
-            Value::String("managed-plan".to_string()),
-        );
+        metrics.insert("storageMode".to_string(), Value::String("managed-plan".to_string()));
     }
 }
 
@@ -4041,10 +3859,7 @@ fn write_composition_snapshot(
     let serialized = serde_json::to_string_pretty(&payload)
         .map_err(|error| format!("Failed to encode composition snapshot JSON: {error}"))?;
     fs::write(&snapshot_path, serialized).map_err(|error| {
-        format!(
-            "Failed to write managed composition snapshot {}: {error}",
-            snapshot_path.display()
-        )
+        format!("Failed to write managed composition snapshot {}: {error}", snapshot_path.display())
     })?;
 
     Ok(snapshot_path_string)
@@ -4053,14 +3868,10 @@ fn write_composition_snapshot(
 fn backfill_composition_export_paths(conn: &Connection, managed_root: &Path) -> Result<(), String> {
     let compositions = read_compositions(conn)?;
 
-    for mut composition in compositions.into_iter().filter(|entry| {
-        entry
-            .export_path
-            .as_deref()
-            .map(str::trim)
-            .unwrap_or_default()
-            .is_empty()
-    }) {
+    for mut composition in compositions
+        .into_iter()
+        .filter(|entry| entry.export_path.as_deref().map(str::trim).unwrap_or_default().is_empty())
+    {
         let export_path = write_composition_snapshot(&composition, managed_root)?;
         apply_composition_export_metadata(&mut composition, export_path.clone());
         let metadata_json = serde_json::to_string(&composition_metadata_from_record(&composition))
@@ -4094,11 +3905,7 @@ fn backfill_composition_export_paths(conn: &Connection, managed_root: &Path) -> 
 }
 
 fn merged_pythonpath(analyzer_src: &Path) -> String {
-    let separator = if cfg!(target_os = "windows") {
-        ";"
-    } else {
-        ":"
-    };
+    let separator = if cfg!(target_os = "windows") { ";" } else { ":" };
     let analyzer_src = analyzer_src.display().to_string();
 
     match env::var("PYTHONPATH") {
@@ -4161,10 +3968,10 @@ fn pick_native_path(
             PickerOutcome::NotFound => {}
         }
 
-        return Err(
+        Err(
             "No supported native picker found. Install kdialog or zenity, or enter the path manually."
                 .to_string(),
-        );
+        )
     }
 
     #[cfg(not(target_os = "linux"))]
@@ -4224,13 +4031,7 @@ fn pick_with_zenity(
     title: &str,
     filter: Option<&str>,
 ) -> Result<PickerOutcome, String> {
-    let mut args = vec![
-        "--file-selection",
-        "--title",
-        title,
-        "--filename",
-        default_path,
-    ];
+    let mut args = vec!["--file-selection", "--title", title, "--filename", default_path];
 
     if matches!(kind, NativePickerKind::Directory) {
         args.push("--directory");
@@ -4278,11 +4079,7 @@ fn run_native_picker_command(command: &str, args: &[&str]) -> Result<PickerOutco
 
     Err(format!(
         "{command} failed with status {}: {}",
-        output
-            .status
-            .code()
-            .map(|code| code.to_string())
-            .unwrap_or_else(|| "signal".to_string()),
+        output.status.code().map(|code| code.to_string()).unwrap_or_else(|| "signal".to_string()),
         stderr.trim()
     ))
 }
@@ -4290,18 +4087,12 @@ fn run_native_picker_command(command: &str, args: &[&str]) -> Result<PickerOutco
 fn picker_default_path(initial_path: Option<String>) -> String {
     // If the caller provides an existing path, use its parent dir so the
     // picker opens in the same folder as the previously selected file.
-    if let Some(p) = initial_path
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-    {
+    if let Some(p) = initial_path.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
         let pb = PathBuf::from(p);
         let dir = if pb.is_dir() {
             pb
         } else {
-            pb.parent()
-                .map(|p| p.to_path_buf())
-                .unwrap_or_else(|| PathBuf::from(p))
+            pb.parent().map(|p| p.to_path_buf()).unwrap_or_else(|| PathBuf::from(p))
         };
         if dir.exists() {
             return dir.to_string_lossy().to_string();
@@ -4379,11 +4170,7 @@ fn load_base_asset_category_catalog(repo_root: &Path) -> BaseAssetCategoryCatalo
 }
 
 fn preferred_music_style_id(catalog: &MusicStyleCatalog, preferred_id: &str) -> String {
-    if catalog
-        .music_styles
-        .iter()
-        .any(|style| style.id == preferred_id)
-    {
+    if catalog.music_styles.iter().any(|style| style.id == preferred_id) {
         return preferred_id.to_string();
     }
 
@@ -4505,11 +4292,7 @@ fn resolved_track_notes(metadata: &TrackMetadata) -> Vec<String> {
 }
 
 fn resolved_track_key_signature(metadata: &TrackMetadata) -> Option<String> {
-    metadata
-        .analysis
-        .key_signature
-        .clone()
-        .or_else(|| metadata.key_signature.clone())
+    metadata.analysis.key_signature.clone().or_else(|| metadata.key_signature.clone())
 }
 
 fn resolved_track_energy_level(metadata: &TrackMetadata) -> Option<f64> {
@@ -4566,23 +4349,14 @@ fn probe_track_file_state(
     fallback_modified_at: Option<String>,
 ) -> (Option<i64>, Option<String>, String, String) {
     let storage_existing = storage_path.filter(|path| path_is_file(path));
-    let source_existing = if path_is_file(source_path) {
-        Some(source_path)
-    } else {
-        None
-    };
+    let source_existing = if path_is_file(source_path) { Some(source_path) } else { None };
     let active_path = storage_existing.or(source_existing);
-    let size_bytes = active_path
-        .and_then(|path| file_size_bytes(Path::new(path)))
-        .or(fallback_size_bytes);
-    let modified_at = active_path
-        .and_then(|path| file_modified_millis(Path::new(path)))
-        .or(fallback_modified_at);
-    let availability_state = if active_path.is_some() {
-        "available".to_string()
-    } else {
-        "missing".to_string()
-    };
+    let size_bytes =
+        active_path.and_then(|path| file_size_bytes(Path::new(path))).or(fallback_size_bytes);
+    let modified_at =
+        active_path.and_then(|path| file_modified_millis(Path::new(path))).or(fallback_modified_at);
+    let availability_state =
+        if active_path.is_some() { "available".to_string() } else { "missing".to_string() };
     let playback_source = if storage_existing.is_some() {
         "managed_snapshot".to_string()
     } else if source_existing.is_some() {
@@ -4717,26 +4491,20 @@ fn normalize_beat_grid_points(
         .collect();
 
     normalized.sort_by(|left, right| {
-        left.second
-            .partial_cmp(&right.second)
-            .unwrap_or(std::cmp::Ordering::Equal)
+        left.second.partial_cmp(&right.second).unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    normalized
-        .into_iter()
-        .fold(Vec::<BeatGridPoint>::new(), |mut acc, point| {
-            let duplicate = acc
-                .last()
-                .map(|last| (last.second - point.second).abs() <= 0.0005)
-                .unwrap_or(false);
-            if !duplicate {
-                acc.push(BeatGridPoint {
-                    index: acc.len() as u32,
-                    second: (point.second * 1000.0).round() / 1000.0,
-                });
-            }
-            acc
-        })
+    normalized.into_iter().fold(Vec::<BeatGridPoint>::new(), |mut acc, point| {
+        let duplicate =
+            acc.last().map(|last| (last.second - point.second).abs() <= 0.0005).unwrap_or(false);
+        if !duplicate {
+            acc.push(BeatGridPoint {
+                index: acc.len() as u32,
+                second: (point.second * 1000.0).round() / 1000.0,
+            });
+        }
+        acc
+    })
 }
 
 fn normalize_bpm_curve_points(
@@ -4755,53 +4523,39 @@ fn normalize_bpm_curve_points(
         .collect();
 
     normalized.sort_by(|left, right| {
-        left.second
-            .partial_cmp(&right.second)
-            .unwrap_or(std::cmp::Ordering::Equal)
+        left.second.partial_cmp(&right.second).unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    normalized
-        .into_iter()
-        .fold(Vec::<BpmCurvePoint>::new(), |mut acc, point| {
-            let duplicate = acc
-                .last()
-                .map(|last| (last.second - point.second).abs() <= 0.0005)
-                .unwrap_or(false);
-            if !duplicate {
-                acc.push(BpmCurvePoint {
-                    second: (point.second * 1000.0).round() / 1000.0,
-                    bpm: (point.bpm * 1000.0).round() / 1000.0,
-                });
-            }
-            acc
-        })
+    normalized.into_iter().fold(Vec::<BpmCurvePoint>::new(), |mut acc, point| {
+        let duplicate =
+            acc.last().map(|last| (last.second - point.second).abs() <= 0.0005).unwrap_or(false);
+        if !duplicate {
+            acc.push(BpmCurvePoint {
+                second: (point.second * 1000.0).round() / 1000.0,
+                bpm: (point.bpm * 1000.0).round() / 1000.0,
+            });
+        }
+        acc
+    })
 }
 
 fn decode_track_row(row: &rusqlite::Row<'_>) -> Result<LibraryTrack, String> {
-    let metadata_json: String = row
-        .get(6)
-        .map_err(|error| format!("Failed to read track metadata: {error}"))?;
-    let title: String = row
-        .get(1)
-        .map_err(|error| format!("Failed to read track title: {error}"))?;
-    let source_path: String = row
-        .get(2)
-        .map_err(|error| format!("Failed to read track source path: {error}"))?;
-    let storage_path: Option<String> = row
-        .get(7)
-        .map_err(|error| format!("Failed to read track storage path: {error}"))?;
-    let imported_at: String = row
-        .get(5)
-        .map_err(|error| format!("Failed to read import timestamp: {error}"))?;
-    let waveform_json: String = row
-        .get(9)
-        .map_err(|error| format!("Failed to read waveform bins: {error}"))?;
-    let beat_grid_json: String = row
-        .get(10)
-        .map_err(|error| format!("Failed to read beat grid: {error}"))?;
-    let bpm_curve_json: String = row
-        .get(11)
-        .map_err(|error| format!("Failed to read BPM curve: {error}"))?;
+    let metadata_json: String =
+        row.get(6).map_err(|error| format!("Failed to read track metadata: {error}"))?;
+    let title: String =
+        row.get(1).map_err(|error| format!("Failed to read track title: {error}"))?;
+    let source_path: String =
+        row.get(2).map_err(|error| format!("Failed to read track source path: {error}"))?;
+    let storage_path: Option<String> =
+        row.get(7).map_err(|error| format!("Failed to read track storage path: {error}"))?;
+    let imported_at: String =
+        row.get(5).map_err(|error| format!("Failed to read import timestamp: {error}"))?;
+    let waveform_json: String =
+        row.get(9).map_err(|error| format!("Failed to read waveform bins: {error}"))?;
+    let beat_grid_json: String =
+        row.get(10).map_err(|error| format!("Failed to read beat grid: {error}"))?;
+    let bpm_curve_json: String =
+        row.get(11).map_err(|error| format!("Failed to read BPM curve: {error}"))?;
     let metadata: TrackMetadata = serde_json::from_str(&metadata_json)
         .map_err(|error| format!("Failed to decode track metadata JSON: {error}"))?;
     let waveform_bins: Vec<f64> = serde_json::from_str(&waveform_json)
@@ -4815,25 +4569,19 @@ fn decode_track_row(row: &rusqlite::Row<'_>) -> Result<LibraryTrack, String> {
     let analysis_mode = normalized_analysis_mode(&metadata);
     let file_extension = normalized_file_extension(&metadata);
     let analyzer_status = normalized_analyzer_status(&metadata);
-    let repo_suggested_bpm = metadata
-        .analysis
-        .repo_suggested_bpm
-        .or(metadata.repo_suggested_bpm);
+    let repo_suggested_bpm = metadata.analysis.repo_suggested_bpm.or(metadata.repo_suggested_bpm);
     let repo_suggested_status = normalized_repo_suggested_status(&metadata);
     let notes = resolved_track_notes(&metadata);
     let key_signature = resolved_track_key_signature(&metadata);
     let energy_level = resolved_track_energy_level(&metadata);
     let danceability = resolved_track_danceability(&metadata);
     let structural_patterns = resolved_structural_patterns(&metadata);
-    let row_file_size_bytes: Option<i64> = row
-        .get(23)
-        .map_err(|error| format!("Failed to read track file size: {error}"))?;
-    let row_source_modified_at: Option<String> = row
-        .get(24)
-        .map_err(|error| format!("Failed to read track modified timestamp: {error}"))?;
-    let row_source_checksum: Option<String> = row
-        .get(25)
-        .map_err(|error| format!("Failed to read track checksum: {error}"))?;
+    let row_file_size_bytes: Option<i64> =
+        row.get(23).map_err(|error| format!("Failed to read track file size: {error}"))?;
+    let row_source_modified_at: Option<String> =
+        row.get(24).map_err(|error| format!("Failed to read track modified timestamp: {error}"))?;
+    let row_source_checksum: Option<String> =
+        row.get(25).map_err(|error| format!("Failed to read track checksum: {error}"))?;
     let (size_bytes, modified_at, availability_state, playback_source) = probe_track_file_state(
         &source_path,
         storage_path.as_deref(),
@@ -4869,9 +4617,7 @@ fn decode_track_row(row: &rusqlite::Row<'_>) -> Result<LibraryTrack, String> {
         availability_state.clone(),
     );
     let performance = TrackPerformanceInfo {
-        color: row
-            .get(12)
-            .map_err(|error| format!("Failed to read track color: {error}"))?,
+        color: row.get(12).map_err(|error| format!("Failed to read track color: {error}"))?,
         rating: row
             .get::<_, Option<i64>>(13)
             .map_err(|error| format!("Failed to read track rating: {error}"))?
@@ -4935,9 +4681,7 @@ fn decode_track_row(row: &rusqlite::Row<'_>) -> Result<LibraryTrack, String> {
     };
     let track_analysis = TrackAnalysisInfo {
         imported_at: imported_at.clone(),
-        bpm: row
-            .get(3)
-            .map_err(|error| format!("Failed to read track BPM: {error}"))?,
+        bpm: row.get(3).map_err(|error| format!("Failed to read track BPM: {error}"))?,
         bpm_confidence: row
             .get(4)
             .map_err(|error| format!("Failed to read track confidence: {error}"))?,
@@ -4950,11 +4694,7 @@ fn decode_track_row(row: &rusqlite::Row<'_>) -> Result<LibraryTrack, String> {
         analyzer_status: analyzer_status.clone(),
         analysis_mode: analysis_mode.clone(),
         analyzer_version: metadata.analysis.analyzer_version.clone(),
-        analyzed_at: metadata
-            .analysis
-            .analyzed_at
-            .clone()
-            .or_else(|| Some(imported_at.clone())),
+        analyzed_at: metadata.analysis.analyzed_at.clone().or_else(|| Some(imported_at.clone())),
         repo_suggested_bpm,
         repo_suggested_status: repo_suggested_status.clone(),
         notes: notes.clone(),
@@ -4965,9 +4705,7 @@ fn decode_track_row(row: &rusqlite::Row<'_>) -> Result<LibraryTrack, String> {
     };
 
     Ok(LibraryTrack {
-        id: row
-            .get(0)
-            .map_err(|error| format!("Failed to read track id: {error}"))?,
+        id: row.get(0).map_err(|error| format!("Failed to read track id: {error}"))?,
         file: track_file,
         tags: track_tags,
         analysis: track_analysis,
@@ -4975,9 +4713,7 @@ fn decode_track_row(row: &rusqlite::Row<'_>) -> Result<LibraryTrack, String> {
         title: track_title,
         source_path,
         storage_path,
-        bpm: row
-            .get(3)
-            .map_err(|error| format!("Failed to read track BPM: {error}"))?,
+        bpm: row.get(3).map_err(|error| format!("Failed to read track BPM: {error}"))?,
         bpm_confidence: row
             .get(4)
             .map_err(|error| format!("Failed to read track confidence: {error}"))?,
@@ -5043,16 +4779,14 @@ fn read_tracks(conn: &Connection) -> Result<Vec<LibraryTrack>, String> {
         )
         .map_err(|error| format!("Failed to prepare track query: {error}"))?;
 
-    let mut rows = statement
-        .query([])
-        .map_err(|error| format!("Failed to query tracks: {error}"))?;
+    let mut rows =
+        statement.query([]).map_err(|error| format!("Failed to query tracks: {error}"))?;
     let mut tracks = Vec::new();
 
     let mut skipped_rows = 0usize;
 
-    while let Some(row) = rows
-        .next()
-        .map_err(|error| format!("Failed to iterate track rows: {error}"))?
+    while let Some(row) =
+        rows.next().map_err(|error| format!("Failed to iterate track rows: {error}"))?
     {
         match decode_track_row(row) {
             Ok(track) => tracks.push(track),
@@ -5122,13 +4856,7 @@ fn read_playlists(conn: &Connection) -> Result<Vec<BaseTrackPlaylist>, String> {
             );
         }
 
-        playlists.push(BaseTrackPlaylist {
-            id,
-            name,
-            track_ids,
-            created_at,
-            updated_at,
-        });
+        playlists.push(BaseTrackPlaylist { id, name, track_ids, created_at, updated_at });
     }
 
     Ok(playlists)
@@ -5146,11 +4874,7 @@ fn persist_playlist(
     let mut track_ids = Vec::new();
     for track_id in input.track_ids {
         let trimmed = track_id.trim();
-        if !trimmed.is_empty()
-            && !track_ids
-                .iter()
-                .any(|existing: &String| existing == trimmed)
-        {
+        if !trimmed.is_empty() && !track_ids.iter().any(|existing: &String| existing == trimmed) {
             track_ids.push(trimmed.to_string());
         }
     }
@@ -5231,17 +4955,11 @@ fn persist_playlist(
 }
 
 fn delete_playlist_record(conn: &Connection, playlist_id: &str) -> Result<(), String> {
-    conn.execute(
-        "UPDATE sessions SET playlist_id = NULL WHERE playlist_id = ?1",
-        [playlist_id],
-    )
-    .map_err(|error| format!("Failed to clear sessions for playlist {playlist_id}: {error}"))?;
+    conn.execute("UPDATE sessions SET playlist_id = NULL WHERE playlist_id = ?1", [playlist_id])
+        .map_err(|error| format!("Failed to clear sessions for playlist {playlist_id}: {error}"))?;
 
-    conn.execute(
-        "DELETE FROM base_track_playlists WHERE id = ?1",
-        [playlist_id],
-    )
-    .map_err(|error| format!("Failed to delete playlist {playlist_id}: {error}"))?;
+    conn.execute("DELETE FROM base_track_playlists WHERE id = ?1", [playlist_id])
+        .map_err(|error| format!("Failed to delete playlist {playlist_id}: {error}"))?;
 
     Ok(())
 }
@@ -5289,27 +5007,21 @@ fn persist_track_performance_update(
 
     if let Some(mut hot_cues) = input.hot_cues {
         hot_cues.sort_by(|left, right| {
-            left.second
-                .partial_cmp(&right.second)
-                .unwrap_or(std::cmp::Ordering::Equal)
+            left.second.partial_cmp(&right.second).unwrap_or(std::cmp::Ordering::Equal)
         });
         state.hot_cues = hot_cues;
     }
 
     if let Some(mut memory_cues) = input.memory_cues {
         memory_cues.sort_by(|left, right| {
-            left.second
-                .partial_cmp(&right.second)
-                .unwrap_or(std::cmp::Ordering::Equal)
+            left.second.partial_cmp(&right.second).unwrap_or(std::cmp::Ordering::Equal)
         });
         state.memory_cues = memory_cues;
     }
 
     if let Some(mut saved_loops) = input.saved_loops {
         saved_loops.sort_by(|left, right| {
-            left.start_second
-                .partial_cmp(&right.start_second)
-                .unwrap_or(std::cmp::Ordering::Equal)
+            left.start_second.partial_cmp(&right.start_second).unwrap_or(std::cmp::Ordering::Equal)
         });
         state.saved_loops = saved_loops;
     }
@@ -5415,15 +5127,11 @@ fn persist_track_analysis_update(
     }
 
     let next_beat_grid = normalize_beat_grid_points(
-        input
-            .beat_grid
-            .unwrap_or_else(|| track.analysis.beat_grid.clone()),
+        input.beat_grid.unwrap_or_else(|| track.analysis.beat_grid.clone()),
         track.analysis.duration_seconds,
     );
     let next_bpm_curve = normalize_bpm_curve_points(
-        input
-            .bpm_curve
-            .unwrap_or_else(|| track.analysis.bpm_curve.clone()),
+        input.bpm_curve.unwrap_or_else(|| track.analysis.bpm_curve.clone()),
         track.analysis.duration_seconds,
     );
 
@@ -5436,10 +5144,7 @@ fn persist_track_analysis_update(
         .iter()
         .any(|note| note == "Beat grid manually adjusted in Maia desktop.")
     {
-        metadata
-            .analysis
-            .notes
-            .push("Beat grid manually adjusted in Maia desktop.".to_string());
+        metadata.analysis.notes.push("Beat grid manually adjusted in Maia desktop.".to_string());
     }
     metadata.notes = metadata.analysis.notes.clone();
 
@@ -5509,10 +5214,7 @@ fn persist_track_source_update(
         .map_err(|error| format!("Failed to verify relink target uniqueness: {error}"))?;
     if let Some(owner_id) = duplicate_owner {
         if owner_id != track_id {
-            return Err(format!(
-                "Another track already uses '{}'.",
-                next_source_path
-            ));
+            return Err(format!("Another track already uses '{}'.", next_source_path));
         }
     }
 
@@ -5631,32 +5333,23 @@ fn read_base_assets(conn: &Connection) -> Result<Vec<BaseAssetRecord>, String> {
         )
         .map_err(|error| format!("Failed to prepare base asset query: {error}"))?;
 
-    let mut rows = statement
-        .query([])
-        .map_err(|error| format!("Failed to query base assets: {error}"))?;
+    let mut rows =
+        statement.query([]).map_err(|error| format!("Failed to query base assets: {error}"))?;
     let mut base_assets = Vec::new();
 
-    while let Some(row) = rows
-        .next()
-        .map_err(|error| format!("Failed to iterate base asset rows: {error}"))?
+    while let Some(row) =
+        rows.next().map_err(|error| format!("Failed to iterate base asset rows: {error}"))?
     {
-        let metadata_json: String = row
-            .get(6)
-            .map_err(|error| format!("Failed to read base asset metadata: {error}"))?;
+        let metadata_json: String =
+            row.get(6).map_err(|error| format!("Failed to read base asset metadata: {error}"))?;
         let metadata: BaseAssetMetadata = serde_json::from_str(&metadata_json)
             .map_err(|error| format!("Failed to decode base asset metadata JSON: {error}"))?;
         let category_id = normalized_base_asset_category_id(&metadata);
         let category_label = normalized_base_asset_category_label(&metadata);
-        let entry_count = metadata
-            .metrics
-            .get("entryCount")
-            .and_then(Value::as_i64)
-            .unwrap_or(0);
+        let entry_count = metadata.metrics.get("entryCount").and_then(Value::as_i64).unwrap_or(0);
 
         base_assets.push(BaseAssetRecord {
-            id: row
-                .get(0)
-                .map_err(|error| format!("Failed to read base asset id: {error}"))?,
+            id: row.get(0).map_err(|error| format!("Failed to read base asset id: {error}"))?,
             title: row
                 .get(1)
                 .map_err(|error| format!("Failed to read base asset title: {error}"))?,
@@ -5726,18 +5419,15 @@ fn read_compositions(conn: &Connection) -> Result<Vec<CompositionResultRecord>, 
         )
         .map_err(|error| format!("Failed to prepare composition query: {error}"))?;
 
-    let mut rows = statement
-        .query([])
-        .map_err(|error| format!("Failed to query compositions: {error}"))?;
+    let mut rows =
+        statement.query([]).map_err(|error| format!("Failed to query compositions: {error}"))?;
     let mut compositions = Vec::new();
 
-    while let Some(row) = rows
-        .next()
-        .map_err(|error| format!("Failed to iterate composition rows: {error}"))?
+    while let Some(row) =
+        rows.next().map_err(|error| format!("Failed to iterate composition rows: {error}"))?
     {
-        let metadata_json: String = row
-            .get(7)
-            .map_err(|error| format!("Failed to read composition metadata: {error}"))?;
+        let metadata_json: String =
+            row.get(7).map_err(|error| format!("Failed to read composition metadata: {error}"))?;
         let waveform_json: String = row
             .get(14)
             .map_err(|error| format!("Failed to read composition waveform JSON: {error}"))?;
@@ -5757,9 +5447,7 @@ fn read_compositions(conn: &Connection) -> Result<Vec<CompositionResultRecord>, 
             .map_err(|error| format!("Failed to decode composition BPM curve JSON: {error}"))?;
 
         compositions.push(CompositionResultRecord {
-            id: row
-                .get(0)
-                .map_err(|error| format!("Failed to read composition id: {error}"))?,
+            id: row.get(0).map_err(|error| format!("Failed to read composition id: {error}"))?,
             title: row
                 .get(1)
                 .map_err(|error| format!("Failed to read composition title: {error}"))?,
@@ -5845,30 +5533,24 @@ fn read_repositories(conn: &Connection) -> Result<Vec<RepositoryAnalysis>, Strin
         )
         .map_err(|error| format!("Failed to prepare repository query: {error}"))?;
 
-    let mut rows = statement
-        .query([])
-        .map_err(|error| format!("Failed to query repositories: {error}"))?;
+    let mut rows =
+        statement.query([]).map_err(|error| format!("Failed to query repositories: {error}"))?;
     let mut repositories = Vec::new();
 
-    while let Some(row) = rows
-        .next()
-        .map_err(|error| format!("Failed to iterate repository rows: {error}"))?
+    while let Some(row) =
+        rows.next().map_err(|error| format!("Failed to iterate repository rows: {error}"))?
     {
-        let metadata_json: String = row
-            .get(6)
-            .map_err(|error| format!("Failed to read repository metadata: {error}"))?;
-        let metrics_json: String = row
-            .get(13)
-            .map_err(|error| format!("Failed to read repository metrics: {error}"))?;
+        let metadata_json: String =
+            row.get(6).map_err(|error| format!("Failed to read repository metadata: {error}"))?;
+        let metrics_json: String =
+            row.get(13).map_err(|error| format!("Failed to read repository metrics: {error}"))?;
         let metadata: RepositoryMetadata = serde_json::from_str(&metadata_json)
             .map_err(|error| format!("Failed to decode repository metadata JSON: {error}"))?;
         let metrics: Value = serde_json::from_str(&metrics_json)
             .map_err(|error| format!("Failed to decode repository metrics JSON: {error}"))?;
 
         repositories.push(RepositoryAnalysis {
-            id: row
-                .get(0)
-                .map_err(|error| format!("Failed to read repository id: {error}"))?,
+            id: row.get(0).map_err(|error| format!("Failed to read repository id: {error}"))?,
             title: row
                 .get(1)
                 .map_err(|error| format!("Failed to read repository title: {error}"))?,
@@ -5932,10 +5614,7 @@ fn insert_track(
 
     // Prevent duplicates by canonical path
     if check_duplicate_source_path(conn, source_path)? {
-        return Err(format!(
-            "A track with path '{}' already exists in your library.",
-            source_path
-        ));
+        return Err(format!("A track with path '{}' already exists in your library.", source_path));
     }
 
     if title.is_empty() {
@@ -6059,11 +5738,8 @@ fn insert_track(
     let key_signature = resolved_track_key_signature(&analysis.metadata);
     let energy_level = resolved_track_energy_level(&analysis.metadata);
     let danceability = resolved_track_danceability(&analysis.metadata);
-    let repo_suggested_bpm = analysis
-        .metadata
-        .analysis
-        .repo_suggested_bpm
-        .or(analysis.metadata.repo_suggested_bpm);
+    let repo_suggested_bpm =
+        analysis.metadata.analysis.repo_suggested_bpm.or(analysis.metadata.repo_suggested_bpm);
     let repo_suggested_status = normalized_repo_suggested_status(&analysis.metadata);
     let (size_bytes, modified_at, missing_state, playback_source) = probe_track_file_state(
         &analysis.source_path,
@@ -6158,12 +5834,7 @@ fn insert_track(
         analyzer_status: analyzer_status.clone(),
         analysis_mode: analysis_mode.clone(),
         analyzer_version: analysis.metadata.analysis.analyzer_version.clone(),
-        analyzed_at: analysis
-            .metadata
-            .analysis
-            .analyzed_at
-            .clone()
-            .or_else(|| Some(now.clone())),
+        analyzed_at: analysis.metadata.analysis.analyzed_at.clone().or_else(|| Some(now.clone())),
         repo_suggested_bpm,
         repo_suggested_status: repo_suggested_status.clone(),
         notes: notes.clone(),
@@ -6232,12 +5903,8 @@ fn insert_base_asset(
             source_path
         ));
     }
-    let label = input
-        .label
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(str::to_string);
+    let label =
+        input.label.as_deref().map(str::trim).filter(|value| !value.is_empty()).map(str::to_string);
 
     if !matches!(source_kind, "file" | "directory") {
         return Err("Base asset source kind must be 'file' or 'directory'.".to_string());
@@ -6358,22 +6025,16 @@ fn insert_composition(
 ) -> Result<CompositionResultRecord, String> {
     let base_asset_id = input.base_asset_id.trim();
     let reference_type = input.reference_type.trim();
-    let label = input
-        .label
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(str::to_string);
+    let label =
+        input.label.as_deref().map(str::trim).filter(|value| !value.is_empty()).map(str::to_string);
 
     if base_asset_id.is_empty() {
         return Err("A base asset must be selected before composing.".to_string());
     }
 
     if !matches!(reference_type, "track" | "playlist" | "repo" | "manual") {
-        return Err(
-            "Composition reference type must be 'track', 'playlist', 'repo', or 'manual'."
-                .to_string(),
-        );
+        return Err("Composition reference type must be 'track', 'playlist', 'repo', or 'manual'."
+            .to_string());
     }
 
     let base_asset = read_base_assets(conn)?
@@ -6390,11 +6051,8 @@ fn insert_composition(
             base_asset.id, reference.reference_type, reference.reference_title, now
         ))
     );
-    let preview_audio_output_path = managed_root
-        .join(&id)
-        .join("preview.wav")
-        .display()
-        .to_string();
+    let preview_audio_output_path =
+        managed_root.join(&id).join("preview.wav").display().to_string();
     let analysis = analyze_composition_import(
         &base_asset,
         &reference,
@@ -6555,18 +6213,13 @@ fn resolve_composition_reference(
             .track_ids
             .iter()
             .filter_map(|track_id| {
-                tracks
-                    .iter()
-                    .find(|entry| entry.id == *track_id)
-                    .and_then(|entry| entry.bpm)
+                tracks.iter().find(|entry| entry.id == *track_id).and_then(|entry| entry.bpm)
             })
             .collect::<Vec<_>>();
 
         if playlist_bpms.is_empty() {
-            return Err(
-                "The selected playlist does not contain any tracks with stored BPM yet."
-                    .to_string(),
-            );
+            return Err("The selected playlist does not contain any tracks with stored BPM yet."
+                .to_string());
         }
 
         playlist_bpms.sort_by(|left, right| left.partial_cmp(right).unwrap_or(Ordering::Equal));
@@ -6604,11 +6257,8 @@ fn resolve_composition_reference(
         return Err("Composition requires a base track or a base playlist.".to_string());
     };
 
-    if let Some(structure_id) = input
-        .structure_id
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
+    if let Some(structure_id) =
+        input.structure_id.as_deref().map(str::trim).filter(|value| !value.is_empty())
     {
         let repository = read_repositories(conn)?
             .into_iter()
@@ -6650,21 +6300,13 @@ fn insert_repository(
 
     // Update mode (v5.5): If repository already exists, remove it first to allow "refresh"
     let canonical = canonical_source_path(source_path);
-    if let Err(e) = conn.execute(
-        "DELETE FROM musical_assets WHERE source_path = ?1",
-        params![canonical],
-    ) {
-        eprintln!(
-            "[MAIA:Rust] Warning: Failed to clear existing repository record: {}",
-            e
-        );
+    if let Err(e) =
+        conn.execute("DELETE FROM musical_assets WHERE source_path = ?1", params![canonical])
+    {
+        eprintln!("[MAIA:Rust] Warning: Failed to clear existing repository record: {}", e);
     }
-    let import_label = input
-        .label
-        .as_deref()
-        .map(str::trim)
-        .filter(|label| !label.is_empty())
-        .map(str::to_string);
+    let import_label =
+        input.label.as_deref().map(str::trim).filter(|label| !label.is_empty()).map(str::to_string);
 
     if !matches!(source_kind, "directory" | "file" | "url") {
         return Err("Repository source kind must be 'directory', 'file', or 'url'.".to_string());
@@ -6675,11 +6317,8 @@ fn insert_repository(
     }
 
     let now = now_millis().to_string();
-    let id = format!(
-        "repo-{}-{:x}",
-        now,
-        stable_hash(&format!("{source_kind}:{source_path}:{now}"))
-    );
+    let id =
+        format!("repo-{}-{:x}", now, stable_hash(&format!("{source_kind}:{source_path}:{now}")));
     let managed_snapshot = if matches!(source_kind, "directory" | "file") {
         copy_repository_source_to_managed_storage(source_kind, source_path, managed_root, &id)?
     } else {
@@ -6768,10 +6407,7 @@ fn insert_repository(
     let mut metrics = payload.musical_asset.metrics.clone();
     if let Value::Object(record) = &mut metrics {
         if source_kind != "url" {
-            record.insert(
-                "originalSourcePath".to_string(),
-                Value::String(source_path.to_string()),
-            );
+            record.insert("originalSourcePath".to_string(), Value::String(source_path.to_string()));
             record.insert(
                 "storagePath".to_string(),
                 Value::String(
@@ -6781,15 +6417,9 @@ fn insert_repository(
                         .unwrap_or_else(|| source_path.to_string()),
                 ),
             );
-            record.insert(
-                "storageMode".to_string(),
-                Value::String("managed-copy".to_string()),
-            );
+            record.insert("storageMode".to_string(), Value::String("managed-copy".to_string()));
         } else {
-            record.insert(
-                "storageMode".to_string(),
-                Value::String("remote-url".to_string()),
-            );
+            record.insert("storageMode".to_string(), Value::String("remote-url".to_string()));
         }
     }
     let metrics_json = metrics.to_string();
@@ -6927,9 +6557,8 @@ fn analyze_track_import(
         .map_err(|error| format!("Failed to decode analyzer track response: {error}"))?;
 
     if parsed.status == "error" {
-        let error = parsed
-            .error
-            .ok_or_else(|| "Analyzer returned an unknown track error.".to_string())?;
+        let error =
+            parsed.error.ok_or_else(|| "Analyzer returned an unknown track error.".to_string())?;
 
         if matches!(error.code.as_str(), "missing_source" | "invalid_source") {
             return Ok(fallback);
@@ -6938,9 +6567,8 @@ fn analyze_track_import(
         return Err(error.message);
     }
 
-    let payload = parsed
-        .payload
-        .ok_or_else(|| "Analyzer did not return a track payload.".to_string())?;
+    let payload =
+        parsed.payload.ok_or_else(|| "Analyzer did not return a track payload.".to_string())?;
     let analysis_mode = metric_string(&payload.musical_asset.metrics, "analysisMode");
     let waveform_bins = if payload.musical_asset.artifacts.waveform_bins.is_empty() {
         fallback.waveform_bins.clone()
@@ -7118,18 +6746,9 @@ fn analyze_base_asset_import(
     let detected_source_kind = metric_string(&payload.musical_asset.metrics, "sourceKind");
     let mut metrics = payload.musical_asset.metrics.clone();
     if let Value::Object(record) = &mut metrics {
-        record.insert(
-            "storageMode".to_string(),
-            Value::String("managed-copy".to_string()),
-        );
-        record.insert(
-            "originalSourcePath".to_string(),
-            Value::String(source_path.to_string()),
-        );
-        record.insert(
-            "storagePath".to_string(),
-            Value::String(storage_path.to_string()),
-        );
+        record.insert("storageMode".to_string(), Value::String("managed-copy".to_string()));
+        record.insert("originalSourcePath".to_string(), Value::String(source_path.to_string()));
+        record.insert("storagePath".to_string(), Value::String(storage_path.to_string()));
     }
     let summary = payload.summary.clone();
     let title = label
@@ -7149,10 +6768,7 @@ fn analyze_base_asset_import(
     notes.extend(parsed.warnings.clone());
 
     let mut tags = payload.musical_asset.tags.clone();
-    if !tags
-        .iter()
-        .any(|tag| tag == &format!("category:{}", category.id))
-    {
+    if !tags.iter().any(|tag| tag == &format!("category:{}", category.id)) {
         tags.push(format!("category:{}", category.id));
     }
 
@@ -7283,10 +6899,7 @@ fn analyze_composition_import(
         );
     }
     if let Some(preview_audio_path) = preview_audio_path.as_deref() {
-        notes.push(format!(
-            "Managed preview audio rendered to {}.",
-            preview_audio_path
-        ));
+        notes.push(format!("Managed preview audio rendered to {}.", preview_audio_path));
     } else if preview_audio_output_path.is_some() {
         notes.push(
             "Preview audio could not be rendered during import, so this composition remains metadata-only for now."
@@ -7296,10 +6909,7 @@ fn analyze_composition_import(
     notes.extend(parsed.warnings.clone());
 
     let mut tags = payload.musical_asset.tags.clone();
-    if !tags
-        .iter()
-        .any(|tag| tag == &format!("base-asset:{}", base_asset.category_id))
-    {
+    if !tags.iter().any(|tag| tag == &format!("base-asset:{}", base_asset.category_id)) {
         tags.push(format!("base-asset:{}", base_asset.category_id));
     }
 
@@ -7323,10 +6933,7 @@ fn analyze_composition_import(
         reference_asset_id: reference.reference_asset_id.clone(),
         reference_title: reference.reference_title.clone(),
         reference_source_path: reference.reference_source_path.clone(),
-        target_bpm: payload
-            .musical_asset
-            .suggested_bpm
-            .unwrap_or(reference.target_bpm),
+        target_bpm: payload.musical_asset.suggested_bpm.unwrap_or(reference.target_bpm),
         confidence: payload.musical_asset.confidence,
         strategy: strategy.clone(),
         summary: payload.summary.clone(),
@@ -7470,11 +7077,7 @@ fn build_mock_track(
 }
 
 fn metric_string(metrics: &Value, key: &str) -> String {
-    metrics
-        .get(key)
-        .and_then(Value::as_str)
-        .unwrap_or("unknown")
-        .to_string()
+    metrics.get(key).and_then(Value::as_str).unwrap_or("unknown").to_string()
 }
 
 fn metric_string_opt(metrics: &Value, key: &str) -> Option<String> {
@@ -7513,9 +7116,7 @@ fn mock_waveform_bins(seed: u64, length: usize) -> Vec<f64> {
     let mut bins = Vec::with_capacity(length);
 
     for index in 0..length {
-        state = state
-            .wrapping_mul(6364136223846793005)
-            .wrapping_add(1442695040888963407);
+        state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
         let raw = ((state >> 32) as f64) / (u32::MAX as f64);
         let envelope = if index < length / 2 {
             0.35 + (index as f64 / length as f64)
@@ -7539,10 +7140,7 @@ fn mock_beat_grid(duration_seconds: f64, bpm: f64) -> Vec<BeatGridPoint> {
     let mut second = 0.18;
 
     while second <= duration_seconds {
-        beat_grid.push(BeatGridPoint {
-            index,
-            second: (second * 1000.0).round() / 1000.0,
-        });
+        beat_grid.push(BeatGridPoint { index, second: (second * 1000.0).round() / 1000.0 });
         index += 1;
         second += beat_period;
     }
@@ -7582,17 +7180,11 @@ fn stable_hash(input: &str) -> u64 {
 }
 
 fn now_millis() -> u128 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_millis())
-        .unwrap_or(0)
+    SystemTime::now().duration_since(UNIX_EPOCH).map(|duration| duration.as_millis()).unwrap_or(0)
 }
 
 fn now_iso() -> String {
-    let secs = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
+    let secs = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
     // format as ISO 8601 UTC without external crate
     let (y, mo, d, h, min, s) = epoch_secs_to_ymdhms(secs);
     format!("{y:04}-{mo:02}-{d:02}T{h:02}:{min:02}:{s:02}Z")
@@ -7627,11 +7219,7 @@ fn canonical_source_path(raw: &str) -> String {
         Err(_) => return raw.trim().to_string(),
     };
     // Resolve symlinks/relative segments when the file is reachable.
-    expanded
-        .canonicalize()
-        .unwrap_or(expanded)
-        .to_string_lossy()
-        .to_string()
+    expanded.canonicalize().unwrap_or(expanded).to_string_lossy().to_string()
 }
 
 fn check_duplicate_source_path(conn: &Connection, source_path: &str) -> Result<bool, String> {
@@ -7642,10 +7230,7 @@ fn check_duplicate_source_path(conn: &Connection, source_path: &str) -> Result<b
     let mut rows = stmt
         .query(params![canonical])
         .map_err(|e| format!("Failed to execute duplicate check: {e}"))?;
-    Ok(rows
-        .next()
-        .map_err(|e| format!("Failed to read duplicate check row: {e}"))?
-        .is_some())
+    Ok(rows.next().map_err(|e| format!("Failed to read duplicate check row: {e}"))?.is_some())
 }
 
 #[tauri::command]
@@ -7696,9 +7281,7 @@ fn build_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 
     let show_item = MenuItem::with_id(app, "show", "Show Maia", true, None::<&str>)?;
     let quit_item = MenuItem::with_id(app, "quit", "Quit Maia", true, None::<&str>)?;
-    let menu = MenuBuilder::new(app)
-        .items(&[&show_item, &quit_item])
-        .build()?;
+    let menu = MenuBuilder::new(app).items(&[&show_item, &quit_item]).build()?;
 
     TrayIconBuilder::new()
         .icon(

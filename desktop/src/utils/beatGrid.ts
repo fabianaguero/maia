@@ -1,8 +1,4 @@
-import type {
-  BeatGridPoint,
-  BpmCurvePoint,
-  UpdateTrackAnalysisInput,
-} from "../types/library";
+import type { BeatGridPoint, BpmCurvePoint, UpdateTrackAnalysisInput } from "../types/library";
 
 export interface BeatGridPhraseRange {
   startSecond: number;
@@ -57,14 +53,12 @@ export function normalizeBeatGrid(
 
   return [...beatGrid]
     .filter(
-      (point) =>
-        Number.isFinite(point.second) &&
-        point.second >= 0 &&
-        point.second <= maxDuration,
+      (point) => Number.isFinite(point.second) && point.second >= 0 && point.second <= maxDuration,
     )
     .sort((left, right) => left.second - right.second)
-    .filter((point, index, list) =>
-      index === 0 || Math.abs(point.second - list[index - 1]!.second) > 0.0005,
+    .filter(
+      (point, index, list) =>
+        index === 0 || Math.abs(point.second - list[index - 1]!.second) > 0.0005,
     )
     .map((point, index) => ({
       index,
@@ -124,10 +118,7 @@ export function resolveBeatGridAnchorSecond(
   return round3(Math.max(0, beatGrid[0]!.second));
 }
 
-export function buildFlatBpmCurve(
-  bpm: number,
-  durationSeconds: number | null,
-): BpmCurvePoint[] {
+export function buildFlatBpmCurve(bpm: number, durationSeconds: number | null): BpmCurvePoint[] {
   if (!isEditableBpm(bpm) || typeof durationSeconds !== "number" || durationSeconds <= 0) {
     return [];
   }
@@ -231,9 +222,7 @@ export function selectBeatGridPhrase(
   const lastPoint = normalizedGrid[normalizedGrid.length - 1]!;
   const beatDuration = resolveBeatDurationSeconds(null, normalizedGrid);
   const maxDuration =
-    typeof durationSeconds === "number" && durationSeconds > 0
-      ? durationSeconds
-      : lastPoint.second;
+    typeof durationSeconds === "number" && durationSeconds > 0 ? durationSeconds : lastPoint.second;
   const endSecond = explicitEndPoint
     ? explicitEndPoint.second
     : beatDuration !== null

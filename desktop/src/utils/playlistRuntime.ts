@@ -1,9 +1,6 @@
 export const DEFAULT_PLAYLIST_CROSSFADE_SECONDS = 6;
 
-export function resolveNextPlaylistIndex(
-  currentIndex: number,
-  totalTracks: number,
-): number | null {
+export function resolveNextPlaylistIndex(currentIndex: number, totalTracks: number): number | null {
   if (!Number.isFinite(currentIndex) || totalTracks <= 0) {
     return null;
   }

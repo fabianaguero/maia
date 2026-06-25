@@ -26,8 +26,7 @@ export function ImportTrackForm({
   onImportTrack,
   onSeedDemo,
 }: ImportTrackFormProps) {
-  const fallbackMusicStyleId =
-    defaultMusicStyleId ?? musicStyles[0]?.id ?? "";
+  const fallbackMusicStyleId = defaultMusicStyleId ?? musicStyles[0]?.id ?? "";
   const [title, setTitle] = useState("");
   const [sourcePath, setSourcePath] = useState("");
   const [musicStyleId, setMusicStyleId] = useState(fallbackMusicStyleId);
@@ -71,8 +70,7 @@ export function ImportTrackForm({
     }
   }
 
-  const selectedMusicStyle =
-    musicStyles.find((style) => style.id === musicStyleId) ?? null;
+  const selectedMusicStyle = musicStyles.find((style) => style.id === musicStyleId) ?? null;
 
   async function handleBrowseTrack(): Promise<void> {
     setPickerBusy(true);
@@ -103,9 +101,9 @@ export function ImportTrackForm({
         <div>
           <h2>Import track</h2>
           <p className="support-copy">
-            Select a configured music style before importing. The chosen prior
-            is persisted locally. Browsing can use the native desktop picker,
-            but waveform and BPM processing run inside the analyzer during import.
+            Select a configured music style before importing. The chosen prior is persisted locally.
+            Browsing can use the native desktop picker, but waveform and BPM processing run inside
+            the analyzer during import.
           </p>
         </div>
       </div>
@@ -154,9 +152,9 @@ export function ImportTrackForm({
       </label>
 
       <p className="field-hint">
-        Browse uses the native desktop picker when available. Embedded analysis
-        currently decodes WAV, MP3, FLAC, and OGG/Vorbis inside the analyzer;
-        other formats still import with a deterministic fallback.
+        Browse uses the native desktop picker when available. Embedded analysis currently decodes
+        WAV, MP3, FLAC, and OGG/Vorbis inside the analyzer; other formats still import with a
+        deterministic fallback.
       </p>
 
       {error ? <p className="inline-error">{error}</p> : null}
@@ -168,10 +166,26 @@ export function ImportTrackForm({
           onClick={() => void handleBrowseTrack()}
           disabled={busy || pickerBusy}
         >
-          {pickerBusy ? <><span className="spin-ring" aria-hidden="true" /> Browsing...</> : <><FolderOpen size={14} /> Browse audio file</>}
+          {pickerBusy ? (
+            <>
+              <span className="spin-ring" aria-hidden="true" /> Browsing...
+            </>
+          ) : (
+            <>
+              <FolderOpen size={14} /> Browse audio file
+            </>
+          )}
         </button>
         <button type="submit" className="action" disabled={busy}>
-          {busy ? <><span className="spin-ring" aria-hidden="true" /> Saving...</> : <><Music size={14} /> Import track</>}
+          {busy ? (
+            <>
+              <span className="spin-ring" aria-hidden="true" /> Saving...
+            </>
+          ) : (
+            <>
+              <Music size={14} /> Import track
+            </>
+          )}
         </button>
         <button
           type="button"

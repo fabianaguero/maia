@@ -64,9 +64,9 @@ export function useReplayBookmarks({
   const activeReplayBookmark = useMemo(
     () =>
       replayActive && replayWindowIndex !== null
-        ? sortedSessionBookmarks.find(
+        ? (sortedSessionBookmarks.find(
             (bookmark) => bookmark.replayWindowIndex === replayWindowIndex,
-          ) ?? null
+          ) ?? null)
         : null,
     [replayActive, replayWindowIndex, sortedSessionBookmarks],
   );

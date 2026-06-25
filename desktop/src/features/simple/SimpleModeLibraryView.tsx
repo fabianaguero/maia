@@ -1,5 +1,11 @@
 import { useT } from "../../i18n/I18nContext";
-import type { LibraryTrack, RepositoryAnalysis, BaseAssetRecord, ImportRepositoryInput, ImportBaseAssetInput } from "../../types/library";
+import type {
+  LibraryTrack,
+  RepositoryAnalysis,
+  BaseAssetRecord,
+  ImportRepositoryInput,
+  ImportBaseAssetInput,
+} from "../../types/library";
 import { useUnifiedLibraryState } from "./useUnifiedLibraryState";
 import { useEffect, useRef, useState } from "react";
 import { FolderOpen, Zap, Play, Pause, FileText, Activity, Folder } from "lucide-react";
@@ -121,62 +127,67 @@ export function SimpleModeLibraryView({
     <div className="simple-library-view">
       <div className="library-header">
         <h2 className="library-title">{t.simpleMode.nav.files}</h2>
-        <p className="library-subtitle">Select a log source and start monitoring</p>
+        <p className="library-subtitle">{t.simpleMode.library.subtitle}</p>
       </div>
 
       <section className="simple-library-section">
         <h3 className="simple-section-title">
           <FolderOpen size={18} />
-          Your logs ({adapter.repositories.length})
+          {t.simpleMode.library.yourLogs} ({adapter.repositories.length})
         </h3>
         {adapter.repositories.length === 0 ? (
           <div className="simple-empty-state">
-            <p>No logs imported yet. Use the import button to add your first log file or folder.</p>
+            <p>{t.simpleMode.library.noLogsYet}</p>
             <button
               className="simple-import-btn"
               onClick={() => {
-                const path = prompt("Enter log file or folder path:");
+                const path = prompt(t.simpleMode.library.enterLogPath);
                 if (path) {
                   onImportRepository({
-                    title: path.split("/").pop() || "Log Source",
+                    label: path.split("/").pop() || t.simpleMode.library.logSourceFallback,
                     sourcePath: path,
-                    sourceKind: path.includes(".") ? "file" : "directory"
+                    sourceKind: path.includes(".") ? "file" : "directory",
                   });
                 }
               }}
             >
               <FolderOpen size={16} />
-              Import your first log
+              {t.simpleMode.library.importFirstLog}
             </button>
           </div>
         ) : (
           <div className="simple-repo-list">
             {adapter.repositories.map((repo) => {
               const isSelected = repo.id === adapter.selectedRepositoryId;
-              
+
               // Determine the right icon based on sourceKind
-              const SourceIcon = repo.sourceKind === "directory" 
-                ? Folder 
-                : repo.sourceKind === "file" 
-                  ? FileText 
-                  : Activity;
-                  
+              const SourceIcon =
+                repo.sourceKind === "directory"
+                  ? Folder
+                  : repo.sourceKind === "file"
+                    ? FileText
+                    : Activity;
+
               return (
-                <div
-                  key={repo.id}
-                  className={`simple-repo-item ${isSelected ? "selected" : ""}`}
-                >
+                <div key={repo.id} className={`simple-repo-item ${isSelected ? "selected" : ""}`}>
                   <button
                     className="simple-repo-button"
                     onClick={() => adapter.onSelectRepository(repo.id)}
                   >
                     <div className="simple-repo-header">
                       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                        <SourceIcon size={18} style={{ color: isSelected ? "var(--color-accent)" : "#94a3b8" }} />
+                        <SourceIcon
+                          size={18}
+                          style={{ color: isSelected ? "var(--color-accent)" : "#94a3b8" }}
+                        />
                         <span className="simple-repo-title">{repo.title}</span>
                       </div>
                       <span className="simple-repo-type">
-                        {repo.sourceKind === "file" ? "Log file" : repo.sourceKind === "directory" ? "Folder" : "Live stream"}
+                        {repo.sourceKind === "file"
+                          ? t.simpleMode.library.sourceLogFile
+                          : repo.sourceKind === "directory"
+                            ? t.simpleMode.library.sourceFolder
+                            : t.simpleMode.library.sourceLiveStream}
                       </span>
                     </div>
                     <p className="simple-repo-path">{repo.sourcePath}</p>
@@ -184,10 +195,12 @@ export function SimpleModeLibraryView({
                   {isSelected && adapter.baseAssets.length > 0 && (
                     <button
                       className="simple-start-btn"
-                      onClick={() => adapter.onStartMonitoring?.(repo.id, selectedTrackId ?? undefined)}
+                      onClick={() =>
+                        adapter.onStartMonitoring?.(repo.id, selectedTrackId ?? undefined)
+                      }
                     >
                       <Play size={16} />
-                      Start monitoring
+                      {t.simpleMode.library.startMonitoring}
                     </button>
                   )}
                 </div>
@@ -201,7 +214,7 @@ export function SimpleModeLibraryView({
         <section className="simple-library-section">
           <h3 className="simple-section-title">
             <Zap size={18} />
-            Sound presets ({adapter.baseAssets.length})
+            {t.simpleMode.library.soundPresets} ({adapter.baseAssets.length})
           </h3>
           <div className="simple-assets-grid">
             {tracks.map((track) => (
@@ -212,12 +225,18 @@ export function SimpleModeLibraryView({
               >
                 <div className="simple-asset-info">
                   <span className="simple-asset-name">{track.tags.title}</span>
-                  <p className="simple-asset-desc">{track.tags.musicStyleLabel || "Preset"}</p>
+                  <p className="simple-asset-desc">
+                    {track.tags.musicStyleLabel || t.simpleMode.library.presetFallback}
+                  </p>
                 </div>
                 <button
                   type="button"
                   className="track-preview-button"
-                  title={previewTrackId === track.id ? "Pause preview" : "Preview track"}
+                  title={
+                    previewTrackId === track.id
+                      ? t.simpleMode.setup.pausePreview
+                      : t.simpleMode.setup.previewTrack
+                  }
                   onClick={(event) => {
                     event.stopPropagation();
                     void toggleTrackPreview(track);

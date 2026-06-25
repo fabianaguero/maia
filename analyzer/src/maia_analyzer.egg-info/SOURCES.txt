@@ -20,14 +20,10 @@ src/maia_analyzer/future/composition.py
 src/maia_analyzer/future/repository.py
 src/maia_analyzer/future/separator.py
 src/maia_analyzer/future/treesitter.py
-tests/test_assets.py
 tests/test_audio.py
 tests/test_cli.py
-tests/test_composition.py
 tests/test_contracts.py
 tests/test_golden_analysis.py
-tests/test_repository.py
 tests/test_schema_validation.py
 tests/test_service.py
 tests/test_stream.py
-tests/test_treesitter.py

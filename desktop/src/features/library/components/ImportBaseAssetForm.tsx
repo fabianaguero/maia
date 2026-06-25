@@ -4,10 +4,7 @@ import { useEffect, useState } from "react";
 
 import { pickBaseAssetPath } from "../../../api/baseAssets";
 import type { BaseAssetCategoryOption } from "../../../types/baseAsset";
-import type {
-  BaseAssetSourceKind,
-  ImportBaseAssetInput,
-} from "../../../types/library";
+import type { BaseAssetSourceKind, ImportBaseAssetInput } from "../../../types/library";
 
 interface ImportBaseAssetFormProps {
   busy: boolean;
@@ -121,8 +118,7 @@ export function ImportBaseAssetForm({
         <div>
           <h2>Register base asset</h2>
           <p className="support-copy">
-            Catalog reusable files or folders as local base assets for future
-            composition workflows.
+            Catalog reusable files or folders as local base assets for future composition workflows.
           </p>
         </div>
       </div>
@@ -195,8 +191,8 @@ export function ImportBaseAssetForm({
       </label>
 
       <p className="field-hint">
-        Tauri imports snapshot the selected file or folder into managed Maia
-        storage. Browser fallback keeps the same shape but cannot create the native copy.
+        Tauri imports snapshot the selected file or folder into managed Maia storage. Browser
+        fallback keeps the same shape but cannot create the native copy.
       </p>
 
       {error ? <p className="inline-error">{error}</p> : null}
@@ -208,10 +204,27 @@ export function ImportBaseAssetForm({
           disabled={busy || pickerBusy}
           onClick={() => void handleBrowse()}
         >
-          {pickerBusy ? <><span className="spin-ring" aria-hidden="true" /> Browsing...</> : <><FolderOpen size={14} /> {sourceKind === "directory" ? "Browse folder" : "Browse file"}</>}
+          {pickerBusy ? (
+            <>
+              <span className="spin-ring" aria-hidden="true" /> Browsing...
+            </>
+          ) : (
+            <>
+              <FolderOpen size={14} />{" "}
+              {sourceKind === "directory" ? "Browse folder" : "Browse file"}
+            </>
+          )}
         </button>
         <button type="submit" className="action" disabled={busy}>
-          {busy ? <><span className="spin-ring" aria-hidden="true" /> Registering...</> : <><PackagePlus size={14} /> Register base asset</>}
+          {busy ? (
+            <>
+              <span className="spin-ring" aria-hidden="true" /> Registering...
+            </>
+          ) : (
+            <>
+              <PackagePlus size={14} /> Register base asset
+            </>
+          )}
         </button>
       </div>
     </form>

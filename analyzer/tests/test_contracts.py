@@ -4,10 +4,10 @@ the full handle_request dispatch through the service layer.
 These tests use the health + session actions deliberately to avoid needing
 real files on disk for every case.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from maia_analyzer.contracts import (
     ContractError,
     error_response,
@@ -21,6 +21,7 @@ from maia_analyzer.service import handle_request
 # ---------------------------------------------------------------------------
 
 CONTRACT_VERSION = "1.0"
+
 
 def _req(action: str, payload: dict | None = None, request_id: str = "req-1") -> dict:
     return {
@@ -82,20 +83,26 @@ def test_parse_request_analyze_validates_asset_type():
 
 
 def test_parse_request_analyze_validates_source_kind():
-    raw = _req("analyze", {
-        "assetType": "repo_analysis",
-        "source": {"kind": "ftp", "path": "/x"},
-    })
+    raw = _req(
+        "analyze",
+        {
+            "assetType": "repo_analysis",
+            "source": {"kind": "ftp", "path": "/x"},
+        },
+    )
     with pytest.raises(ContractError) as exc_info:
         parse_request(raw)
     assert exc_info.value.code == "invalid_source_kind"
 
 
 def test_parse_request_analyze_validates_source_path():
-    raw = _req("analyze", {
-        "assetType": "repo_analysis",
-        "source": {"kind": "file", "path": ""},
-    })
+    raw = _req(
+        "analyze",
+        {
+            "assetType": "repo_analysis",
+            "source": {"kind": "file", "path": ""},
+        },
+    )
     with pytest.raises(ContractError) as exc_info:
         parse_request(raw)
     assert exc_info.value.code == "invalid_source_path"
@@ -174,49 +181,57 @@ def test_handle_request_session_lifecycle():
     session_id = "test-session-abc"
 
     # start
-    start_result = handle_request({
-        "contractVersion": CONTRACT_VERSION,
-        "requestId": "req-s1",
-        "action": "session_start",
-        "payload": {
-            "sessionId": session_id,
-            "adapterKind": "file",
-            "source": "/tmp/fake.log",
-        },
-    })
+    start_result = handle_request(
+        {
+            "contractVersion": CONTRACT_VERSION,
+            "requestId": "req-s1",
+            "action": "session_start",
+            "payload": {
+                "sessionId": session_id,
+                "adapterKind": "file",
+                "source": "/tmp/fake.log",
+            },
+        }
+    )
     assert start_result["status"] == "ok"
     session = start_result["payload"]["session"]
     assert session["sessionId"] == session_id
     assert session["adapterKind"] == "file"
 
     # stop
-    stop_result = handle_request({
-        "contractVersion": CONTRACT_VERSION,
-        "requestId": "req-s2",
-        "action": "session_stop",
-        "payload": {"sessionId": session_id},
-    })
+    stop_result = handle_request(
+        {
+            "contractVersion": CONTRACT_VERSION,
+            "requestId": "req-s2",
+            "action": "session_stop",
+            "payload": {"sessionId": session_id},
+        }
+    )
     assert stop_result["status"] == "ok"
     assert stop_result["payload"]["stopped"] is True
 
 
 def test_handle_request_session_start_missing_session_id():
-    result = handle_request({
-        "contractVersion": CONTRACT_VERSION,
-        "requestId": "req-s3",
-        "action": "session_start",
-        "payload": {"adapterKind": "file", "source": "/tmp/fake.log"},
-    })
+    result = handle_request(
+        {
+            "contractVersion": CONTRACT_VERSION,
+            "requestId": "req-s3",
+            "action": "session_start",
+            "payload": {"adapterKind": "file", "source": "/tmp/fake.log"},
+        }
+    )
     assert result["status"] == "error"
     assert result["error"]["code"] == "missing_session_id"
 
 
 def test_handle_request_session_poll_not_found():
-    result = handle_request({
-        "contractVersion": CONTRACT_VERSION,
-        "requestId": "req-s4",
-        "action": "session_poll",
-        "payload": {"sessionId": "nonexistent-xyz"},
-    })
+    result = handle_request(
+        {
+            "contractVersion": CONTRACT_VERSION,
+            "requestId": "req-s4",
+            "action": "session_poll",
+            "payload": {"sessionId": "nonexistent-xyz"},
+        }
+    )
     assert result["status"] == "error"
     assert result["error"]["code"] == "session_not_found"

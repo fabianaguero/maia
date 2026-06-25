@@ -15,5 +15,28 @@ export default defineConfig({
   build: {
     target: "es2020",
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) {
+            return undefined;
+          }
+
+          if (id.includes("react") || id.includes("scheduler")) {
+            return "vendor-react";
+          }
+
+          if (id.includes("lucide-react")) {
+            return "vendor-icons";
+          }
+
+          if (id.includes("@tauri-apps")) {
+            return "vendor-tauri";
+          }
+
+          return "vendor";
+        },
+      },
+    },
   },
 });

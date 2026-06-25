@@ -12,9 +12,7 @@ interface ReplayMetrics {
 export function buildReplayCumulativeMetrics<T extends ReplayEventMetricsLike>(
   events: T[],
 ): ReplayMetrics[] {
-  const cumulative: ReplayMetrics[] = [
-    { windowCount: 0, processedLines: 0, totalAnomalies: 0 },
-  ];
+  const cumulative: ReplayMetrics[] = [{ windowCount: 0, processedLines: 0, totalAnomalies: 0 }];
 
   for (const event of events) {
     const previous = cumulative[cumulative.length - 1]!;
@@ -28,10 +26,7 @@ export function buildReplayCumulativeMetrics<T extends ReplayEventMetricsLike>(
   return cumulative;
 }
 
-export function resolveReplayTargetIndex(
-  progress: number,
-  totalEvents: number,
-): number {
+export function resolveReplayTargetIndex(progress: number, totalEvents: number): number {
   if (!Number.isFinite(progress) || totalEvents <= 0) {
     return 0;
   }
@@ -49,15 +44,9 @@ export function resolveSteppedReplayIndex(
     return 0;
   }
 
-  const currentDisplayedIndex = Math.max(
-    0,
-    Math.min(totalEvents - 1, processedEvents - 1),
-  );
+  const currentDisplayedIndex = Math.max(0, Math.min(totalEvents - 1, processedEvents - 1));
 
-  return Math.max(
-    0,
-    Math.min(totalEvents - 1, currentDisplayedIndex + direction),
-  );
+  return Math.max(0, Math.min(totalEvents - 1, currentDisplayedIndex + direction));
 }
 
 export function resolveReplayProgressForWindow(

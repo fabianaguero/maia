@@ -1,11 +1,13 @@
 import React from "react";
+import { useT } from "../i18n/I18nContext";
 
 interface Web3SpinnerProps {
   visible: boolean;
   label?: string;
 }
 
-export const Web3Spinner: React.FC<Web3SpinnerProps> = ({ visible, label = "Analyzing DNA" }) => {
+export const Web3Spinner: React.FC<Web3SpinnerProps> = ({ visible, label }) => {
+  const t = useT();
   if (!visible) return null;
 
   return (
@@ -15,7 +17,7 @@ export const Web3Spinner: React.FC<Web3SpinnerProps> = ({ visible, label = "Anal
         <div className="orbit-inner" />
         <div className="orbit-core" />
       </div>
-      <div className="loader-label">{label}</div>
+      <div className="loader-label">{label ?? t.simpleMode.common.analyzingDna}</div>
     </div>
   );
 };

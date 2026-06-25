@@ -8,7 +8,11 @@ export default function HowItWorksSection({ t, theme }) {
         <div className="grid gap-4">
           {t.how.steps.map((step, index) => (
             <div key={step.title} className={`rounded-[1.6rem] border p-6 ${theme.card}`}>
-              <div className={`mb-2 text-xs font-semibold uppercase tracking-[0.24em] ${theme.panelMuted}`}>0{index + 1}</div>
+              <div
+                className={`mb-2 text-xs font-semibold uppercase tracking-[0.24em] ${theme.panelMuted}`}
+              >
+                0{index + 1}
+              </div>
               <h3 className={`text-xl font-semibold ${theme.title}`}>{step.title}</h3>
               <p className={`mt-2 text-sm leading-7 ${theme.body}`}>{step.text}</p>
             </div>

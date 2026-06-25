@@ -61,10 +61,7 @@ describe("mock library storage", () => {
 
     const tracks = await listMockTracks();
 
-    expect(tracks.map((track) => track.title)).toEqual([
-      "Newer Track",
-      "Older Track",
-    ]);
+    expect(tracks.map((track) => track.title)).toEqual(["Newer Track", "Older Track"]);
   });
 
   it("seeds the browser fallback library only once", async () => {
@@ -72,9 +69,7 @@ describe("mock library storage", () => {
     const secondSeed = await seedMockTracks();
 
     expect(firstSeed).toHaveLength(3);
-    expect(secondSeed.map((track) => track.id)).toEqual(
-      firstSeed.map((track) => track.id),
-    );
+    expect(secondSeed.map((track) => track.id)).toEqual(firstSeed.map((track) => track.id));
     await expect(listMockTracks()).resolves.toHaveLength(3);
   });
 

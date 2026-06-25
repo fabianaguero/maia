@@ -1,4 +1,5 @@
 import type { CompositionResultRecord } from "../../../types/library";
+import { useT } from "../../../i18n/I18nContext";
 import { ManagedAudioPlayer } from "./ManagedAudioPlayer";
 import { resolveArrangementSections, resolveRenderPreview } from "./compositionPreview";
 
@@ -18,6 +19,7 @@ export function CompositionRenderPreviewPanel({
   composition,
   onTimeUpdate,
 }: CompositionRenderPreviewPanelProps) {
+  const t = useT();
   const renderPreview = resolveRenderPreview(composition);
   const sections = resolveArrangementSections(composition);
   const previewAudioPath =
@@ -46,71 +48,66 @@ export function CompositionRenderPreviewPanel({
     <section className="panel waveform-panel">
       <div className="panel-header compact">
         <div>
-          <h2>Render preview</h2>
-          <p className="support-copy">
-            Internal stem plan Maia can use later for bounce/export without inventing a new audio
-            engine yet.
-          </p>
+          <h2>{t.compose.renderPreviewTitle}</h2>
+          <p className="support-copy">{t.compose.renderPreviewCopy}</p>
         </div>
       </div>
 
       <div className="metric-grid">
         <div>
-          <span>Mode</span>
+          <span>{t.compose.mode}</span>
           <strong>{renderPreview.mode}</strong>
         </div>
         <div>
-          <span>Headroom</span>
+          <span>{t.compose.headroom}</span>
           <strong>{renderPreview.headroomDb.toFixed(1)} dB</strong>
         </div>
         <div>
-          <span>Stems</span>
+          <span>{t.compose.stems}</span>
           <strong>{renderPreview.stems.length}</strong>
         </div>
         <div>
-          <span>Preview file</span>
+          <span>{t.compose.previewFile}</span>
           <strong>{previewAudioFormat.toUpperCase()}</strong>
         </div>
         <div>
-          <span>Automation</span>
+          <span>{t.compose.automation}</span>
           <strong>{renderPreview.automation.length}</strong>
         </div>
         <div>
-          <span>Sample rate</span>
-          <strong>{previewSampleRate ? `${previewSampleRate} Hz` : "Pending"}</strong>
+          <span>{t.compose.sampleRate}</span>
+          <strong>{previewSampleRate ? `${previewSampleRate} Hz` : t.inspect.pending}</strong>
         </div>
         <div>
-          <span>Channels</span>
-          <strong>{previewChannels ? `${previewChannels}` : "Pending"}</strong>
+          <span>{t.compose.channels}</span>
+          <strong>{previewChannels ? `${previewChannels}` : t.inspect.pending}</strong>
         </div>
       </div>
 
       <div className="render-master-card top-spaced">
-        <span>Preview audio path</span>
-        <strong>{previewAudioPath ?? "Preview audio not rendered yet"}</strong>
+        <span>{t.compose.previewAudioPath}</span>
+        <strong>{previewAudioPath ?? t.compose.previewAudioMissing}</strong>
       </div>
 
       <ManagedAudioPlayer
-        title="Preview playback"
-        description="Audition the managed `preview.wav` directly inside Maia before adding full bounce/export."
+        title={t.compose.previewPlaybackTitle}
+        description={t.compose.previewPlaybackDescription}
         audioPath={previewAudioPath}
         durationSeconds={previewDurationSeconds}
-        playLabel="Play preview"
-        pauseLabel="Pause preview"
-        missingNote="Preview audio not rendered yet."
-        browserFallbackNote="Browser fallback simulates the preview path. Open the Tauri desktop shell to audition the managed preview audio."
-        desktopOnlyNote="Managed preview playback is available inside the desktop shell."
-        availableNote="Preview playback runs from the managed local snapshot stored by Maia."
-        errorNote="Maia could not read the managed preview audio. Re-import the composition if the file is missing."
+        playLabel={t.compose.playPreview}
+        pauseLabel={t.compose.pausePreview}
+        missingNote={t.compose.previewMissingNote}
+        browserFallbackNote={t.compose.previewBrowserFallbackNote}
+        desktopOnlyNote={t.compose.previewDesktopOnlyNote}
+        availableNote={t.compose.previewAvailableNote}
+        errorNote={t.compose.previewErrorNote}
         onTimeUpdate={onTimeUpdate}
       />
 
       <div className="panel-header compact top-spaced">
         <div>
-          <h2>Stem layout</h2>
-          <p className="support-copy">
-            Deterministic buses and section coverage derived from the composition plan.
-          </p>
+          <h2>{t.compose.stemLayout}</h2>
+          <p className="support-copy">{t.compose.stemLayoutCopy}</p>
         </div>
       </div>
 
@@ -127,7 +124,9 @@ export function CompositionRenderPreviewPanel({
               </span>
               <strong>{stem.label}</strong>
               <small>
-                Gain {stem.gainDb.toFixed(1)} dB · Pan {formatPan(stem.pan)}
+                {t.compose.gainPan
+                  .replace("{gain}", stem.gainDb.toFixed(1))
+                  .replace("{pan}", formatPan(stem.pan))}
               </small>
               <p>{stem.focus}</p>
               <div className="pill-strip">
@@ -142,10 +141,8 @@ export function CompositionRenderPreviewPanel({
 
       <div className="panel-header compact top-spaced">
         <div>
-          <h2>Automation</h2>
-          <p className="support-copy">
-            Section-scoped moves stored now so later render passes can stay deterministic.
-          </p>
+          <h2>{t.compose.automationTitle}</h2>
+          <p className="support-copy">{t.compose.automationCopy}</p>
         </div>
       </div>
 
@@ -154,7 +151,10 @@ export function CompositionRenderPreviewPanel({
           <li key={move.id}>
             <strong>{move.target}</strong>
             <small>
-              {move.move} · bars {move.startBar}-{move.endBar}
+              {move.move} ·{" "}
+              {t.compose.barsLabel
+                .replace("{start}", String(move.startBar))
+                .replace("{end}", String(move.endBar))}
             </small>
           </li>
         ))}
@@ -162,16 +162,14 @@ export function CompositionRenderPreviewPanel({
 
       <div className="panel-header compact top-spaced">
         <div>
-          <h2>Master chain</h2>
-          <p className="support-copy">
-            Planned finishing chain and export targets for the managed preview.
-          </p>
+          <h2>{t.compose.masterChain}</h2>
+          <p className="support-copy">{t.compose.masterChainCopy}</p>
         </div>
       </div>
 
       <div className="render-master-grid">
         <div className="render-master-card">
-          <span>Chain</span>
+          <span>{t.compose.chain}</span>
           <div className="pill-strip">
             {renderPreview.masterChain.map((step) => (
               <span key={step}>{step}</span>
@@ -179,7 +177,7 @@ export function CompositionRenderPreviewPanel({
           </div>
         </div>
         <div className="render-master-card">
-          <span>Targets</span>
+          <span>{t.compose.targets}</span>
           <div className="pill-strip">
             {renderPreview.exportTargets.map((target) => (
               <span key={target}>{target}</span>

@@ -1,4 +1,5 @@
 import type { LibraryTrack, VisualizationCuePoint } from "../../../types/library";
+import { useT } from "../../../i18n/I18nContext";
 import { getTrackTitle } from "../../../utils/track";
 import type { LiveMutationExplanation } from "../../../utils/liveMutationExplainability";
 import { WaveformPlaceholder } from "./WaveformPlaceholder";
@@ -34,28 +35,29 @@ export function LiveMonitorMutationTracePanel({
   selectedExplanationId,
   onSelectExplanation,
 }: LiveMonitorMutationTracePanelProps) {
+  const t = useT();
   return (
     <>
       {traceWaveformTrack ? (
         <>
           <div className="panel-header compact top-spaced">
             <div>
-              <h2>Base track mutation map</h2>
-              <p className="support-copy">
-                Recent mutations pinned to the current base track so the team can see where each
-                source event landed on the groove.
-              </p>
+              <h2>{t.inspect.mutationMapTitle}</h2>
+              <p className="support-copy">{t.inspect.mutationMapCopy}</p>
             </div>
           </div>
           <div className="audio-path-card">
-            <span>Mapped base track</span>
+            <span>{t.inspect.mappedBaseTrack}</span>
             <strong>{getTrackTitle(traceWaveformTrack)}</strong>
             <small>
               {traceWaveformExplanations.length > 0
-                ? `${traceWaveformExplanations.length} mutation markers pinned to this track.`
+                ? t.inspect.mutationMarkersPinned.replace(
+                    "{count}",
+                    String(traceWaveformExplanations.length),
+                  )
                 : replayActive
-                  ? "Replay is running, but no stored mutations have been pinned to the current base track yet."
-                  : "No mutation markers pinned yet for the current base track."}
+                  ? t.inspect.replayNoMutations
+                  : t.inspect.noMutationsPinned}
             </small>
           </div>
           <WaveformPlaceholder
@@ -70,11 +72,9 @@ export function LiveMonitorMutationTracePanel({
 
       <div className="panel-header compact top-spaced">
         <div>
-          <h2>Mutation trace</h2>
+          <h2>{t.inspect.mutationTraceTitle}</h2>
           <p className="support-copy">
-            {replayActive
-              ? "Historical source windows on the left, musical consequences on the right."
-              : "Why Maia changed the music in this window: source event on the left, musical consequence on the right."}
+            {replayActive ? t.inspect.mutationTraceReplayCopy : t.inspect.mutationTraceLiveCopy}
           </p>
         </div>
       </div>
@@ -98,23 +98,29 @@ export function LiveMonitorMutationTracePanel({
             >
               <div className="mutation-trace-head">
                 <span>
-                  Event {explanation.eventIndex} · {explanation.level}
+                  {t.inspect.eventLabel.replace("{index}", String(explanation.eventIndex))} ·{" "}
+                  {explanation.level}
                 </span>
                 <strong>{explanation.component}</strong>
               </div>
               <div className="mutation-trace-section">
-                <small>Source trigger</small>
+                <small>{t.inspect.sourceTrigger}</small>
                 <strong>{explanation.triggerLabel}</strong>
                 <p>{explanation.triggerDetail}</p>
               </div>
               <div className="mutation-trace-section">
-                <small>Musical result</small>
+                <small>{t.inspect.musicalResult}</small>
                 <strong>{explanation.resultLabel}</strong>
                 <p>{explanation.resultDetail}</p>
               </div>
               <div className="mutation-trace-meta">
                 {replayActive && explanation.replayWindowIndex !== null ? (
-                  <span>W{explanation.replayWindowIndex}</span>
+                  <span>
+                    {t.inspect.replayWindowShort.replace(
+                      "{index}",
+                      String(explanation.replayWindowIndex),
+                    )}
+                  </span>
                 ) : null}
                 {explanation.trackTitle ? <span>{explanation.trackTitle}</span> : null}
                 {typeof explanation.trackSecond === "number" ? (
@@ -130,7 +136,7 @@ export function LiveMonitorMutationTracePanel({
         </div>
       ) : (
         <div className="empty-state">
-          <p>No mutation trace emitted yet.</p>
+          <p>{t.inspect.noMutationTrace}</p>
         </div>
       )}
     </>

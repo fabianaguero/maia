@@ -8,10 +8,7 @@ import {
 } from "../api/repositories";
 import { runAnalyzerRequest } from "../api/analyzer";
 import { createAnalyzeRepositoryRequest } from "../contracts";
-import type {
-  ImportRepositoryInput,
-  RepositoryAnalysis,
-} from "../types/library";
+import type { ImportRepositoryInput, RepositoryAnalysis } from "../types/library";
 
 function toMessage(error: unknown, fallback: string): string {
   if (error instanceof Error) {
@@ -23,12 +20,8 @@ function toMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-function sortRepositories(
-  repositories: RepositoryAnalysis[],
-): RepositoryAnalysis[] {
-  return [...repositories].sort((left, right) =>
-    right.importedAt.localeCompare(left.importedAt),
-  );
+function sortRepositories(repositories: RepositoryAnalysis[]): RepositoryAnalysis[] {
+  return [...repositories].sort((left, right) => right.importedAt.localeCompare(left.importedAt));
 }
 
 export function useRepositories() {
@@ -176,9 +169,7 @@ export function useRepositories() {
 
       startTransition(() => {
         setRepositories((current) =>
-          sortRepositories(
-            current.map((r) => (r.id === repositoryId ? nextRepository : r)),
-          ),
+          sortRepositories(current.map((r) => (r.id === repositoryId ? nextRepository : r))),
         );
         setError(null);
       });

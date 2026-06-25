@@ -39,7 +39,5 @@ export function resolveReplayBookmarkTagLabel(
     return null;
   }
 
-  return (
-    REPLAY_BOOKMARK_TAGS.find((entry) => entry.id === bookmarkTag)?.label ?? bookmarkTag
-  );
+  return REPLAY_BOOKMARK_TAGS.find((entry) => entry.id === bookmarkTag)?.label ?? bookmarkTag;
 }

@@ -3,9 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { SessionBookmark } from "../../src/api/sessions";
 import { deriveReplayFeedbackRecommendation } from "../../src/utils/replayFeedback";
 
-function createBookmark(
-  overrides: Partial<SessionBookmark> = {},
-): SessionBookmark {
+function createBookmark(overrides: Partial<SessionBookmark> = {}): SessionBookmark {
   return {
     id: overrides.id ?? 1,
     sessionId: overrides.sessionId ?? "session-1",

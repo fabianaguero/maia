@@ -71,14 +71,8 @@ interface InspectScreenProps {
   onSelectBaseAsset: (id: string) => void;
   onGoLibrary: () => void;
   onGoCompose: () => void;
-  onUpdateTrackPerformance: (
-    trackId: string,
-    input: UpdateTrackPerformanceInput,
-  ) => Promise<void>;
-  onUpdateTrackAnalysis: (
-    trackId: string,
-    input: UpdateTrackAnalysisInput,
-  ) => Promise<void>;
+  onUpdateTrackPerformance: (trackId: string, input: UpdateTrackPerformanceInput) => Promise<void>;
+  onUpdateTrackAnalysis: (trackId: string, input: UpdateTrackAnalysisInput) => Promise<void>;
   trackMutating: boolean;
 }
 
@@ -105,27 +99,26 @@ export function InspectScreen({
   const t = useT();
   const monitor = useMonitor();
   const [currentTime, setCurrentTime] = useState(0);
-  const [selectedPhraseRange, setSelectedPhraseRange] =
-    useState<BeatGridPhraseRange | null>(null);
-  const [compareCueRequest, setCompareCueRequest] =
-    useState<ManagedAudioCueRequest | null>(null);
-  const [activeCompareAuditionId, setActiveCompareAuditionId] =
-    useState<TrackCompareAuditionPoint["id"] | null>(null);
-  const [activeCompareAuditionLabel, setActiveCompareAuditionLabel] =
-    useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"overview" | "grid" | "performance" | "metadata">("overview");
+  const [selectedPhraseRange, setSelectedPhraseRange] = useState<BeatGridPhraseRange | null>(null);
+  const [compareCueRequest, setCompareCueRequest] = useState<ManagedAudioCueRequest | null>(null);
+  const [activeCompareAuditionId, setActiveCompareAuditionId] = useState<
+    TrackCompareAuditionPoint["id"] | null
+  >(null);
+  const [activeCompareAuditionLabel, setActiveCompareAuditionLabel] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"overview" | "grid" | "performance" | "metadata">(
+    "overview",
+  );
+  const activeTrackId = track?.id ?? null;
+  const activeBeatGridLength = track?.analysis.beatGrid.length ?? 0;
+  const activeFirstBeatSecond = track?.analysis.beatGrid[0]?.second ?? null;
+  const activeTrackDurationSeconds = track?.analysis.durationSeconds ?? null;
 
   useEffect(() => {
     setSelectedPhraseRange(null);
     setCompareCueRequest(null);
     setActiveCompareAuditionId(null);
     setActiveCompareAuditionLabel(null);
-  }, [
-    track?.id,
-    track?.analysis.beatGrid.length,
-    track?.analysis.beatGrid[0]?.second,
-    track?.analysis.durationSeconds,
-  ]);
+  }, [activeBeatGridLength, activeFirstBeatSecond, activeTrackDurationSeconds, activeTrackId]);
 
   const hasAnyAsset =
     availableTracks.length > 0 ||
@@ -141,7 +134,7 @@ export function InspectScreen({
             className={mode === "track" ? "mode-tab active" : "mode-tab"}
             onClick={() => onChangeMode("track")}
           >
-            Tracks
+            {t.sidebar.tracks}
             <span className="mode-tab-count">{availableTracks.length}</span>
           </button>
         )}
@@ -151,7 +144,7 @@ export function InspectScreen({
             className={mode === "repo" ? "mode-tab active" : "mode-tab"}
             onClick={() => onChangeMode("repo")}
           >
-            Logs / Repos
+            {t.library.logSources}
             <span className="mode-tab-count">{availableRepositories.length}</span>
           </button>
         )}
@@ -161,7 +154,7 @@ export function InspectScreen({
             className={mode === "base" ? "mode-tab active" : "mode-tab"}
             onClick={() => onChangeMode("base")}
           >
-            Base assets
+            {t.sidebar.bases}
             <span className="mode-tab-count">{availableBaseAssets.length}</span>
           </button>
         )}
@@ -175,7 +168,9 @@ export function InspectScreen({
             className="context-select"
           >
             {availableTracks.map((t) => (
-              <option key={t.id} value={t.id}>{getTrackTitle(t)}</option>
+              <option key={t.id} value={t.id}>
+                {getTrackTitle(t)}
+              </option>
             ))}
           </select>
         )}
@@ -186,7 +181,9 @@ export function InspectScreen({
             className="context-select"
           >
             {availableRepositories.map((r) => (
-              <option key={r.id} value={r.id}>{r.title}</option>
+              <option key={r.id} value={r.id}>
+                {r.title}
+              </option>
             ))}
           </select>
         )}
@@ -197,7 +194,9 @@ export function InspectScreen({
             className="context-select"
           >
             {availableBaseAssets.map((b) => (
-              <option key={b.id} value={b.id}>{b.title}</option>
+              <option key={b.id} value={b.id}>
+                {b.title}
+              </option>
             ))}
           </select>
         )}
@@ -211,15 +210,15 @@ export function InspectScreen({
         <header className="screen-header">
           <div>
             <p className="eyebrow">{t.inspect.title}</p>
-            <h2>Nothing to inspect yet</h2>
+            <h2>{t.inspect.nothingYet}</h2>
             <p className="support-copy">{t.inspect.copy}</p>
           </div>
         </header>
         <section className="panel empty-state large">
           <Activity size={32} style={{ opacity: 0.3, marginBottom: 12 }} />
-          <p>Import a track, log, or base asset first.</p>
+          <p>{t.inspect.importFirst}</p>
           <button type="button" className="action" onClick={onGoLibrary}>
-            Go to Library →
+            {t.inspect.goLibrary}
           </button>
         </section>
       </section>
@@ -232,16 +231,17 @@ export function InspectScreen({
       return (
         <section className="screen">
           <header className="screen-header">
-            <div><p className="eyebrow">{t.inspect.title}</p><h2>No track selected</h2></div>
+            <div>
+              <p className="eyebrow">{t.inspect.title}</p>
+              <h2>{t.inspect.noTrackSelected}</h2>
+            </div>
           </header>
           {contextBar}
         </section>
       );
     }
 
-    const editableTrackBpm = isEditableBpm(track.analysis.bpm)
-      ? track.analysis.bpm
-      : null;
+    const editableTrackBpm = isEditableBpm(track.analysis.bpm) ? track.analysis.bpm : null;
     const waveformEditableCues = [
       ...(track.performance.mainCueSecond !== null
         ? [
@@ -292,9 +292,7 @@ export function InspectScreen({
       }
 
       const cueCollection =
-        cue.kind === "hot"
-          ? track.performance.hotCues
-          : track.performance.memoryCues;
+        cue.kind === "hot" ? track.performance.hotCues : track.performance.memoryCues;
       const nextCues = setTrackCuePointSecond(cueCollection, cue.id, second, {
         durationSeconds: track.analysis.durationSeconds,
         beatGrid: track.analysis.beatGrid,
@@ -328,15 +326,15 @@ export function InspectScreen({
           </div>
           <div className="screen-summary">
             <div className="summary-pill">
-              <span>Status</span>
+              <span>{t.inspect.status}</span>
               <strong>{track.analysis.analyzerStatus}</strong>
             </div>
             <div className="summary-pill">
-              <span>Style</span>
+              <span>{t.inspect.style}</span>
               <strong>{track.tags.musicStyleLabel}</strong>
             </div>
             <div className="summary-pill">
-              <span>Imported</span>
+              <span>{t.inspect.imported}</span>
               <strong>{formatShortDate(track.analysis.importedAt)}</strong>
             </div>
           </div>
@@ -399,16 +397,11 @@ export function InspectScreen({
             }
             onMoveLoop={(loopId, second) =>
               void onUpdateTrackPerformance(track.id, {
-                savedLoops: moveTrackSavedLoop(
-                  track.performance.savedLoops,
-                  loopId,
-                  second,
-                  {
-                    durationSeconds: track.analysis.durationSeconds,
-                    beatGrid: track.analysis.beatGrid,
-                    quantizeEnabled: quantizeWaveformEdits,
-                  },
-                ),
+                savedLoops: moveTrackSavedLoop(track.performance.savedLoops, loopId, second, {
+                  durationSeconds: track.analysis.durationSeconds,
+                  beatGrid: track.analysis.beatGrid,
+                  quantizeEnabled: quantizeWaveformEdits,
+                }),
               })
             }
           />
@@ -446,7 +439,7 @@ export function InspectScreen({
                     className="inspect-tab-button"
                     onClick={() => setActiveTab("overview")}
                   >
-                    Overview
+                    {t.inspect.overview}
                   </button>
                 </li>
                 <li role="presentation">
@@ -457,7 +450,7 @@ export function InspectScreen({
                     className="inspect-tab-button"
                     onClick={() => setActiveTab("grid")}
                   >
-                    Beat Grid
+                    {t.inspect.beatGrid}
                   </button>
                 </li>
                 <li role="presentation">
@@ -468,7 +461,7 @@ export function InspectScreen({
                     className="inspect-tab-button"
                     onClick={() => setActiveTab("performance")}
                   >
-                    Performance
+                    {t.inspect.performance}
                   </button>
                 </li>
                 <li role="presentation">
@@ -479,7 +472,7 @@ export function InspectScreen({
                     className="inspect-tab-button"
                     onClick={() => setActiveTab("metadata")}
                   >
-                    Details
+                    {t.inspect.details}
                   </button>
                 </li>
               </ul>
@@ -536,17 +529,30 @@ export function InspectScreen({
                 <SongMetadataPanel track={track} />
                 <section className="panel metric-panel">
                   <details className="panel-collapsible">
-                    <summary className="panel-collapsible-summary">Notes &amp; analysis</summary>
+                    <summary className="panel-collapsible-summary">
+                      {t.inspect.notesAnalysis}
+                    </summary>
                     <div className="panel-collapsible-body">
                       {track.analysis.notes.length > 0 && (
                         <ul className="stack-list note-list">
-                          {track.analysis.notes.map((note) => <li key={note}>{note}</li>)}
+                          {track.analysis.notes.map((note) => (
+                            <li key={note}>{note}</li>
+                          ))}
                         </ul>
                       )}
                       <dl className="meta-list compact-meta">
-                        <div><dt>Analysis mode</dt><dd>{formatAnalysisMode(track.analysis.analysisMode)}</dd></div>
-                        <div><dt>Source path</dt><dd>{getTrackSourcePath(track)}</dd></div>
-                        <div><dt>Storage path</dt><dd>{getTrackStoragePath(track) ?? "No snapshot"}</dd></div>
+                        <div>
+                          <dt>{t.inspect.analysisMode}</dt>
+                          <dd>{formatAnalysisMode(track.analysis.analysisMode)}</dd>
+                        </div>
+                        <div>
+                          <dt>{t.inspect.sourcePath}</dt>
+                          <dd>{getTrackSourcePath(track)}</dd>
+                        </div>
+                        <div>
+                          <dt>{t.inspect.storagePath}</dt>
+                          <dd>{getTrackStoragePath(track) ?? t.inspect.noSnapshot}</dd>
+                        </div>
                       </dl>
                     </div>
                   </details>
@@ -555,9 +561,9 @@ export function InspectScreen({
             </div>
 
             <div className="inspect-compose-cta">
-              <p className="support-copy">Ready to build a composition using this track?</p>
+              <p className="support-copy">{t.inspect.buildCompositionTrack}</p>
               <button type="button" className="action" onClick={onGoCompose}>
-                Compose →
+                {t.inspect.composeCta}
               </button>
             </div>
           </div>
@@ -572,7 +578,10 @@ export function InspectScreen({
       return (
         <section className="screen">
           <header className="screen-header">
-            <div><p className="eyebrow">{t.inspect.title}</p><h2>No log / repo selected</h2></div>
+            <div>
+              <p className="eyebrow">{t.inspect.title}</p>
+              <h2>{t.inspect.noRepoSelected}</h2>
+            </div>
           </header>
           {contextBar}
         </section>
@@ -587,19 +596,23 @@ export function InspectScreen({
             <h2>{repository.title}</h2>
             <p className="support-copy">
               {repository.sourceKind === "file"
-                ? "Log signal analysis — severity bursts, anomaly markers, and live-tail monitoring."
-                : "Repository signal analysis — code structure heuristics mapped to BPM."}
+                ? t.inspect.logSignalAnalysis
+                : t.inspect.repoSignalAnalysis}
             </p>
           </div>
           <div className="screen-summary">
             <div className="summary-pill">
-              <span>Source</span>
+              <span>{t.inspect.source}</span>
               <strong>
-                {repository.sourceKind === "directory" ? "Filesystem" : repository.sourceKind === "file" ? "Log file" : "GitHub URL"}
+                {repository.sourceKind === "directory"
+                  ? t.inspect.filesystem
+                  : repository.sourceKind === "file"
+                    ? t.library.logFile
+                    : t.library.githubUrl}
               </strong>
             </div>
             <div className="summary-pill">
-              <span>Imported</span>
+              <span>{t.inspect.imported}</span>
               <strong>{formatShortDate(repository.importedAt)}</strong>
             </div>
           </div>
@@ -628,24 +641,32 @@ export function InspectScreen({
             <RepositoryMetricsPanel repository={repository} analyzerLabel={analyzerLabel} />
             <section className="panel metric-panel">
               <details className="panel-collapsible">
-                <summary className="panel-collapsible-summary">Notes &amp; metadata</summary>
+                <summary className="panel-collapsible-summary">{t.inspect.notesMetadata}</summary>
                 <div className="panel-collapsible-body">
                   {repository.notes.length > 0 && (
                     <ul className="stack-list note-list">
-                      {repository.notes.map((note) => <li key={note}>{note}</li>)}
+                      {repository.notes.map((note) => (
+                        <li key={note}>{note}</li>
+                      ))}
                     </ul>
                   )}
                   <dl className="meta-list compact-meta">
-                    <div><dt>Source path</dt><dd>{repository.sourcePath}</dd></div>
-                    <div><dt>Storage path</dt><dd>{repository.storagePath ?? "No snapshot"}</dd></div>
+                    <div>
+                      <dt>{t.inspect.sourcePath}</dt>
+                      <dd>{repository.sourcePath}</dd>
+                    </div>
+                    <div>
+                      <dt>{t.inspect.storagePath}</dt>
+                      <dd>{repository.storagePath ?? t.inspect.noSnapshot}</dd>
+                    </div>
                   </dl>
                 </div>
               </details>
             </section>
             <div className="inspect-compose-cta">
-              <p className="support-copy">Use this log's BPM signal in a composition?</p>
+              <p className="support-copy">{t.inspect.useLogSignal}</p>
               <button type="button" className="action" onClick={onGoCompose}>
-                Compose →
+                {t.inspect.composeCta}
               </button>
             </div>
           </div>
@@ -659,7 +680,10 @@ export function InspectScreen({
     return (
       <section className="screen">
         <header className="screen-header">
-          <div><p className="eyebrow">{t.inspect.title}</p><h2>No base asset selected</h2></div>
+          <div>
+            <p className="eyebrow">{t.inspect.title}</p>
+            <h2>{t.inspect.noBaseAssetSelected}</h2>
+          </div>
         </header>
         {contextBar}
       </section>
@@ -672,19 +696,19 @@ export function InspectScreen({
         <div>
           <p className="eyebrow">{t.inspect.title}</p>
           <h2>{baseAsset.title}</h2>
-          <p className="support-copy">Reusable asset registered in the base catalog.</p>
+          <p className="support-copy">{t.inspect.baseAssetCopy}</p>
         </div>
         <div className="screen-summary">
           <div className="summary-pill">
-            <span>Category</span>
+            <span>{t.inspect.category}</span>
             <strong>{baseAsset.categoryLabel}</strong>
           </div>
           <div className="summary-pill">
-            <span>Reusable</span>
-            <strong>{baseAsset.reusable ? "Yes" : "Single-use"}</strong>
+            <span>{t.inspect.reusable}</span>
+            <strong>{baseAsset.reusable ? t.inspect.yes : t.inspect.singleUse}</strong>
           </div>
           <div className="summary-pill">
-            <span>Imported</span>
+            <span>{t.inspect.imported}</span>
             <strong>{formatShortDate(baseAsset.importedAt)}</strong>
           </div>
         </div>
@@ -697,25 +721,36 @@ export function InspectScreen({
           <BaseAssetMetricsPanel baseAsset={baseAsset} analyzerLabel={analyzerLabel} />
           <section className="panel metric-panel">
             <details className="panel-collapsible">
-              <summary className="panel-collapsible-summary">Notes &amp; metadata</summary>
+              <summary className="panel-collapsible-summary">{t.inspect.notesMetadata}</summary>
               <div className="panel-collapsible-body">
                 {baseAsset.notes.length > 0 && (
                   <ul className="stack-list note-list">
-                    {baseAsset.notes.map((note) => <li key={note}>{note}</li>)}
+                    {baseAsset.notes.map((note) => (
+                      <li key={note}>{note}</li>
+                    ))}
                   </ul>
                 )}
                 <dl className="meta-list compact-meta">
-                  <div><dt>Source path</dt><dd>{baseAsset.sourcePath}</dd></div>
-                  <div><dt>Storage path</dt><dd>{baseAsset.storagePath}</dd></div>
-                  <div><dt>Checksum</dt><dd>{baseAsset.checksum ?? "Pending"}</dd></div>
+                  <div>
+                    <dt>{t.inspect.sourcePath}</dt>
+                    <dd>{baseAsset.sourcePath}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.inspect.storagePath}</dt>
+                    <dd>{baseAsset.storagePath}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.inspect.checksum}</dt>
+                    <dd>{baseAsset.checksum ?? t.inspect.pending}</dd>
+                  </div>
                 </dl>
               </div>
             </details>
           </section>
           <div className="inspect-compose-cta">
-            <p className="support-copy">Use this base asset in a composition?</p>
+            <p className="support-copy">{t.inspect.useBaseAsset}</p>
             <button type="button" className="action" onClick={onGoCompose}>
-              Compose →
+              {t.inspect.composeCta}
             </button>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { Activity, AudioWaveform, Cable, Library, LayoutGrid } from "lucide-react";
+import { Activity, AudioWaveform, Cable, Library } from "lucide-react";
 import type React from "react";
 import type { ActiveMonitorSession, MonitorMetrics } from "../features/monitor/MonitorContext";
 import { useT } from "../i18n/I18nContext";
@@ -44,7 +44,6 @@ export function AppSidebar({
   onOpenMonitoredRepo,
   onOpenConnections,
   connectionsActive,
-  onHideToBackground,
 }: AppSidebarProps) {
   const t = useT();
   const { userMode } = useUserMode();
@@ -55,16 +54,19 @@ export function AppSidebar({
           {
             id: "perform" as AppPillar,
             label: t.simpleMode.nav.monitor,
-            description: "Real-time log monitoring",
+            description: t.simpleMode.shell.realTimeLogMonitoring,
             lane: null,
             detail: monitorSession ? t.simpleMode.status.listening : t.simpleMode.status.standby,
           },
           {
             id: "curate" as AppPillar,
             label: t.simpleMode.nav.files,
-            description: "Manage your files and logs",
+            description: t.simpleMode.shell.manageFilesAndLogs,
             lane: null,
-            detail: `${trackCount + repositoryCount} items`,
+            detail: t.simpleMode.shell.items.replace(
+              "{count}",
+              String(trackCount + repositoryCount),
+            ),
           },
         ]
       : [
@@ -73,21 +75,27 @@ export function AppSidebar({
             label: t.nav.pillars.perform.label,
             description: t.nav.pillars.perform.description,
             lane: t.nav.pillars.perform.lane,
-            detail: monitorSession ? "Engine Active" : "Standby",
+            detail: monitorSession ? t.simpleMode.shell.engineLive : t.simpleMode.status.standby,
           },
           {
             id: "design" as AppPillar,
             label: t.nav.pillars.design.label,
             description: t.nav.pillars.design.description,
             lane: t.nav.pillars.design.lane,
-            detail: `${compositionCount} arrangements cued`,
+            detail: t.simpleMode.shell.arrangementsCued.replace(
+              "{count}",
+              String(compositionCount),
+            ),
           },
           {
             id: "curate" as AppPillar,
             label: t.nav.pillars.curate.label,
             description: t.nav.pillars.curate.description,
             lane: t.nav.pillars.curate.lane,
-            detail: `${trackCount + repositoryCount} assets in vault`,
+            detail: t.simpleMode.shell.assetsInVault.replace(
+              "{count}",
+              String(trackCount + repositoryCount),
+            ),
           },
         ];
 
@@ -106,11 +114,7 @@ export function AppSidebar({
     <aside className="sidebar panel role-based-sidebar">
       <div className="sidebar-brand">
         <div className="sidebar-logo-lockup">
-          <img
-            src="/assets/branding/maia-icon-site.png"
-            alt="MAIA"
-            className="sidebar-logo-icon"
-          />
+          <img src="/assets/branding/maia-icon-site.png" alt="MAIA" className="sidebar-logo-icon" />
           <img
             src="/assets/branding/maia-wordmark-site.png"
             alt="MAIA"
@@ -121,7 +125,7 @@ export function AppSidebar({
         <ModeToggle />
       </div>
 
-      <nav className="nav-stack role-stack" aria-label="Professional Roles">
+      <nav className="nav-stack role-stack" aria-label={t.simpleMode.shell.professionalRoles}>
         {navigationItems.map((item) => {
           const active = item.id === currentPillar;
           return (
@@ -148,15 +152,15 @@ export function AppSidebar({
         className={`nav-button nav-pillar-button ${connectionsActive ? "active" : ""}`}
         onClick={onOpenConnections}
       >
-        <span className="nav-lane">Connect</span>
+        <span className="nav-lane">{t.sidebar.connectionsLane}</span>
         <span className="nav-icon-shell">
           <Cable size={18} />
         </span>
         <span className="nav-copy">
-          <span className="nav-title">Conexiones</span>
-          <small>File logs & GCP Cloud Run</small>
+          <span className="nav-title">{t.simpleMode.nav.connections}</span>
+          <small>{t.simpleMode.shell.fileLogsAndCloudRun}</small>
         </span>
-        <strong className="nav-detail">Persistent</strong>
+        <strong className="nav-detail">{t.simpleMode.shell.persistent}</strong>
       </button>
 
       {monitorSession ? (
@@ -164,34 +168,28 @@ export function AppSidebar({
           <div className="monitor-status-header">
             <span className="monitor-pulse" aria-hidden="true" />
             <span className="monitor-status-label">
-              {userMode === "simple" ? t.simpleMode.status.listening : "Engine Live"}
+              {userMode === "simple"
+                ? t.simpleMode.status.listening
+                : t.simpleMode.shell.engineLive}
             </span>
-            <span className="monitor-mode-badge">
-              {monitorAdapterLabel}
-            </span>
+            <span className="monitor-mode-badge">{monitorAdapterLabel}</span>
           </div>
           <p className="monitor-repo-title" title={monitorSession.repoTitle}>
             {monitorSession.repoTitle}
           </p>
           <div className="monitor-metrics">
-            <span>{monitorMetrics.totalAnomalies} anomalies</span>
+            <span>
+              {monitorMetrics.totalAnomalies} {t.simpleMode.monitor.anomalies.toLowerCase()}
+            </span>
             <span>·</span>
             <span>{uptimeLabel}</span>
           </div>
           <div className="monitor-actions">
-            <button
-              type="button"
-              className="compact-action"
-              onClick={onOpenMonitoredRepo}
-            >
-              Inspect
+            <button type="button" className="compact-action" onClick={onOpenMonitoredRepo}>
+              {t.simpleMode.common.inspect}
             </button>
-            <button
-              type="button"
-              className="compact-action danger"
-              onClick={onStopMonitor}
-            >
-              Stop
+            <button type="button" className="compact-action danger" onClick={onStopMonitor}>
+              {t.simpleMode.common.stop}
             </button>
           </div>
         </div>
@@ -215,8 +213,10 @@ export function AppSidebar({
       )}
 
       <div className="sidebar-footer">
-        <span className="sidebar-footer-kicker">Selected Focus</span>
-        <strong className="sidebar-footer-title">{selectedItemTitle ?? "None"}</strong>
+        <span className="sidebar-footer-kicker">{t.simpleMode.shell.selectedFocus}</span>
+        <strong className="sidebar-footer-title">
+          {selectedItemTitle ?? t.simpleMode.shell.none}
+        </strong>
       </div>
     </aside>
   );

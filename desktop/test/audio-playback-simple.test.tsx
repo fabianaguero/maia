@@ -39,7 +39,7 @@ describe("Audio Playback Components", () => {
           desktopOnlyNote="Desktop required"
           availableNote="Ready"
           errorNote="Error occurred"
-        />
+        />,
       );
 
       expect(getByText("My Audio")).toBeTruthy();
@@ -59,7 +59,7 @@ describe("Audio Playback Components", () => {
           desktopOnlyNote="Desktop required"
           availableNote="Ready"
           errorNote="Error occurred"
-        />
+        />,
       );
 
       expect(getByText("Audio not found")).toBeTruthy();
@@ -79,7 +79,7 @@ describe("Audio Playback Components", () => {
           desktopOnlyNote="Desktop required"
           availableNote="Ready"
           errorNote="Error occurred"
-        />
+        />,
       );
 
       const audioEl = container.querySelector("audio");
@@ -100,7 +100,7 @@ describe("Audio Playback Components", () => {
           desktopOnlyNote="Desktop required"
           availableNote="Ready"
           errorNote="Error occurred"
-        />
+        />,
       );
 
       const button = container.querySelector(".action");
@@ -121,7 +121,7 @@ describe("Audio Playback Components", () => {
           desktopOnlyNote="Desktop required"
           availableNote="Ready"
           errorNote="Error occurred"
-        />
+        />,
       );
 
       const volumeSlider = container.querySelector(".volume-slider");
@@ -142,7 +142,7 @@ describe("Audio Playback Components", () => {
           desktopOnlyNote="Desktop required"
           availableNote="Ready"
           errorNote="Error occurred"
-        />
+        />,
       );
 
       const scrubber = container.querySelector(".render-audio-scrubber");
@@ -191,11 +191,7 @@ describe("Audio Playback Components", () => {
     it("should render track panel", () => {
       const track = createMockTrack();
       const { container } = render(
-        <TrackPlaybackPanel
-          track={track}
-          onStateChange={() => {}}
-          onCueRequest={() => {}}
-        />
+        <TrackPlaybackPanel track={track} onStateChange={() => {}} onCueRequest={() => {}} />,
       );
 
       // Component should render without crashing
@@ -208,11 +204,7 @@ describe("Audio Playback Components", () => {
       track.file.sourcePath = null as any;
 
       const { container } = render(
-        <TrackPlaybackPanel
-          track={track}
-          onStateChange={() => {}}
-          onCueRequest={() => {}}
-        />
+        <TrackPlaybackPanel track={track} onStateChange={() => {}} onCueRequest={() => {}} />,
       );
 
       // Should render without crashing
@@ -235,7 +227,7 @@ describe("Audio Playback Components", () => {
           desktopOnlyNote="Desktop required"
           availableNote="Ready"
           errorNote="Error occurred"
-        />
+        />,
       );
 
       const status = container.querySelector(".render-audio-status");
@@ -256,7 +248,7 @@ describe("Audio Playback Components", () => {
           desktopOnlyNote="Desktop required"
           availableNote="Ready"
           errorNote="Error occurred"
-        />
+        />,
       );
 
       const controls = container.querySelector(".render-audio-controls");
@@ -277,7 +269,7 @@ describe("Audio Playback Components", () => {
           desktopOnlyNote="Desktop required"
           availableNote="Ready"
           errorNote="Error occurred"
-        />
+        />,
       );
 
       const note = container.querySelector(".render-audio-note");

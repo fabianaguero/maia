@@ -13,10 +13,7 @@ import type {
   UpdateTrackSourceInput,
   RelinkMissingTracksResult,
 } from "../types/library";
-import {
-  fallbackMusicStyleLabel,
-  resolveMusicStyle,
-} from "../config/musicStyles";
+import { fallbackMusicStyleLabel, resolveMusicStyle } from "../config/musicStyles";
 
 const STORAGE_KEY = "maia.library.tracks.v1";
 const PLAYLIST_STORAGE_KEY = "maia.library.playlists.v1";
@@ -34,10 +31,7 @@ function normalizeBeatGrid(raw: unknown): BeatGridPoint[] {
     }
 
     const record = entry as Record<string, unknown>;
-    if (
-      typeof record.index !== "number" ||
-      typeof record.second !== "number"
-    ) {
+    if (typeof record.index !== "number" || typeof record.second !== "number") {
       return [];
     }
 
@@ -56,10 +50,7 @@ function normalizeBpmCurve(raw: unknown): BpmCurvePoint[] {
     }
 
     const record = entry as Record<string, unknown>;
-    if (
-      typeof record.second !== "number" ||
-      typeof record.bpm !== "number"
-    ) {
+    if (typeof record.second !== "number" || typeof record.bpm !== "number") {
       return [];
     }
 
@@ -88,13 +79,15 @@ function normalizeStructuralPatterns(raw: unknown): TrackStructuralPattern[] {
       return [];
     }
 
-    return [{
-      type: record.type,
-      start: record.start,
-      end: record.end,
-      confidence: record.confidence,
-      label: record.label,
-    }];
+    return [
+      {
+        type: record.type,
+        start: record.start,
+        end: record.end,
+        confidence: record.confidence,
+        label: record.label,
+      },
+    ];
   });
 }
 
@@ -107,10 +100,7 @@ function fileExtensionFromPath(path: string): string {
   return fileName.slice(dotIndex + 1).toLowerCase();
 }
 
-function normalizeCuePoints(
-  raw: unknown,
-  kind: TrackCuePoint["kind"],
-): TrackCuePoint[] {
+function normalizeCuePoints(raw: unknown, kind: TrackCuePoint["kind"]): TrackCuePoint[] {
   if (!Array.isArray(raw)) {
     return [];
   }
@@ -125,26 +115,22 @@ function normalizeCuePoints(
       return [];
     }
 
-    return [{
-      id:
-        typeof record.id === "string"
-          ? record.id
-          : `${kind}-cue-${index + 1}`,
-      slot:
-        typeof record.slot === "number" && Number.isFinite(record.slot)
-          ? record.slot
-          : null,
-      second: record.second,
-      label:
-        typeof record.label === "string" && record.label.trim()
-          ? record.label
-          : `${kind} cue ${index + 1}`,
-      kind:
-        record.kind === "main" || record.kind === "hot" || record.kind === "memory"
-          ? record.kind
-          : kind,
-      color: typeof record.color === "string" ? record.color : null,
-    }];
+    return [
+      {
+        id: typeof record.id === "string" ? record.id : `${kind}-cue-${index + 1}`,
+        slot: typeof record.slot === "number" && Number.isFinite(record.slot) ? record.slot : null,
+        second: record.second,
+        label:
+          typeof record.label === "string" && record.label.trim()
+            ? record.label
+            : `${kind} cue ${index + 1}`,
+        kind:
+          record.kind === "main" || record.kind === "hot" || record.kind === "memory"
+            ? record.kind
+            : kind,
+        color: typeof record.color === "string" ? record.color : null,
+      },
+    ];
   });
 }
 
@@ -159,31 +145,24 @@ function normalizeSavedLoops(raw: unknown): TrackSavedLoop[] {
     }
 
     const record = entry as Record<string, unknown>;
-    if (
-      typeof record.startSecond !== "number" ||
-      typeof record.endSecond !== "number"
-    ) {
+    if (typeof record.startSecond !== "number" || typeof record.endSecond !== "number") {
       return [];
     }
 
-    return [{
-      id:
-        typeof record.id === "string"
-          ? record.id
-          : `saved-loop-${index + 1}`,
-      slot:
-        typeof record.slot === "number" && Number.isFinite(record.slot)
-          ? record.slot
-          : null,
-      startSecond: record.startSecond,
-      endSecond: record.endSecond,
-      label:
-        typeof record.label === "string" && record.label.trim()
-          ? record.label
-          : `Loop ${index + 1}`,
-      color: typeof record.color === "string" ? record.color : null,
-      locked: record.locked === true,
-    }];
+    return [
+      {
+        id: typeof record.id === "string" ? record.id : `saved-loop-${index + 1}`,
+        slot: typeof record.slot === "number" && Number.isFinite(record.slot) ? record.slot : null,
+        startSecond: record.startSecond,
+        endSecond: record.endSecond,
+        label:
+          typeof record.label === "string" && record.label.trim()
+            ? record.label
+            : `Loop ${index + 1}`,
+        color: typeof record.color === "string" ? record.color : null,
+        locked: record.locked === true,
+      },
+    ];
   });
 }
 
@@ -202,9 +181,7 @@ function derivePlaybackSource(
   return "unavailable";
 }
 
-function deriveDefaultHotCues(
-  structuralPatterns: TrackStructuralPattern[],
-): TrackCuePoint[] {
+function deriveDefaultHotCues(structuralPatterns: TrackStructuralPattern[]): TrackCuePoint[] {
   const colors = ["#f59e0b", "#22d3ee", "#ef4444", "#8b5cf6"];
 
   return structuralPatterns.slice(0, 4).map((pattern, index) => ({
@@ -226,28 +203,19 @@ function normalizeTrack(track: unknown): LibraryTrack | null {
   const id = typeof raw.id === "string" ? raw.id : `track-${Date.now()}`;
   const title = typeof raw.title === "string" ? raw.title : "Imported Track";
   const sourcePath = typeof raw.sourcePath === "string" ? raw.sourcePath : "";
-  const storagePath =
-    typeof raw.storagePath === "string" ? raw.storagePath : null;
-  const importedAt =
-    typeof raw.importedAt === "string"
-      ? raw.importedAt
-      : new Date().toISOString();
+  const storagePath = typeof raw.storagePath === "string" ? raw.storagePath : null;
+  const importedAt = typeof raw.importedAt === "string" ? raw.importedAt : new Date().toISOString();
   const bpm = typeof raw.bpm === "number" ? raw.bpm : null;
-  const bpmConfidence =
-    typeof raw.bpmConfidence === "number" ? raw.bpmConfidence : 0;
-  const durationSeconds =
-    typeof raw.durationSeconds === "number" ? raw.durationSeconds : null;
+  const bpmConfidence = typeof raw.bpmConfidence === "number" ? raw.bpmConfidence : 0;
+  const durationSeconds = typeof raw.durationSeconds === "number" ? raw.durationSeconds : null;
   const waveformBins = Array.isArray(raw.waveformBins)
     ? raw.waveformBins.filter((value): value is number => typeof value === "number")
     : [];
   const beatGrid = normalizeBeatGrid(raw.beatGrid);
   const bpmCurve = normalizeBpmCurve(raw.bpmCurve);
   const analyzerStatus =
-    typeof raw.analyzerStatus === "string"
-      ? raw.analyzerStatus
-      : "Mock waveform + BPM ready";
-  const repoSuggestedBpm =
-    typeof raw.repoSuggestedBpm === "number" ? raw.repoSuggestedBpm : null;
+    typeof raw.analyzerStatus === "string" ? raw.analyzerStatus : "Mock waveform + BPM ready";
+  const repoSuggestedBpm = typeof raw.repoSuggestedBpm === "number" ? raw.repoSuggestedBpm : null;
   const repoSuggestedStatus =
     typeof raw.repoSuggestedStatus === "string"
       ? raw.repoSuggestedStatus
@@ -255,31 +223,21 @@ function normalizeTrack(track: unknown): LibraryTrack | null {
   const notes = Array.isArray(raw.notes)
     ? raw.notes.filter((note): note is string => typeof note === "string")
     : [];
-  const fileExtension =
-    typeof raw.fileExtension === "string" ? raw.fileExtension : ".audio";
-  const analysisMode =
-    typeof raw.analysisMode === "string" ? raw.analysisMode : "mock";
-  const musicStyleId =
-    typeof raw.musicStyleId === "string" ? raw.musicStyleId : "";
+  const fileExtension = typeof raw.fileExtension === "string" ? raw.fileExtension : ".audio";
+  const analysisMode = typeof raw.analysisMode === "string" ? raw.analysisMode : "mock";
+  const musicStyleId = typeof raw.musicStyleId === "string" ? raw.musicStyleId : "";
   const musicStyleLabel =
     typeof raw.musicStyleLabel === "string"
       ? raw.musicStyleLabel
       : fallbackMusicStyleLabel(musicStyleId);
-  const keySignature =
-    typeof raw.keySignature === "string" ? raw.keySignature : null;
-  const energyLevel =
-    typeof raw.energyLevel === "number" ? raw.energyLevel : null;
-  const danceability =
-    typeof raw.danceability === "number" ? raw.danceability : null;
+  const keySignature = typeof raw.keySignature === "string" ? raw.keySignature : null;
+  const energyLevel = typeof raw.energyLevel === "number" ? raw.energyLevel : null;
+  const danceability = typeof raw.danceability === "number" ? raw.danceability : null;
   const structuralPatterns = normalizeStructuralPatterns(raw.structuralPatterns);
   const rawFile =
-    raw.file && typeof raw.file === "object"
-      ? (raw.file as Record<string, unknown>)
-      : null;
+    raw.file && typeof raw.file === "object" ? (raw.file as Record<string, unknown>) : null;
   const rawTags =
-    raw.tags && typeof raw.tags === "object"
-      ? (raw.tags as Record<string, unknown>)
-      : null;
+    raw.tags && typeof raw.tags === "object" ? (raw.tags as Record<string, unknown>) : null;
   const rawAnalysis =
     raw.analysis && typeof raw.analysis === "object"
       ? (raw.analysis as Record<string, unknown>)
@@ -293,7 +251,7 @@ function normalizeTrack(track: unknown): LibraryTrack | null {
   const mainCueSecond =
     typeof rawPerformance?.mainCueSecond === "number"
       ? rawPerformance.mainCueSecond
-      : beatGrid[0]?.second ?? null;
+      : (beatGrid[0]?.second ?? null);
 
   return {
     id,
@@ -302,14 +260,10 @@ function normalizeTrack(track: unknown): LibraryTrack | null {
       storagePath,
       sourceKind: "file",
       fileExtension,
-      sizeBytes:
-        typeof rawFile?.sizeBytes === "number" ? rawFile.sizeBytes : null,
-      modifiedAt:
-        typeof rawFile?.modifiedAt === "string" ? rawFile.modifiedAt : null,
-      checksum:
-        typeof rawFile?.checksum === "string" ? rawFile.checksum : null,
-      availabilityState:
-        rawFile?.availabilityState === "missing" ? "missing" : "available",
+      sizeBytes: typeof rawFile?.sizeBytes === "number" ? rawFile.sizeBytes : null,
+      modifiedAt: typeof rawFile?.modifiedAt === "string" ? rawFile.modifiedAt : null,
+      checksum: typeof rawFile?.checksum === "string" ? rawFile.checksum : null,
+      availabilityState: rawFile?.availabilityState === "missing" ? "missing" : "available",
       playbackSource:
         rawFile?.playbackSource === "managed_snapshot" ||
         rawFile?.playbackSource === "source_file" ||
@@ -318,22 +272,13 @@ function normalizeTrack(track: unknown): LibraryTrack | null {
           : derivePlaybackSource(sourcePath, storagePath),
     },
     tags: {
-      title:
-        typeof rawTags?.title === "string" && rawTags.title.trim()
-          ? rawTags.title
-          : title,
-      artist:
-        typeof rawTags?.artist === "string" ? rawTags.artist : null,
-      album:
-        typeof rawTags?.album === "string" ? rawTags.album : null,
-      genre:
-        typeof rawTags?.genre === "string" ? rawTags.genre : null,
-      year:
-        typeof rawTags?.year === "number" ? rawTags.year : null,
-      comment:
-        typeof rawTags?.comment === "string" ? rawTags.comment : null,
-      artworkPath:
-        typeof rawTags?.artworkPath === "string" ? rawTags.artworkPath : null,
+      title: typeof rawTags?.title === "string" && rawTags.title.trim() ? rawTags.title : title,
+      artist: typeof rawTags?.artist === "string" ? rawTags.artist : null,
+      album: typeof rawTags?.album === "string" ? rawTags.album : null,
+      genre: typeof rawTags?.genre === "string" ? rawTags.genre : null,
+      year: typeof rawTags?.year === "number" ? rawTags.year : null,
+      comment: typeof rawTags?.comment === "string" ? rawTags.comment : null,
+      artworkPath: typeof rawTags?.artworkPath === "string" ? rawTags.artworkPath : null,
       musicStyleId,
       musicStyleLabel,
     },
@@ -348,13 +293,8 @@ function normalizeTrack(track: unknown): LibraryTrack | null {
       analyzerStatus,
       analysisMode,
       analyzerVersion:
-        typeof rawAnalysis?.analyzerVersion === "string"
-          ? rawAnalysis.analyzerVersion
-          : null,
-      analyzedAt:
-        typeof rawAnalysis?.analyzedAt === "string"
-          ? rawAnalysis.analyzedAt
-          : importedAt,
+        typeof rawAnalysis?.analyzerVersion === "string" ? rawAnalysis.analyzerVersion : null,
+      analyzedAt: typeof rawAnalysis?.analyzedAt === "string" ? rawAnalysis.analyzedAt : importedAt,
       repoSuggestedBpm,
       repoSuggestedStatus,
       notes,
@@ -364,18 +304,11 @@ function normalizeTrack(track: unknown): LibraryTrack | null {
       structuralPatterns,
     },
     performance: {
-      color:
-        typeof rawPerformance?.color === "string" ? rawPerformance.color : null,
-      rating:
-        typeof rawPerformance?.rating === "number" ? rawPerformance.rating : 0,
-      playCount:
-        typeof rawPerformance?.playCount === "number"
-          ? rawPerformance.playCount
-          : 0,
+      color: typeof rawPerformance?.color === "string" ? rawPerformance.color : null,
+      rating: typeof rawPerformance?.rating === "number" ? rawPerformance.rating : 0,
+      playCount: typeof rawPerformance?.playCount === "number" ? rawPerformance.playCount : 0,
       lastPlayedAt:
-        typeof rawPerformance?.lastPlayedAt === "string"
-          ? rawPerformance.lastPlayedAt
-          : null,
+        typeof rawPerformance?.lastPlayedAt === "string" ? rawPerformance.lastPlayedAt : null,
       bpmLock: rawPerformance?.bpmLock === true,
       gridLock: rawPerformance?.gridLock === true,
       mainCueSecond,
@@ -448,17 +381,12 @@ function normalizePlaylist(raw: unknown): BaseTrackPlaylist | null {
 
   const record = raw as Record<string, unknown>;
   const id =
-    typeof record.id === "string" && record.id.trim()
-      ? record.id
-      : `playlist-${Date.now()}`;
+    typeof record.id === "string" && record.id.trim() ? record.id : `playlist-${Date.now()}`;
   const name =
-    typeof record.name === "string" && record.name.trim()
-      ? record.name
-      : "Base playlist";
+    typeof record.name === "string" && record.name.trim() ? record.name : "Base playlist";
   const trackIds = Array.isArray(record.trackIds)
     ? record.trackIds.filter(
-        (trackId): trackId is string =>
-          typeof trackId === "string" && trackId.trim().length > 0,
+        (trackId): trackId is string => typeof trackId === "string" && trackId.trim().length > 0,
       )
     : [];
   const createdAt =
@@ -466,9 +394,7 @@ function normalizePlaylist(raw: unknown): BaseTrackPlaylist | null {
       ? record.createdAt
       : new Date().toISOString();
   const updatedAt =
-    typeof record.updatedAt === "string" && record.updatedAt
-      ? record.updatedAt
-      : createdAt;
+    typeof record.updatedAt === "string" && record.updatedAt ? record.updatedAt : createdAt;
 
   return {
     id,
@@ -558,10 +484,7 @@ function createWaveformBins(seed: number, length = 512): number[] {
   });
 }
 
-function createBeatGrid(
-  bpm: number,
-  durationSeconds: number,
-): BeatGridPoint[] {
+function createBeatGrid(bpm: number, durationSeconds: number): BeatGridPoint[] {
   if (bpm <= 0 || durationSeconds <= 0) {
     return [];
   }
@@ -575,11 +498,7 @@ function createBeatGrid(
   })).filter((beat) => beat.second <= durationSeconds);
 }
 
-function createBpmCurve(
-  bpm: number,
-  durationSeconds: number,
-  seed: number,
-): BpmCurvePoint[] {
+function createBpmCurve(bpm: number, durationSeconds: number, seed: number): BpmCurvePoint[] {
   if (bpm <= 0 || durationSeconds <= 0) {
     return [];
   }
@@ -624,8 +543,8 @@ function createTrack(input: ImportTrackInput): LibraryTrack {
   const bpmCurve = createBpmCurve(bpm, durationSeconds, seed);
   const keyPool = ["C minor", "D minor", "E minor", "F major", "G minor", "A minor"];
   const keySignature = keyPool[seed % keyPool.length] ?? null;
-  const energyLevel = Number((0.42 + ((seed % 45) / 100)).toFixed(2));
-  const danceability = Number((0.5 + (((seed >> 3) % 38) / 100)).toFixed(2));
+  const energyLevel = Number((0.42 + (seed % 45) / 100).toFixed(2));
+  const danceability = Number((0.5 + ((seed >> 3) % 38) / 100).toFixed(2));
   const structuralPatterns: TrackStructuralPattern[] = [
     {
       type: "intro",
@@ -693,8 +612,7 @@ function createTrack(input: ImportTrackInput): LibraryTrack {
       analyzerVersion: "browser-fallback",
       analyzedAt: importedAt,
       repoSuggestedBpm: null,
-      repoSuggestedStatus:
-        "Waiting for repository heuristics in a future analyzer pass",
+      repoSuggestedStatus: "Waiting for repository heuristics in a future analyzer pass",
       notes,
       keySignature,
       energyLevel,
@@ -725,8 +643,7 @@ function createTrack(input: ImportTrackInput): LibraryTrack {
     bpmCurve,
     analyzerStatus: "Mock waveform + BPM ready",
     repoSuggestedBpm: null,
-    repoSuggestedStatus:
-      "Waiting for repository heuristics in a future analyzer pass",
+    repoSuggestedStatus: "Waiting for repository heuristics in a future analyzer pass",
     notes,
     fileExtension,
     analysisMode: "mock",
@@ -746,14 +663,10 @@ export async function listMockTracks(): Promise<LibraryTrack[]> {
 }
 
 export async function listMockPlaylists(): Promise<BaseTrackPlaylist[]> {
-  return readPlaylists().sort((left, right) =>
-    right.updatedAt.localeCompare(left.updatedAt),
-  );
+  return readPlaylists().sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }
 
-export async function importMockTrack(
-  input: ImportTrackInput,
-): Promise<LibraryTrack> {
+export async function importMockTrack(input: ImportTrackInput): Promise<LibraryTrack> {
   const nextTrack = createTrack(input);
   const nextTracks = [nextTrack, ...readTracks()];
   writeTracks(nextTracks);
@@ -792,17 +705,16 @@ export async function saveMockPlaylist(
   input: SaveBaseTrackPlaylistInput,
 ): Promise<BaseTrackPlaylist> {
   const tracks = readTracks();
-  const trackIds = [...new Set(input.trackIds)]
-    .filter((trackId) => tracks.some((track) => track.id === trackId));
+  const trackIds = [...new Set(input.trackIds)].filter((trackId) =>
+    tracks.some((track) => track.id === trackId),
+  );
 
   if (trackIds.length === 0) {
     throw new Error("Select at least one track before saving a playlist.");
   }
 
   const existing = readPlaylists();
-  const current = input.id
-    ? existing.find((playlist) => playlist.id === input.id) ?? null
-    : null;
+  const current = input.id ? (existing.find((playlist) => playlist.id === input.id) ?? null) : null;
   const now = new Date().toISOString();
   const nextPlaylist: BaseTrackPlaylist = {
     id:
@@ -816,10 +728,7 @@ export async function saveMockPlaylist(
     updatedAt: now,
   };
 
-  writePlaylists([
-    nextPlaylist,
-    ...existing.filter((playlist) => playlist.id !== nextPlaylist.id),
-  ]);
+  writePlaylists([nextPlaylist, ...existing.filter((playlist) => playlist.id !== nextPlaylist.id)]);
 
   return nextPlaylist;
 }
@@ -845,30 +754,15 @@ export async function updateMockTrackPerformance(
       typeof input.rating === "number"
         ? Math.max(0, Math.min(5, Math.round(input.rating)))
         : track.performance.rating,
-    color:
-      input.color !== undefined
-        ? input.color?.trim() || null
-        : track.performance.color,
-    bpmLock:
-      typeof input.bpmLock === "boolean"
-        ? input.bpmLock
-        : track.performance.bpmLock,
-    gridLock:
-      typeof input.gridLock === "boolean"
-        ? input.gridLock
-        : track.performance.gridLock,
+    color: input.color !== undefined ? input.color?.trim() || null : track.performance.color,
+    bpmLock: typeof input.bpmLock === "boolean" ? input.bpmLock : track.performance.bpmLock,
+    gridLock: typeof input.gridLock === "boolean" ? input.gridLock : track.performance.gridLock,
     playCount:
-      input.markPlayed === true
-        ? track.performance.playCount + 1
-        : track.performance.playCount,
+      input.markPlayed === true ? track.performance.playCount + 1 : track.performance.playCount,
     lastPlayedAt:
-      input.markPlayed === true
-        ? new Date().toISOString()
-        : track.performance.lastPlayedAt,
+      input.markPlayed === true ? new Date().toISOString() : track.performance.lastPlayedAt,
     mainCueSecond:
-      input.mainCueSecond !== undefined
-        ? input.mainCueSecond
-        : track.performance.mainCueSecond,
+      input.mainCueSecond !== undefined ? input.mainCueSecond : track.performance.mainCueSecond,
     hotCues:
       input.hotCues !== undefined
         ? [...input.hotCues].sort((left, right) => left.second - right.second)
@@ -879,9 +773,7 @@ export async function updateMockTrackPerformance(
         : track.performance.memoryCues,
     savedLoops:
       input.savedLoops !== undefined
-        ? [...input.savedLoops].sort(
-            (left, right) => left.startSecond - right.startSecond,
-          )
+        ? [...input.savedLoops].sort((left, right) => left.startSecond - right.startSecond)
         : track.performance.savedLoops,
   };
 
@@ -890,9 +782,7 @@ export async function updateMockTrackPerformance(
     performance: nextPerformance,
   };
 
-  writeTracks(
-    tracks.map((entry) => (entry.id === trackId ? nextTrack : entry)),
-  );
+  writeTracks(tracks.map((entry) => (entry.id === trackId ? nextTrack : entry)));
 
   return nextTrack;
 }
@@ -963,13 +853,9 @@ export async function updateMockTrackAnalysis(
         : null
       : track.analysis.bpm;
   const nextBeatGrid =
-    input.beatGrid !== undefined
-      ? normalizeBeatGrid(input.beatGrid)
-      : track.analysis.beatGrid;
+    input.beatGrid !== undefined ? normalizeBeatGrid(input.beatGrid) : track.analysis.beatGrid;
   const nextBpmCurve =
-    input.bpmCurve !== undefined
-      ? normalizeBpmCurve(input.bpmCurve)
-      : track.analysis.bpmCurve;
+    input.bpmCurve !== undefined ? normalizeBpmCurve(input.bpmCurve) : track.analysis.bpmCurve;
   const analyzedAt = new Date().toISOString();
 
   const nextTrack: LibraryTrack = {
@@ -986,9 +872,7 @@ export async function updateMockTrackAnalysis(
     bpmCurve: nextBpmCurve,
   };
 
-  writeTracks(
-    tracks.map((entry) => (entry.id === trackId ? nextTrack : entry)),
-  );
+  writeTracks(tracks.map((entry) => (entry.id === trackId ? nextTrack : entry)));
 
   return nextTrack;
 }

@@ -73,7 +73,9 @@ export class AppErrorBoundary extends React.Component<
             <div style={{ fontSize: "18px", marginBottom: "12px", color: "#ffffff" }}>
               The desktop UI crashed while rendering.
             </div>
-            <div style={{ fontSize: "13px", color: "rgba(229,237,247,0.72)", marginBottom: "16px" }}>
+            <div
+              style={{ fontSize: "13px", color: "rgba(229,237,247,0.72)", marginBottom: "16px" }}
+            >
               This replaces the previous black screen so the runtime error is visible.
             </div>
             <pre

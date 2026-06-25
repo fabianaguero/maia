@@ -136,27 +136,22 @@ describe("TrackPerformancePanel", () => {
 
     expect(screen.getByText("Drop · 0:24.25 · Slot 1")).toBeInTheDocument();
     expect(screen.getByText("Breakdown · 0:48.00 · memory")).toBeInTheDocument();
-    expect(
-      screen.getByText("Loop A · 1:04.00 -> 1:12.00 · Slot 1 · Locked"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Loop A · 1:04.00 -> 1:12.00 · Slot 1 · Locked")).toBeInTheDocument();
   });
 
   it("emits performance updates for rating, locks, color, and play count", () => {
     const onUpdatePerformance = vi.fn().mockResolvedValue(undefined);
 
     const view = render(
-      <TrackPerformancePanel
-        track={createTrack()}
-        onUpdatePerformance={onUpdatePerformance}
-      />,
+      <TrackPerformancePanel track={createTrack()} onUpdatePerformance={onUpdatePerformance} />,
     );
 
     const controls = within(view.container);
 
-    fireEvent.change(controls.getByLabelText("Performance rating"), {
+    fireEvent.change(controls.getByLabelText("Performance"), {
       target: { value: "5" },
     });
-    fireEvent.change(controls.getByLabelText("Performance color"), {
+    fireEvent.change(controls.getByRole("combobox", { name: "Color" }), {
       target: { value: "#22d3ee" },
     });
     fireEvent.click(controls.getByRole("button", { name: "Unlock BPM" }));
@@ -293,21 +288,21 @@ describe("TrackPerformancePanel", () => {
     const details = screen.getByText("Cues & loops").closest("details");
     details?.setAttribute("open", "");
 
-    fireEvent.change(screen.getByLabelText("Cue label hot-1"), {
+    fireEvent.change(screen.getByLabelText("Label hot-1"), {
       target: { value: "Drop Prime" },
     });
-    fireEvent.blur(screen.getByLabelText("Cue label hot-1"));
-    fireEvent.change(screen.getByLabelText("Cue color hot-1"), {
+    fireEvent.blur(screen.getByLabelText("Label hot-1"));
+    fireEvent.change(screen.getByLabelText("Color hot-1"), {
       target: { value: "#ef4444" },
     });
-    fireEvent.change(screen.getByLabelText("Loop label loop-1"), {
+    fireEvent.change(screen.getByLabelText("Label loop-1"), {
       target: { value: "Loop Prime" },
     });
-    fireEvent.blur(screen.getByLabelText("Loop label loop-1"));
-    fireEvent.change(screen.getByLabelText("Loop color loop-1"), {
+    fireEvent.blur(screen.getByLabelText("Label loop-1"));
+    fireEvent.change(screen.getByLabelText("Color loop-1"), {
       target: { value: "#8b5cf6" },
     });
-    fireEvent.click(screen.getByLabelText("Toggle loop lock loop-1"));
+    fireEvent.click(screen.getByLabelText("Unlock loop loop-1"));
 
     expect(onUpdatePerformance).toHaveBeenCalledWith({
       hotCues: [
@@ -475,9 +470,9 @@ describe("TrackPerformancePanel", () => {
     const details = screen.getByText("Cues & loops").closest("details");
     details?.setAttribute("open", "");
 
-    fireEvent.click(screen.getByLabelText("Set loop end loop-1"));
+    fireEvent.click(screen.getByLabelText("Set end loop-1"));
     fireEvent.click(screen.getByRole("button", { name: "Quantize on" }));
-    fireEvent.click(screen.getByLabelText("Set loop end loop-1"));
+    fireEvent.click(screen.getByLabelText("Set end loop-1"));
 
     expect(onUpdatePerformance).toHaveBeenCalledWith({
       savedLoops: [

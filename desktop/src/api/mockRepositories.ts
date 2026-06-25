@@ -113,9 +113,7 @@ function createAnomalyMarkers(seed: number) {
   }));
 }
 
-function createRepository(
-  input: ImportRepositoryInput,
-): RepositoryAnalysis {
+function createRepository(input: ImportRepositoryInput): RepositoryAnalysis {
   const sourcePath = input.sourcePath.trim();
   const title = input.label?.trim() || deriveRepositoryTitle(input.sourceKind, sourcePath);
   const seed = stableHash(`${input.sourceKind}:${sourcePath}:${title}`);
@@ -145,12 +143,11 @@ function createRepository(
     importedAt: new Date().toISOString(),
     suggestedBpm,
     confidence: Number(
-      (
-        input.sourceKind === "directory"
-          ? 0.66 + (seed % 18) / 100
-          : input.sourceKind === "file"
-            ? 0.62 + (seed % 14) / 100
-            : 0.28 + (seed % 10) / 100
+      (input.sourceKind === "directory"
+        ? 0.66 + (seed % 18) / 100
+        : input.sourceKind === "file"
+          ? 0.62 + (seed % 14) / 100
+          : 0.28 + (seed % 10) / 100
       ).toFixed(2),
     ),
     summary:
@@ -182,10 +179,10 @@ function createRepository(
               "The browser fallback preserves the log-analysis shape with a simulated managed snapshot path, but it cannot create a native on-disk copy.",
               "Live log stream listening is still native-runtime work, not browser fallback behavior.",
             ]
-        : [
-            "GitHub URL intake is metadata-only in fallback mode.",
-            "Import a local checkout later to inspect actual source contents.",
-          ],
+          : [
+              "GitHub URL intake is metadata-only in fallback mode.",
+              "Import a local checkout later to inspect actual source contents.",
+            ],
     tags:
       input.sourceKind === "directory"
         ? ["repo-analysis", "filesystem", buildSystem]
@@ -266,20 +263,29 @@ function createLiveWindowComponents(seed: number, windowIndex: number): LiveLogC
   }));
 }
 
-function createLiveWindowCues(markers: LiveLogMarker[], seed: number, windowIndex: number): LiveLogCue[] {
+function createLiveWindowCues(
+  markers: LiveLogMarker[],
+  seed: number,
+  windowIndex: number,
+): LiveLogCue[] {
   const baseLevels = ["info", "debug", "warn", "info"];
   const baseComponents = ["tail-reader", "queue-consumer", "auth-service", "api-gateway"];
   const baseCues = Array.from({ length: 3 }, (_, index) => {
     const level = baseLevels[(seed + windowIndex + index) % baseLevels.length] ?? "info";
     const waveform: LiveLogCue["waveform"] = level === "warn" ? "triangle" : "sine";
     const noteHz =
-      level === "warn" ? 329.63 : level === "debug" ? 220 : 261.63 + ((windowIndex + index) % 3) * 24;
+      level === "warn"
+        ? 329.63
+        : level === "debug"
+          ? 220
+          : 261.63 + ((windowIndex + index) % 3) * 24;
 
     return {
       id: `mock-live-${windowIndex}-${index}`,
       eventIndex: windowIndex * 12 + index + 1,
       level,
-      component: baseComponents[(seed + windowIndex + index) % baseComponents.length] ?? "tail-reader",
+      component:
+        baseComponents[(seed + windowIndex + index) % baseComponents.length] ?? "tail-reader",
       excerpt: `Live tail window ${windowIndex + 1} generated ${level} activity.`,
       noteHz,
       durationMs: level === "warn" ? 180 : 120,
@@ -324,14 +330,12 @@ function createLiveWindowParsedLines(
     `${new Date(Date.UTC(2026, 3, 12, 18, (windowIndex * 3) % 60, ((seed + windowIndex) % 60) + 1)).toISOString()} debug ${detailComponent} latency_ms=${latencyMs} queue_depth=${queueDepth}`,
     `${new Date(Date.UTC(2026, 3, 12, 18, (windowIndex * 3) % 60, ((seed + windowIndex) % 60) + 2)).toISOString()} ${severity} ${focusComponent} ${anomalyExcerpt}`,
     `${new Date(Date.UTC(2026, 3, 12, 18, (windowIndex * 3) % 60, ((seed + windowIndex) % 60) + 3)).toISOString()} info sonifier cues=${markers.length + 3} accent=${markers.length > 0 ? "anomaly" : "steady"}`,
-    `${new Date(Date.UTC(2026, 3, 12, 18, (windowIndex * 3) % 60, ((seed + windowIndex) % 60) + 4)).toISOString()} trace renderer window_summary=\"chunk ${windowIndex + 1} mapped to reactive output\"`,
+    `${new Date(Date.UTC(2026, 3, 12, 18, (windowIndex * 3) % 60, ((seed + windowIndex) % 60) + 4)).toISOString()} trace renderer window_summary="chunk ${windowIndex + 1} mapped to reactive output"`,
   ];
 }
 
 export async function listMockRepositories(): Promise<RepositoryAnalysis[]> {
-  return readRepositories().sort((left, right) =>
-    right.importedAt.localeCompare(left.importedAt),
-  );
+  return readRepositories().sort((left, right) => right.importedAt.localeCompare(left.importedAt));
 }
 
 export async function importMockRepository(
@@ -357,16 +361,11 @@ export async function pollMockLogStream(
   const anomalyMarkers = createLiveWindowMarkers(seed, windowIndex);
   const topComponents = createLiveWindowComponents(seed, windowIndex);
   const sonificationCues = createLiveWindowCues(anomalyMarkers, seed, windowIndex);
-  const parsedLines = createLiveWindowParsedLines(
-    anomalyMarkers,
-    topComponents,
-    seed,
-    windowIndex,
-  );
+  const parsedLines = createLiveWindowParsedLines(anomalyMarkers, topComponents, seed, windowIndex);
   const lineCount = Object.values(levelCounts).reduce((sum, count) => sum + count, 0);
   const anomalyCount = anomalyMarkers.length;
   const dominantLevel =
-    anomalyCount > 0 ? anomalyMarkers[anomalyMarkers.length - 1]?.level ?? "warn" : "info";
+    anomalyCount > 0 ? (anomalyMarkers[anomalyMarkers.length - 1]?.level ?? "warn") : "info";
 
   return {
     sourcePath,

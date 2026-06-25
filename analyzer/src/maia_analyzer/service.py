@@ -5,8 +5,8 @@ from typing import Any
 
 from . import __version__
 from .audio import analyze_track, get_supported_track_formats
-from .dsp import dsp_available
 from .contracts import ContractError, error_response, ok_response, parse_request
+from .dsp import dsp_available
 from .presets import list_presets
 from .repository import analyze_repository
 from .stream import (
@@ -31,7 +31,14 @@ def handle_request(raw: Any) -> dict[str, Any]:
                 {
                     "analyzerVersion": __version__,
                     "runtime": platform.python_version(),
-                    "supportedActions": ["health", "analyze", "session_start", "session_stop", "session_list", "session_poll"],
+                    "supportedActions": [
+                        "health",
+                        "analyze",
+                        "session_start",
+                        "session_stop",
+                        "session_list",
+                        "session_poll",
+                    ],
                     "modes": [
                         "log-file-heuristics",
                         "log-live-tail",
@@ -155,12 +162,15 @@ def _handle_session_poll(request_id: str, payload: dict[str, Any]) -> dict[str, 
 
     ring = snapshot["ringBuffer"]
     if not ring:
-        return ok_response(request_id, {
-            "hasData": False,
-            "sessionId": session_id,
-            "summary": "Session buffer empty — waiting for data.",
-            "session": {k: v for k, v in snapshot.items() if k != "ringBuffer"},
-        })
+        return ok_response(
+            request_id,
+            {
+                "hasData": False,
+                "sessionId": session_id,
+                "summary": "Session buffer empty — waiting for data.",
+                "session": {k: v for k, v in snapshot.items() if k != "ringBuffer"},
+            },
+        )
 
     chunk = "\n".join(ring)
     source = snapshot["source"]
@@ -197,7 +207,11 @@ def _build_summary(asset: dict[str, Any]) -> str:
     if asset_type == "repo_analysis":
         if metrics.get("importMode") in {"log-file", "log-tail-window"}:
             anomaly_count = metrics.get("anomalyCount", 0)
-            source_label = "Live log window" if metrics.get("importMode") == "log-tail-window" else "Log signal"
+            source_label = (
+                "Live log window"
+                if metrics.get("importMode") == "log-tail-window"
+                else "Log signal"
+            )
             return (
                 f"{source_label} analysis completed for {title} with suggested BPM {suggested_bpm:.0f} "
                 f"and {anomaly_count} anomaly markers."

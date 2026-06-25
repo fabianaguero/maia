@@ -17,12 +17,7 @@
 
 import { describe, it, expect } from "vitest";
 import * as fc from "fast-check";
-import {
-  SOURCE_TEMPLATES,
-  DEFAULT_SOURCE_TEMPLATE_ID,
-  resolveSourceTemplate,
-  type SourceTemplate,
-} from "../src/config/sourceTemplates";
+import { SOURCE_TEMPLATES } from "../src/config/sourceTemplates";
 
 // ============================================================================
 // Utility Functions for Testing
@@ -146,15 +141,15 @@ describe("Audio Session Improvements — Property Tests", () => {
         fc.float({ min: 0, max: 10, noNaN: true }),
         (segmentDuration, currentTime, offsetFromEnd) => {
           const previousEndTime = currentTime + offsetFromEnd;
-          const overlap = 0.020; // 20ms overlap
+          const overlap = 0.02; // 20ms overlap
 
           // Incoming start time should never be after outgoing end minus overlap
           const incomingStartTime = Math.max(currentTime, previousEndTime - overlap);
 
           expect(incomingStartTime).toBeLessThanOrEqual(previousEndTime);
-        }
+        },
       ),
-      { numRuns: 100 }
+      { numRuns: 100 },
     );
   });
 
@@ -184,27 +179,27 @@ describe("Audio Session Improvements — Property Tests", () => {
 
           // Verify outgoing ramps to 0
           const outgoingFadeCall = outgoing.calls.find(
-            (c) => c.method === "linearRampToValueAtTime" && c.value === 0
+            (c) => c.method === "linearRampToValueAtTime" && c.value === 0,
           );
           expect(outgoingFadeCall).toBeDefined();
           expect(outgoingFadeCall?.time).toBe(currentTime + rampDuration);
 
           // Verify incoming starts at 0
           const incomingSetCall = incoming.calls.find(
-            (c) => c.method === "setValueAtTime" && c.value === 0
+            (c) => c.method === "setValueAtTime" && c.value === 0,
           );
           expect(incomingSetCall).toBeDefined();
           expect(incomingSetCall?.time).toBe(startTime);
 
           // Verify incoming ramps to volume
           const incomingRampCall = incoming.calls.find(
-            (c) => c.method === "linearRampToValueAtTime" && c.value === volume
+            (c) => c.method === "linearRampToValueAtTime" && c.value === volume,
           );
           expect(incomingRampCall).toBeDefined();
           expect(incomingRampCall?.time).toBe(startTime + rampDuration);
-        }
+        },
       ),
-      { numRuns: 100 }
+      { numRuns: 100 },
     );
   });
 
@@ -233,7 +228,7 @@ describe("Audio Session Improvements — Property Tests", () => {
           expect(read.mutationProfileId).toBe(template.mutationProfileId);
         });
       }),
-      { numRuns: 100 }
+      { numRuns: 100 },
     );
   });
 
@@ -245,10 +240,7 @@ describe("Audio Session Improvements — Property Tests", () => {
     fc.assert(
       fc.property(
         fc
-          .tuple(
-            fc.constantFrom(...SOURCE_TEMPLATES),
-            fc.constantFrom(...SOURCE_TEMPLATES)
-          )
+          .tuple(fc.constantFrom(...SOURCE_TEMPLATES), fc.constantFrom(...SOURCE_TEMPLATES))
           .filter(([a, b]) => a.id !== b.id),
         ([templateA, templateB]) => {
           let activeTemplate = templateA;
@@ -270,9 +262,9 @@ describe("Audio Session Improvements — Property Tests", () => {
           };
           expect(pollN1Values.bpm).toBe(templateB.bpm);
           expect(pollN1Values.bpm).not.toBe(pollNValues.bpm);
-        }
+        },
       ),
-      { numRuns: 100 }
+      { numRuns: 100 },
     );
   });
 
@@ -286,8 +278,8 @@ describe("Audio Session Improvements — Property Tests", () => {
         fc.option(
           fc.oneof(
             fc.constantFrom(...SOURCE_TEMPLATES.map((t) => t.id)),
-            fc.string({ maxLength: 50 })
-          )
+            fc.string({ maxLength: 50 }),
+          ),
         ),
         (sourceTemplateId) => {
           // Simulate database round-trip
@@ -296,9 +288,9 @@ describe("Audio Session Improvements — Property Tests", () => {
 
           // Verify value is preserved
           expect(retrieved.sourceTemplateId).toBe(inserted.sourceTemplateId);
-        }
+        },
       ),
-      { numRuns: 100 }
+      { numRuns: 100 },
     );
   });
 
@@ -308,21 +300,18 @@ describe("Audio Session Improvements — Property Tests", () => {
 
   it("Property 6: Session card BPM formatting — null → '— BPM', number → rounded", () => {
     fc.assert(
-      fc.property(
-        fc.option(fc.float({ min: 0, max: 300 })),
-        (bpm) => {
-          const formatted = formatBpm(bpm);
+      fc.property(fc.option(fc.float({ min: 0, max: 300 })), (bpm) => {
+        const formatted = formatBpm(bpm);
 
-          if (bpm === null) {
-            expect(formatted).toBe("— BPM");
-          } else {
-            expect(formatted).toBe(`${Math.round(bpm)} BPM`);
-            // Verify it doesn't contain fractional part
-            expect(/\.\d+/.test(formatted)).toBe(false);
-          }
+        if (bpm === null) {
+          expect(formatted).toBe("— BPM");
+        } else {
+          expect(formatted).toBe(`${Math.round(bpm)} BPM`);
+          // Verify it doesn't contain fractional part
+          expect(/\.\d+/.test(formatted)).toBe(false);
         }
-      ),
-      { numRuns: 100 }
+      }),
+      { numRuns: 100 },
     );
   });
 
@@ -336,8 +325,8 @@ describe("Audio Session Improvements — Property Tests", () => {
         fc.option(
           fc.oneof(
             fc.constantFrom(...SOURCE_TEMPLATES.map((t) => t.id)),
-            fc.string({ maxLength: 50 }).filter((s) => !SOURCE_TEMPLATES.find((t) => t.id === s))
-          )
+            fc.string({ maxLength: 50 }).filter((s) => !SOURCE_TEMPLATES.find((t) => t.id === s)),
+          ),
         ),
         (sourceTemplateId) => {
           const label = resolveSessionTemplateLabel(sourceTemplateId);
@@ -352,9 +341,9 @@ describe("Audio Session Improvements — Property Tests", () => {
               expect(label).toBe("Unknown template");
             }
           }
-        }
+        },
       ),
-      { numRuns: 100 }
+      { numRuns: 100 },
     );
   });
 
@@ -374,8 +363,7 @@ describe("Audio Session Improvements — Property Tests", () => {
             chipText = "Synth Default";
           } else {
             chipText = `${template.icon} ${template.genre} · ${template.bpm} BPM`;
-            const showLive =
-              liveBpm != null && Math.abs(liveBpm - template.bpm) > 5;
+            const showLive = liveBpm != null && Math.abs(liveBpm - template.bpm) > 5;
             if (showLive) {
               chipText += ` → ${Math.round(liveBpm!)} live`;
             }
@@ -392,9 +380,9 @@ describe("Audio Session Improvements — Property Tests", () => {
               expect(chipText).toContain("live");
             }
           }
-        }
+        },
       ),
-      { numRuns: 100 }
+      { numRuns: 100 },
     );
   });
 
@@ -404,19 +392,16 @@ describe("Audio Session Improvements — Property Tests", () => {
 
   it("Property 9: Bookmark BPM formatting — same as session card", () => {
     fc.assert(
-      fc.property(
-        fc.option(fc.float({ min: 0, max: 300 })),
-        (suggestedBpm) => {
-          const formatted = formatBpm(suggestedBpm);
+      fc.property(fc.option(fc.float({ min: 0, max: 300 })), (suggestedBpm) => {
+        const formatted = formatBpm(suggestedBpm);
 
-          if (suggestedBpm === null) {
-            expect(formatted).toBe("— BPM");
-          } else {
-            expect(formatted).toBe(`${Math.round(suggestedBpm)} BPM`);
-          }
+        if (suggestedBpm === null) {
+          expect(formatted).toBe("— BPM");
+        } else {
+          expect(formatted).toBe(`${Math.round(suggestedBpm)} BPM`);
         }
-      ),
-      { numRuns: 100 }
+      }),
+      { numRuns: 100 },
     );
   });
 
@@ -431,8 +416,8 @@ describe("Audio Session Improvements — Property Tests", () => {
           fc.oneof(
             fc.string({ maxLength: 50 }),
             fc.constant(""),
-            fc.constantFrom("error", "warn", "info", "debug")
-          )
+            fc.constantFrom("error", "warn", "info", "debug"),
+          ),
         ),
         (level) => {
           const formatted = formatDominantLevel(level);
@@ -446,9 +431,9 @@ describe("Audio Session Improvements — Property Tests", () => {
               expect(word[0]).toBe(word[0].toUpperCase());
             });
           }
-        }
+        },
       ),
-      { numRuns: 100 }
+      { numRuns: 100 },
     );
   });
 
@@ -458,28 +443,25 @@ describe("Audio Session Improvements — Property Tests", () => {
 
   it("Property 11: Log excerpt truncation — max 120 chars, preserve if shorter", () => {
     fc.assert(
-      fc.property(
-        fc.option(fc.string({ maxLength: 500 })),
-        (logLine) => {
-          const excerpt = truncateLogExcerpt(logLine);
+      fc.property(fc.option(fc.string({ maxLength: 500 })), (logLine) => {
+        const excerpt = truncateLogExcerpt(logLine);
 
-          if (!logLine) {
-            expect(excerpt).toBe("No log excerpt available");
+        if (!logLine) {
+          expect(excerpt).toBe("No log excerpt available");
+        } else {
+          // Excerpt length never exceeds 120
+          expect(excerpt.length).toBeLessThanOrEqual(120);
+
+          // If original was <= 120, excerpt equals original
+          if (logLine.length <= 120) {
+            expect(excerpt).toBe(logLine);
           } else {
-            // Excerpt length never exceeds 120
-            expect(excerpt.length).toBeLessThanOrEqual(120);
-
-            // If original was <= 120, excerpt equals original
-            if (logLine.length <= 120) {
-              expect(excerpt).toBe(logLine);
-            } else {
-              // Else it's the first 120 chars
-              expect(excerpt).toBe(logLine.slice(0, 120));
-            }
+            // Else it's the first 120 chars
+            expect(excerpt).toBe(logLine.slice(0, 120));
           }
         }
-      ),
-      { numRuns: 100 }
+      }),
+      { numRuns: 100 },
     );
   });
 });

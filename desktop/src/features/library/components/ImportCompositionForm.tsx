@@ -9,10 +9,7 @@ import type {
   LibraryTrack,
   RepositoryAnalysis,
 } from "../../../types/library";
-import {
-  getPlaylistMedianBpm,
-  summarizePlaylistTracks,
-} from "../../../utils/playlist";
+import { getPlaylistMedianBpm, summarizePlaylistTracks } from "../../../utils/playlist";
 import { getTrackTitle } from "../../../utils/track";
 
 interface ImportCompositionFormProps {
@@ -84,13 +81,11 @@ export function ImportCompositionForm({
     }
   }, [structureId, repositories]);
 
-  const selectedBaseAsset =
-    baseAssets.find((entry) => entry.id === baseAssetId) ?? null;
+  const selectedBaseAsset = baseAssets.find((entry) => entry.id === baseAssetId) ?? null;
   const selectedTrack = tracks.find((entry) => entry.id === trackId) ?? null;
-  const selectedPlaylist =
-    playlists.find((entry) => entry.id === playlistId) ?? null;
+  const selectedPlaylist = playlists.find((entry) => entry.id === playlistId) ?? null;
   const selectedStructure = structureId
-    ? repositories.find((entry) => entry.id === structureId) ?? null
+    ? (repositories.find((entry) => entry.id === structureId) ?? null)
     : null;
   const selectedPlaylistBpm = getPlaylistMedianBpm(selectedPlaylist, tracks);
 
@@ -148,8 +143,8 @@ export function ImportCompositionForm({
         <div>
           <h2>Create composition result</h2>
           <p className="support-copy">
-            Start from one deck track or a saved base playlist, then let code or logs reshape
-            the arrangement while Maia keeps the groove DJ-readable.
+            Start from one deck track or a saved base playlist, then let code or logs reshape the
+            arrangement while Maia keeps the groove DJ-readable.
           </p>
         </div>
       </div>
@@ -274,8 +269,8 @@ export function ImportCompositionForm({
         <div className="style-preview">
           <strong>{selectedStructure.title}</strong>
           <p>
-            Structure source at {selectedStructure.suggestedBpm?.toFixed(0) ?? "?"} BPM
-            (anomalies will drive variations)
+            Structure source at {selectedStructure.suggestedBpm?.toFixed(0) ?? "?"} BPM (anomalies
+            will drive variations)
           </p>
         </div>
       ) : null}
@@ -291,8 +286,8 @@ export function ImportCompositionForm({
 
       <p className="field-hint">
         Composition results are arrangement plans with preview artifacts, phrase sections, cue
-        points, and a managed internal `preview.wav`. The chosen base track or playlist provides
-        the groove frame, and anomalies from the code/log source modulate the arrangement.
+        points, and a managed internal `preview.wav`. The chosen base track or playlist provides the
+        groove frame, and anomalies from the code/log source modulate the arrangement.
       </p>
 
       {error ? <p className="inline-error">{error}</p> : null}
@@ -302,12 +297,16 @@ export function ImportCompositionForm({
           type="submit"
           className="action"
           disabled={
-            busy ||
-            baseAssets.length === 0 ||
-            (baseMode === "track" ? !trackId : !playlistId)
+            busy || baseAssets.length === 0 || (baseMode === "track" ? !trackId : !playlistId)
           }
         >
-          {busy ? <><span className="spin-ring" aria-hidden="true" /> Composing...</> : "Create composition"}
+          {busy ? (
+            <>
+              <span className="spin-ring" aria-hidden="true" /> Composing...
+            </>
+          ) : (
+            "Create composition"
+          )}
         </button>
       </div>
     </form>

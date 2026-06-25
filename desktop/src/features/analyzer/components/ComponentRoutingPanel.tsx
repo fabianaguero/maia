@@ -1,4 +1,5 @@
 import type { ComponentOverride } from "./liveSonificationScene";
+import { useT } from "../../../i18n/I18nContext";
 import { resolveComponentRoute } from "./liveSonificationScene";
 
 // ---------------------------------------------------------------------------
@@ -33,6 +34,7 @@ export function ComponentRoutingPanel({
   onOverrideChange,
   liveActive,
 }: ComponentRoutingPanelProps) {
+  const t = useT();
   const displayComponents =
     knownComponents.length > 0 ? knownComponents : liveActive ? [] : MOCK_COMPONENTS;
   const isMock = knownComponents.length === 0 && !liveActive;
@@ -61,38 +63,34 @@ export function ComponentRoutingPanel({
     <section className="panel">
       <div className="panel-header compact">
         <div>
-          <h2>Component routing</h2>
+          <h2>{t.inspect.componentRouting}</h2>
           <p className="support-copy">
             {isMock
-              ? "Preview — mock components shown before first live session. Controls become active on live tail start."
+              ? t.inspect.componentRoutingPreview
               : knownComponents.length === 0
-                ? "No components detected yet. Start a live tail session to populate this table."
-                : "Per-component gain and mute controls. Pan and pitch are auto-assigned by detection order."}
+                ? t.inspect.componentRoutingEmpty
+                : t.inspect.componentRoutingLive}
           </p>
         </div>
         {displayComponents.length > 0 && (
-          <button
-            type="button"
-            className="secondary-action"
-            onClick={resetAll}
-          >
-            Reset all
+          <button type="button" className="secondary-action" onClick={resetAll}>
+            {t.inspect.resetAll}
           </button>
         )}
       </div>
 
       {displayComponents.length === 0 ? (
         <div className="empty-state">
-          <p>Waiting for live log events…</p>
+          <p>{t.inspect.waitingLiveLogEvents}</p>
         </div>
       ) : (
         <div className={`component-route-table${isMock ? " component-route-table--mock" : ""}`}>
           <div className="component-route-header">
-            <span>Component</span>
-            <span>Pan</span>
-            <span>Pitch ×</span>
-            <span>Gain</span>
-            <span>Mute</span>
+            <span>{t.inspect.component}</span>
+            <span>{t.inspect.pan}</span>
+            <span>{t.inspect.pitchMultiplier}</span>
+            <span>{t.inspect.gain}</span>
+            <span>{t.inspect.mute}</span>
           </div>
 
           {displayComponents.map((component) => {
@@ -110,13 +108,9 @@ export function ComponentRoutingPanel({
                   {component}
                 </span>
 
-                <span className="component-route-pill">
-                  {panLabel(route.pan)}
-                </span>
+                <span className="component-route-pill">{panLabel(route.pan)}</span>
 
-                <span className="component-route-pill">
-                  ×{route.noteMultiplier.toFixed(2)}
-                </span>
+                <span className="component-route-pill">×{route.noteMultiplier.toFixed(2)}</span>
 
                 <label className="component-route-gain">
                   <input
@@ -126,7 +120,7 @@ export function ComponentRoutingPanel({
                     step={0.05}
                     value={gain}
                     disabled={muted || isMock}
-                    aria-label={`Gain for ${component}`}
+                    aria-label={t.inspect.gainFor.replace("{component}", component)}
                     onChange={(e) => setGain(component, Number(e.target.value))}
                   />
                   <span>{(gain * 100).toFixed(0)} %</span>
@@ -137,10 +131,14 @@ export function ComponentRoutingPanel({
                   className={`component-mute-btn${muted ? " component-mute-btn--active" : ""}`}
                   disabled={isMock}
                   aria-pressed={muted}
-                  aria-label={`${muted ? "Unmute" : "Mute"} ${component}`}
+                  aria-label={
+                    muted
+                      ? t.inspect.unmuteNamed.replace("{component}", component)
+                      : t.inspect.muteNamed.replace("{component}", component)
+                  }
                   onClick={() => toggleMute(component)}
                 >
-                  {muted ? "Unmute" : "Mute"}
+                  {muted ? t.inspect.unmuteAction : t.inspect.muteAction}
                 </button>
               </div>
             );

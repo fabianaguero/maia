@@ -1,21 +1,47 @@
 import React, { useState, useEffect, useRef } from "react";
 import { flushSync } from "react-dom";
-import { Play, Pause, Square, Music, AlertCircle, Clock, RefreshCw } from "lucide-react";
 
 import type { ActiveMonitorSession, MonitorMetrics } from "../monitor/MonitorContext";
 import { listLogSourceConnections } from "../../api/repositories";
 import type { PersistedSession } from "../../api/sessions";
+import { useT } from "../../i18n/I18nContext";
+import { getStreamAdapterCode } from "../../utils/monitorLabels";
 import type {
-  BeatGridPoint,
   LibraryTrack,
-  LiveLogCue,
+  LiveLogStreamUpdate,
   LiveLogMarker,
   LogSourceConnection,
   RepositoryAnalysis,
 } from "../../types/library";
-import { getTrackTitle as getLibraryTrackTitle, resolvePlayableTrackPath } from "../../utils/track";
-import { resolvePreviewAudioUrl, revokePreviewAudioUrl } from "../../utils/audioPreview";
-import { TrackWaveformMini } from "../../components/TrackWaveformMini";
+import { getTrackTitle as getLibraryTrackTitle } from "../../utils/track";
+import { buildMonitorTrackMutationPlan } from "./monitorAudioMutation";
+import { renderMonitorDeckCanvas, renderMonitorOverviewCanvas } from "./monitorDeckCanvas";
+import type { MonitorDeckControls } from "./monitorDeckControls";
+import { useMonitorDeckControls } from "./useMonitorDeckControls";
+import { useMonitorDeckScrub } from "./useMonitorDeckScrub";
+import { useMonitorLiveStream } from "./useMonitorLiveStream";
+import { useMonitorTrackAudio } from "./useMonitorTrackAudio";
+import { SimpleMonitorActiveView } from "./SimpleMonitorActiveView";
+import { SimpleMonitorIdleView } from "./SimpleMonitorIdleView";
+import {
+  buildDeckBeatMarkers,
+  buildDeckTimelineMarkers,
+  buildMonitorDeckDerivedState,
+  resolveVisibleWindowSeconds,
+  sampleTrackWaveWindow,
+} from "./monitorDeckViewModel";
+import { sortMonitorSessions } from "./monitorSessions";
+import {
+  buildMonitorSourceCopy,
+  buildMonitorSourceSelectionModel,
+  shouldResetSelectedSource,
+  type MonitorLaunchSource,
+  type MonitorSourceFilter,
+} from "./monitorSourceOptions";
+import {
+  buildSimpleMonitorScreenViewModel,
+  resolveSimpleMonitorActiveTrack,
+} from "./simpleMonitorViewModel";
 
 interface SimpleMonitorScreenProps {
   session: ActiveMonitorSession | null;
@@ -29,19 +55,11 @@ interface SimpleMonitorScreenProps {
   audioContext: AudioContext | null;
   onStartMonitoring: (source: MonitorLaunchSource, trackId?: string) => void | Promise<void>;
   onReplaySession: (sessionId: string, sourcePath: string, repoTitle: string) => void;
-  subscribe: (listener: (update: any) => void) => () => void;
+  subscribe: (listener: (update: LiveLogStreamUpdate) => void) => () => void;
   trackName?: string;
   waveformBins?: number[]; // New prop
   isConsoleExpanded?: boolean;
   onToggleConsole?: () => void;
-}
-
-interface SessionRecord {
-  id: string;
-  name: string;
-  source: string;
-  anomalies: number;
-  duration: string;
 }
 
 interface BackgroundTrackGraph {
@@ -56,212 +74,11 @@ interface BackgroundTrackGraph {
   deckGain: GainNode;
 }
 
-interface MonitorLogLine {
-  id: string;
-  timestamp: string;
-  level: string;
-  message: string;
-  isAnomaly: boolean;
-  anomalyId: string | null;
-}
-
-interface WaveformAnomalyMarker {
-  id: string;
-  lineId: string;
-  timestamp: string;
-  message: string;
-  severity: number;
-  progress: number;
-}
-
-interface LogWaveOverlayPoint {
-  level: number;
-  heat: number;
-}
-
-interface DeckSelectedMarker {
-  id: string;
-  severity: number;
-  progress: number;
-  timestamp: string;
-  message: string;
-}
-
-interface OverviewAnomalyDensityPoint {
-  warning: number;
-  critical: number;
-}
-
-interface AnomalyBurstRegion {
-  id: string;
-  startProgress: number;
-  endProgress: number;
-  severity: number;
-  count: number;
-}
-
-const MONITOR_LIVE_LINES_LIMIT = 1_200;
-
-function formatCloudTimestamp(isoTimestamp: string): string {
-  const trimmed = isoTimestamp.trim();
-  if (!trimmed) {
-    return new Date().toLocaleTimeString().split(" ")[0];
-  }
-
-  const parsedMs = Date.parse(trimmed);
-  if (!Number.isNaN(parsedMs)) {
-    const date = new Date(parsedMs);
-    const year = date.getFullYear();
-    const month = `${date.getMonth() + 1}`.padStart(2, "0");
-    const day = `${date.getDate()}`.padStart(2, "0");
-    const hours = `${date.getHours()}`.padStart(2, "0");
-    const minutes = `${date.getMinutes()}`.padStart(2, "0");
-    const seconds = `${date.getSeconds()}`.padStart(2, "0");
-    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-  }
-
-  return trimmed.replace("T", " ").replace(/\.\d+(?=Z?$)/, "");
-}
-
-function isMonitorAnomaly(level: "trace" | "debug" | "info" | "warn" | "error", message: string): boolean {
-  if (level === "error" || level === "warn") {
-    return true;
-  }
-
-  return /\banomal(?:y|ia|ies)?\b|\btimeout\b|\bexception\b|\bfailed\b|\bfatal\b|\bpanic\b|\bunavailable\b|\binternal server error\b/i.test(
-    message,
-  );
-}
-
-function normalizeMonitorLevel(rawLevel: string): "trace" | "debug" | "info" | "warn" | "error" {
-  const level = rawLevel.trim().toLowerCase();
-  if (level === "warning") return "warn";
-  if (level === "notice") return "info";
-  if (level === "fatal" || level === "critical") return "error";
-  if (level === "trace" || level === "debug" || level === "info" || level === "warn" || level === "error") {
-    return level;
-  }
-  return "info";
-}
-
-function parseMonitorLogLine(raw: string, lineIndex: number): MonitorLogLine {
-  const cloudSeverityFirstPattern = /^([A-Z]+)\s+(\d{4}-\d{2}-\d{2}T\S+)\s+(.*)$/;
-  const cloudSeverityFirstMatch = raw.match(cloudSeverityFirstPattern);
-  if (cloudSeverityFirstMatch) {
-    const level = normalizeMonitorLevel(cloudSeverityFirstMatch[1] || "INFO");
-    const isoTimestamp = cloudSeverityFirstMatch[2] ?? "";
-    const message = (cloudSeverityFirstMatch[3] || "").trim() || raw.trim();
-    const displayTimestamp = formatCloudTimestamp(isoTimestamp);
-    const isAnomaly = isMonitorAnomaly(level, message);
-    const anomalyId = isAnomaly
-      ? `${displayTimestamp}-${lineIndex}-${message.slice(0, 48)}`
-      : null;
-
-    return {
-      id: `${displayTimestamp}-${lineIndex}-${message.slice(0, 64)}`,
-      timestamp: displayTimestamp,
-      level,
-      message,
-      isAnomaly,
-      anomalyId,
-    };
-  }
-
-  const cloudTabPattern = /^(\d{4}-\d{2}-\d{2}T[^\t]+)\t([A-Z]+)?\t(.*)$/;
-  const cloudMatch = raw.match(cloudTabPattern);
-  if (cloudMatch) {
-    const isoTimestamp = cloudMatch[1] ?? "";
-    const level = normalizeMonitorLevel(cloudMatch[2] || "INFO");
-    const message = (cloudMatch[3] || "").trim() || raw.trim();
-    const displayTimestamp = formatCloudTimestamp(isoTimestamp);
-    const isAnomaly = isMonitorAnomaly(level, message);
-    const anomalyId = isAnomaly
-      ? `${displayTimestamp}-${lineIndex}-${message.slice(0, 48)}`
-      : null;
-
-    return {
-      id: `${displayTimestamp}-${lineIndex}-${message.slice(0, 64)}`,
-      timestamp: displayTimestamp,
-      level,
-      message,
-      isAnomaly,
-      anomalyId,
-    };
-  }
-
-  const levelMatch = raw.match(/\[(ERROR|WARN|INFO|DEBUG|TRACE)\]/i);
-  const level = normalizeMonitorLevel(levelMatch ? levelMatch[1] : "info");
-  const tsMatch = raw.match(/\[(.*?)\]/);
-  const timestamp = tsMatch ? tsMatch[1] : new Date().toLocaleTimeString().split(" ")[0];
-  const message = raw.replace(/\[.*?\]\s*\[.*?\]\s*/, "");
-  const isAnomaly = isMonitorAnomaly(level, message);
-  const anomalyId = isAnomaly
-    ? `${timestamp}-${lineIndex}-${message.slice(0, 48)}`
-    : null;
-
-  return {
-    id: `${timestamp}-${lineIndex}-${message.slice(0, 64)}`,
-    timestamp,
-    level,
-    message,
-    isAnomaly,
-    anomalyId,
-  };
-}
-
-function formatAdapterStatus(adapterKind: ActiveMonitorSession["adapterKind"] | undefined): string {
-  switch (adapterKind) {
-    case "process":
-      return "PROCESS_TAIL";
-    case "http-poll":
-      return "HTTP_POLL";
-    case "websocket":
-      return "WEBSOCKET_STREAM";
-    case "journald":
-      return "JOURNALD_STREAM";
-    case "file":
-    default:
-      return "FILE_TAIL";
-  }
-}
-
 function getTrackTitle(track: LibraryTrack): string {
   return getLibraryTrackTitle(track);
 }
 
-function resolveSessionSortTimestamp(session: PersistedSession): number {
-  const updatedAt = Date.parse(session.updatedAt);
-  if (Number.isFinite(updatedAt)) {
-    return updatedAt;
-  }
-
-  const createdAt = Date.parse(session.createdAt);
-  return Number.isFinite(createdAt) ? createdAt : 0;
-}
-
-function formatSessionUpdatedAt(timestamp: string | null | undefined): string {
-  if (!timestamp) {
-    return "No recent update";
-  }
-
-  const parsed = Date.parse(timestamp);
-  if (!Number.isFinite(parsed)) {
-    return "No recent update";
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(parsed));
-}
-
-function formatSessionLineCount(value: number): string {
-  return `${value.toLocaleString()} lines`;
-}
-
-function createDriveCurve(amount: number): Float32Array {
+function createDriveCurve(amount: number): Float32Array<ArrayBuffer> {
   const samples = 2048;
   const curve = new Float32Array(samples);
   const drive = Math.max(0.1, amount);
@@ -269,63 +86,10 @@ function createDriveCurve(amount: number): Float32Array {
     const x = (i * 2) / (samples - 1) - 1;
     curve[i] = Math.tanh(x * drive);
   }
-  return curve;
+  return curve as Float32Array<ArrayBuffer>;
 }
 
-function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, value));
-}
-
-function safeDisconnect(node: { disconnect: () => void } | null | undefined): void {
-  if (!node) {
-    return;
-  }
-
-  try {
-    node.disconnect();
-  } catch (error) {
-    console.warn("WebAudio disconnect skipped", error);
-  }
-}
-
-function safeRevokePreviewAudioUrl(url: string | null | undefined): void {
-  if (!url) {
-    return;
-  }
-
-  try {
-    revokePreviewAudioUrl(url);
-  } catch (error) {
-    console.warn("Preview URL revoke skipped", error);
-  }
-}
-
-function getBasename(path: string | null | undefined): string {
-  if (!path) {
-    return "unknown-source";
-  }
-
-  const segments = path.split("/");
-  return segments[segments.length - 1] || path;
-}
-
-function truncateMiddle(value: string | null | undefined, maxLength = 56): string {
-  if (!value) {
-    return "unknown";
-  }
-  if (value.length <= maxLength) {
-    return value;
-  }
-
-  const half = Math.max(8, Math.floor((maxLength - 3) / 2));
-  return `${value.slice(0, half)}...${value.slice(-half)}`;
-}
-
-function safeElementScrollTo(
-  element: HTMLDivElement,
-  top: number,
-  behavior: ScrollBehavior,
-): void {
+function safeElementScrollTo(element: HTMLDivElement, top: number, behavior: ScrollBehavior): void {
   if (typeof element.scrollTo === "function") {
     element.scrollTo({ top, behavior });
     return;
@@ -334,823 +98,11 @@ function safeElementScrollTo(
   element.scrollTop = top;
 }
 
-function formatDeckTime(seconds: number | null): string {
-  if (typeof seconds !== "number" || Number.isNaN(seconds) || seconds < 0) {
-    return "--:--";
-  }
-
-  const rounded = Math.floor(seconds);
-  const minutes = Math.floor(rounded / 60);
-  const remainder = rounded % 60;
-  return `${minutes}:${remainder.toString().padStart(2, "0")}`;
-}
-
-function resolveBeatDurationSeconds(
-  bpm: number | null | undefined,
-  beatGrid: readonly BeatGridPoint[] | null | undefined,
-): number {
-  if (beatGrid && beatGrid.length > 1) {
-    const spacing = beatGrid[1]!.second - beatGrid[0]!.second;
-    if (spacing > 0 && Number.isFinite(spacing)) {
-      return spacing;
-    }
-  }
-
-  if (typeof bpm === "number" && Number.isFinite(bpm) && bpm > 0) {
-    return 60 / bpm;
-  }
-
-  return 60 / 124;
-}
-
-function resolveVisibleWindowSeconds(
-  bpm: number | null | undefined,
-  beatGrid: readonly BeatGridPoint[] | null | undefined,
-): number {
-  return Math.max(6, Math.min(18, resolveBeatDurationSeconds(bpm, beatGrid) * 16));
-}
-
-function quantizeProgressToBeatGrid(
-  progress: number,
-  durationSeconds: number | null | undefined,
-  bpm: number | null | undefined,
-  beatGrid: readonly BeatGridPoint[] | null | undefined,
-  subdivision = 0.25,
-): number {
-  if (
-    typeof durationSeconds !== "number" ||
-    !Number.isFinite(durationSeconds) ||
-    durationSeconds <= 0
-  ) {
-    return clamp01(progress);
-  }
-
-  const currentSecond = clamp01(progress) * durationSeconds;
-  const beatDuration = resolveBeatDurationSeconds(bpm, beatGrid);
-  const gridStep = Math.max(0.05, beatDuration * subdivision);
-  const quantizedSecond = Math.round(currentSecond / gridStep) * gridStep;
-  return clamp01(quantizedSecond / durationSeconds);
-}
-
-function buildDeckTimelineMarkers(
-  progress: number,
-  durationSeconds: number | null,
-  bpm: number | null | undefined,
-  beatGrid: readonly BeatGridPoint[] | null | undefined,
-  markerCount = 7,
-): Array<{ id: string; leftPercent: number; label: string; emphasis: "major" | "minor" | "playhead" }> {
-  if (typeof durationSeconds !== "number" || !Number.isFinite(durationSeconds) || durationSeconds <= 0) {
-    return [];
-  }
-
-  const visibleWindowSeconds = resolveVisibleWindowSeconds(bpm, beatGrid);
-  const halfWindowSeconds = visibleWindowSeconds / 2;
-  const centerSecond = clamp01(progress) * durationSeconds;
-  const startSecond = Math.max(0, centerSecond - halfWindowSeconds);
-  const endSecond = Math.min(durationSeconds, centerSecond + halfWindowSeconds);
-  const visibleSpan = Math.max(1, endSecond - startSecond);
-  const step = visibleSpan / (markerCount - 1);
-
-  return Array.from({ length: markerCount }, (_, index) => {
-    const second = Math.min(durationSeconds, startSecond + step * index);
-    const leftPercent = ((second - startSecond) / visibleSpan) * 100;
-    const emphasis =
-      index === Math.floor(markerCount / 2)
-        ? "playhead"
-        : index % 2 === 0
-          ? "major"
-          : "minor";
-    return {
-      id: `deck-marker-${index}-${second.toFixed(2)}`,
-      leftPercent,
-      label: formatDeckTime(second),
-      emphasis,
-    };
-  });
-}
-
-const MONITOR_TRACK_WINDOW_POINTS = 420;
-const MONITOR_TRACK_STRIP_MULTIPLIER = 3;
 const SAFE_MONITOR_RUNTIME = false;
 
-function densifyWaveformBins(
-  bins: number[] | null | undefined,
-  minimumLength = 512,
-): number[] {
-  if (!bins || bins.length === 0) {
-    return [];
-  }
-  if (bins.length >= minimumLength) {
-    return bins;
-  }
-
-  return Array.from({ length: minimumLength }, (_, index) => {
-    const sourceIndex = (index / Math.max(1, minimumLength - 1)) * Math.max(0, bins.length - 1);
-    const leftIndex = Math.floor(sourceIndex);
-    const rightIndex = Math.min(bins.length - 1, leftIndex + 1);
-    const ratio = sourceIndex - leftIndex;
-    const left = bins[leftIndex] ?? 0;
-    const right = bins[rightIndex] ?? left;
-    const interpolated = left + (right - left) * ratio;
-    const derivative = Math.abs(right - left);
-    const microTexture =
-      Math.sin(index * 0.37) * derivative * 0.18 +
-      Math.sin(index * 0.11) * derivative * 0.12;
-    return Math.max(0.02, Math.min(1, interpolated + microTexture));
-  });
-}
-
-function sampleTrackWaveWindow(
-  bins: number[] | null | undefined,
-  progress: number,
-  durationSeconds: number | null | undefined,
-  bpm: number | null | undefined,
-  beatGrid: readonly BeatGridPoint[] | null | undefined,
-  points = MONITOR_TRACK_WINDOW_POINTS,
-): number[] {
-  if (!bins || bins.length === 0) {
-    return Array.from({ length: points }, (_, index) => {
-      const phase = index / points;
-      return 0.14 + Math.sin(phase * Math.PI * 5) * 0.06 + (index % 17 === 0 ? 0.15 : 0);
-    });
-  }
-
-  const denseBins = densifyWaveformBins(bins);
-  const globalMax = Math.max(...denseBins, 1);
-  const normalized = denseBins.map((value) => Math.max(0, Math.min(1, value / globalMax)));
-  const duration =
-    typeof durationSeconds === "number" && Number.isFinite(durationSeconds) && durationSeconds > 0
-      ? durationSeconds
-      : normalized.length;
-  const visibleWindowSeconds = resolveVisibleWindowSeconds(bpm, beatGrid);
-  const halfWindowSeconds = visibleWindowSeconds / 2;
-  const centerSecond = clamp01(progress) * duration;
-  const startSecond = Math.max(0, centerSecond - halfWindowSeconds);
-  const endSecond = Math.min(duration, centerSecond + halfWindowSeconds);
-  const visibleSpanSeconds = Math.max(1, endSecond - startSecond);
-
-  const windowSamples = Array.from({ length: points }, (_, index) => {
-    const second = startSecond + (index / Math.max(1, points - 1)) * visibleSpanSeconds;
-    const centerIndex = Math.floor((second / duration) * normalized.length);
-    const leftIndex = Math.max(0, centerIndex - 2);
-    const rightIndex = Math.min(normalized.length - 1, centerIndex + 2);
-    let peak = 0;
-    let sum = 0;
-    let count = 0;
-    for (let sourceIndex = leftIndex; sourceIndex <= rightIndex; sourceIndex += 1) {
-      const value = normalized[sourceIndex] ?? 0;
-      peak = Math.max(peak, value);
-      sum += value;
-      count += 1;
-    }
-    const average = count > 0 ? sum / count : normalized[Math.max(0, Math.min(normalized.length - 1, centerIndex))] ?? 0;
-    return peak * 0.68 + average * 0.32;
-  });
-
-  return windowSamples.map((value, index) => {
-    const previous = windowSamples[Math.max(0, index - 1)] ?? value;
-    const next = windowSamples[Math.min(windowSamples.length - 1, index + 1)] ?? value;
-    const localAverage = (previous + value + next) / 3;
-    const localDelta = Math.abs(value - previous) + Math.abs(next - value);
-    const body = Math.pow(Math.max(0.02, localAverage), 0.92);
-    const transientLift = Math.min(0.12, localDelta * 0.72);
-    return Math.max(0.06, Math.min(1, body * 0.88 + transientLift));
-  });
-}
-
-function buildDeckBeatMarkers(
-  progress: number,
-  durationSeconds: number | null,
-  bpm: number | null | undefined,
-  beatGrid: readonly BeatGridPoint[] | null | undefined,
-): Array<{ id: string; leftPercent: number; major: boolean }> {
-  if (typeof durationSeconds !== "number" || !Number.isFinite(durationSeconds) || durationSeconds <= 0) {
-    return [];
-  }
-
-  const beatDuration = resolveBeatDurationSeconds(bpm, beatGrid);
-  const visibleWindowSeconds = resolveVisibleWindowSeconds(bpm, beatGrid);
-  const halfWindowSeconds = visibleWindowSeconds / 2;
-  const centerSecond = clamp01(progress) * durationSeconds;
-  const startSecond = Math.max(0, centerSecond - halfWindowSeconds);
-  const endSecond = Math.min(durationSeconds, centerSecond + halfWindowSeconds);
-  const visibleSpan = Math.max(1, endSecond - startSecond);
-
-  const beats =
-    beatGrid && beatGrid.length > 0
-      ? beatGrid.filter((beat) => beat.second >= startSecond && beat.second <= endSecond)
-      : Array.from({ length: Math.ceil(visibleSpan / beatDuration) + 2 }, (_, index) => ({
-          index,
-          second: startSecond + index * beatDuration,
-        })).filter((beat) => beat.second <= endSecond);
-
-  return beats.map((beat, index) => ({
-    id: `deck-beat-${beat.index}-${beat.second.toFixed(3)}`,
-    leftPercent: ((beat.second - startSecond) / visibleSpan) * 100,
-    major: (beat.index ?? index) % 4 === 0,
-  }));
-}
-
-function sampleOverviewWave(
-  bins: number[] | null | undefined,
-  points = 320,
-): number[] {
-  if (!bins || bins.length === 0) {
-    return Array.from({ length: points }, (_, index) => {
-      const phase = index / points;
-      return 0.12 + Math.sin(phase * Math.PI * 8) * 0.05;
-    });
-  }
-
-  const denseBins = densifyWaveformBins(bins);
-  const max = Math.max(...denseBins, 1);
-  return Array.from({ length: points }, (_, index) => {
-    const sourceIndex = Math.floor((index / Math.max(1, points - 1)) * denseBins.length);
-    const value = denseBins[Math.min(sourceIndex, denseBins.length - 1)] ?? 0;
-    return Math.max(0.05, Math.min(1, value / max));
-  });
-}
-
-function sampleOverviewAnomalyDensity(
-  markers: WaveformAnomalyMarker[],
-  points = 160,
-): OverviewAnomalyDensityPoint[] {
-  if (markers.length === 0) {
-    return Array.from({ length: points }, () => ({ warning: 0, critical: 0 }));
-  }
-
-  return Array.from({ length: points }, (_, index) => {
-    const progress = index / Math.max(1, points - 1);
-    let warning = 0;
-    let critical = 0;
-
-    markers.forEach((marker) => {
-      const distance = Math.abs(marker.progress - progress);
-      if (distance > 0.08) {
-        return;
-      }
-
-      const falloff = Math.max(0, 1 - distance / 0.08);
-      const weight = falloff * falloff * (0.45 + marker.severity * 0.55);
-      if (marker.severity >= 0.9) {
-        critical += weight;
-      } else {
-        warning += weight;
-      }
-    });
-
-    return {
-      warning: Math.min(1, warning),
-      critical: Math.min(1, critical),
-    };
-  });
-}
-
-function buildAnomalyBurstRegions(
-  markers: WaveformAnomalyMarker[],
-  gapThreshold = 0.03,
-  padding = 0.008,
-): AnomalyBurstRegion[] {
-  if (markers.length === 0) {
-    return [];
-  }
-
-  const sorted = [...markers].sort((left, right) => left.progress - right.progress);
-  const regions: AnomalyBurstRegion[] = [];
-
-  let current = {
-    start: sorted[0]!.progress,
-    end: sorted[0]!.progress,
-    severity: sorted[0]!.severity,
-    count: 1,
-  };
-
-  for (let index = 1; index < sorted.length; index += 1) {
-    const marker = sorted[index]!;
-    if (marker.progress - current.end <= gapThreshold) {
-      current.end = marker.progress;
-      current.severity = Math.max(current.severity, marker.severity);
-      current.count += 1;
-      continue;
-    }
-
-    regions.push({
-      id: `burst-${regions.length}-${current.start.toFixed(4)}`,
-      startProgress: clamp01(current.start - padding),
-      endProgress: clamp01(current.end + padding),
-      severity: current.severity,
-      count: current.count,
-    });
-
-    current = {
-      start: marker.progress,
-      end: marker.progress,
-      severity: marker.severity,
-      count: 1,
-    };
-  }
-
-  regions.push({
-    id: `burst-${regions.length}-${current.start.toFixed(4)}`,
-    startProgress: clamp01(current.start - padding),
-    endProgress: clamp01(current.end + padding),
-    severity: current.severity,
-    count: current.count,
-  });
-
-  return regions;
-}
-
-function sampleLogWaveOverlay(
-  buffer: Array<{ val: number; heat: number }>,
-  points = MONITOR_TRACK_WINDOW_POINTS,
-): LogWaveOverlayPoint[] {
-  if (buffer.length === 0) {
-    return Array.from({ length: points }, () => ({ level: 0.08, heat: 0 }));
-  }
-
-  return Array.from({ length: points }, (_, index) => {
-    const sourceIndex = (index / Math.max(1, points - 1)) * Math.max(0, buffer.length - 1);
-    const leftIndex = Math.floor(sourceIndex);
-    const rightIndex = Math.min(buffer.length - 1, leftIndex + 1);
-    const ratio = sourceIndex - leftIndex;
-    const left = buffer[leftIndex] ?? { val: 20, heat: 0 };
-    const right = buffer[rightIndex] ?? left;
-    const value = left.val + (right.val - left.val) * ratio;
-    const heat = left.heat + (right.heat - left.heat) * ratio;
-
-    return {
-      level: Math.max(0.04, Math.min(1, value / 140)),
-      heat: Math.max(0, Math.min(1, heat)),
-    };
-  });
-}
-
-function drawContinuousWaveform(
-  context: CanvasRenderingContext2D,
-  samples: number[],
-  width: number,
-  centerY: number,
-  amplitudeScale: number,
-  fillStyle: CanvasGradient | string,
-): void {
-  if (samples.length === 0) {
-    return;
-  }
-
-  const stepX = width / Math.max(1, samples.length - 1);
-  context.beginPath();
-  context.moveTo(0, centerY);
-
-  samples.forEach((value, index) => {
-    const x = index * stepX;
-    const y = centerY - value * amplitudeScale;
-    context.lineTo(x, y);
-  });
-
-  for (let index = samples.length - 1; index >= 0; index -= 1) {
-    const x = index * stepX;
-    const y = centerY + samples[index]! * amplitudeScale;
-    context.lineTo(x, y);
-  }
-
-  context.closePath();
-  context.fillStyle = fillStyle;
-  context.fill();
-}
-
-function drawAnomalyWash(
-  context: CanvasRenderingContext2D,
-  markers: WaveformAnomalyMarker[],
-  currentProgress: number,
-  width: number,
-  baseY: number,
-  amplitudeScale: number,
-): void {
-  if (markers.length === 0) {
-    return;
-  }
-
-  markers.forEach((marker) => {
-    const relative = 0.5 + (marker.progress - currentProgress) * MONITOR_TRACK_STRIP_MULTIPLIER;
-    if (relative < -0.08 || relative > 1.08) {
-      return;
-    }
-
-    const x = relative * width;
-    const zoneWidth = 10 + marker.severity * 18;
-    const zoneHeight = amplitudeScale * (0.58 + marker.severity * 0.22);
-    const alpha = marker.severity >= 0.9 ? 0.26 : 0.18;
-    const glow = context.createLinearGradient(0, baseY - zoneHeight, 0, baseY + 2);
-    glow.addColorStop(0, "rgba(255,72,108,0)");
-    glow.addColorStop(0.32, marker.severity >= 0.9 ? `rgba(255,72,108,${alpha})` : `rgba(255,188,96,${alpha * 0.9})`);
-    glow.addColorStop(0.76, marker.severity >= 0.9 ? `rgba(255,132,84,${alpha * 0.92})` : `rgba(255,220,112,${alpha * 0.86})`);
-    glow.addColorStop(1, "rgba(255,72,108,0)");
-    context.fillStyle = glow;
-    context.fillRect(x - zoneWidth / 2, baseY - zoneHeight, zoneWidth, zoneHeight + 4);
-
-    context.fillStyle = marker.severity >= 0.9 ? "rgba(255,76,110,0.54)" : "rgba(255,194,102,0.42)";
-    context.fillRect(x - 1.25, baseY - zoneHeight * 0.76, 2.5, zoneHeight * 0.72);
-  });
-}
-
-function drawPhraseRibbon(
-  context: CanvasRenderingContext2D,
-  samples: number[],
-  width: number,
-  topY: number,
-  ribbonHeight: number,
-  steps = 42,
-): void {
-  if (samples.length === 0 || steps <= 0) {
-    return;
-  }
-
-  const blockWidth = width / steps;
-  for (let step = 0; step < steps; step += 1) {
-    const start = Math.floor((step / steps) * samples.length);
-    const end = Math.max(start + 1, Math.floor(((step + 1) / steps) * samples.length));
-    let sum = 0;
-    let peak = 0;
-    let count = 0;
-    for (let index = start; index < end; index += 1) {
-      const value = samples[index] ?? 0;
-      sum += value;
-      peak = Math.max(peak, value);
-      count += 1;
-    }
-
-    const avg = count > 0 ? sum / count : 0;
-    const energy = Math.max(avg, peak * 0.82);
-    const x = step * blockWidth;
-    const fillHeight = ribbonHeight * (0.42 + energy * 0.58);
-    const y = topY + (ribbonHeight - fillHeight);
-
-    let color = "rgba(111, 220, 255, 0.8)";
-    if (energy >= 0.78) {
-      color = "rgba(255, 126, 82, 0.88)";
-    } else if (energy >= 0.6) {
-      color = "rgba(255, 198, 82, 0.84)";
-    } else if (energy >= 0.38) {
-      color = "rgba(196, 255, 104, 0.82)";
-    }
-
-    context.fillStyle = color;
-    context.fillRect(x, y, Math.max(3, blockWidth - 1), fillHeight);
-  }
-}
-
-function drawTrackEnergyBand(
-  context: CanvasRenderingContext2D,
-  samples: number[],
-  width: number,
-  topY: number,
-  bandHeight: number,
-  steps = 96,
-): void {
-  if (samples.length === 0 || steps <= 0) {
-    return;
-  }
-
-  const blockWidth = width / steps;
-  for (let step = 0; step < steps; step += 1) {
-    const start = Math.floor((step / steps) * samples.length);
-    const end = Math.max(start + 1, Math.floor(((step + 1) / steps) * samples.length));
-    let sum = 0;
-    let peak = 0;
-    let count = 0;
-    for (let index = start; index < end; index += 1) {
-      const value = samples[index] ?? 0;
-      sum += value;
-      peak = Math.max(peak, value);
-      count += 1;
-    }
-
-    const avg = count > 0 ? sum / count : 0;
-    const energy = Math.max(avg * 0.82, peak * 0.92);
-    const x = step * blockWidth;
-
-    let colorTop = "rgba(124, 214, 255, 0.82)";
-    let colorBottom = "rgba(72, 215, 255, 0.18)";
-    if (energy >= 0.82) {
-      colorTop = "rgba(255, 118, 84, 0.92)";
-      colorBottom = "rgba(255, 72, 108, 0.22)";
-    } else if (energy >= 0.62) {
-      colorTop = "rgba(255, 198, 82, 0.9)";
-      colorBottom = "rgba(255, 156, 92, 0.18)";
-    } else if (energy >= 0.4) {
-      colorTop = "rgba(200, 255, 108, 0.88)";
-      colorBottom = "rgba(120, 198, 255, 0.16)";
-    }
-
-    const gradient = context.createLinearGradient(0, topY, 0, topY + bandHeight);
-    gradient.addColorStop(0, colorTop);
-    gradient.addColorStop(1, colorBottom);
-    context.fillStyle = gradient;
-    context.fillRect(x, topY, Math.max(3, blockWidth + 0.5), bandHeight);
-  }
-}
-
-function resolveBurstFactor(markers: LiveLogMarker[] | undefined): number {
-  if (!markers || markers.length === 0) {
-    return 0;
-  }
-
-  const sorted = [...markers].sort((left, right) => left.eventIndex - right.eventIndex);
-  let groupedPairs = 0;
-  let criticalCount = 0;
-
-  for (let index = 0; index < sorted.length; index += 1) {
-    const marker = sorted[index]!;
-    if ((marker.level || "").toLowerCase() === "error") {
-      criticalCount += 1;
-    }
-
-    const next = sorted[index + 1];
-    if (next && next.eventIndex - marker.eventIndex <= 3) {
-      groupedPairs += 1;
-    }
-  }
-
-  const density = sorted.length / Math.max(4, sorted[sorted.length - 1]!.eventIndex - sorted[0]!.eventIndex + 1);
-  const clustering = groupedPairs / Math.max(1, sorted.length - 1);
-  const severity = criticalCount / Math.max(1, sorted.length);
-  return clamp01(density * 0.25 + clustering * 0.45 + severity * 0.3);
-}
-
-function drawSelectedMarkerBeam(
-  context: CanvasRenderingContext2D,
-  marker: DeckSelectedMarker | null,
-  currentProgress: number,
-  width: number,
-  topY: number,
-  height: number,
-): void {
-  if (!marker) {
-    return;
-  }
-
-  const relative = 0.5 + (marker.progress - currentProgress) * MONITOR_TRACK_STRIP_MULTIPLIER;
-  if (relative < -0.08 || relative > 1.08) {
-    return;
-  }
-
-  const x = relative * width;
-  const beam = context.createLinearGradient(x - 22, topY, x + 22, topY);
-  beam.addColorStop(0, "rgba(255,255,255,0)");
-  beam.addColorStop(0.38, marker.severity >= 0.9 ? "rgba(255,92,124,0.16)" : "rgba(255,208,108,0.14)");
-  beam.addColorStop(0.5, "rgba(255,255,255,0.9)");
-  beam.addColorStop(0.62, marker.severity >= 0.9 ? "rgba(255,92,124,0.16)" : "rgba(255,208,108,0.14)");
-  beam.addColorStop(1, "rgba(255,255,255,0)");
-  context.fillStyle = beam;
-  context.fillRect(x - 22, topY, 44, height);
-
-  context.fillStyle = marker.severity >= 0.9 ? "rgba(255,72,108,0.88)" : "rgba(255,196,92,0.82)";
-  context.fillRect(x - 1, topY, 2, height);
-}
-
-function drawQuantizedLogBlocks(
-  context: CanvasRenderingContext2D,
-  samples: LogWaveOverlayPoint[],
-  width: number,
-  baseY: number,
-  amplitudeScale: number,
-  steps = 56,
-): void {
-  if (
-    samples.length === 0 ||
-    steps <= 0 ||
-    !Number.isFinite(width) ||
-    !Number.isFinite(baseY) ||
-    !Number.isFinite(amplitudeScale)
-  ) {
-    return;
-  }
-  const blockWidth = width / steps;
-  for (let step = 0; step < steps; step += 1) {
-    const sampleIndex = Math.min(
-      samples.length - 1,
-      Math.floor((step / Math.max(1, steps - 1)) * samples.length),
-    );
-    const sample = samples[sampleIndex];
-    if (!sample) {
-      continue;
-    }
-
-    const x = step * blockWidth;
-    const drawWidth = Math.max(2, blockWidth - 1);
-    const height = amplitudeScale * (0.12 + Math.max(0.06, sample.level) * 0.72);
-    if (![x, drawWidth, height].every(Number.isFinite)) {
-      continue;
-    }
-
-    context.fillStyle = sample.heat >= 0.68
-      ? "rgba(255,96,110,0.68)"
-      : sample.heat >= 0.28
-        ? "rgba(255,194,92,0.58)"
-        : "rgba(120,198,255,0.28)";
-    context.fillRect(x, baseY - height, drawWidth, height);
-
-    if (sample.heat >= 0.68) {
-      context.fillStyle = "rgba(255,232,236,0.18)";
-      context.fillRect(x, baseY - height, drawWidth, Math.max(4, height * 0.45));
-    }
-  }
-}
-
-function drawSingleSidedWaveform(
-  context: CanvasRenderingContext2D,
-  samples: number[],
-  width: number,
-  baseY: number,
-  amplitudeScale: number,
-  fillStyle: CanvasGradient | string,
-): void {
-  if (samples.length === 0) {
-    return;
-  }
-
-  const stepX = width / Math.max(1, samples.length - 1);
-  context.beginPath();
-  context.moveTo(0, baseY);
-
-  samples.forEach((value, index) => {
-    const x = index * stepX;
-    const y = baseY - value * amplitudeScale;
-    context.lineTo(x, y);
-  });
-
-  context.lineTo(width, baseY);
-  context.closePath();
-  context.fillStyle = fillStyle;
-  context.fill();
-}
-
-function drawWaveContour(
-  context: CanvasRenderingContext2D,
-  samples: number[],
-  width: number,
-  centerY: number,
-  amplitudeScale: number,
-  strokeStyle: string,
-  lineWidth: number,
-  direction: "top" | "bottom",
-): void {
-  if (samples.length === 0) {
-    return;
-  }
-
-  const stepX = width / Math.max(1, samples.length - 1);
-  context.beginPath();
-  samples.forEach((value, index) => {
-    const x = index * stepX;
-    const y = direction === "top"
-      ? centerY - value * amplitudeScale
-      : centerY + value * amplitudeScale;
-    if (index === 0) {
-      context.moveTo(x, y);
-    } else {
-      context.lineTo(x, y);
-    }
-  });
-  context.strokeStyle = strokeStyle;
-  context.lineWidth = lineWidth;
-  context.stroke();
-}
-
-function MiniWave({ color = "var(--color-accent)", count = 20, active = true, seed = "maia" }) {
-  // Deterministic heights based on seed string using a better generator
-  const getHeights = (s: string) => {
-    let hash = 0;
-    for (let i = 0; i < s.length; i++) {
-      hash = s.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    
-    let t = Math.abs(hash);
-    return Array.from({ length: count }).map((_, i) => {
-      t = (t * 1664525 + 1013904223) >>> 0;
-      const h = (t % 70) + 15;
-      return h;
-    });
-  };
-
-  const heights = getHeights(seed);
-
-  return (
-    <div className={`visual-wave-static ${active ? "active" : ""}`}>
-      {heights.map((h, i) => (
-        <div 
-          key={i} 
-          className="wave-bar-static" 
-          style={{ 
-            backgroundColor: active ? color : 'var(--text-muted)',
-            height: `${h}%`,
-            opacity: active ? 1 : 0.3
-          }} 
-        />
-      ))}
-    </div>
-  );
-}
-
-interface ModernSelectorProps<T> {
-  label: string;
-  items: T[];
-  selectedId: string;
-  onSelect: (id: string) => void;
-  renderTitle: (item: T) => string;
-  renderSub: (item: T) => string;
-  color: string;
-  seedPrefix?: string;
-  renderAction?: (item: T, isSelected: boolean) => React.ReactNode;
-  renderWave?: (item: T, isSelected: boolean) => React.ReactNode;
-  renderBadge?: (item: T, isSelected: boolean) => React.ReactNode;
-  emptyMessage?: string;
-}
-
-function ModernSelector<T extends { id: string }>({ 
-  label, 
-  items, 
-  selectedId, 
-  onSelect, 
-  renderTitle, 
-  renderSub,
-  color,
-  seedPrefix = "item",
-  renderAction,
-  renderWave,
-  renderBadge,
-  emptyMessage = "No items available.",
-}: ModernSelectorProps<T>) {
-  return (
-    <div className="modern-selector">
-      <label className="setup-label">{label}</label>
-      <div className="selector-grid">
-        {items.length === 0 ? (
-          <div className="selector-empty">
-            <span>{emptyMessage}</span>
-          </div>
-        ) : items.map(item => {
-          const isSelected = item.id === selectedId;
-          return (
-            <div 
-              key={item.id} 
-              className={`selector-card ${isSelected ? 'selected' : ''}`}
-              onClick={() => onSelect(item.id)}
-            >
-              <div className="card-content">
-                <div className="card-head">
-                  <span className="card-title">{renderTitle(item)}</span>
-                  {renderBadge ? renderBadge(item, isSelected) : null}
-                </div>
-                <span className="card-sub">{renderSub(item)}</span>
-              </div>
-              {renderAction ? (
-                <div
-                  onClick={(event) => event.stopPropagation()}
-                  style={{ display: "flex", alignItems: "center" }}
-                >
-                  {renderAction(item, isSelected)}
-                </div>
-              ) : null}
-              <div className="card-wave">
-                {renderWave ? (
-                  renderWave(item, isSelected)
-                ) : (
-                  <MiniWave 
-                    color={color} 
-                    count={isSelected ? 14 : 6} 
-                    active={isSelected} 
-                    seed={`${seedPrefix}-${item.id}`}
-                  />
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-type MonitorSourceFilter = "all" | "file" | "folder" | "cloud";
-
-export interface MonitorLaunchSource {
-  id: string;
-  title: string;
-  sourcePath: string;
-  sourceType: Exclude<MonitorSourceFilter, "all">;
-  sourceTypeLabel: string;
-  startable: boolean;
-  origin: "repository" | "connection";
-  connectionId?: string;
-}
-
-interface MonitorSourceOption extends MonitorLaunchSource {}
-
-export function SimpleMonitorScreen({ 
-  session, 
-  metrics, 
+export function SimpleMonitorScreen({
+  session,
+  metrics,
   pastSessions,
   repositories,
   tracks,
@@ -1164,61 +116,39 @@ export function SimpleMonitorScreen({
   trackName,
   waveformBins,
   isConsoleExpanded = false,
-  onToggleConsole
+  onToggleConsole,
 }: SimpleMonitorScreenProps) {
+  const t = useT();
   const isListening = !!session;
   const safePastSessions = Array.isArray(pastSessions) ? pastSessions : [];
   const safeRepositories = Array.isArray(repositories) ? repositories : [];
   const safeTracks = Array.isArray(tracks) ? tracks : [];
   const [persistentConnections, setPersistentConnections] = useState<LogSourceConnection[]>([]);
-  const [liveLines, setLiveLines] = useState<MonitorLogLine[]>([]);
   const [selectedSourceId, setSelectedSourceId] = useState("");
   const [selectedSoundId, setSelectedSoundId] = useState("");
   const [sourceFilter, setSourceFilter] = useState<MonitorSourceFilter>("all");
   const [isLaunchingMonitor, setIsLaunchingMonitor] = useState(false);
-  const [logSignalBuffer, setLogSignalBuffer] = useState<{val: number, heat: number}[]>(new Array(120).fill({val: 10, heat: 0}));
   const [isAnomalyFilterActive, setIsAnomalyFilterActive] = useState(false);
-  const [waveformScale, setWaveformScale] = useState(1.0);
   const [trackWaveProgress, setTrackWaveProgress] = useState(0);
   const [trackElapsedSeconds, setTrackElapsedSeconds] = useState(0);
   const [trackDurationSeconds, setTrackDurationSeconds] = useState<number | null>(null);
-  const [liveSuggestedBpm, setLiveSuggestedBpm] = useState<number | null>(null);
-  const [waveformAnomalies, setWaveformAnomalies] = useState<WaveformAnomalyMarker[]>([]);
-  const [selectedAnomalyId, setSelectedAnomalyId] = useState<string | null>(null);
-  const backgroundAudioRef = useRef<HTMLAudioElement | null>(null);
   const backgroundGraphRef = useRef<BackgroundTrackGraph | null>(null);
-  const backgroundAudioUrlRef = useRef<string | null>(null);
-  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
-  const previewUrlRef = useRef<string | null>(null);
-  const audioProbePlayedRef = useRef(false);
-  const lastCueAccentAtRef = useRef(0);
-  const lastStreamEventAtRef = useRef<number>(Date.now());
-  const lastIdleNoteAtRef = useRef(0);
+  const audioContextRef = useRef<AudioContext | null>(audioContext);
+  const { deckControls } = useMonitorDeckControls();
+  const deckControlsRef = useRef<MonitorDeckControls>(deckControls);
   const smoothedPressureRef = useRef(0);
-  const [previewTrackId, setPreviewTrackId] = useState<string | null>(null);
-  const waveformStageRef = useRef<HTMLDivElement | null>(null);
-  const waveformCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const overviewCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const isOverviewScrubbingRef = useRef(false);
-  const activeOverviewPointerIdRef = useRef<number | null>(null);
-  const isDeckScrubbingRef = useRef(false);
-  const activeDeckPointerIdRef = useRef<number | null>(null);
   const terminalLinesRef = useRef<HTMLDivElement | null>(null);
   const isTailPinnedRef = useRef(true);
   const focusSelectedLogRef = useRef(false);
-  const deckScrubStartProgressRef = useRef(0);
-  const deckScrubStartRatioRef = useRef(0.5);
   const lineRefs = useRef(new Map<string, HTMLDivElement>());
-  const activeTrack =
-    safeTracks.find((track) => getTrackTitle(track) === (trackName || session?.trackName)) ?? null;
-  const deckBpm = liveSuggestedBpm ?? activeTrack?.analysis?.bpm ?? null;
-  const deckDurationSeconds = trackDurationSeconds ?? activeTrack?.analysis?.durationSeconds ?? null;
+  const activeTrack = resolveSimpleMonitorActiveTrack(safeTracks, trackName, session?.trackName);
+  const deckDurationSeconds =
+    trackDurationSeconds ?? activeTrack?.analysis?.durationSeconds ?? null;
   const activeBeatGrid = activeTrack?.analysis?.beatGrid ?? activeTrack?.beatGrid ?? [];
-  const streamAdapterLabel = formatAdapterStatus(session?.adapterKind);
+  const streamAdapterLabel = getStreamAdapterCode(session?.adapterKind);
   const isMonitorActive = isListening || isLaunchingMonitor;
   const activeTrackRef = useRef(activeTrack);
   const deckDurationSecondsRef = useRef(deckDurationSeconds);
-  const liveSuggestedBpmRef = useRef(liveSuggestedBpm);
   const trackWaveProgressRef = useRef(trackWaveProgress);
 
   useEffect(() => {
@@ -1236,13 +166,16 @@ export function SimpleMonitorScreen({
   }, [deckDurationSeconds]);
 
   useEffect(() => {
-    liveSuggestedBpmRef.current = liveSuggestedBpm;
-  }, [liveSuggestedBpm]);
-
-  useEffect(() => {
     trackWaveProgressRef.current = trackWaveProgress;
   }, [trackWaveProgress]);
 
+  useEffect(() => {
+    audioContextRef.current = audioContext;
+  }, [audioContext]);
+
+  useEffect(() => {
+    deckControlsRef.current = deckControls;
+  }, [deckControls]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1263,110 +196,39 @@ export function SimpleMonitorScreen({
     };
   }, []);
 
-  const monitorSourceOptions: MonitorSourceOption[] = safeRepositories.map((repo) => {
-    const sourceType: MonitorSourceOption["sourceType"] =
-      repo.sourceKind === "file"
-        ? "file"
-        : repo.sourceKind === "directory"
-          ? "folder"
-          : "cloud";
-
-    return {
-      id: repo.id,
-      title: repo.title,
-      sourcePath: repo.sourcePath,
-      sourceType,
-      sourceTypeLabel:
-        sourceType === "file"
-          ? "Log file"
-          : sourceType === "folder"
-            ? "Folder"
-            : "Cloud / remote",
-      startable: repo.sourceKind === "file",
-      origin: "repository",
-      connectionId: undefined,
-    };
+  const {
+    filteredMonitorSourceOptions,
+    selectedSourceOption,
+    canStartSelectedSource,
+    sourceEmptyMessage,
+    startHint,
+  } = buildMonitorSourceSelectionModel({
+    repositories: safeRepositories,
+    persistentConnections,
+    selectedSourceId,
+    selectedSoundId,
+    sourceFilter,
+    copy: buildMonitorSourceCopy(t),
   });
-
-  const cloudConnectionOptions: MonitorSourceOption[] = persistentConnections
-    .filter((connection) => connection.kind === "gcp_cloud_run")
-    .map((connection) => ({
-      id: `connection:${connection.id}`,
-      title: connection.label,
-      sourcePath: connection.sourceUri,
-      sourceType: "cloud",
-      sourceTypeLabel: "Cloud connection",
-      startable: connection.enabled,
-      origin: "connection",
-      connectionId: connection.id,
-    }));
-
-  const allMonitorSourceOptions: MonitorSourceOption[] = [
-    ...monitorSourceOptions,
-    ...cloudConnectionOptions,
-  ];
-
-  const cloudConnectionCount = cloudConnectionOptions.length;
-
-  const filteredMonitorSourceOptions = allMonitorSourceOptions.filter((source) =>
-    sourceFilter === "all" ? true : source.sourceType === sourceFilter,
-  );
-
-  const selectedSourceOption =
-    allMonitorSourceOptions.find((source) => source.id === selectedSourceId) ?? null;
   const launchingSource = selectedSourceOption;
-  const monitorSourceTitle = session?.repoTitle ?? launchingSource?.title ?? "Booting monitor";
-  const monitorSourcePath = session?.sourcePath ?? launchingSource?.sourcePath ?? "Awaiting source binding";
-  const monitorTrackTitle =
-    trackName ||
-    session?.trackName ||
-    safeTracks.find((track) => track.id === selectedSoundId)?.title ||
-    "No track selected";
-  const isConnectingMonitor = isLaunchingMonitor && !session;
+  const waveformScale = deckControls.waveformScale;
 
   useEffect(() => {
-    if (!selectedSourceId) {
-      return;
-    }
-    if (sourceFilter === "all") {
-      return;
-    }
-    if (selectedSourceOption && selectedSourceOption.sourceType !== sourceFilter) {
+    if (shouldResetSelectedSource(selectedSourceId, selectedSourceOption, sourceFilter)) {
       setSelectedSourceId("");
     }
   }, [selectedSourceId, selectedSourceOption, sourceFilter]);
 
-  const canStartSelectedSource = Boolean(selectedSourceOption?.startable);
-
-  const sourceEmptyMessage =
-    sourceFilter === "cloud"
-      ? cloudConnectionCount > 0
-        ? "Choose a saved cloud connection to start passive monitoring."
-        : "No cloud-ready log source is available here yet. Configure GCP adapters in Conexiones."
-      : sourceFilter === "folder"
-        ? "Folders are visible for inspection, but passive monitoring starts from log files."
-        : "No source matches this filter.";
-
-  const startHint =
-    selectedSourceOption && !selectedSourceOption.startable
-      ? selectedSourceOption.origin === "connection"
-        ? "This cloud connection exists but is disabled. Enable it in Conexiones first."
-        : selectedSourceOption.sourceType === "cloud"
-          ? "Cloud adapters are configured under Conexiones. Use a file log here, or manage cloud tails from that panel."
-        : "This source is useful for inspection, but passive monitoring starts from a file log."
-      : selectedSourceId && selectedSoundId
-        ? "Ready to start passive monitoring."
-        : "Select a log source and a sound profile below.";
-
   const playTestTone = () => {
-    if (!audioContext || audioContext.state !== "running") {
+    const currentAudioContext = audioContextRef.current;
+    if (!currentAudioContext || currentAudioContext.state !== "running") {
       return;
     }
 
-    const now = audioContext.currentTime + 0.02;
+    const now = currentAudioContext.currentTime + 0.02;
     [164.81, 220, 329.63].forEach((frequency, index) => {
-      const osc = audioContext.createOscillator();
-      const gain = audioContext.createGain();
+      const osc = currentAudioContext.createOscillator();
+      const gain = currentAudioContext.createGain();
       const startAt = now + index * 0.16;
       osc.type = index === 2 ? "triangle" : "sawtooth";
       osc.frequency.setValueAtTime(frequency, startAt);
@@ -1374,21 +236,30 @@ export function SimpleMonitorScreen({
       gain.gain.linearRampToValueAtTime(0.14, startAt + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.22);
       osc.connect(gain);
-      gain.connect(audioContext.destination);
+      gain.connect(currentAudioContext.destination);
       osc.start(startAt);
       osc.stop(startAt + 0.24);
     });
   };
 
-  const playCueBatch = (cues: Array<{ noteHz?: number; gain?: number; durationMs?: number; waveform?: OscillatorType }>) => {
-    if (!audioContext || audioContext.state !== "running") {
+  const playCueBatch = (
+    cues: Array<{
+      noteHz?: number;
+      gain?: number;
+      durationMs?: number;
+      waveform?: OscillatorType;
+      accent?: string;
+    }>,
+  ) => {
+    const currentAudioContext = audioContextRef.current;
+    if (!currentAudioContext || currentAudioContext.state !== "running") {
       return;
     }
 
-    const now = audioContext.currentTime + 0.03;
+    const now = currentAudioContext.currentTime + 0.03;
     cues.slice(0, 2).forEach((cue, index) => {
-      const osc = audioContext.createOscillator();
-      const gain = audioContext.createGain();
+      const osc = currentAudioContext.createOscillator();
+      const gain = currentAudioContext.createGain();
       const startAt = now + index * 0.05;
       const noteHz = typeof cue.noteHz === "number" ? cue.noteHz : 180 + index * 30;
       const duration = Math.max(0.12, (cue.durationMs ?? 140) / 1000);
@@ -1401,70 +272,16 @@ export function SimpleMonitorScreen({
       gain.gain.linearRampToValueAtTime(level, startAt + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
       osc.connect(gain);
-      gain.connect(audioContext.destination);
+      gain.connect(currentAudioContext.destination);
       osc.start(startAt);
       osc.stop(startAt + duration + 0.03);
     });
   };
 
-  const toggleTrackPreview = async (track: LibraryTrack) => {
-    const playablePath = resolvePlayableTrackPath(track);
-    if (!playablePath) {
-      return;
-    }
-
-    if (previewTrackId === track.id && previewAudioRef.current) {
-      previewAudioRef.current.pause();
-      previewAudioRef.current.currentTime = 0;
-      previewAudioRef.current = null;
-      revokePreviewAudioUrl(previewUrlRef.current);
-      previewUrlRef.current = null;
-      setPreviewTrackId(null);
-      return;
-    }
-
-    if (previewAudioRef.current) {
-      previewAudioRef.current.pause();
-      previewAudioRef.current.currentTime = 0;
-      previewAudioRef.current = null;
-      revokePreviewAudioUrl(previewUrlRef.current);
-      previewUrlRef.current = null;
-    }
-
-    const previewUrl = await resolvePreviewAudioUrl(playablePath);
-    previewUrlRef.current = previewUrl;
-    const nextAudio = new Audio(previewUrl);
-    nextAudio.volume = 0.92;
-    nextAudio.preload = "auto";
-    previewAudioRef.current = nextAudio;
-    setPreviewTrackId(track.id);
-    nextAudio.addEventListener(
-      "ended",
-      () => {
-        if (previewAudioRef.current === nextAudio) {
-          previewAudioRef.current = null;
-          revokePreviewAudioUrl(previewUrlRef.current);
-          previewUrlRef.current = null;
-          setPreviewTrackId(null);
-        }
-      },
-      { once: true },
-    );
-
-    try {
-      await nextAudio.play();
-    } catch (error) {
-      console.warn("Track preview playback failed", error);
-      if (previewAudioRef.current === nextAudio) {
-        previewAudioRef.current = null;
-      }
-      revokePreviewAudioUrl(previewUrlRef.current);
-      previewUrlRef.current = null;
-      setPreviewTrackId(null);
-    }
-  };
-
-  const ensureBackgroundGraph = (audio: HTMLAudioElement, context: AudioContext): BackgroundTrackGraph | null => {
+  const ensureBackgroundGraph = (
+    audio: HTMLAudioElement,
+    context: AudioContext,
+  ): BackgroundTrackGraph | null => {
     const existing = backgroundGraphRef.current;
     if (existing && existing.context === context && existing.audio === audio) {
       return existing;
@@ -1533,480 +350,228 @@ export function SimpleMonitorScreen({
       return;
     }
 
-    const lineCount = Math.max(1, update.lineCount ?? 0);
-    const levelCounts = update.levelCounts ?? {};
-    const warnCount = levelCounts.WARN ?? levelCounts.warn ?? 0;
-    const errorCount = levelCounts.ERROR ?? levelCounts.error ?? 0;
-    const burstFactor = resolveBurstFactor(update.anomalyMarkers);
-    const anomalyRatio = clamp01((update.anomalyCount ?? 0) / lineCount);
-    const severityRatio = clamp01((warnCount * 0.45 + errorCount) / lineCount);
-    const hasAlertSignal =
-      (update.anomalyCount ?? 0) > 0 ||
-      warnCount > 0 ||
-      errorCount > 0 ||
-      burstFactor > 0.18;
-
-    if (!hasAlertSignal) {
-      smoothedPressureRef.current *= 0.58;
+    const plan = buildMonitorTrackMutationPlan(update, smoothedPressureRef.current);
+    const controls = deckControlsRef.current;
+    const reactivityMix = controls.reactivity / 100;
+    const anomalyMix = controls.anomalyEmphasis / 100;
+    const neutralFilterHz = 18000;
+    const neutralFilterQ = 1;
+    const neutralOutputGain = 0.82;
+    const neutralDryGain = 1;
+    const neutralDriveWet = 0.0001;
+    const neutralDeckGain = 1;
+    const neutralDriveCurve = 1.02;
+    const neutralRecoverAt = 0.22;
+    const neutralTransition = 0.18;
+    const adjustedPlan = {
+      ...plan,
+      filterHz: neutralFilterHz - (neutralFilterHz - plan.filterHz) * reactivityMix,
+      filterQ: neutralFilterQ + (plan.filterQ - neutralFilterQ) * reactivityMix,
+      outputGain: neutralOutputGain + (plan.outputGain - neutralOutputGain) * reactivityMix,
+      dryGain: neutralDryGain + (plan.dryGain - neutralDryGain) * reactivityMix,
+      driveWet:
+        neutralDriveWet +
+        (plan.driveWet - neutralDriveWet) * reactivityMix * (0.35 + anomalyMix * 0.65),
+      deckGain: neutralDeckGain + (plan.deckGain - neutralDeckGain) * reactivityMix,
+      driveCurveAmount:
+        neutralDriveCurve +
+        (plan.driveCurveAmount - neutralDriveCurve) * reactivityMix * (0.4 + anomalyMix * 0.6),
+      recoverAtOffsetSec:
+        neutralRecoverAt + (plan.recoverAtOffsetSec - neutralRecoverAt) * reactivityMix,
+      transitionSec: neutralTransition + (plan.transitionSec - neutralTransition) * reactivityMix,
+      gateFloor:
+        plan.gateFloor === null
+          ? null
+          : neutralDeckGain -
+            (neutralDeckGain - plan.gateFloor) * reactivityMix * (0.5 + anomalyMix * 0.5),
+    };
+    smoothedPressureRef.current = adjustedPlan.nextPressure;
+    if (adjustedPlan.mode === "neutral") {
       const now = graph.context.currentTime;
       graph.filter.frequency.cancelScheduledValues(now);
       graph.filter.frequency.setValueAtTime(graph.filter.frequency.value, now);
-      graph.filter.frequency.exponentialRampToValueAtTime(18000, now + 0.22);
+      graph.filter.frequency.exponentialRampToValueAtTime(
+        adjustedPlan.filterHz,
+        now + adjustedPlan.recoverAtOffsetSec,
+      );
 
       graph.filter.Q.cancelScheduledValues(now);
       graph.filter.Q.setValueAtTime(graph.filter.Q.value, now);
-      graph.filter.Q.linearRampToValueAtTime(1, now + 0.22);
+      graph.filter.Q.linearRampToValueAtTime(
+        adjustedPlan.filterQ,
+        now + adjustedPlan.recoverAtOffsetSec,
+      );
 
       graph.outputGain.gain.cancelScheduledValues(now);
       graph.outputGain.gain.setValueAtTime(graph.outputGain.gain.value, now);
-      graph.outputGain.gain.linearRampToValueAtTime(0.82, now + 0.18);
+      graph.outputGain.gain.linearRampToValueAtTime(
+        adjustedPlan.outputGain,
+        now + adjustedPlan.transitionSec,
+      );
 
       graph.dryGain.gain.cancelScheduledValues(now);
       graph.dryGain.gain.setValueAtTime(graph.dryGain.gain.value, now);
-      graph.dryGain.gain.linearRampToValueAtTime(1, now + 0.18);
+      graph.dryGain.gain.linearRampToValueAtTime(
+        adjustedPlan.dryGain,
+        now + adjustedPlan.transitionSec,
+      );
 
       graph.driveWetGain.gain.cancelScheduledValues(now);
       graph.driveWetGain.gain.setValueAtTime(graph.driveWetGain.gain.value, now);
-      graph.driveWetGain.gain.linearRampToValueAtTime(0.0001, now + 0.18);
+      graph.driveWetGain.gain.linearRampToValueAtTime(
+        adjustedPlan.driveWet,
+        now + adjustedPlan.transitionSec,
+      );
 
       graph.deckGain.gain.cancelScheduledValues(now);
       graph.deckGain.gain.setValueAtTime(graph.deckGain.gain.value, now);
-      graph.deckGain.gain.linearRampToValueAtTime(1, now + 0.18);
+      graph.deckGain.gain.linearRampToValueAtTime(
+        adjustedPlan.deckGain,
+        now + adjustedPlan.transitionSec,
+      );
 
-      graph.driveNode.curve = createDriveCurve(1.02);
-      audio.playbackRate = 1;
+      graph.driveNode.curve = createDriveCurve(adjustedPlan.driveCurveAmount);
+      audio.playbackRate = adjustedPlan.playbackRate;
       return;
     }
-
-    const instantPressure = clamp01(anomalyRatio * 0.58 + severityRatio * 0.26 + burstFactor * 0.24);
-    const pressure = clamp01(smoothedPressureRef.current * 0.84 + instantPressure * 0.16);
-    smoothedPressureRef.current = pressure;
     const now = graph.context.currentTime;
-    const sustainedBurst = burstFactor > 0.46;
-    const recoverAt = now + 2.6 + burstFactor * 1.8;
-
-    const filterHz = Math.max(7600, 21000 - (2800 * pressure + burstFactor * 2800));
-    const filterQ = 0.7 + pressure * 0.42 + burstFactor * 0.3;
-    const bedGain = Math.max(0.84, 0.93 - pressure * 0.028 - burstFactor * 0.018);
-    const driveWet = pressure > 0.4 ? clamp01((pressure - 0.4) * 0.08 + burstFactor * 0.06) : burstFactor * 0.04;
-    const deckGain = Math.max(0.955, 1 - pressure * 0.015 - burstFactor * 0.01);
-    const playbackRate = 1;
+    const recoverAt = now + adjustedPlan.recoverAtOffsetSec;
 
     graph.filter.frequency.cancelScheduledValues(now);
     graph.filter.frequency.setValueAtTime(graph.filter.frequency.value, now);
-    graph.filter.frequency.exponentialRampToValueAtTime(filterHz, now + (sustainedBurst ? 0.5 : 0.32));
+    graph.filter.frequency.exponentialRampToValueAtTime(
+      adjustedPlan.filterHz,
+      now + (adjustedPlan.sustainedBurst ? 0.5 : 0.32),
+    );
     graph.filter.frequency.exponentialRampToValueAtTime(18000, recoverAt);
 
     graph.filter.Q.cancelScheduledValues(now);
     graph.filter.Q.setValueAtTime(graph.filter.Q.value, now);
-    graph.filter.Q.linearRampToValueAtTime(filterQ, now + (sustainedBurst ? 0.42 : 0.28));
+    graph.filter.Q.linearRampToValueAtTime(
+      adjustedPlan.filterQ,
+      now + (adjustedPlan.sustainedBurst ? 0.42 : 0.28),
+    );
     graph.filter.Q.linearRampToValueAtTime(1, recoverAt);
 
     graph.outputGain.gain.cancelScheduledValues(now);
     graph.outputGain.gain.setValueAtTime(graph.outputGain.gain.value, now);
-    graph.outputGain.gain.linearRampToValueAtTime(bedGain, now + (sustainedBurst ? 0.38 : 0.26));
+    graph.outputGain.gain.linearRampToValueAtTime(
+      adjustedPlan.outputGain,
+      now + (adjustedPlan.sustainedBurst ? 0.38 : 0.26),
+    );
     graph.outputGain.gain.linearRampToValueAtTime(0.82, recoverAt);
 
     graph.dryGain.gain.cancelScheduledValues(now);
     graph.dryGain.gain.setValueAtTime(graph.dryGain.gain.value, now);
-    graph.dryGain.gain.linearRampToValueAtTime(Math.max(0.92, 1 - driveWet * 0.08), now + (sustainedBurst ? 0.38 : 0.26));
+    graph.dryGain.gain.linearRampToValueAtTime(
+      adjustedPlan.dryGain,
+      now + (adjustedPlan.sustainedBurst ? 0.38 : 0.26),
+    );
     graph.dryGain.gain.linearRampToValueAtTime(1, recoverAt);
 
     graph.driveWetGain.gain.cancelScheduledValues(now);
     graph.driveWetGain.gain.setValueAtTime(graph.driveWetGain.gain.value, now);
-    graph.driveWetGain.gain.linearRampToValueAtTime(Math.max(0.0001, driveWet), now + (sustainedBurst ? 0.34 : 0.24));
+    graph.driveWetGain.gain.linearRampToValueAtTime(
+      adjustedPlan.driveWet,
+      now + (adjustedPlan.sustainedBurst ? 0.34 : 0.24),
+    );
     graph.driveWetGain.gain.linearRampToValueAtTime(0.0001, recoverAt);
 
-    graph.driveNode.curve = createDriveCurve(1.02 + driveWet * 0.85 + burstFactor * 0.22);
+    graph.driveNode.curve = createDriveCurve(adjustedPlan.driveCurveAmount);
 
     graph.deckGain.gain.cancelScheduledValues(now);
     graph.deckGain.gain.setValueAtTime(graph.deckGain.gain.value, now);
-    graph.deckGain.gain.linearRampToValueAtTime(deckGain, now + (sustainedBurst ? 0.34 : 0.22));
+    graph.deckGain.gain.linearRampToValueAtTime(
+      adjustedPlan.deckGain,
+      now + (adjustedPlan.sustainedBurst ? 0.34 : 0.22),
+    );
     graph.deckGain.gain.linearRampToValueAtTime(1, recoverAt);
 
-    if (pressure > 0.95 && errorCount > 3 && burstFactor < 0.72) {
-      const gateDepth = Math.min(0.035, 0.008 + pressure * 0.016);
-      const gateFloor = Math.max(0.955, deckGain * (1 - gateDepth));
+    if (adjustedPlan.gateFloor !== null) {
       const pulseAt = now + 0.22;
-      graph.deckGain.gain.linearRampToValueAtTime(gateFloor, pulseAt + 0.08);
-      graph.deckGain.gain.linearRampToValueAtTime(deckGain, pulseAt + 0.34);
+      graph.deckGain.gain.linearRampToValueAtTime(adjustedPlan.gateFloor, pulseAt + 0.08);
+      graph.deckGain.gain.linearRampToValueAtTime(adjustedPlan.deckGain, pulseAt + 0.34);
     }
 
-    audio.playbackRate = playbackRate;
+    audio.playbackRate = adjustedPlan.playbackRate;
   };
-
-  const simulateLog = () => {
-    const levels = ["info", "warn", "error", "debug"];
-    const level = levels[Math.floor(Math.random() * levels.length)];
-    const messages = [
-      "SYNTH_PULSE_DETECTED: Signal strength at 89%",
-      "NODE_HANDSHAKE: Peer connection established",
-      "ANOMALY_TRIGGER: Out-of-bounds telemetry detected",
-      "BUFFER_FLUSH: Real-time stream synchronized",
-      "MAIA_CORE: Sonification engine optimized"
-    ];
-    const now = Date.now();
-    const mock: MonitorLogLine = {
-      id: `sim-${now}`,
-      timestamp: new Date().toLocaleTimeString().split(' ')[0],
-      level,
-      message: messages[Math.floor(Math.random() * messages.length)],
-      isAnomaly: level === "error" || level === "warn",
-      anomalyId: level === "error" || level === "warn" ? `sim-anomaly-${now}` : null,
-    };
-    setLiveLines(prev => [mock, ...prev].slice(0, 50));
-    setLogSignalBuffer(prev => {
-      const heat = level === "error" ? 1.0 : level === "warn" ? 0.5 : 0;
-      const val = 40 + (heat * 100);
-      const newBuffer = [...prev];
-      for (let i = 0; i < 60; i++) {
-        newBuffer[i] = prev[i + 1] || {val: 20, heat: 0};
-      }
-      newBuffer[60] = { val, heat }; // Insert EXACTLY at the center playhead
-      for (let i = 61; i < 120; i++) {
-        newBuffer[i] = { val: 20, heat: 0 }; // Future is empty
-      }
-      return newBuffer;
-    });
-  };
+  const { backgroundAudioRef, previewTrackId, toggleTrackPreview } = useMonitorTrackAudio({
+    audioContext,
+    isListening,
+    safeRuntime: SAFE_MONITOR_RUNTIME,
+    safeTracks,
+    sessionTrackName: session?.trackName,
+    getTrackTitle,
+    ensureBackgroundGraph,
+    setTrackWaveProgress,
+    setTrackElapsedSeconds,
+    setTrackDurationSeconds,
+  });
+  const {
+    liveLines,
+    logSignalBuffer,
+    liveSuggestedBpm,
+    waveformAnomalies,
+    selectedAnomalyId,
+    setSelectedAnomalyId,
+    simulateLog,
+  } = useMonitorLiveStream({
+    isListening,
+    sessionSourcePath: session?.sourcePath,
+    streamAdapterLabel,
+    subscribe,
+    audioContextRef,
+    backgroundAudioRef,
+    backgroundGraphRef,
+    activeTrackRef,
+    deckDurationSecondsRef,
+    trackWaveProgressRef,
+    deckControlsRef,
+    trackBpm: activeTrack?.analysis?.bpm ?? null,
+    ensureBackgroundGraph,
+    applyTrackMutation,
+    playTestTone,
+    playCueBatch,
+  });
+  const deckBpm = liveSuggestedBpm ?? activeTrack?.analysis?.bpm ?? null;
+  const {
+    overviewCanvasRef,
+    waveformCanvasRef,
+    waveformStageRef,
+    handleOverviewPointerDown,
+    handleOverviewClick,
+    handleOverviewAnomalyClick,
+    handleOverviewAnomalyPointerDown,
+    handleStagePointerDown,
+    handleStageClick,
+  } = useMonitorDeckScrub({
+    backgroundAudioRef,
+    waveformAnomalies,
+    trackWaveProgress,
+    setTrackWaveProgress,
+    setTrackElapsedSeconds,
+    isConsoleExpanded,
+    onToggleConsole,
+    onSelectAnomalyForFocus: (anomalyId) => {
+      focusSelectedLogRef.current = true;
+      setSelectedAnomalyId(anomalyId);
+    },
+  });
 
   useEffect(() => {
     try {
-      if (isListening) {
-        lastStreamEventAtRef.current = Date.now();
-        lastIdleNoteAtRef.current = 0;
-        setLiveLines([{
-          id: "maia-monitor-init",
-          timestamp: new Date().toLocaleTimeString().split(' ')[0],
-          level: "info",
-          message: `MAIA_MONITOR_INITIALIZED: ${streamAdapterLabel} armed. Listening to ${getBasename(session?.sourcePath)}...`,
-          isAnomaly: false,
-          anomalyId: null,
-        }]);
-      } else {
-        setLiveLines([]);
-        setLogSignalBuffer(new Array(120).fill({val: 10, heat: 0}));
-        setLiveSuggestedBpm(null);
+      if (!isListening) {
         setTrackElapsedSeconds(0);
         setTrackDurationSeconds(null);
-        setWaveformAnomalies([]);
-        setSelectedAnomalyId(null);
-        audioProbePlayedRef.current = false;
-        lastStreamEventAtRef.current = Date.now();
-        lastIdleNoteAtRef.current = 0;
-        backgroundAudioRef.current = null;
-        safeRevokePreviewAudioUrl(backgroundAudioUrlRef.current);
-        backgroundAudioUrlRef.current = null;
+        setTrackWaveProgress(0);
+        smoothedPressureRef.current = 0;
         backgroundGraphRef.current = null;
       }
     } catch (error) {
       console.error("[MAIA:UI] monitor reset effect failed", error);
-      backgroundAudioRef.current = null;
       backgroundGraphRef.current = null;
     }
-  }, [isListening, session?.sourcePath, streamAdapterLabel]);
-
-  useEffect(() => {
-    if (SAFE_MONITOR_RUNTIME) {
-      return;
-    }
-    return () => {
-      if (previewAudioRef.current) {
-        previewAudioRef.current.pause();
-        previewAudioRef.current = null;
-      }
-      revokePreviewAudioUrl(previewUrlRef.current);
-      previewUrlRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (SAFE_MONITOR_RUNTIME) {
-      return;
-    }
-    if (!isListening) {
-      setTrackWaveProgress(0);
-      return;
-    }
-
-    let frameId = 0;
-    const updateProgress = () => {
-      const audio = backgroundAudioRef.current;
-      if (audio && Number.isFinite(audio.duration) && audio.duration > 0) {
-        setTrackWaveProgress(clamp01(audio.currentTime / audio.duration));
-        setTrackElapsedSeconds(audio.currentTime);
-        setTrackDurationSeconds(audio.duration);
-      }
-      frameId = window.requestAnimationFrame(updateProgress);
-    };
-
-    frameId = window.requestAnimationFrame(updateProgress);
-    return () => {
-      window.cancelAnimationFrame(frameId);
-    };
   }, [isListening]);
-
-  useEffect(() => {
-    if (SAFE_MONITOR_RUNTIME) {
-      return;
-    }
-    if (!isListening || !session?.trackName) {
-      return;
-    }
-
-    let cancelled = false;
-
-    const bindBackgroundTrack = async () => {
-    const selectedTrack = safeTracks.find(
-      (track) => getTrackTitle(track) === session.trackName,
-    );
-    const playablePath = selectedTrack ? resolvePlayableTrackPath(selectedTrack) : null;
-    if (!playablePath) {
-      return;
-    }
-
-      const playbackUrl = await resolvePreviewAudioUrl(playablePath);
-      if (cancelled) {
-        revokePreviewAudioUrl(playbackUrl);
-        return;
-      }
-
-      const audio = backgroundAudioRef.current ?? new Audio();
-      backgroundAudioRef.current = audio;
-      audio.loop = true;
-      audio.volume = 1;
-      audio.preload = "auto";
-      audio.crossOrigin = "anonymous";
-      if (audio.src !== playbackUrl) {
-        audio.pause();
-        revokePreviewAudioUrl(backgroundAudioUrlRef.current);
-        backgroundAudioUrlRef.current = playbackUrl;
-        audio.src = playbackUrl;
-        audio.currentTime = 0;
-      } else if (!backgroundAudioUrlRef.current) {
-        backgroundAudioUrlRef.current = playbackUrl;
-      }
-
-      if (audioContext && audioContext.state === "running") {
-        ensureBackgroundGraph(audio, audioContext);
-      }
-
-      void audio.play().catch((error) => {
-        console.warn("Simple monitor background playback failed", error);
-      });
-    };
-
-    void bindBackgroundTrack();
-
-    return () => {
-      cancelled = true;
-      const audio = backgroundAudioRef.current;
-      if (audio) {
-        audio.pause();
-      }
-    };
-  }, [audioContext, isListening, safeTracks, session?.trackName]);
-
-  useEffect(() => {
-    if (SAFE_MONITOR_RUNTIME) {
-      return;
-    }
-    if (!isListening) return;
-    
-    const unsub = subscribe((update) => {
-      const parsedLines: string[] = Array.isArray(update.parsedLines) ? update.parsedLines : [];
-      const cueBatch: LiveLogCue[] = Array.isArray(update.sonificationCues) ? update.sonificationCues : [];
-      const anomalyMarkers: LiveLogMarker[] = Array.isArray(update.anomalyMarkers) ? update.anomalyMarkers : [];
-      const hasRealLines = parsedLines.length > 0;
-      const hasRealSignals =
-        (update.lineCount ?? 0) > 0 ||
-        anomalyMarkers.length > 0 ||
-        cueBatch.length > 0;
-      const hasMeaningfulUpdate = Boolean(update.hasData && (hasRealLines || hasRealSignals));
-
-      if (hasMeaningfulUpdate) {
-        lastStreamEventAtRef.current = Date.now();
-      }
-
-      setLiveSuggestedBpm(
-        typeof update.suggestedBpm === "number" && Number.isFinite(update.suggestedBpm)
-          ? update.suggestedBpm
-          : null,
-      );
-      if (audioContext?.state === "running") {
-        if (!audioProbePlayedRef.current) {
-          audioProbePlayedRef.current = true;
-          playTestTone();
-        }
-        const activeAudio = backgroundAudioRef.current;
-        if (activeAudio && hasMeaningfulUpdate) {
-          ensureBackgroundGraph(activeAudio, audioContext);
-          applyTrackMutation(update);
-        }
-        const hasBackgroundTrack = Boolean(backgroundGraphRef.current || backgroundAudioRef.current);
-        const nowMs = Date.now();
-        const lineCount = Math.max(1, update.lineCount ?? 0);
-        const anomalyPressure = Math.max(
-          (update.anomalyCount ?? 0) / lineCount,
-          ((update.levelCounts?.ERROR ?? update.levelCounts?.error ?? 0) + (update.levelCounts?.WARN ?? update.levelCounts?.warn ?? 0) * 0.4) / lineCount,
-        );
-        const burstFactor = resolveBurstFactor(update.anomalyMarkers);
-        const anomalyDrivenCue =
-          cueBatch.find((cue: LiveLogCue) => cue.accent === "anomaly") ??
-          cueBatch.find((cue: LiveLogCue) => (cue.gain ?? 0) >= 0.12) ??
-          null;
-        if (
-          hasMeaningfulUpdate &&
-          anomalyPressure >= 0.28 &&
-          burstFactor < 0.72 &&
-          anomalyDrivenCue &&
-          (!hasBackgroundTrack || nowMs - lastCueAccentAtRef.current >= 2600)
-        ) {
-          lastCueAccentAtRef.current = nowMs;
-          playCueBatch(cueBatch);
-        }
-      }
-
-      if (hasRealLines) {
-        // Parse raw lines into objects for UI display and signal mapping
-        const parsed = parsedLines.map((raw: string, lineIndex: number) => parseMonitorLogLine(raw, lineIndex));
-
-        setLiveLines((prev) => [...prev, ...parsed].slice(-MONITOR_LIVE_LINES_LIMIT));
-        setWaveformAnomalies((prev) => {
-          const retained = prev.filter((marker) => marker.progress >= 0 && marker.progress <= 1);
-
-          const anomalyLines = parsed.filter((line: MonitorLogLine) => line.isAnomaly && line.anomalyId);
-          const currentTrack = activeTrackRef.current;
-          const durationSeconds = backgroundAudioRef.current?.duration ?? deckDurationSecondsRef.current;
-          const beatGrid = currentTrack?.analysis?.beatGrid ?? currentTrack?.beatGrid ?? [];
-          const bpm = liveSuggestedBpmRef.current ?? currentTrack?.analysis?.bpm ?? null;
-          const currentProgress = backgroundAudioRef.current?.duration
-            ? clamp01(backgroundAudioRef.current.currentTime / backgroundAudioRef.current.duration)
-            : trackWaveProgressRef.current;
-          const nextMarkers = anomalyLines.slice(0, 3).map((line: MonitorLogLine, index: number) => ({
-            id: line.anomalyId ?? `${line.id}-marker`,
-            lineId: line.id,
-            timestamp: line.timestamp,
-            message: line.message,
-            severity: line.level === "error" ? 1 : 0.72,
-            progress: quantizeProgressToBeatGrid(
-              clamp01(currentProgress + index * 0.0025),
-              durationSeconds,
-              bpm,
-              beatGrid,
-              0.25,
-            ),
-          }));
-
-          return [...retained, ...nextMarkers].slice(-24);
-        });
-        if (parsed.some((line: MonitorLogLine) => line.isAnomaly && line.anomalyId)) {
-          const firstAnomaly = parsed.find((line: MonitorLogLine) => line.isAnomaly && line.anomalyId);
-          if (firstAnomaly?.anomalyId) {
-            setSelectedAnomalyId((current) => current ?? firstAnomaly.anomalyId);
-          }
-        }
-        
-        // Push EXACTLY ONE value to the log signal buffer per stream update.
-        // This ensures the visual waveform moves at the exact same rate as the 
-        // crossfade audio engine (1 block = 1 poll interval), syncing sight and sound.
-        setLogSignalBuffer(prev => {
-          let val = 20;
-          let heat = 0;
-          const cues = cueBatch;
-          const anomalies = anomalyMarkers;
-          
-          if (cues.length > 0 || anomalies.length > 0) {
-            // Volume logic: based purely on sonification gain (how loud the output is)
-            const avgGain = cues.length > 0 ? cues.reduce((sum: number, cue: LiveLogCue) => sum + cue.gain, 0) / cues.length : 0;
-            // Map gain to visual height (0 to 140)
-            val = 20 + Math.min(120, avgGain * 150);
-            
-            // Heat logic: based purely on anomaly presence (triggers red color)
-            heat = anomalies.length > 0 ? 0.5 + Math.min(0.5, anomalies.length * 0.1) : 0;
-          } else {
-            // Low resting pulse if lines arrived but no cues/anomalies
-            val = 30 + Math.random() * 10;
-          }
-          
-          const newBuffer = [...prev];
-          // Shift the past leftwards
-          for (let i = 0; i < 60; i++) {
-             newBuffer[i] = prev[i + 1] || {val: 20, heat: 0};
-          }
-          // Insert the new live data EXACTLY at the center playhead
-          const previousCenter = prev[60] || { val: 20, heat: 0 };
-          newBuffer[60] = {
-            val: previousCenter.val * 0.52 + val * 0.48,
-            heat: previousCenter.heat * 0.35 + heat * 0.65,
-          };
-          // The future side keeps a soft decay tail so the wave does not collapse abruptly.
-          for (let i = 61; i < 120; i++) {
-             const decay = 1 - (i - 60) / 60;
-             const eased = Math.max(0, decay * decay);
-             const prevFuture = prev[i] || { val: 20, heat: 0 };
-             newBuffer[i] = {
-               val: 20 + (newBuffer[60].val - 20) * eased * 0.52 + (prevFuture.val - 20) * 0.26,
-               heat: newBuffer[60].heat * eased * 0.62 + prevFuture.heat * 0.18,
-             };
-          }
-          return newBuffer;
-        });
-      }
-    });
-    return unsub;
-  }, [audioContext, isListening, subscribe]);
-
-  useEffect(() => {
-    if (SAFE_MONITOR_RUNTIME) {
-      return;
-    }
-    if (!isListening) {
-      return;
-    }
-
-    const timer = window.setInterval(() => {
-      const now = Date.now();
-      const idleForMs = now - lastStreamEventAtRef.current;
-      if (idleForMs < 900) {
-        return;
-      }
-
-      setLogSignalBuffer((prev) => {
-        const idlePulse =
-          18 +
-          Math.sin(now / 420) * 4 +
-          Math.sin(now / 880) * 2 +
-          (typeof deckBpm === "number"
-            ? Math.sin((now / 60000) * deckBpm * Math.PI * 2) * 1.5
-            : 0);
-        const nextBuffer = [...prev];
-        for (let index = 0; index < 60; index += 1) {
-          nextBuffer[index] = prev[index + 1] || { val: 20, heat: 0 };
-        }
-        const previousCenter = prev[60] || { val: 20, heat: 0 };
-        nextBuffer[60] = {
-          val: previousCenter.val * 0.78 + idlePulse * 0.22,
-          heat: previousCenter.heat * 0.6,
-        };
-        for (let index = 61; index < 120; index += 1) {
-          const decay = 1 - (index - 60) / 60;
-          const eased = Math.max(0, decay * decay);
-          const future = prev[index] || { val: 20, heat: 0 };
-          nextBuffer[index] = {
-            val: 20 + (nextBuffer[60].val - 20) * eased * 0.44 + (future.val - 20) * 0.36,
-            heat: future.heat * 0.7,
-          };
-        }
-        return nextBuffer;
-      });
-
-    }, 450);
-
-    return () => {
-      window.clearInterval(timer);
-    };
-  }, [deckBpm, isListening, streamAdapterLabel]);
 
   useEffect(() => {
     const container = terminalLinesRef.current;
@@ -2031,17 +596,26 @@ export function SimpleMonitorScreen({
     }
   }, [liveLines, selectedAnomalyId]);
 
-  const uptimeSeconds = session
-    ? Math.floor((Date.now() - session.startedAt) / 1000)
-    : 0;
-  const uptimeLabel =
-    uptimeSeconds < 60
-      ? `${uptimeSeconds}s`
-      : `${Math.floor(uptimeSeconds / 60)}m ${uptimeSeconds % 60}s`;
-  const deckRemainingSeconds =
-    typeof deckDurationSeconds === "number"
-      ? Math.max(0, deckDurationSeconds - trackElapsedSeconds)
-      : null;
+  const {
+    monitorSourceTitle,
+    monitorSourcePath,
+    monitorTrackTitle,
+    isConnectingMonitor,
+    uptimeLabel,
+    deckRemainingSeconds,
+  } = buildSimpleMonitorScreenViewModel({
+    session,
+    launchingSource,
+    isLaunchingMonitor,
+    selectedSoundId,
+    tracks: safeTracks,
+    trackName,
+    t,
+    nowMs: Date.now(),
+    totalAnomalies: metrics.totalAnomalies,
+    trackElapsedSeconds,
+    deckDurationSeconds,
+  });
   const visibleWindowSeconds = resolveVisibleWindowSeconds(deckBpm, activeBeatGrid);
   const trackWaveSamples = sampleTrackWaveWindow(
     waveformBins ?? null,
@@ -2062,66 +636,47 @@ export function SimpleMonitorScreen({
     deckBpm,
     activeBeatGrid,
   );
-  const overviewWaveSamples = sampleOverviewWave(waveformBins ?? null);
-  const overviewAnomalyDensity = sampleOverviewAnomalyDensity(waveformAnomalies);
-  const anomalyBurstRegions = buildAnomalyBurstRegions(waveformAnomalies);
-  const overviewWindowWidthPercent =
-    typeof deckDurationSeconds === "number" && deckDurationSeconds > 0
-      ? Math.min(100, (visibleWindowSeconds / deckDurationSeconds) * 100)
-      : 0;
-  const overviewWindowLeftPercent =
-    typeof deckDurationSeconds === "number" && deckDurationSeconds > 0
-      ? Math.max(
-          0,
-          Math.min(
-            100 - overviewWindowWidthPercent,
-            trackWaveProgress * 100 - overviewWindowWidthPercent / 2,
-          ),
-        )
-      : 0;
-  const overviewPlayheadLeftPercent =
-    overviewWindowWidthPercent > 0
-      ? overviewWindowLeftPercent + overviewWindowWidthPercent / 2
-      : trackWaveProgress * 100;
-  const logWaveOverlay = sampleLogWaveOverlay(logSignalBuffer);
-  const overviewAnomalyMarkers = waveformAnomalies
-    .map((marker) => ({
-      ...marker,
-      leftPercent: marker.progress * 100,
-    }))
-    .filter((marker) => marker.leftPercent >= 0 && marker.leftPercent <= 100);
-  const selectedDeckMarker: DeckSelectedMarker | null =
-    selectedAnomalyId
-      ? waveformAnomalies.find((marker) => marker.id === selectedAnomalyId) ?? null
-      : null;
-  const selectedBurstRegion =
-    selectedDeckMarker
-      ? anomalyBurstRegions.find(
-          (region) =>
-            selectedDeckMarker.progress >= region.startProgress &&
-            selectedDeckMarker.progress <= region.endProgress,
-        ) ?? null
-      : null;
-  const sortedPastSessions = [...safePastSessions].sort((left, right) => {
-    const statusWeight = (session: PersistedSession) =>
-      session.status === "active" ? 3 : session.status === "paused" ? 2 : 1;
-    const statusDelta = statusWeight(right) - statusWeight(left);
-    if (statusDelta !== 0) {
-      return statusDelta;
-    }
-
-    const timeDelta = resolveSessionSortTimestamp(right) - resolveSessionSortTimestamp(left);
-    if (timeDelta !== 0) {
-      return timeDelta;
-    }
-
-    const anomalyDelta = right.totalAnomalies - left.totalAnomalies;
-    if (anomalyDelta !== 0) {
-      return anomalyDelta;
-    }
-
-    return right.totalLines - left.totalLines;
+  const {
+    overviewWaveSamples,
+    overviewAnomalyDensity,
+    anomalyBurstRegions,
+    overviewWindowWidthPercent,
+    overviewWindowLeftPercent,
+    overviewPlayheadLeftPercent,
+    logWaveOverlay,
+    overviewAnomalyMarkers,
+    selectedDeckMarker,
+    selectedBurstRegion,
+  } = buildMonitorDeckDerivedState({
+    waveformBins,
+    waveformAnomalies,
+    trackWaveProgress,
+    deckDurationSeconds,
+    visibleWindowSeconds,
+    logSignalBuffer,
+    selectedAnomalyId,
   });
+  const sortedPastSessions = sortMonitorSessions(safePastSessions);
+
+  const handleStartMonitoringRequest = async () => {
+    if (!selectedSourceOption || !selectedSoundId || !canStartSelectedSource) {
+      return;
+    }
+
+    try {
+      flushSync(() => {
+        setIsLaunchingMonitor(true);
+      });
+      await new Promise<void>((resolve) => {
+        window.requestAnimationFrame(() => resolve());
+      });
+      await onResumeAudio();
+      await onStartMonitoring(selectedSourceOption, selectedSoundId);
+    } catch (error) {
+      console.error("Failed to start monitor from selector", error);
+      setIsLaunchingMonitor(false);
+    }
+  };
 
   useEffect(() => {
     if (SAFE_MONITOR_RUNTIME) {
@@ -2132,100 +687,22 @@ export function SimpleMonitorScreen({
       return;
     }
 
-    const width = Math.max(1, Math.floor(canvas.clientWidth));
-    const height = Math.max(1, Math.floor(canvas.clientHeight));
-    const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
-    canvas.width = Math.floor(width * dpr);
-    canvas.height = Math.floor(height * dpr);
-
-    const context = canvas.getContext("2d");
-    if (!context) {
-      return;
-    }
-
-    context.setTransform(dpr, 0, 0, dpr, 0, 0);
-    context.clearRect(0, 0, width, height);
-
-    const trackFloorY = Math.max(14, height * 0.58);
-    const trackAmplitude = Math.max(7, trackFloorY - 6);
-    const anomalyBandTop = Math.max(trackFloorY + 3, height * 0.68);
-    const anomalyBandHeight = Math.max(6, height - anomalyBandTop - 3);
-    const baseGlow = context.createLinearGradient(0, trackFloorY - 8, 0, trackFloorY + 4);
-    baseGlow.addColorStop(0, "rgba(72,215,255,0)");
-    baseGlow.addColorStop(0.72, "rgba(72,215,255,0.18)");
-    baseGlow.addColorStop(1, "rgba(72,215,255,0.04)");
-    context.fillStyle = baseGlow;
-    context.fillRect(0, trackFloorY - 8, width, 12);
-
-    context.fillStyle = "rgba(255,255,255,0.05)";
-    context.fillRect(0, anomalyBandTop - 2, width, 1);
-
-    const fillGradient = context.createLinearGradient(0, 0, width, 0);
-    fillGradient.addColorStop(0, "rgba(255,120,92,0.82)");
-    fillGradient.addColorStop(0.16, "rgba(244,214,94,0.84)");
-    fillGradient.addColorStop(0.3, "rgba(195,255,108,0.86)");
-    fillGradient.addColorStop(0.5, "rgba(255,198,82,0.88)");
-    fillGradient.addColorStop(0.68, "rgba(120,198,255,0.88)");
-    fillGradient.addColorStop(1, "rgba(176,222,255,0.78)");
-    drawSingleSidedWaveform(context, overviewWaveSamples, width, trackFloorY, trackAmplitude, fillGradient);
-    drawWaveContour(context, overviewWaveSamples, width, trackFloorY, trackAmplitude, "rgba(255,255,255,0.38)", 1, "top");
-
-    const densityWidth = width / Math.max(1, overviewAnomalyDensity.length);
-    overviewAnomalyDensity.forEach((point, index) => {
-      const x = index * densityWidth;
-      if (point.warning > 0) {
-        context.fillStyle = `rgba(255,196,92,${0.14 + point.warning * 0.32})`;
-        context.fillRect(x, anomalyBandTop, Math.max(2, densityWidth + 1), anomalyBandHeight);
-      }
-      if (point.critical > 0) {
-        context.fillStyle = `rgba(255,72,108,${0.16 + point.critical * 0.42})`;
-        context.fillRect(x, anomalyBandTop, Math.max(2, densityWidth + 1), anomalyBandHeight);
-      }
+    renderMonitorOverviewCanvas({
+      canvas,
+      overviewWaveSamples,
+      overviewAnomalyDensity,
+      anomalyBurstRegions,
+      waveformAnomalies,
+      selectedDeckMarker,
     });
-
-    anomalyBurstRegions.forEach((region) => {
-      const left = region.startProgress * width;
-      const regionWidth = Math.max(4, (region.endProgress - region.startProgress) * width);
-      context.fillStyle =
-        region.severity >= 0.9
-          ? "rgba(255,72,108,0.12)"
-          : "rgba(255,196,92,0.1)";
-      context.fillRect(left, 1, regionWidth, height - 2);
-    });
-
-    waveformAnomalies.forEach((marker) => {
-      const x = marker.progress * width;
-      const markerHeight = Math.max(8, 6 + marker.severity * 10);
-      const isCritical = marker.severity >= 0.9;
-      const glow = context.createLinearGradient(0, trackFloorY - markerHeight - 8, 0, anomalyBandTop + anomalyBandHeight);
-      if (isCritical) {
-        glow.addColorStop(0, "rgba(255,72,108,0)");
-        glow.addColorStop(0.45, "rgba(255,72,108,0.2)");
-        glow.addColorStop(0.8, "rgba(255,188,112,0.24)");
-        glow.addColorStop(1, "rgba(255,72,108,0)");
-      } else {
-        glow.addColorStop(0, "rgba(255,196,92,0)");
-        glow.addColorStop(0.45, "rgba(255,196,92,0.16)");
-        glow.addColorStop(0.8, "rgba(255,232,164,0.2)");
-        glow.addColorStop(1, "rgba(255,196,92,0)");
-      }
-      context.fillStyle = glow;
-      context.fillRect(x - 2, trackFloorY - markerHeight - 8, 4, anomalyBandTop + anomalyBandHeight - (trackFloorY - markerHeight - 8));
-
-      context.fillStyle = isCritical ? "rgba(255,72,108,0.62)" : "rgba(255,196,92,0.56)";
-      context.fillRect(x - 1, trackFloorY - markerHeight, 2, anomalyBandTop + anomalyBandHeight - (trackFloorY - markerHeight));
-    });
-
-    if (selectedDeckMarker) {
-      const x = selectedDeckMarker.progress * width;
-      const beam = context.createLinearGradient(x - 12, 0, x + 12, 0);
-      beam.addColorStop(0, "rgba(255,255,255,0)");
-      beam.addColorStop(0.5, "rgba(255,255,255,0.9)");
-      beam.addColorStop(1, "rgba(255,255,255,0)");
-      context.fillStyle = beam;
-      context.fillRect(x - 12, 0, 24, height);
-    }
-  }, [anomalyBurstRegions, overviewAnomalyDensity, overviewWaveSamples, selectedDeckMarker, waveformAnomalies]);
+  }, [
+    anomalyBurstRegions,
+    overviewAnomalyDensity,
+    overviewWaveSamples,
+    overviewCanvasRef,
+    selectedDeckMarker,
+    waveformAnomalies,
+  ]);
 
   useEffect(() => {
     if (SAFE_MONITOR_RUNTIME) {
@@ -2236,848 +713,120 @@ export function SimpleMonitorScreen({
     if (!canvas || !stage) {
       return;
     }
-
-    const width = Math.max(1, Math.floor(stage.clientWidth));
-    const height = Math.max(1, Math.floor(stage.clientHeight));
-    const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
-    canvas.width = Math.floor(width * dpr);
-    canvas.height = Math.floor(height * dpr);
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
-
-    const context = canvas.getContext("2d");
-    if (!context) {
-      return;
-    }
-
-    context.setTransform(dpr, 0, 0, dpr, 0, 0);
-    context.clearRect(0, 0, width, height);
-
-    const bgGradient = context.createLinearGradient(0, 0, 0, height);
-    bgGradient.addColorStop(0, "rgba(9,14,19,0.98)");
-    bgGradient.addColorStop(0.45, "rgba(3,6,10,0.99)");
-    bgGradient.addColorStop(1, "rgba(0,0,0,1)");
-    context.fillStyle = bgGradient;
-    context.fillRect(0, 0, width, height);
-
-    const headerInset = Math.max(46, height * 0.16);
-    const footerInset = Math.max(10, height * 0.08);
-    const deckHeight = Math.max(48, height - headerInset - footerInset);
-    const trackBaseY = headerInset + deckHeight * 0.22;
-    const trackAmplitude = Math.max(12, deckHeight * 0.16);
-    const logBaseY = headerInset + deckHeight * 0.88;
-    const logAmplitude = Math.max(18, deckHeight * 0.26);
-    const separatorY = headerInset + deckHeight * 0.56;
-    const centerBandHeight = Math.max(2, height * 0.012);
-
-    context.fillStyle = "rgba(255,255,255,0.04)";
-    context.fillRect(0, headerInset - 1, width, 1);
-    context.fillRect(0, separatorY, width, 1);
-
-    const trackLaneGlow = context.createLinearGradient(0, trackBaseY - trackAmplitude - 10, 0, trackBaseY + 8);
-    trackLaneGlow.addColorStop(0, "rgba(72,215,255,0)");
-    trackLaneGlow.addColorStop(0.5, "rgba(72,215,255,0.12)");
-    trackLaneGlow.addColorStop(1, "rgba(72,215,255,0.04)");
-    context.fillStyle = trackLaneGlow;
-    context.fillRect(0, trackBaseY - trackAmplitude - 10, width, trackAmplitude + 20);
-
-    drawTrackEnergyBand(
-      context,
+    renderMonitorDeckCanvas({
+      canvas,
+      stage,
       trackWaveSamples,
-      width,
-      headerInset + deckHeight * 0.08,
-      Math.max(10, deckHeight * 0.1),
-    );
-
-    const logLaneGlow = context.createLinearGradient(0, logBaseY - logAmplitude - 12, 0, logBaseY + 10);
-    logLaneGlow.addColorStop(0, "rgba(255,176,84,0)");
-    logLaneGlow.addColorStop(0.5, "rgba(255,176,84,0.08)");
-    logLaneGlow.addColorStop(1, "rgba(72,215,255,0.06)");
-    context.fillStyle = logLaneGlow;
-    context.fillRect(0, logBaseY - logAmplitude - 12, width, logAmplitude + 22);
-
-    context.fillStyle = "rgba(72,215,255,0.88)";
-    context.fillRect(0, logBaseY - centerBandHeight / 2, width, centerBandHeight);
-
-    const trackFillGradient = context.createLinearGradient(0, trackBaseY - trackAmplitude, 0, trackBaseY + 2);
-    trackFillGradient.addColorStop(0, "rgba(236,246,255,0.92)");
-    trackFillGradient.addColorStop(0.14, "rgba(182,223,255,0.9)");
-    trackFillGradient.addColorStop(0.52, "rgba(92,188,255,0.84)");
-    trackFillGradient.addColorStop(1, "rgba(34,120,196,0.68)");
-    drawPhraseRibbon(
-      context,
-      trackWaveSamples,
-      width,
-      headerInset + deckHeight * 0.31,
-      Math.max(12, deckHeight * 0.12),
-    );
-    context.globalAlpha = 0.96;
-    drawSingleSidedWaveform(context, trackWaveSamples, width, trackBaseY, trackAmplitude, trackFillGradient);
-
-    const glossGradient = context.createLinearGradient(0, trackBaseY - trackAmplitude, 0, trackBaseY);
-    glossGradient.addColorStop(0, "rgba(255,255,255,0.28)");
-    glossGradient.addColorStop(0.4, "rgba(255,255,255,0.06)");
-    glossGradient.addColorStop(1, "rgba(255,255,255,0.04)");
-    context.globalCompositeOperation = "screen";
-    context.globalAlpha = 0.56;
-    drawSingleSidedWaveform(context, trackWaveSamples, width, trackBaseY, trackAmplitude * 0.9, glossGradient);
-    context.globalCompositeOperation = "source-over";
-
-    const logLaneBed = context.createLinearGradient(0, logBaseY - logAmplitude, 0, logBaseY + 4);
-    logLaneBed.addColorStop(0, "rgba(255,176,84,0.03)");
-    logLaneBed.addColorStop(0.52, "rgba(255,196,92,0.06)");
-    logLaneBed.addColorStop(1, "rgba(72,215,255,0.12)");
-    context.fillStyle = logLaneBed;
-    context.fillRect(0, logBaseY - logAmplitude, width, logAmplitude + 4);
-
-    const logSamples = logWaveOverlay.map((point) => Math.max(0.04, point.level * (0.2 + point.heat * 0.45)));
-    const logAreaGradient = context.createLinearGradient(0, logBaseY - logAmplitude, 0, logBaseY + 2);
-    logAreaGradient.addColorStop(0, "rgba(255,104,92,0.18)");
-    logAreaGradient.addColorStop(0.4, "rgba(255,188,84,0.22)");
-    logAreaGradient.addColorStop(1, "rgba(120,198,255,0.12)");
-    context.globalCompositeOperation = "screen";
-    context.globalAlpha = 0.44;
-    drawSingleSidedWaveform(context, logSamples, width, logBaseY, logAmplitude * 0.74, logAreaGradient);
-    context.globalCompositeOperation = "source-over";
-    context.globalAlpha = 0.96;
-    drawQuantizedLogBlocks(context, logWaveOverlay, width, logBaseY, logAmplitude * 0.96, 84);
-
-    const logAccentStroke = context.createLinearGradient(0, logBaseY - logAmplitude * 0.7, 0, logBaseY);
-    logAccentStroke.addColorStop(0, "rgba(255,238,216,0.56)");
-    logAccentStroke.addColorStop(1, "rgba(255,120,92,0.08)");
-    context.strokeStyle = logAccentStroke;
-    context.lineWidth = 1;
-    context.beginPath();
-    logSamples.forEach((value, index) => {
-      const x = (index / Math.max(1, logSamples.length - 1)) * width;
-      const y = logBaseY - value * logAmplitude * 0.72;
-      if (index === 0) {
-        context.moveTo(x, y);
-      } else {
-        context.lineTo(x, y);
-      }
-    });
-    context.stroke();
-    context.globalCompositeOperation = "source-over";
-
-    anomalyBurstRegions.forEach((region) => {
-      const leftRelative = 0.5 + (region.startProgress - trackWaveProgress) * MONITOR_TRACK_STRIP_MULTIPLIER;
-      const rightRelative = 0.5 + (region.endProgress - trackWaveProgress) * MONITOR_TRACK_STRIP_MULTIPLIER;
-      const leftX = leftRelative * width;
-      const rightX = rightRelative * width;
-      const burstWidth = rightX - leftX;
-      if (burstWidth <= 1 || rightX < 0 || leftX > width) {
-        return;
-      }
-
-      const visibleLeft = Math.max(0, leftX);
-      const visibleWidth = Math.min(width, rightX) - visibleLeft;
-      if (visibleWidth <= 0) {
-        return;
-      }
-
-      const burstGradient = context.createLinearGradient(0, logBaseY - logAmplitude, 0, logBaseY + 2);
-      if (region.severity >= 0.9) {
-        burstGradient.addColorStop(0, "rgba(255,72,108,0.18)");
-        burstGradient.addColorStop(1, "rgba(255,132,92,0.08)");
-      } else {
-        burstGradient.addColorStop(0, "rgba(255,196,92,0.16)");
-        burstGradient.addColorStop(1, "rgba(255,220,132,0.06)");
-      }
-      context.fillStyle = burstGradient;
-      context.fillRect(
-        visibleLeft,
-        logBaseY - logAmplitude * 0.92,
-        visibleWidth,
-        logAmplitude * 1.02,
-      );
-    });
-
-    context.globalAlpha = 1;
-    drawAnomalyWash(context, waveformAnomalies, trackWaveProgress, width, logBaseY, logAmplitude);
-    drawSelectedMarkerBeam(
-      context,
+      logWaveOverlay,
+      anomalyBurstRegions,
       selectedDeckMarker,
+      waveformAnomalies,
       trackWaveProgress,
-      width,
-      headerInset,
-      height - headerInset - footerInset,
-    );
-
-    drawWaveContour(context, trackWaveSamples, width, trackBaseY, trackAmplitude, "rgba(238,248,255,0.64)", 1.4, "top");
-    context.fillStyle = "rgba(255,255,255,0.08)";
-    context.fillRect(width * 0.5 - 1, headerInset, 2, height - headerInset - footerInset);
-
-    const playheadGlow = context.createLinearGradient(width * 0.5 - 18, 0, width * 0.5 + 18, 0);
-    playheadGlow.addColorStop(0, "rgba(255,255,255,0)");
-    playheadGlow.addColorStop(0.45, "rgba(255,255,255,0.14)");
-    playheadGlow.addColorStop(0.5, "rgba(255,255,255,0.92)");
-    playheadGlow.addColorStop(0.55, "rgba(255,255,255,0.14)");
-    playheadGlow.addColorStop(1, "rgba(255,255,255,0)");
-    context.fillStyle = playheadGlow;
-    context.fillRect(width * 0.5 - 18, headerInset, 36, height - headerInset - footerInset);
-
-    context.globalAlpha = 1;
-  }, [anomalyBurstRegions, logWaveOverlay, selectedDeckMarker, trackWaveSamples, trackWaveProgress, waveformAnomalies, waveformScale]);
-
-  const seekToTrackProgress = (nextProgress: number) => {
-    const audio = backgroundAudioRef.current;
-    const duration = audio?.duration;
-    if (!audio || !duration || !Number.isFinite(duration) || duration <= 0) {
-      return;
-    }
-
-    const clampedProgress = clamp01(nextProgress);
-    audio.currentTime = clampedProgress * duration;
-    setTrackWaveProgress(clampedProgress);
-    setTrackElapsedSeconds(audio.currentTime);
-
-    const nearestMarker = waveformAnomalies.reduce<WaveformAnomalyMarker | null>((closest, marker) => {
-      if (!closest) {
-        return marker;
-      }
-      return Math.abs(marker.progress - clampedProgress) < Math.abs(closest.progress - clampedProgress)
-        ? marker
-        : closest;
-    }, null);
-
-    if (nearestMarker && Math.abs(nearestMarker.progress - clampedProgress) <= 0.03) {
-      focusSelectedLogRef.current = true;
-      setSelectedAnomalyId(nearestMarker.id);
-      if (!isConsoleExpanded) {
-        onToggleConsole?.();
-      }
-    }
-  };
-
-  const seekTrackFromViewport = (clientX: number) => {
-    const stage = waveformStageRef.current;
-    if (!stage) {
-      return;
-    }
-
-    const rect = stage.getBoundingClientRect();
-    const pointerRatio = clamp01((clientX - rect.left) / rect.width);
-    const rawDeltaRatio = pointerRatio - deckScrubStartRatioRef.current;
-    const signedCurve = Math.sign(rawDeltaRatio) * Math.pow(Math.abs(rawDeltaRatio), 1.35);
-    const delta = signedCurve / (MONITOR_TRACK_STRIP_MULTIPLIER * 0.82);
-    const nextProgress = clamp01(deckScrubStartProgressRef.current + delta);
-    seekToTrackProgress(nextProgress);
-  };
-
-  const seekTrackFromOverviewViewport = (clientX: number) => {
-    const canvas = overviewCanvasRef.current;
-    if (!canvas) {
-      return;
-    }
-
-    const rect = canvas.getBoundingClientRect();
-    const nextProgress = clamp01((clientX - rect.left) / rect.width);
-    seekToTrackProgress(nextProgress);
-  };
-
-  useEffect(() => {
-    if (SAFE_MONITOR_RUNTIME) {
-      return;
-    }
-    const handlePointerMove = (event: PointerEvent) => {
-      if (
-        isOverviewScrubbingRef.current &&
-        activeOverviewPointerIdRef.current !== null &&
-        event.pointerId === activeOverviewPointerIdRef.current
-      ) {
-        seekTrackFromOverviewViewport(event.clientX);
-      }
-
-      if (
-        isDeckScrubbingRef.current &&
-        activeDeckPointerIdRef.current !== null &&
-        event.pointerId === activeDeckPointerIdRef.current
-      ) {
-        seekTrackFromViewport(event.clientX);
-      }
-    };
-
-    const stopScrubbing = (event: PointerEvent) => {
-      if (
-        activeOverviewPointerIdRef.current !== null &&
-        event.pointerId === activeOverviewPointerIdRef.current
-      ) {
-        isOverviewScrubbingRef.current = false;
-        activeOverviewPointerIdRef.current = null;
-      }
-
-      if (
-        activeDeckPointerIdRef.current !== null &&
-        event.pointerId === activeDeckPointerIdRef.current
-      ) {
-        isDeckScrubbingRef.current = false;
-        activeDeckPointerIdRef.current = null;
-      }
-    };
-
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", stopScrubbing);
-    window.addEventListener("pointercancel", stopScrubbing);
-
-    return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", stopScrubbing);
-      window.removeEventListener("pointercancel", stopScrubbing);
-    };
-  }, []);
+    });
+  }, [
+    anomalyBurstRegions,
+    logWaveOverlay,
+    selectedDeckMarker,
+    trackWaveSamples,
+    trackWaveProgress,
+    waveformCanvasRef,
+    waveformAnomalies,
+    waveformScale,
+    waveformStageRef,
+  ]);
 
   return (
     <div className="simple-monitor-screen">
       {isMonitorActive ? (
-        <>
-          {/* Active Listening State */}
-          <div className="monitor-active">
-            {/* Now Listening Header - Streamlined */}
-            <div className="now-listening-header">
-              <div className="brand-header-mini">
-                <img src="/assets/branding/maia-icon-site.png" alt="MAIA" className="logo-mini" />
-                <div className="status-indicator">
-                  <div className={`pulsing-dot ${isConnectingMonitor ? "amber" : "teal"}`}></div>
-                  <span className={`status-text${isConnectingMonitor ? " pending" : ""}`}>
-                    {isConnectingMonitor ? "CONNECTING_GCLOUD" : "SYSTEM_ACTIVE"}
-                  </span>
-                </div>
-              </div>
-              <div className="source-info">
-                <span className="source-name-hd">{monitorSourceTitle}</span>
-                <span className="source-path-mini">{monitorSourcePath}</span>
-                {isConnectingMonitor ? (
-                  <span className="monitor-connecting-inline">
-                    <RefreshCw size={12} className="spin-ring" />
-                    Waiting for stream handshake and first response…
-                  </span>
-                ) : null}
-              </div>
-              <div className="metrics-row-hd">
-                <div 
-                  className={`metric-pill clickable ${isAnomalyFilterActive ? 'active' : ''}`}
-                  onClick={() => {
-                    setIsAnomalyFilterActive(!isAnomalyFilterActive);
-                    if (!isConsoleExpanded) onToggleConsole?.();
-                  }}
-                >
-                  <span className="pill-label">ANOMALIES</span>
-                  <span className="pill-value alert">{metrics.totalAnomalies}</span>
-                </div>
-                <div className="metric-pill">
-                  <span className="pill-label">UPTIME</span>
-                  <span className="pill-value">{uptimeLabel}</span>
-                </div>
-              </div>
-              <button
-                className="btn-stop-hd"
-                onClick={onStop}
-              >
-                STOP
-              </button>
-            </div>
-
-            {/* Professional Terminal Tail */}
-            <div className={`terminal-tail-container ${isConsoleExpanded ? 'expanded' : ''}`}>
-              <div className="terminal-header" onClick={() => onToggleConsole?.()}>
-                <div className="terminal-dots">
-                  <span className="terminal-dot red"></span>
-                  <span className="terminal-dot yellow"></span>
-                  <span className="terminal-dot green"></span>
-                </div>
-                <span className="terminal-title">
-                  {isAnomalyFilterActive ? "ANOMALY_DETECTION_STREAM" : "LIVE_SYSTEM_INGESTION"}
-                </span>
-                <div className="terminal-controls">
-                  <button className="btn-refresh-hd" onClick={(e) => {
-                    e.stopPropagation();
-                    window.location.reload();
-                  }} style={{
-                    background: "none",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    color: "#94a3b8",
-                    padding: "2px 8px",
-                    borderRadius: "4px",
-                    fontSize: "0.6rem",
-                    cursor: "pointer",
-                    marginRight: "0.5rem"
-                  }}>REFRESH</button>
-                  <button className="btn-simulate-hd" onClick={(e) => {
-                    e.stopPropagation();
-                    simulateLog();
-                  }}>SIMULATE_DATA</button>
-                  {isAnomalyFilterActive && (
-                    <button className="btn-filter-clear" onClick={(e) => {
-                      e.stopPropagation();
-                      setIsAnomalyFilterActive(false);
-                    }}>SHOW ALL</button>
-                  )}
-                  <span className="terminal-action-hint">{isConsoleExpanded ? "CLOSE" : "INSPECT"}</span>
-                </div>
-              </div>
-              <div
-                className="terminal-lines"
-                ref={terminalLinesRef}
-                onScroll={(event) => {
-                  const target = event.currentTarget;
-                  const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
-                  isTailPinnedRef.current = distanceFromBottom <= 8;
-                }}
-              >
-                {liveLines.length === 0 ? (
-                  <div className="terminal-empty">
-                    {isConnectingMonitor ? (
-                      <RefreshCw size={16} className="spin-ring terminal-connecting-spinner" />
-                    ) : (
-                      <div className="pulsing-dot teal"></div>
-                    )}
-                    <span>
-                      {isConnectingMonitor
-                        ? "CONNECTING_TO_REMOTE_STREAM..."
-                        : "WAITING_FOR_LIVE_INGESTION_STREAM..."}
-                    </span>
-                    <p className="terminal-hint">
-                      {isConnectingMonitor
-                        ? `Opening ${monitorSourcePath} and waiting for first window`
-                        : `Listening to ${monitorSourcePath} in real-time`}
-                    </p>
-                    <div className="terminal-status-badge">
-                      {isConnectingMonitor
-                        ? `${streamAdapterLabel}: CONNECTING`
-                        : `${streamAdapterLabel}: ACTIVE (0 LINES DETECTED)`}
-                    </div>
-                  </div>
-                ) : (
-                  liveLines
-                    .filter(line => !isAnomalyFilterActive || line.level === "error")
-                    .map((line, i) => (
-                    <div
-                      key={line.id}
-                      ref={(node) => {
-                        if (node) {
-                          lineRefs.current.set(line.id, node);
-                        } else {
-                          lineRefs.current.delete(line.id);
-                        }
-                      }}
-                      className={`terminal-line ${line.level}${line.isAnomaly ? " anomaly-line" : ""}${selectedAnomalyId && line.anomalyId === selectedAnomalyId ? " linked-anomaly" : ""}`}
-                      onClick={() => {
-                        if (line.anomalyId) {
-                          focusSelectedLogRef.current = true;
-                          setSelectedAnomalyId(line.anomalyId);
-                        }
-                      }}
-                    >
-                      <span className="line-ts">[{line.timestamp}]</span>
-                      <span className="line-level">{line.level.toUpperCase()}</span>
-                      {line.isAnomaly ? (
-                        <span className="line-anomaly-link">
-                          {selectedAnomalyId === line.anomalyId ? "LINKED" : "ANOMALY"}
-                        </span>
-                      ) : null}
-                      <span className="line-msg">{line.message}</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Waveform Area - Rekordbox Style */}
-            <div className="waveform-section-hd">
-              <div className="monitor-deck-shell">
-                <div className="section-controls-hd monitor-deck-topbar">
-                  <div className="monitor-deck-heading">
-                    <span className="section-label-hd">HD_WAVEFORM_ENGINE // SCAN_ACTIVE</span>
-                    <span className="monitor-deck-trackline">
-                      {monitorTrackTitle || "Live Ingestion"}
-                      {activeTrack?.tags?.musicStyleLabel ? ` · ${activeTrack.tags.musicStyleLabel}` : ""}
-                    </span>
-                  </div>
-                    <div className="monitor-deck-meta">
-                      <div className="monitor-deck-legend" aria-label="Anomaly severity legend">
-                        <span className="monitor-deck-legend__item">
-                          <span className="monitor-deck-legend__swatch track" />
-                          TRACK AUDIO
-                        </span>
-                        <span className="monitor-deck-legend__item">
-                          <span className="monitor-deck-legend__swatch warn" />
-                          LOG PRESSURE
-                        </span>
-                        <span className="monitor-deck-legend__item">
-                          <span className="monitor-deck-legend__swatch error" />
-                          ANOMALY
-                        </span>
-                      </div>
-                    <span className="monitor-deck-meta__chip">
-                      BPM {typeof deckBpm === "number" ? deckBpm.toFixed(0) : "--"}
-                    </span>
-                    <span className="monitor-deck-meta__chip">
-                      {formatDeckTime(trackElapsedSeconds)}
-                    </span>
-                    <span className="monitor-deck-meta__chip subtle">
-                      -{formatDeckTime(deckRemainingSeconds)}
-                    </span>
-                  </div>
-                </div>
-                <div className="monitor-deck-explainer" aria-hidden="true">
-                  <span className="monitor-deck-explainer__item">
-                    Upper lane: real track energy and phrase shape
-                  </span>
-                  <span className="monitor-deck-explainer__item">
-                    Lower lane: log intensity, warnings and anomaly bursts
-                  </span>
-                </div>
-                {selectedDeckMarker ? (
-                  <div className="monitor-deck-focusbar">
-                    <span className={`monitor-deck-focusbar__badge${selectedDeckMarker.severity >= 0.9 ? " critical" : " warning"}`}>
-                      {selectedDeckMarker.severity >= 0.9 ? "ACTIVE ANOMALY" : "ACTIVE WARNING"}
-                    </span>
-                    <span className="monitor-deck-focusbar__time">{selectedDeckMarker.timestamp}</span>
-                    <span className="monitor-deck-focusbar__text">{selectedDeckMarker.message}</span>
-                    {selectedBurstRegion ? (
-                      <span className="monitor-deck-focusbar__burst">
-                        BURST {selectedBurstRegion.count}
-                      </span>
-                    ) : null}
-                  </div>
-                ) : null}
-                <div className="zoom-control-vertical">
-                  <span className="zoom-label-vertical">H</span>
-                  <input 
-                    type="range" 
-                    min="0.5" 
-                    max="3.5" 
-                    step="0.1" 
-                    value={waveformScale}
-                    onChange={(e) => setWaveformScale(parseFloat(e.target.value))}
-                    className="zoom-slider-vertical"
-                    /* @ts-ignore - non-standard attribute for vertical slider */
-                    orient="vertical"
-                  />
-                  <span className="zoom-value-vertical">{waveformScale.toFixed(1)}</span>
-                </div>
-
-                <div className="waveform-dual-channel" style={{ height: `${190 * waveformScale}px` }}>
-                  <div className="monitor-overview-shell">
-                    <div
-                      className="monitor-overview-wave"
-                      aria-hidden="true"
-                      onPointerDown={(event) => {
-                        isOverviewScrubbingRef.current = true;
-                        activeOverviewPointerIdRef.current = event.pointerId;
-                        event.currentTarget.setPointerCapture?.(event.pointerId);
-                        seekTrackFromOverviewViewport(event.clientX);
-                      }}
-                      onClick={(event) => seekTrackFromOverviewViewport(event.clientX)}
-                    >
-                      <canvas ref={overviewCanvasRef} className="monitor-overview-wave__canvas" />
-                      <span className="monitor-overview-wave__label">FULL TRACK MAP</span>
-                      <span className="monitor-overview-wave__sublabel">ANOMALY HEAT</span>
-                      <div className="monitor-overview-wave__anomalies">
-                        {anomalyBurstRegions.map((region) => (
-                          <span
-                            key={`overview-region-${region.id}`}
-                            className={`monitor-overview-wave__region${region.severity >= 0.9 ? " critical" : " warning"}${selectedBurstRegion?.id === region.id ? " active" : ""}`}
-                            style={{
-                              left: `${region.startProgress * 100}%`,
-                              width: `${Math.max(0.4, (region.endProgress - region.startProgress) * 100)}%`,
-                            }}
-                          />
-                        ))}
-                        {overviewAnomalyMarkers.map((marker) => (
-                          <button
-                            key={`overview-${marker.id}`}
-                            type="button"
-                            className={`monitor-overview-wave__anomaly${selectedAnomalyId === marker.id ? " active" : ""}${marker.severity >= 0.9 ? " critical" : " warning"}`}
-                            style={{ left: `${marker.leftPercent}%` }}
-                            title={`${marker.timestamp} · ${marker.message}`}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              seekToTrackProgress(marker.progress);
-                              focusSelectedLogRef.current = true;
-                              setSelectedAnomalyId(marker.id);
-                              if (!isConsoleExpanded) {
-                                onToggleConsole?.();
-                              }
-                            }}
-                            onPointerDown={(event) => {
-                              event.stopPropagation();
-                            }}
-                          />
-                        ))}
-                      </div>
-                      <div
-                        className="monitor-overview-wave__window"
-                        style={{
-                          left: `${overviewWindowLeftPercent}%`,
-                          width: `${overviewWindowWidthPercent}%`,
-                        }}
-                      />
-                      <span
-                        className="monitor-overview-wave__playhead"
-                        style={{ left: `${overviewPlayheadLeftPercent}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="waveform-channel-hd monitor-deck-body monitor-deck-main" style={{ height: "100%", borderBottom: "none", position: "relative" }}>
-                    <div className="monitor-deck-timeline" aria-hidden="true">
-                      {deckTimelineMarkers.map((marker) => (
-                        <div
-                          key={marker.id}
-                          className={`monitor-deck-timeline__marker ${marker.emphasis}`}
-                          style={{ left: `${marker.leftPercent}%` }}
-                        >
-                          <span className="monitor-deck-timeline__tick" />
-                          <span className="monitor-deck-timeline__label">{marker.label}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="channel-label-mini" style={{ zIndex: 30 }}>
-                      <span className="label-blue">HYBRID MONITOR</span>
-                    </div>
-
-                    <div
-                      ref={waveformStageRef}
-                      className="waveform-container-hd monitor-deck-stage"
-                      onPointerDown={(event) => {
-                        isDeckScrubbingRef.current = true;
-                        activeDeckPointerIdRef.current = event.pointerId;
-                        const rect = event.currentTarget.getBoundingClientRect();
-                        deckScrubStartRatioRef.current = clamp01((event.clientX - rect.left) / rect.width);
-                        deckScrubStartProgressRef.current = trackWaveProgress;
-                        event.currentTarget.setPointerCapture?.(event.pointerId);
-                        seekTrackFromViewport(event.clientX);
-                      }}
-                      onClick={(event) => seekTrackFromViewport(event.clientX)}
-                    >
-                      <canvas ref={waveformCanvasRef} className="monitor-wave-canvas" />
-                      <div className="monitor-deck-lane-labels" aria-hidden="true">
-                        <span className="monitor-deck-lane-label track">TRACK AUDIO</span>
-                        <span className="monitor-deck-lane-label log">LOG REACTIVITY</span>
-                      </div>
-                      <div className="monitor-deck-beat-grid" aria-hidden="true">
-                        {deckBeatMarkers.map((marker) => (
-                          <span
-                            key={marker.id}
-                            className={`monitor-deck-beat-grid__line${marker.major ? " major" : ""}`}
-                            style={{ left: `${marker.leftPercent}%` }}
-                          />
-                        ))}
-                      </div>
-                      <div className="monitor-wave-guides" aria-hidden="true">
-                        <span className="monitor-wave-guides__line separator" />
-                        <span className="monitor-wave-guides__line base" />
-                        <span className="monitor-wave-guides__line mid" />
-                        <span className="monitor-wave-guides__line top" />
-                      </div>
-                    </div>
-
-                    <div className="monitor-deck-footer">
-                      <div className="monitor-deck-footer__lane">
-                        <span className="monitor-deck-footer__tag track">TRACK</span>
-                        <span className="monitor-deck-footer__text">{trackName || "No track selected"}</span>
-                      </div>
-                      <div className="monitor-deck-footer__lane">
-                        <span className="monitor-deck-footer__tag log">LOG STREAM</span>
-                        <span className="monitor-deck-footer__text">
-                          {truncateMiddle(monitorSourcePath, 52)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Reverb/Tail visualizer */}
-                <div className="waveform-glow-bg"></div>
-              </div>
-            </div>
-
-              {/* Sound Status */}
-              <div className="sound-status">
-                <span className={metrics.totalAnomalies > 0 ? "status-alert" : "status-healthy"}>
-                  {metrics.totalAnomalies > 0 
-                    ? `Warning: ${metrics.totalAnomalies} anomalies detected in session` 
-                    : "Signal healthy — monitoring flow"}
-                </span>
-              </div>
-            
-
-            {/* Action Footer */}
-            <div className="monitor-footer">
-              <button className="btn-secondary" onClick={onStop}>
-                End session
-              </button>
-              <button className="btn-ghost" onClick={() => void onResumeAudio()}>
-                {audioStatus === "running" ? "Audio active" : "Resume audio"}
-              </button>
-              <button className="btn-ghost">Bookmark anomaly</button>
-            </div>
-          </div>
-        </>
+        <SimpleMonitorActiveView
+          isConnectingMonitor={isConnectingMonitor}
+          monitorSourceTitle={monitorSourceTitle}
+          monitorSourcePath={monitorSourcePath}
+          isAnomalyFilterActive={isAnomalyFilterActive}
+          onToggleAnomalyFilter={() => {
+            setIsAnomalyFilterActive((value) => !value);
+            if (!isConsoleExpanded) {
+              onToggleConsole?.();
+            }
+          }}
+          onClearAnomalyFilter={() => setIsAnomalyFilterActive(false)}
+          totalAnomalies={metrics.totalAnomalies}
+          uptimeLabel={uptimeLabel}
+          onStop={onStop}
+          isConsoleExpanded={isConsoleExpanded}
+          onToggleConsole={onToggleConsole}
+          onRefresh={() => window.location.reload()}
+          onSimulateLog={simulateLog}
+          terminalLinesRef={terminalLinesRef}
+          onTerminalScroll={(event) => {
+            const target = event.currentTarget;
+            const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+            isTailPinnedRef.current = distanceFromBottom <= 8;
+          }}
+          liveLines={liveLines}
+          streamAdapterLabel={streamAdapterLabel}
+          selectedAnomalyId={selectedAnomalyId}
+          onSelectAnomalyLine={(anomalyId) => {
+            focusSelectedLogRef.current = true;
+            setSelectedAnomalyId(anomalyId);
+          }}
+          registerLineRef={(lineId, node) => {
+            if (node) {
+              lineRefs.current.set(lineId, node);
+            } else {
+              lineRefs.current.delete(lineId);
+            }
+          }}
+          monitorTrackTitle={monitorTrackTitle}
+          musicStyleLabel={activeTrack?.tags?.musicStyleLabel}
+          deckBpm={deckBpm}
+          trackElapsedSeconds={trackElapsedSeconds}
+          deckRemainingSeconds={deckRemainingSeconds}
+          selectedDeckMarker={selectedDeckMarker}
+          selectedBurstCount={selectedBurstRegion?.count ?? null}
+          overviewCanvasRef={overviewCanvasRef}
+          waveformCanvasRef={waveformCanvasRef}
+          waveformStageRef={waveformStageRef}
+          anomalyBurstRegions={anomalyBurstRegions}
+          selectedBurstRegionId={selectedBurstRegion?.id ?? null}
+          overviewAnomalyMarkers={overviewAnomalyMarkers}
+          overviewWindowLeftPercent={overviewWindowLeftPercent}
+          overviewWindowWidthPercent={overviewWindowWidthPercent}
+          overviewPlayheadLeftPercent={overviewPlayheadLeftPercent}
+          onOverviewPointerDown={handleOverviewPointerDown}
+          onOverviewClick={handleOverviewClick}
+          onOverviewAnomalyClick={handleOverviewAnomalyClick}
+          onOverviewAnomalyPointerDown={handleOverviewAnomalyPointerDown}
+          deckTimelineMarkers={deckTimelineMarkers}
+          deckBeatMarkers={deckBeatMarkers}
+          onStagePointerDown={handleStagePointerDown}
+          onStageClick={handleStageClick}
+          stageHeightPx={190 * waveformScale}
+          trackFooterText={trackName || t.simpleMode.monitor.noTrackSelected}
+          audioStatus={audioStatus}
+          onResumeAudio={onResumeAudio}
+        />
       ) : (
-        <>
-          {/* Idle State - Ready to Monitor */}
-          <div className="monitor-idle">
-            <div className="idle-container">
-              <h2 className="idle-title">Start monitoring</h2>
-
-	              <div className="setup-actions-fixed setup-actions-fixed--hero">
-	                <button
-	                  className={`btn-start-listening-impactful ${selectedSourceId && selectedSoundId && canStartSelectedSource ? 'ready' : ''}${isLaunchingMonitor ? ' launching' : ''}`}
-	                  onClick={async () => {
-	                    if (selectedSourceOption && selectedSoundId && canStartSelectedSource) {
-                        try {
-                          flushSync(() => {
-                            setIsLaunchingMonitor(true);
-                          });
-                          await new Promise<void>((resolve) => {
-                            window.requestAnimationFrame(() => resolve());
-                          });
-	                      await onResumeAudio();
-	                      await onStartMonitoring(selectedSourceOption, selectedSoundId);
-                        } catch (error) {
-                          console.error("Failed to start monitor from selector", error);
-                          setIsLaunchingMonitor(false);
-                        }
-	                    }
-	                  }}
-	                  disabled={!selectedSourceId || !selectedSoundId || !canStartSelectedSource || isLaunchingMonitor}
-	                >
-                  <div className="btn-impact-glitch" />
-                  {isLaunchingMonitor ? (
-                    <RefreshCw size={28} className="spin-ring" />
-                  ) : (
-                    <Play size={28} fill="currentColor" />
-                  )}
-                  <span className="btn-text">
-                    {isLaunchingMonitor ? "CONNECTING TO STREAM" : "INITIALIZE MONITORING"}
-                  </span>
-                  <div className="btn-impact-scan" />
-                </button>
-	                <p className="setup-hero-hint">
-	                  {startHint}
-	                </p>
-	              </div>
-
-	              <div className="idle-main-grid">
-	                <div className="setup-container-modern">
-                    <div className="source-filter-bar" role="tablist" aria-label="Log source type filter">
-                      {[
-                        { id: "all", label: "All" },
-                        { id: "file", label: "Log file" },
-                        { id: "folder", label: "Folder" },
-                        { id: "cloud", label: "Cloud" },
-                      ].map((filter) => (
-                        <button
-                          key={filter.id}
-                          type="button"
-                          className={`source-filter-chip ${sourceFilter === filter.id ? "active" : ""}`}
-                          onClick={() => setSourceFilter(filter.id as MonitorSourceFilter)}
-                        >
-                          {filter.label}
-                        </button>
-                      ))}
-                    </div>
-	                  <ModernSelector
-	                    label="Log source"
-	                    items={filteredMonitorSourceOptions}
-	                    selectedId={selectedSourceId}
-	                    onSelect={setSelectedSourceId}
-	                    renderTitle={(source) => source.title}
-	                    renderSub={(source) => source.sourcePath}
-                      renderBadge={(source) => (
-                        <span className={`selector-type-badge selector-type-badge--${source.sourceType}`}>
-                          {source.sourceTypeLabel}
-                        </span>
-                      )}
-                      emptyMessage={sourceEmptyMessage}
-	                    color="var(--color-calm)"
-	                    seedPrefix="repo"
-	                  />
-
-                  <ModernSelector
-                    label="Sound profile"
-                    items={safeTracks}
-                    selectedId={selectedSoundId}
-                    onSelect={setSelectedSoundId}
-                    renderTitle={t => getTrackTitle(t)}
-                    renderSub={t => t.tags.musicStyleLabel || "Ambient"}
-                    color="var(--color-accent)"
-                    seedPrefix="track"
-                    renderAction={(track) => (
-                      <button
-                        type="button"
-                        className="track-preview-button"
-                        title={previewTrackId === track.id ? "Pause preview" : "Preview track"}
-                        onClick={() => {
-                          void toggleTrackPreview(track);
-                        }}
-                      >
-                        {previewTrackId === track.id ? <Pause size={14} /> : <Play size={14} />}
-                      </button>
-                    )}
-                    renderWave={(track, isSelected) => (
-                      <TrackWaveformMini
-                        bins={track.analysis?.waveformBins ?? null}
-                        active={isSelected}
-                      />
-                    )}
-                  />
-                </div>
-
-                <div className="sessions-column">
-                  <h3 className="sessions-title">Past sessions</h3>
-                  <div className="sessions-list">
-                    {safePastSessions.length === 0 ? (
-                      <p className="text-muted" style={{ padding: "1rem", fontSize: "13px" }}>No previous sessions found.</p>
-                    ) : (
-                      sortedPastSessions.slice(0, 5).map((session) => (
-                        <div key={session.id} className="session-row">
-                          <div className="session-info">
-                            <div className="session-row__top">
-                              <div className="session-row__identity">
-                                <span className="session-name">{session.label || session.sourceTitle || "Untitled Session"}</span>
-                                <span className="session-track-chip">{session.trackTitle || "No track"}</span>
-                              </div>
-                              <span className={`session-status-chip ${session.status}`}>{session.status}</span>
-                            </div>
-                            <span className="session-source">{truncateMiddle(session.sourcePath, 74)}</span>
-                            <div className="session-row__meta">
-                              <span className="session-meta-chip">{getBasename(session.sourcePath)}</span>
-                              <span className="session-meta-text">Updated {formatSessionUpdatedAt(session.updatedAt)}</span>
-                            </div>
-                          </div>
-                          <div className="session-side">
-                            <div className="session-stats">
-                              {session.totalAnomalies > 0 && (
-                                <span className="badge-anomalies">
-                                  {session.totalAnomalies}
-                                </span>
-                              )}
-                              <span className="session-duration">{formatSessionLineCount(session.totalLines)}</span>
-                            </div>
-                            <div className="session-actions">
-                              <button
-                                className="btn-ghost"
-                                title="Replay"
-                                onClick={() => onReplaySession(session.id, session.sourcePath || "", session.sourceTitle || "Session")}
-                              >
-                                <Play size={14} />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
+        <SimpleMonitorIdleView
+          sourceFilter={sourceFilter}
+          onSourceFilterChange={setSourceFilter}
+          filteredMonitorSourceOptions={filteredMonitorSourceOptions}
+          selectedSourceId={selectedSourceId}
+          onSelectSourceId={setSelectedSourceId}
+          sourceEmptyMessage={sourceEmptyMessage}
+          tracks={safeTracks}
+          selectedSoundId={selectedSoundId}
+          onSelectSoundId={setSelectedSoundId}
+          getTrackTitle={getTrackTitle}
+          previewTrackId={previewTrackId}
+          onToggleTrackPreview={toggleTrackPreview}
+          canStartSelectedSource={canStartSelectedSource}
+          startHint={startHint}
+          isLaunchingMonitor={isLaunchingMonitor}
+          onStartMonitoringRequest={handleStartMonitoringRequest}
+          sessions={sortedPastSessions}
+          onReplaySession={onReplaySession}
+        />
       )}
     </div>
   );

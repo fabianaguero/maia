@@ -12,6 +12,32 @@ Source of truth:
 
 The product app is started from `desktop/` with `npm run tauri dev`.
 
+## Documentation Map
+
+- `docs/architecture.md`: product and runtime architecture overview
+- `docs/sdd.md`: lightweight functional spec and shipped/future scope
+- `docs/open-source-maintainer-guide.md`: codebase tour, runtime boundaries, and architecture analysis for contributors
+- `docs/ai-roadmap.md`: staged plan for ML and AI adoption across analyzer, prep workflows, and hybrid mixing
+- `docs/github-publish-checklist.md`: pre-publication checklist before making the repository public
+- `docs/demo-assets-and-fixtures.md`: explanation of demo audio, curated fixtures, and non-runtime helper artifacts
+- `docs/archive/`: archived implementation plans and historical verification notes that are no longer active source-of-truth docs
+- `CONTRIBUTING.md`: contributor workflow and runtime ownership rules
+- `CODE_OF_CONDUCT.md`: collaboration expectations for the repository
+- `SECURITY.md`: vulnerability reporting policy and security scope
+- `LICENSE`: MIT license for the repository
+- `contracts/`: cross-runtime JSON contracts
+- `database/schema.sql`: SQLite storage model
+
+Current maintainer note:
+
+- `desktop/src/main.tsx` currently mounts `desktop/src/App-v0.tsx`
+- `desktop/src/App.tsx` exists as an alternate shell under development, but it is not the mounted entrypoint today
+
+Publication note:
+
+- the repository is licensed under MIT
+- review `docs/github-publish-checklist.md` before switching visibility to public on GitHub
+
 ## Current Product Status (Updated June 2026)
 
 The current desktop app already includes:
@@ -71,7 +97,11 @@ Core entity: `musical_asset`
 - `analyzer/`: Python package root; active runtime code is in `analyzer/src/maia_analyzer/`
 - `contracts/`: JSON schemas for analyzer requests/responses
 - `database/`: SQLite schema
+- `demo/`: non-runtime demo renders kept for validation and storytelling
+- `scripts/dev/`: local development helpers
+- `scripts/demo/`: local demo signal generators
 - `site/`: landing page
+- `scripts/verification/`: optional demo and verification helpers for analyzer and sonification experiments
 
 ### Install dependencies
 

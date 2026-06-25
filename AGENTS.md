@@ -1,6 +1,6 @@
 # AGENTS.md
 
-**Last Updated:** June 2026 (Status as of June 24, 2026)
+**Last Updated:** June 2026 (Status as of June 25, 2026)
 
 ## Product
 Desktop app tipo Rekordbox para Linux, Windows y macOS.
@@ -58,9 +58,11 @@ Must feel like a desktop DJ analyzer, not a web dashboard.
 - ✅ Property-based testing for session improvements
 
 ### In Progress / Future Work
+- ⏳ Deeper track / playlist prep (full-track analysis, stronger cue maps, smarter playlist intelligence)
 - ⏳ Background music-server mode / headless runtime
 - ⏳ Broader stream adapters (Kafka, Loki)
 - ⏳ Richer sonification behavior
+- ⏳ Virtual output mode / system-audio passthrough (later roadmap)
 - ⏳ Fuller bounce/export beyond WAV stems
 
 ## Engineering rules
@@ -70,3 +72,14 @@ Must feel like a desktop DJ analyzer, not a web dashboard.
 - Make Linux the primary dev environment
 - Maintain strict TypeScript (no `any`), proper error handling with NotificationSystem
 - All UI changes align with DESIGN.md constraints (typography, colors, spacing, motion)
+
+## Quality gates
+- Codex must leave repository hooks green before proposing a commit or publish step.
+- `pre-commit` runs `make quality-pre-commit` from `.githooks/pre-commit`.
+- `pre-push` runs `make quality-pre-push` from `.githooks/pre-push`.
+- Use `make hooks-install` after cloning to activate the tracked hook path with `git config core.hooksPath .githooks`.
+
+## Commit policy
+- Codex-authored commits must use Conventional Commits.
+- Prefer the narrowest truthful scope, such as `feat(desktop): ...`, `fix(analyzer): ...`, or `chore(repo): ...`.
+- Do not create a commit until the corresponding hook stage is green.

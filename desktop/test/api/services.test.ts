@@ -11,15 +11,8 @@ vi.mock("@tauri-apps/api/core", () => ({
   isTauri: vi.fn(() => false),
 }));
 
-import {
-  importBaseAsset,
-  listBaseAssets,
-  pickBaseAssetPath,
-} from "../../src/api/baseAssets";
-import {
-  importComposition,
-  listCompositions,
-} from "../../src/api/compositions";
+import { importBaseAsset, listBaseAssets, pickBaseAssetPath } from "../../src/api/baseAssets";
+import { importComposition, listCompositions } from "../../src/api/compositions";
 import {
   checkTrackExists,
   deleteTrack,
@@ -152,10 +145,7 @@ describe("desktop service wrappers", () => {
 
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     await expect(deleteRepository(repository.id)).resolves.toBeUndefined();
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "Mock delete repository:",
-      repository.id,
-    );
+    expect(consoleSpy).toHaveBeenCalledWith("Mock delete repository:", repository.id);
   });
 
   it("creates composition previews in the browser fallback path", async () => {
@@ -201,7 +191,7 @@ describe("desktop service wrappers", () => {
     (window as any).__TAURI_INTERNALS__ = {};
     invokeMock.mockClear();
     invokeMock.mockResolvedValueOnce(undefined); // Reset from beforeEach error
-    
+
     const session: PersistedSession = {
       id: "session-1",
       label: "Live monitor",
@@ -254,7 +244,7 @@ describe("desktop service wrappers", () => {
     (window as any).__TAURI_INTERNALS__ = {};
     invokeMock.mockClear();
     invokeMock.mockResolvedValueOnce(undefined); // Reset from beforeEach error
-    
+
     const bookmark: SessionBookmark = {
       id: 1,
       sessionId: "session-1",

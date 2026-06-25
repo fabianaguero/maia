@@ -119,10 +119,7 @@ export function formatTrackTime(seconds: number | null): string {
   return `${minutes}:${remainingSeconds.toFixed(2).padStart(5, "0")}`;
 }
 
-export function snapTrackSecond(
-  second: number,
-  durationSeconds: number | null,
-): number {
+export function snapTrackSecond(second: number, durationSeconds: number | null): number {
   const clamped =
     typeof durationSeconds === "number" && durationSeconds > 0
       ? Math.min(Math.max(0, second), durationSeconds)
@@ -131,9 +128,7 @@ export function snapTrackSecond(
   return Number(clamped.toFixed(3));
 }
 
-export function hasUsableBeatGrid(
-  beatGrid: readonly BeatGridPoint[],
-): boolean {
+export function hasUsableBeatGrid(beatGrid: readonly BeatGridPoint[]): boolean {
   return beatGrid.length > 1;
 }
 
@@ -257,8 +252,7 @@ export function createTrackCuePoint(
   durationSeconds: number | null,
 ): TrackCuePoint {
   const normalizedSecond = snapTrackSecond(second, durationSeconds);
-  const cueIndex =
-    existingCues.filter((cue) => cue.kind === kind).length + 1;
+  const cueIndex = existingCues.filter((cue) => cue.kind === kind).length + 1;
   const slot = kind === "hot" ? nextHotCueSlot(existingCues) : null;
 
   if (kind === "hot" && slot === null) {
@@ -278,7 +272,7 @@ export function createTrackCuePoint(
     kind,
     color:
       kind === "hot"
-        ? HOT_CUE_COLORS[((slot ?? cueIndex) - 1) % HOT_CUE_COLORS.length] ?? null
+        ? (HOT_CUE_COLORS[((slot ?? cueIndex) - 1) % HOT_CUE_COLORS.length] ?? null)
         : null,
   };
 }
@@ -333,14 +327,8 @@ export function createTrackSavedLoopFromRange(
     throw new Error("No saved loop slots available");
   }
 
-  const normalizedStart = snapTrackSecond(
-    Math.min(startSecond, endSecond),
-    durationSeconds,
-  );
-  const normalizedEnd = snapTrackSecond(
-    Math.max(startSecond, endSecond),
-    durationSeconds,
-  );
+  const normalizedStart = snapTrackSecond(Math.min(startSecond, endSecond), durationSeconds);
+  const normalizedEnd = snapTrackSecond(Math.max(startSecond, endSecond), durationSeconds);
 
   if (normalizedEnd <= normalizedStart) {
     throw new Error("Loop end must be after loop start");
@@ -533,10 +521,7 @@ export function moveTrackSavedLoop(
       }
 
       const normalizedStart = snapTrackSecond(nextStart, options.durationSeconds);
-      const normalizedEnd = snapTrackSecond(
-        normalizedStart + spanSeconds,
-        options.durationSeconds,
-      );
+      const normalizedEnd = snapTrackSecond(normalizedStart + spanSeconds, options.durationSeconds);
 
       return {
         ...loop,
@@ -598,9 +583,7 @@ export function getTrackWaveformCues(track: LibraryTrack): VisualizationCuePoint
 
   const mainCue =
     typeof track.performance.mainCueSecond === "number" &&
-    !performanceCues.some(
-      (cue) => Math.abs(cue.second - track.performance.mainCueSecond!) < 0.001,
-    )
+    !performanceCues.some((cue) => Math.abs(cue.second - track.performance.mainCueSecond!) < 0.001)
       ? [
           {
             second: track.performance.mainCueSecond,
@@ -614,22 +597,18 @@ export function getTrackWaveformCues(track: LibraryTrack): VisualizationCuePoint
   const cues =
     performanceCues.length > 0 || mainCue.length > 0
       ? [...mainCue, ...performanceCues]
-      : track.visualization?.hotCues ?? [];
+      : (track.visualization?.hotCues ?? []);
 
   return [...cues].sort((left, right) => left.second - right.second);
 }
 
-export function getTrackOriginalWaveformCues(
-  track: LibraryTrack,
-): VisualizationCuePoint[] {
+export function getTrackOriginalWaveformCues(track: LibraryTrack): VisualizationCuePoint[] {
   return [...(track.visualization?.hotCues ?? [])].sort(
     (left, right) => left.second - right.second,
   );
 }
 
-export function getTrackWaveformRegions(
-  track: LibraryTrack,
-): VisualizationRegionPoint[] {
+export function getTrackWaveformRegions(track: LibraryTrack): VisualizationRegionPoint[] {
   return [...track.performance.savedLoops]
     .sort((left, right) => left.startSecond - right.startSecond)
     .map((loop) => ({
@@ -646,9 +625,7 @@ export function getTrackWaveformRegions(
     }));
 }
 
-export function getTrackCompareAuditionPoints(
-  track: LibraryTrack,
-): TrackCompareAuditionPoint[] {
+export function getTrackCompareAuditionPoints(track: LibraryTrack): TrackCompareAuditionPoint[] {
   const originalCues = getTrackOriginalWaveformCues(track);
   const alteredCues = getTrackWaveformCues(track);
   const alteredRegions = getTrackWaveformRegions(track);

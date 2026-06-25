@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useMonitor } from "../features/monitor/MonitorContext";
 import type { LiveLogCue, LiveLogStreamUpdate, LibraryTrack } from "../types/library";
 import type { SourceTemplate } from "../config/sourceTemplates";
+import { resolveSourceTemplatePresentation } from "../config/sourceTemplates";
+import { useT } from "../i18n/I18nContext";
 import { getTrackTitle, resolvePlayableTrackPath } from "../utils/track";
 
 // ---------------------------------------------------------------------------
@@ -23,14 +25,15 @@ interface WaveColumn {
 }
 
 interface HUDLine {
-  id: string; 
+  id: string;
   content: string;
   heat: number;
   timestamp: number;
 }
 
 const HISTORY_SIZE = 400;
-const BAR_WIDTH = 2; 
+const BAR_WIDTH = 2;
+const EMPTY_WAVEFORM: number[] = [];
 
 function resolveSourceMetrics(update: LiveLogStreamUpdate): WaveMetrics {
   const total = update.lineCount;
@@ -40,9 +43,9 @@ function resolveSourceMetrics(update: LiveLogStreamUpdate): WaveMetrics {
   // Hyper-sensitive normalization: divisor 80 + Square Root boost
   const normalizedVolume = Math.min(1, Math.sqrt(total / 80));
   const voiceFloor = 0.15; // Ensure CH A is never totally flat if data is flowing
-  
+
   const errorWeight = ((lc.error || 0) + (lc.warn || 0)) / total;
-  
+
   return {
     low: Math.min(1, voiceFloor + errorWeight * 2.0 + normalizedVolume * 0.4),
     mid: Math.min(1, voiceFloor + normalizedVolume * 0.7),
@@ -55,32 +58,44 @@ function resolveProcessedMetrics(cues: LiveLogCue[], update: LiveLogStreamUpdate
     return { low: 0, mid: 0, high: 0 };
   }
 
-  const anomalySignal = update.anomalyMarkers.length > 0 ? 0.3 + (update.anomalyMarkers.length * 0.15) : 0;
+  const anomalySignal =
+    update.anomalyMarkers.length > 0 ? 0.3 + update.anomalyMarkers.length * 0.15 : 0;
   const avgGain = (cues || []).reduce((s, c) => s + c.gain, 0) / Math.max(1, cues?.length || 0);
   // Boost weight of normal "voice" sonification (gainFactor)
   const gainFactor = Math.min(1, avgGain * 2.2);
 
   return {
-    low: Math.min(1, (anomalySignal * 1.2) + gainFactor * 0.4 + 0.1),
+    low: Math.min(1, anomalySignal * 1.2 + gainFactor * 0.4 + 0.1),
     mid: Math.min(1, gainFactor * 0.9 + 0.15),
     high: Math.min(1, gainFactor * 0.6 + 0.1),
   };
 }
 
-function TemplateIndicatorChip({ template, liveBpm }: { template: SourceTemplate | null; liveBpm: number | null }) {
+function TemplateIndicatorChip({
+  template,
+  liveBpm,
+}: {
+  template: SourceTemplate | null;
+  liveBpm: number | null;
+}) {
+  const t = useT();
   if (!template) {
-    return <span className="template-chip">Synth Default</span>;
+    return <span className="template-chip">{t.simpleMode.monitor.synthDefault}</span>;
   }
 
+  const presentation = resolveSourceTemplatePresentation(template, t);
   const showLive = liveBpm != null && Math.abs(liveBpm - template.bpm) > 5;
-  const displayText = `${template.icon} ${template.genre} · ${template.bpm} BPM${
-    showLive ? ` → ${Math.round(liveBpm!)} live` : ""
+  const displayText = `${template.icon} ${presentation?.genre ?? template.genre} · ${template.bpm} BPM${
+    showLive
+      ? ` ${t.simpleMode.monitor.liveTempoShift.replace("{bpm}", String(Math.round(liveBpm!)))}`
+      : ""
   }`;
 
   return <span className="template-chip template-chip--active">{displayText}</span>;
 }
 
 export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] }) {
+  const t = useT();
   const monitor = useMonitor();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const historyRef = useRef<WaveColumn[]>([]);
@@ -89,11 +104,10 @@ export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] })
   const [latestBpm, setLatestBpm] = useState<number | null>(null);
   const lastOffsetRef = useRef<number>(-1);
   const hasSession = !!monitor.session;
-  const currentGuideTrack =
-    monitor.guideTrackPath
-      ? tracks.find((track) => resolvePlayableTrackPath(track) === monitor.guideTrackPath) ?? null
-      : null;
-  const guideWaveform = currentGuideTrack?.analysis.waveformBins ?? [];
+  const currentGuideTrack = monitor.guideTrackPath
+    ? (tracks.find((track) => resolvePlayableTrackPath(track) === monitor.guideTrackPath) ?? null)
+    : null;
+  const guideWaveform = currentGuideTrack?.analysis.waveformBins ?? EMPTY_WAVEFORM;
 
   useEffect(() => {
     if (!hasSession) {
@@ -121,11 +135,11 @@ export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] })
       }
 
       // REAL TAIL LOGIC: Only add lines if offset has progressed or if it's a replay event
-      const isNewData = monitor.isPlayback || (update.toOffset > lastOffsetRef.current);
-      
+      const isNewData = monitor.isPlayback || update.toOffset > lastOffsetRef.current;
+
       if (isNewData) {
         const newLines: HUDLine[] = [];
-        
+
         // Process bursts (all new parsed lines)
         if (update.parsedLines && update.parsedLines.length > 0) {
           update.parsedLines.forEach((content, i) => {
@@ -133,35 +147,35 @@ export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] })
               id: `${update.toOffset}-${i}-${Math.random()}`,
               content,
               heat,
-              timestamp: Date.now()
+              timestamp: Date.now(),
             });
           });
-        } 
+        }
         // Fallback for anomalies if no raw lines but new offset
         else if (update.anomalyMarkers && update.anomalyMarkers.length > 0) {
-           update.anomalyMarkers.forEach((marker, i) => {
-             newLines.push({
-               id: `anomaly-${update.toOffset}-${i}`,
-               content: `[ANOMALY] ${marker.component}: ${marker.excerpt}`,
-               heat: 0.8,
-               timestamp: Date.now()
-             });
-           });
+          update.anomalyMarkers.forEach((marker, i) => {
+            newLines.push({
+              id: `anomaly-${update.toOffset}-${i}`,
+              content: `[ANOMALY] ${marker.component}: ${marker.excerpt}`,
+              heat: 0.8,
+              timestamp: Date.now(),
+            });
+          });
         }
         // Fallback for buffer activity
         else if (update.lineCount > 0 && !monitor.isPlayback) {
-           newLines.push({
-             id: `burst-${update.toOffset}`,
-             content: `>> Ingesting telemetry burst: ${update.lineCount} lines`,
-             heat: 0.2,
-             timestamp: Date.now()
-           });
+          newLines.push({
+            id: `burst-${update.toOffset}`,
+            content: `>> Ingesting telemetry burst: ${update.lineCount} lines`,
+            heat: 0.2,
+            timestamp: Date.now(),
+          });
         }
 
         if (newLines.length > 0) {
-          setHudLines(prev => [...newLines.reverse(), ...prev].slice(0, 8)); // Showing up to 8 real lines
+          setHudLines((prev) => [...newLines.reverse(), ...prev].slice(0, 8)); // Showing up to 8 real lines
         }
-        
+
         lastOffsetRef.current = update.toOffset;
       }
 
@@ -238,9 +252,9 @@ export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] })
     };
 
     const drawRekordboxWave = (
-      metricsKey: 'source' | 'processed', 
-      centerY: number, 
-      colors: { low: string; mid: string; high: string }
+      metricsKey: "source" | "processed",
+      centerY: number,
+      colors: { low: string; mid: string; high: string },
     ) => {
       // 1. ANOMALY GLOW
       for (let i = startIdx; i < history.length; i++) {
@@ -248,7 +262,7 @@ export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] })
         if (col.anomalyHeat > 0.05) {
           const x = w - (history.length - i) * colW;
           ctx.fillStyle = `rgba(255, 30, 80, ${col.anomalyHeat * 0.15})`;
-          ctx.fillRect(x, centerY - halfH/2, colW, halfH); 
+          ctx.fillRect(x, centerY - halfH / 2, colW, halfH);
         }
       }
 
@@ -268,7 +282,7 @@ export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] })
           { h: Math.max(1, (m.high + jitter * 0.5) * (trackH / 2)), c: colors.high },
         ].sort((a, b) => b.h - a.h); // Draw tallest first so smaller ones are visible
 
-        bands.forEach(b => {
+        bands.forEach((b) => {
           ctx.fillStyle = b.c;
           // Draw thin vertical bars for the striated waveform look
           ctx.fillRect(x, centerY - b.h, Math.max(1, colW - 0.5), b.h * 2);
@@ -287,19 +301,19 @@ export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] })
       high: "rgba(255, 255, 255, 0.1)",
     });
 
-    drawRekordboxWave('source', halfH / 2, { 
+    drawRekordboxWave("source", halfH / 2, {
       low: "rgba(0, 80, 255, 0.9)", // Deep blue for kicks/lows
       mid: "rgba(255, 120, 0, 0.8)", // Orange for mids/vocals
-      high: "rgba(255, 255, 255, 0.9)" // White for highs/hats
+      high: "rgba(255, 255, 255, 0.9)", // White for highs/hats
     });
-    drawRekordboxWave('processed', halfH + halfH / 2, { 
+    drawRekordboxWave("processed", halfH + halfH / 2, {
       low: "rgba(0, 200, 255, 0.9)", // Cyan for lows
       mid: "rgba(255, 50, 120, 0.8)", // Pink/Magenta for mids
-      high: "rgba(255, 255, 255, 0.9)" // White for highs
+      high: "rgba(255, 255, 255, 0.9)", // White for highs
     });
 
     // SCANLINE
-    const scanX = (Date.now() / 20) % (w * 1.2) - (w / 5);
+    const scanX = ((Date.now() / 20) % (w * 1.2)) - w / 5;
     const grad = ctx.createLinearGradient(scanX, 0, scanX + 60, 0);
     grad.addColorStop(0, "rgba(255, 255, 255, 0)");
     grad.addColorStop(0.5, "rgba(255, 255, 255, 0.03)");
@@ -307,14 +321,15 @@ export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] })
     ctx.fillStyle = grad;
     ctx.fillRect(scanX, 0, 60, h);
 
-    // PLAYHEAD 
+    // PLAYHEAD
     const playX = w - 1;
     ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
     ctx.shadowColor = "rgba(100, 200, 255, 0.5)";
     ctx.shadowBlur = 8;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(playX, 0); ctx.lineTo(playX, h);
+    ctx.moveTo(playX, 0);
+    ctx.lineTo(playX, h);
     ctx.stroke();
     ctx.shadowBlur = 0;
 
@@ -323,17 +338,21 @@ export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] })
 
   useEffect(() => {
     animRef.current = requestAnimationFrame(draw);
-    return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
+    return () => {
+      if (animRef.current) cancelAnimationFrame(animRef.current);
+    };
   }, [draw]);
 
   return (
     <div className={`monitor-waveform-bar${hasSession ? " monitor-waveform-bar--active" : ""}`}>
       {hasSession && (
         <div className="monitor-waveform-label monitor-pro-header">
-           <div className="header-status-group">
+          <div className="header-status-group">
             <span className="monitor-waveform-dot heartbeat" />
             <span className="monitor-waveform-label-text">
-              {monitor.isPlayback ? "SESSION REPLAY" : "LIVE SIGNAL ENGINE"}
+              {monitor.isPlayback
+                ? t.simpleMode.monitor.sessionReplay
+                : t.simpleMode.monitor.liveSignalEngine}
             </span>
             <span className="monitor-waveform-label-session" title={monitor.session!.sourcePath}>
               {monitor.session!.repoTitle}
@@ -342,28 +361,33 @@ export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] })
 
           <div className="monitor-header-controls">
             {hasSession && (
-              <TemplateIndicatorChip template={monitor.activeTemplate ?? null} liveBpm={latestBpm} />
+              <TemplateIndicatorChip
+                template={monitor.activeTemplate ?? null}
+                liveBpm={latestBpm}
+              />
             )}
-            <label className="header-controls-label">LISTENING BED</label>
+            <label className="header-controls-label">{t.simpleMode.monitor.listeningBed}</label>
             <select
               className="monitor-track-select monitor-track-select--header"
               value={monitor.guideTrackPath ?? ""}
               onChange={(e) => monitor.setGuideTrack(e.target.value || null)}
             >
-              <option value="">None (Maia Synth Only)</option>
-              {tracks.filter(t => !!resolvePlayableTrackPath(t)).map((track) => (
-                <option key={track.id} value={resolvePlayableTrackPath(track) ?? ""}>
-                  {getTrackTitle(track)}
-                </option>
-              ))}
+              <option value="">{t.simpleMode.monitor.noListeningBed}</option>
+              {tracks
+                .filter((t) => !!resolvePlayableTrackPath(t))
+                .map((track) => (
+                  <option key={track.id} value={resolvePlayableTrackPath(track) ?? ""}>
+                    {getTrackTitle(track)}
+                  </option>
+                ))}
             </select>
             {monitor.audioContext?.state === "suspended" && (
               <button
                 className="resume-audio-btn"
                 onClick={() => void monitor.resumeAudio()}
-                title="Resume Audio Engine"
+                title={t.simpleMode.monitor.resumeAudioTitle}
               >
-                ⏵ ENABLE AUDIO
+                ⏵ {t.simpleMode.monitor.enableAudio}
               </button>
             )}
           </div>
@@ -374,11 +398,11 @@ export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] })
         <div className="wave-track-labels">
           <div className="track-label-lcd">
             <span className="lcd-tag">CH A</span>
-            <span className="lcd-title">RAW TELEMETRY</span>
+            <span className="lcd-title">{t.simpleMode.monitor.rawTelemetry}</span>
           </div>
           <div className="track-label-lcd">
             <span className="lcd-tag">CH B</span>
-            <span className="lcd-title">SONIFIED MAPPING</span>
+            <span className="lcd-title">{t.simpleMode.monitor.sonifiedMapping}</span>
           </div>
         </div>
       </div>
@@ -386,15 +410,17 @@ export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] })
       {hasSession && (
         <div className="monitor-waveform-tail-hud compact kinetic-tail real-tail">
           {hudLines.map((line) => (
-            <div 
-              key={line.id} 
+            <div
+              key={line.id}
               className={`monitor-waveform-tail-line${line.heat > 0.3 ? " is-anomaly" : ""}`}
             >
               <span className="line-bullet">⏵</span>
               <span className="line-content">{line.content}</span>
             </div>
           ))}
-          {hudLines.length === 0 && <div className="hud-placeholder">Waiting for telemetry stream...</div>}
+          {hudLines.length === 0 && (
+            <div className="hud-placeholder">{t.simpleMode.monitor.waitingTelemetryStream}</div>
+          )}
         </div>
       )}
     </div>

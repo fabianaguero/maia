@@ -1,10 +1,5 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useT } from "../../../i18n/I18nContext";
 import type {
   BeatGridPoint,
   TrackSavedLoop,
@@ -69,11 +64,7 @@ interface WaveformPlaceholderProps {
   canEditPerformance?: boolean;
   onMoveCue?: (cue: WaveformEditableCuePoint, second: number) => void;
   onNudgeCue?: (cue: WaveformEditableCuePoint, second: number) => void;
-  onMoveLoopBoundary?: (
-    loopId: string,
-    boundary: "start" | "end",
-    second: number,
-  ) => void;
+  onMoveLoopBoundary?: (loopId: string, boundary: "start" | "end", second: number) => void;
   onMoveLoop?: (loopId: string, startSecond: number) => void;
 }
 
@@ -112,6 +103,7 @@ export function WaveformPlaceholder({
   onMoveLoopBoundary,
   onMoveLoop,
 }: WaveformPlaceholderProps) {
+  const t = useT();
   const [gridClickArmed, setGridClickArmed] = useState(false);
   const [phraseSelectArmed, setPhraseSelectArmed] = useState(false);
   const [gridAnchorDragging, setGridAnchorDragging] = useState(false);
@@ -241,11 +233,7 @@ export function WaveformPlaceholder({
         onMoveCue?.(dragTarget.cue, nextSecond);
       }
 
-      if (
-        dragTarget.type === "loop-boundary" &&
-        nextSecond !== null &&
-        dragMovedRef.current
-      ) {
+      if (dragTarget.type === "loop-boundary" && nextSecond !== null && dragMovedRef.current) {
         onMoveLoopBoundary?.(dragTarget.loopId, dragTarget.boundary, nextSecond);
       }
 
@@ -270,7 +258,15 @@ export function WaveformPlaceholder({
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [beatGrid, dragTarget, durationSeconds, onMoveCue, onMoveLoop, onMoveLoopBoundary, resolveSecondFromClientX]);
+  }, [
+    beatGrid,
+    dragTarget,
+    durationSeconds,
+    onMoveCue,
+    onMoveLoop,
+    onMoveLoopBoundary,
+    resolveSecondFromClientX,
+  ]);
 
   const handleWaveformClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const seekTime = resolveSecondFromClientX(e.clientX);
@@ -308,11 +304,13 @@ export function WaveformPlaceholder({
         });
 
   // Ensure we have enough bins for hi-res display (at least 128, up to 512)
-  const displayBins = normalizedBins.length < 128
-    ? Array.from({ length: 128 }, (_, i) =>
-        normalizedBins[Math.floor((i / 128) * normalizedBins.length)] || 0.3
-      )
-    : normalizedBins;
+  const displayBins =
+    normalizedBins.length < 128
+      ? Array.from(
+          { length: 128 },
+          (_, i) => normalizedBins[Math.floor((i / 128) * normalizedBins.length)] || 0.3,
+        )
+      : normalizedBins;
 
   const visibleBeats =
     durationSeconds && durationSeconds > 0
@@ -348,12 +346,11 @@ export function WaveformPlaceholder({
         }));
   const renderedRegions = regions.map((region) => {
     const editableLoop = editableLoops.find((loop) => loop.id === region.id);
-    const loopSpan =
-      editableLoop ? editableLoop.endSecond - editableLoop.startSecond : region.endSecond - region.startSecond;
+    const loopSpan = editableLoop
+      ? editableLoop.endSecond - editableLoop.startSecond
+      : region.endSecond - region.startSecond;
     const previewLoopStart =
-      dragTarget?.type === "loop" &&
-      dragTarget.loopId === region.id &&
-      dragEditSecond !== null
+      dragTarget?.type === "loop" && dragTarget.loopId === region.id && dragEditSecond !== null
         ? durationSeconds && durationSeconds > 0
           ? Math.min(dragEditSecond, Math.max(0, durationSeconds - loopSpan))
           : dragEditSecond
@@ -361,23 +358,23 @@ export function WaveformPlaceholder({
     const startSecond =
       previewLoopStart !== null
         ? previewLoopStart
-      : dragTarget?.type === "loop-boundary" &&
-      dragTarget.loopId === region.id &&
-      dragTarget.boundary === "start" &&
-      dragEditSecond !== null
-        ? Math.min(dragEditSecond, region.endSecond)
-        : region.startSecond;
+        : dragTarget?.type === "loop-boundary" &&
+            dragTarget.loopId === region.id &&
+            dragTarget.boundary === "start" &&
+            dragEditSecond !== null
+          ? Math.min(dragEditSecond, region.endSecond)
+          : region.startSecond;
     const endSecond =
       previewLoopStart !== null
         ? durationSeconds && durationSeconds > 0
           ? Math.min(durationSeconds, previewLoopStart + loopSpan)
           : previewLoopStart + loopSpan
-      : dragTarget?.type === "loop-boundary" &&
-      dragTarget.loopId === region.id &&
-      dragTarget.boundary === "end" &&
-      dragEditSecond !== null
-        ? Math.max(dragEditSecond, region.startSecond)
-        : region.endSecond;
+        : dragTarget?.type === "loop-boundary" &&
+            dragTarget.loopId === region.id &&
+            dragTarget.boundary === "end" &&
+            dragEditSecond !== null
+          ? Math.max(dragEditSecond, region.startSecond)
+          : region.endSecond;
 
     return {
       ...region,
@@ -391,11 +388,8 @@ export function WaveformPlaceholder({
     <section className={`panel waveform-panel${hero ? " waveform-panel--hero" : ""}`}>
       <div className="panel-header">
         <div>
-          <h2>Waveform + beat grid</h2>
-          <p className="support-copy">
-            The analyzer currently persists coarse waveform bins for immediate
-            review, plus beat markers positioned over the local timeline.
-          </p>
+          <h2>{t.inspect.waveformBeatGridTitle}</h2>
+          <p className="support-copy">{t.inspect.waveformBeatGridCopy}</p>
         </div>
         {onSetDownbeatAtSecond || onSelectPhraseRange ? (
           <div className="waveform-panel-actions">
@@ -409,7 +403,7 @@ export function WaveformPlaceholder({
                   setGridClickArmed((current) => !current);
                 }}
               >
-                {gridClickArmed ? "Cancel grid click" : "Arm downbeat click"}
+                {gridClickArmed ? t.inspect.cancelGridClick : t.inspect.armDownbeatClick}
               </button>
             ) : null}
             {onSelectPhraseRange ? (
@@ -422,7 +416,7 @@ export function WaveformPlaceholder({
                   setPhraseSelectArmed((current) => !current);
                 }}
               >
-                {phraseSelectArmed ? "Cancel phrase select" : "Arm phrase select"}
+                {phraseSelectArmed ? t.inspect.cancelPhraseSelect : t.inspect.armPhraseSelectButton}
               </button>
             ) : null}
           </div>
@@ -433,42 +427,42 @@ export function WaveformPlaceholder({
         ref={stageRef}
         className="waveform-stage"
         onClick={handleWaveformClick}
-        aria-label="Waveform stage"
+        aria-label={t.inspect.waveformStage}
         style={{
           cursor: gridAnchorDragging
             ? "grabbing"
             : dragTarget
-            ? "grabbing"
-            : phraseSelectArmed && canSelectPhrase
-              ? "cell"
-            : gridClickArmed && canEditBeatGrid
-              ? "crosshair"
-              : onSeek
-                ? "pointer"
-                : "default",
+              ? "grabbing"
+              : phraseSelectArmed && canSelectPhrase
+                ? "cell"
+                : gridClickArmed && canEditBeatGrid
+                  ? "crosshair"
+                  : onSeek
+                    ? "pointer"
+                    : "default",
         }}
       >
         {gridClickArmed ? (
-          <div className="waveform-grid-edit-hint">
-            Click the waveform to place beat 1 / downbeat.
-          </div>
+          <div className="waveform-grid-edit-hint">{t.inspect.clickPlaceDownbeat}</div>
         ) : null}
         {phraseSelectArmed ? (
           <div className="waveform-grid-edit-hint waveform-grid-edit-hint--phrase">
-            Click the waveform to capture a {phraseBeatCount}-beat phrase.
+            {t.inspect.clickCapturePhrase.replace("{count}", String(phraseBeatCount))}
           </div>
         ) : null}
         {gridAnchorDragging ? (
           <div className="waveform-grid-edit-hint waveform-grid-edit-hint--drag">
-            Dragging beat 1 / downbeat.
+            {t.inspect.draggingDownbeat}
           </div>
         ) : null}
         <div
           className="waveform-bars"
-          aria-label="Waveform overview"
-          style={{
-            gridTemplateColumns: `repeat(${displayBins.length}, minmax(0, 1fr))`,
-          } as CSSProperties}
+          aria-label={t.inspect.waveformOverview}
+          style={
+            {
+              gridTemplateColumns: `repeat(${displayBins.length}, minmax(0, 1fr))`,
+            } as CSSProperties
+          }
         >
           {displayBins.map((bin, index) => (
             <span
@@ -479,7 +473,7 @@ export function WaveformPlaceholder({
           ))}
         </div>
 
-        <div className="beat-grid-overlay" aria-label="Beat grid markers">
+        <div className="beat-grid-overlay" aria-label={t.inspect.beatGridMarkers}>
           {visibleBeats.map((beat) => {
             const position =
               durationSeconds && durationSeconds > 0
@@ -491,7 +485,9 @@ export function WaveformPlaceholder({
                 key={`${beat.index}-${beat.second}`}
                 className={`beat-grid-marker is-${beat.emphasis}`}
                 style={{ "--beat-position": `${position}%` } as CSSProperties}
-                title={`${beat.label} at ${beat.second.toFixed(2)}s`}
+                title={t.inspect.beatAtSecond
+                  .replace("{label}", beat.label)
+                  .replace("{second}", beat.second.toFixed(2))}
               >
                 {beat.emphasis !== "beat" ? (
                   <span className="beat-grid-marker-label">{beat.label}</span>
@@ -502,7 +498,7 @@ export function WaveformPlaceholder({
         </div>
 
         {regions.length > 0 || selectedPhraseRange ? (
-          <div className="waveform-region-overlay" aria-label="Loop and phrase regions">
+          <div className="waveform-region-overlay" aria-label={t.inspect.loopPhraseRegions}>
             {renderedRegions.map((region) => {
               const startPosition =
                 durationSeconds && durationSeconds > 0
@@ -527,7 +523,7 @@ export function WaveformPlaceholder({
                   title={region.excerpt ? `${region.label} · ${region.excerpt}` : region.label}
                   role="button"
                   tabIndex={onSeek || (canEditPerformance && region.editableLoop) ? 0 : -1}
-                  aria-label={`Seek to ${region.label}`}
+                  aria-label={t.inspect.seekTo.replace("{label}", region.label)}
                   aria-disabled={!onSeek}
                   onClick={(event) => {
                     event.stopPropagation();
@@ -597,7 +593,7 @@ export function WaveformPlaceholder({
                       <button
                         type="button"
                         className="waveform-region-handle waveform-region-handle--start"
-                        aria-label={`Drag start of ${region.label}`}
+                        aria-label={t.inspect.dragStartOf.replace("{label}", region.label)}
                         onKeyDown={(event) => {
                           if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
                             return;
@@ -635,7 +631,7 @@ export function WaveformPlaceholder({
                       <button
                         type="button"
                         className="waveform-region-handle waveform-region-handle--end"
-                        aria-label={`Drag end of ${region.label}`}
+                        aria-label={t.inspect.dragEndOf.replace("{label}", region.label)}
                         onKeyDown={(event) => {
                           if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
                             return;
@@ -693,7 +689,7 @@ export function WaveformPlaceholder({
                 title={`${selectedPhraseRange.label} · ${selectedPhraseRange.beatCount} beats`}
                 role="button"
                 tabIndex={onSeek ? 0 : -1}
-                aria-label={`Seek to ${selectedPhraseRange.label}`}
+                aria-label={t.inspect.seekTo.replace("{label}", selectedPhraseRange.label)}
                 aria-disabled={!onSeek}
                 onClick={(event) => {
                   event.stopPropagation();
@@ -710,9 +706,7 @@ export function WaveformPlaceholder({
                   }
                 }}
               >
-                <span className="waveform-region-label">
-                  {selectedPhraseRange.label}
-                </span>
+                <span className="waveform-region-label">{selectedPhraseRange.label}</span>
               </div>
             ) : null}
           </div>
@@ -723,7 +717,7 @@ export function WaveformPlaceholder({
             type="button"
             className={`waveform-grid-anchor${gridAnchorDragging ? " is-dragging" : ""}`}
             style={{ "--anchor-position": `${anchorPosition}%` } as CSSProperties}
-            aria-label="Drag beat grid anchor"
+            aria-label={t.inspect.dragBeatGridAnchor}
             disabled={!canEditBeatGrid}
             onMouseDown={(event) => {
               if (!canEditBeatGrid) {
@@ -737,11 +731,11 @@ export function WaveformPlaceholder({
               setDragAnchorSecond(anchorSecond);
             }}
           >
-            <span className="waveform-grid-anchor-label">Beat 1</span>
+            <span className="waveform-grid-anchor-label">{t.inspect.beatOne}</span>
           </button>
         ) : null}
 
-        <div className="hot-cue-overlay" aria-label="Anomaly markers">
+        <div className="hot-cue-overlay" aria-label={t.inspect.anomalyMarkersAria}>
           {renderedCueMarkers.map((cue) => {
             const position =
               durationSeconds && durationSeconds > 0
@@ -755,7 +749,7 @@ export function WaveformPlaceholder({
                 className={`hot-cue-marker ${cue.type.toLowerCase()}${dragTarget?.type === "cue" && dragTarget.cue.id === cue.key ? " is-dragging" : ""}`}
                 style={{ "--cue-position": `${position}%` } as CSSProperties}
                 title={cue.excerpt ? `${cue.label}: ${cue.excerpt}` : cue.label}
-                aria-label={`Seek to cue ${cue.label}`}
+                aria-label={t.inspect.seekToCue.replace("{label}", cue.label)}
                 disabled={!onSeek}
                 onMouseDown={(event) => {
                   if (!canEditPerformance || !cue.interactiveCue) {
@@ -815,26 +809,38 @@ export function WaveformPlaceholder({
           {durationSeconds && durationSeconds > 0 ? (
             <div
               className="waveform-progress-mask"
-              style={{
-                width: `${Math.min(100, (currentTime / durationSeconds) * 100)}%`,
-              } as CSSProperties}
+              style={
+                {
+                  width: `${Math.min(100, (currentTime / durationSeconds) * 100)}%`,
+                } as CSSProperties
+              }
             />
           ) : null}
           {durationSeconds && durationSeconds > 0 ? (
             <div
               className="waveform-playhead"
-              style={{
-                left: `${Math.min(100, (currentTime / durationSeconds) * 100)}%`,
-              } as CSSProperties}
+              style={
+                {
+                  left: `${Math.min(100, (currentTime / durationSeconds) * 100)}%`,
+                } as CSSProperties
+              }
             />
           ) : null}
-          {analysisProgress !== null && analysisProgress < 1 && durationSeconds && durationSeconds > 0 ? (
+          {analysisProgress !== null &&
+          analysisProgress < 1 &&
+          durationSeconds &&
+          durationSeconds > 0 ? (
             <div
               className="waveform-analysis-end"
-              style={{
-                left: `${Math.min(100, analysisProgress * 100)}%`,
-              } as CSSProperties}
-              title={`Analysis complete up to this point (${Math.round(analysisProgress * 100)}%)`}
+              style={
+                {
+                  left: `${Math.min(100, analysisProgress * 100)}%`,
+                } as CSSProperties
+              }
+              title={t.inspect.analysisCompletePoint.replace(
+                "{progress}",
+                String(Math.round(analysisProgress * 100)),
+              )}
             />
           ) : null}
         </div>
@@ -842,11 +848,11 @@ export function WaveformPlaceholder({
 
       <div className="waveform-summary">
         <div className="waveform-meta-pill">
-          <span>Visible beats</span>
+          <span>{t.inspect.visibleBeats}</span>
           <strong>{visibleBeats.length}</strong>
         </div>
         <div className="waveform-meta-pill">
-          <span>{showRegionSummary ? "Regions" : "Resolution"}</span>
+          <span>{showRegionSummary ? t.inspect.regions : t.inspect.resolution}</span>
           <strong>
             {showRegionSummary
               ? regions.length + (selectedPhraseRange ? 1 : 0)
@@ -854,26 +860,26 @@ export function WaveformPlaceholder({
           </strong>
         </div>
         <div className="waveform-meta-pill">
-          <span>Grid state</span>
+          <span>{t.inspect.gridState}</span>
           <strong>
             {gridAnchorDragging
-              ? "Dragging"
+              ? t.inspect.dragging
               : gridClickArmed
-              ? "Armed"
-              : visibleBeats.length > 0
-                ? "Aligned"
-                : "Pending"}
+                ? t.inspect.armed
+                : visibleBeats.length > 0
+                  ? t.inspect.aligned
+                  : t.inspect.pending}
           </strong>
         </div>
         {showPhraseSummary ? (
           <div className="waveform-meta-pill">
-            <span>Phrase</span>
+            <span>{t.inspect.phrase}</span>
             <strong>
               {selectedPhraseRange
                 ? `${selectedPhraseRange.label} · ${selectedPhraseRange.beatCount} beats`
                 : phraseSelectArmed
-                  ? "Armed"
-                  : "None"}
+                  ? t.inspect.armed
+                  : t.inspect.none}
             </strong>
           </div>
         ) : null}

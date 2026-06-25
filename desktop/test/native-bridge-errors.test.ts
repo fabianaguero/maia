@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 
 /**
  * Focused test suite for error detection in native bridge calls.
@@ -8,14 +8,10 @@ import { describe, it, expect, beforeEach } from "vitest";
 describe("Native Bridge Error Detection", () => {
   describe("Error Pattern Matching", () => {
     it("should detect Tauri-specific errors", () => {
-      const errorPatterns = [
-        "Tauri Core",
-        "__TAURI_INTERNALS__",
-        "ipc error",
-        "native bridge",
-      ];
+      const errorPatterns = ["Tauri Core", "__TAURI_INTERNALS__", "ipc error", "native bridge"];
 
-      const detectionRegex = /tauri|__TAURI_INTERNALS__|ipc|native bridge|Cannot read|Cannot access/i;
+      const detectionRegex =
+        /tauri|__TAURI_INTERNALS__|ipc|native bridge|Cannot read|Cannot access/i;
 
       errorPatterns.forEach((pattern) => {
         expect(detectionRegex.test(pattern)).toBe(true);
@@ -29,7 +25,8 @@ describe("Native Bridge Error Detection", () => {
         "Cannot access property 'invoke' of null",
       ];
 
-      const detectionRegex = /tauri|__TAURI_INTERNALS__|ipc|native bridge|Cannot read|Cannot access/i;
+      const detectionRegex =
+        /tauri|__TAURI_INTERNALS__|ipc|native bridge|Cannot read|Cannot access/i;
 
       typeErrors.forEach((err) => {
         expect(detectionRegex.test(err)).toBe(true);
@@ -45,7 +42,8 @@ describe("Native Bridge Error Detection", () => {
         "Unknown error",
       ];
 
-      const detectionRegex = /tauri|__TAURI_INTERNALS__|ipc|native bridge|Cannot read|Cannot access/i;
+      const detectionRegex =
+        /tauri|__TAURI_INTERNALS__|ipc|native bridge|Cannot read|Cannot access/i;
 
       unrelatedErrors.forEach((err) => {
         expect(detectionRegex.test(err)).toBe(false);
@@ -101,8 +99,7 @@ describe("Native Bridge Error Detection", () => {
       ];
 
       scenarios.forEach(({ path, isDesktop, shouldFail }) => {
-        const canAttempt =
-          Boolean(path) && isDesktop && !path.startsWith("browser-fallback://");
+        const canAttempt = Boolean(path) && isDesktop && !path.startsWith("browser-fallback://");
         expect(canAttempt).toBe(!shouldFail);
       });
     });
@@ -143,7 +140,7 @@ describe("Native Bridge Error Detection", () => {
         aac: "audio/mp4",
       };
 
-      Object.entries(mimes).forEach(([ext, mime]) => {
+      Object.entries(mimes).forEach(([_ext, mime]) => {
         expect(mime).toMatch(/audio/);
       });
     });

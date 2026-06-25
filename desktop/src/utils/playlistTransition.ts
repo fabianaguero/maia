@@ -3,11 +3,7 @@ import type { MutationProfileOption, StyleProfileOption } from "../types/music";
 
 import { DEFAULT_PLAYLIST_CROSSFADE_SECONDS } from "./playlistRuntime";
 
-export type PlaylistTransitionMode =
-  | "cue-start"
-  | "smooth-blend"
-  | "phrase-bridge"
-  | "reset-mix";
+export type PlaylistTransitionMode = "cue-start" | "smooth-blend" | "phrase-bridge" | "reset-mix";
 
 export interface PlaylistTransitionPlan {
   currentTrackId: string | null;
@@ -153,9 +149,7 @@ function resolvePhraseBoundaryPoint(
 ): BeatGridPoint | null {
   const phrasePoints = beatGrid.filter(
     (point) =>
-      point.second >= 0 &&
-      point.second <= durationLimit &&
-      point.index % phraseSpanBeats === 0,
+      point.second >= 0 && point.second <= durationLimit && point.index % phraseSpanBeats === 0,
   );
 
   if (phrasePoints.length === 0) {
@@ -240,9 +234,7 @@ function parseKeySignature(keySignature: string | null | undefined): {
   const rawMode = (match[2] ?? "major").toLowerCase();
   const mode = rawMode.startsWith("min") ? "minor" : "major";
   const camelotNumber =
-    mode === "major"
-      ? CAM_MAJOR_BY_PITCH_CLASS[pitchClass]
-      : CAM_MINOR_BY_PITCH_CLASS[pitchClass];
+    mode === "major" ? CAM_MAJOR_BY_PITCH_CLASS[pitchClass] : CAM_MINOR_BY_PITCH_CLASS[pitchClass];
 
   if (!camelotNumber) {
     return null;
@@ -278,10 +270,7 @@ function resolveHarmonicLabel(
   const currentNumber = camelotNumber(currentKey.camelot);
   const nextNumber = camelotNumber(nextKey.camelot);
   if (currentNumber !== null && nextNumber !== null) {
-    if (
-      currentNumber === nextNumber &&
-      currentKey.mode !== nextKey.mode
-    ) {
+    if (currentNumber === nextNumber && currentKey.mode !== nextKey.mode) {
       return { label: `Relative ${nextKey.camelot}`, score: 2 };
     }
 
@@ -309,7 +298,9 @@ function resolveCueEntryPoint(track: LibraryTrack): PlaylistEntryPoint {
     };
   }
 
-  const sortedHotCues = [...track.performance.hotCues].sort((left, right) => left.second - right.second);
+  const sortedHotCues = [...track.performance.hotCues].sort(
+    (left, right) => left.second - right.second,
+  );
   const firstHotCue = sortedHotCues.find((cue) => withinEarlyWindow(cue.second));
   if (firstHotCue) {
     return {
@@ -346,10 +337,7 @@ function resolveCueEntryPoint(track: LibraryTrack): PlaylistEntryPoint {
   };
 }
 
-function resolveTempoRatio(
-  currentTrack: LibraryTrack | null,
-  nextTrack: LibraryTrack,
-): number {
+function resolveTempoRatio(currentTrack: LibraryTrack | null, nextTrack: LibraryTrack): number {
   const currentBpm = currentTrack?.analysis.bpm ?? null;
   const nextBpm = nextTrack.analysis.bpm;
   if (
@@ -418,17 +406,15 @@ export function resolvePlaylistTransitionPlan(
   const preferredCrossfadeSeconds =
     options.styleProfile?.playlistCrossfadeSeconds ?? DEFAULT_PLAYLIST_CROSSFADE_SECONDS;
   const transitionFeel = options.styleProfile?.transitionFeel ?? "steady";
-  const transitionTightness = clamp(
-    options.mutationProfile?.transitionTightness ?? 1,
-    0.7,
-    1.35,
-  );
+  const transitionTightness = clamp(options.mutationProfile?.transitionTightness ?? 1, 0.7, 1.35);
 
   const currentBpm = currentTrack.analysis.bpm;
   const nextBpm = nextTrack.analysis.bpm;
   const bpmDelta =
-    typeof currentBpm === "number" && Number.isFinite(currentBpm) &&
-    typeof nextBpm === "number" && Number.isFinite(nextBpm)
+    typeof currentBpm === "number" &&
+    Number.isFinite(currentBpm) &&
+    typeof nextBpm === "number" &&
+    Number.isFinite(nextBpm)
       ? roundMetric(Math.abs(currentBpm - nextBpm))
       : null;
 
@@ -456,13 +442,11 @@ export function resolvePlaylistTransitionPlan(
     phraseSpanBeats,
   );
 
-  const feelMultiplier =
-    transitionFeel === "smooth" ? 1.18 : transitionFeel === "tight" ? 0.82 : 1;
-  const modeMultiplier =
-    mode === "smooth-blend" ? 1.05 : mode === "phrase-bridge" ? 0.84 : 0.58;
+  const feelMultiplier = transitionFeel === "smooth" ? 1.18 : transitionFeel === "tight" ? 0.82 : 1;
+  const modeMultiplier = mode === "smooth-blend" ? 1.05 : mode === "phrase-bridge" ? 0.84 : 0.58;
   const crossfadeSeconds = roundMetric(
     clamp(
-      preferredCrossfadeSeconds * feelMultiplier * modeMultiplier / transitionTightness,
+      (preferredCrossfadeSeconds * feelMultiplier * modeMultiplier) / transitionTightness,
       1.2,
       12,
     ),
@@ -480,7 +464,9 @@ export function resolvePlaylistTransitionPlan(
       ? "tempo neutral"
       : `${tempoAdjustPercent > 0 ? "+" : ""}${tempoAdjustPercent}% tempo`;
   const entryLabel =
-    entryPoint.second > 0 ? `${entryPoint.label} @ ${entryPoint.second.toFixed(1)}s` : entryPoint.label;
+    entryPoint.second > 0
+      ? `${entryPoint.label} @ ${entryPoint.second.toFixed(1)}s`
+      : entryPoint.label;
 
   return {
     currentTrackId: currentTrack.id,
@@ -507,7 +493,7 @@ export function resolvePhraseAlignedTransitionDelayMs(
     typeof options.track.analysis.durationSeconds === "number" &&
     Number.isFinite(options.track.analysis.durationSeconds)
       ? options.track.analysis.durationSeconds
-      : options.fallbackDurationSeconds ?? null;
+      : (options.fallbackDurationSeconds ?? null);
   const naturalDelaySeconds = Math.max(
     0.25,
     effectiveDurationSeconds !== null
@@ -540,9 +526,7 @@ export function resolvePhraseAlignedTransitionDelayMs(
   }
 
   const alignedDelaySeconds =
-    [...phrasePlaybackOffsets]
-      .reverse()
-      .find((offset) => offset <= naturalDelaySeconds) ??
+    [...phrasePlaybackOffsets].reverse().find((offset) => offset <= naturalDelaySeconds) ??
     phrasePlaybackOffsets[0] ??
     naturalDelaySeconds;
 

@@ -112,6 +112,18 @@ export function deriveReplayFeedbackRecommendation(
   options?: {
     currentStyleProfileId?: string | null;
     currentMutationProfileId?: string | null;
+    labels?: {
+      balancedSummary: string;
+      balancedDetail: string;
+      quieterSummary: string;
+      quieterDetail: string;
+      sharperSummary: string;
+      sharperDetail: string;
+      alertSummary: string;
+      alertDetail: string;
+      smoothSummary: string;
+      smoothDetail: string;
+    };
   },
 ): ReplayFeedbackRecommendation | null {
   if (bookmarks.length === 0) {
@@ -137,22 +149,43 @@ export function deriveReplayFeedbackRecommendation(
 
   const styleLabel = resolveStyleProfile(suggestedStyleProfileId).label;
   const mutationLabel = resolveMutationProfile(suggestedMutationProfileId).label;
+  const labels = options?.labels;
+  const fill = (template: string, replacements: Record<string, string | number>) =>
+    Object.entries(replacements).reduce(
+      (output, [key, value]) => output.replace(`{${key}}`, String(value)),
+      template,
+    );
 
-  let summary = "Replay feedback is balanced.";
-  let detail = `Saved windows point toward ${styleLabel} + ${mutationLabel} as the next team-monitoring mix.`;
+  let summary = labels?.balancedSummary ?? "Replay feedback is balanced.";
+  let detail = labels?.balancedDetail
+    ? fill(labels.balancedDetail, { style: styleLabel, mutation: mutationLabel })
+    : `Saved windows point toward ${styleLabel} + ${mutationLabel} as the next team-monitoring mix.`;
 
   if (quieterCount > strongerCount) {
-    summary = "Replay feedback leans quieter.";
-    detail = `${quieterCount}/${bookmarks.length} notes asked for more space or a calmer bed. Recommend ${styleLabel} + ${mutationLabel}.`;
+    summary = labels?.quieterSummary ?? "Replay feedback leans quieter.";
+    detail = labels?.quieterDetail
+      ? fill(labels.quieterDetail, {
+          count: quieterCount,
+          total: bookmarks.length,
+          style: styleLabel,
+          mutation: mutationLabel,
+        })
+      : `${quieterCount}/${bookmarks.length} notes asked for more space or a calmer bed. Recommend ${styleLabel} + ${mutationLabel}.`;
   } else if (dominantTag === "deploy-transition") {
-    summary = "Replay feedback favors sharper transitions.";
-    detail = `Deploy-related windows felt strongest with ${styleLabel} + ${mutationLabel}.`;
+    summary = labels?.sharperSummary ?? "Replay feedback favors sharper transitions.";
+    detail = labels?.sharperDetail
+      ? fill(labels.sharperDetail, { style: styleLabel, mutation: mutationLabel })
+      : `Deploy-related windows felt strongest with ${styleLabel} + ${mutationLabel}.`;
   } else if (dominantTag === "good-alerting") {
-    summary = "Replay feedback likes the current alert presence.";
-    detail = `Alerting moments stayed readable without losing the groove. ${styleLabel} + ${mutationLabel} is the recommended carry-forward mix.`;
+    summary = labels?.alertSummary ?? "Replay feedback likes the current alert presence.";
+    detail = labels?.alertDetail
+      ? fill(labels.alertDetail, { style: styleLabel, mutation: mutationLabel })
+      : `Alerting moments stayed readable without losing the groove. ${styleLabel} + ${mutationLabel} is the recommended carry-forward mix.`;
   } else if (dominantTag === "smooth-bed") {
-    summary = "Replay feedback favors a smoother bed.";
-    detail = `The team kept bookmarking the calmer background shape. Recommend ${styleLabel} + ${mutationLabel}.`;
+    summary = labels?.smoothSummary ?? "Replay feedback favors a smoother bed.";
+    detail = labels?.smoothDetail
+      ? fill(labels.smoothDetail, { style: styleLabel, mutation: mutationLabel })
+      : `The team kept bookmarking the calmer background shape. Recommend ${styleLabel} + ${mutationLabel}.`;
   }
 
   const isAligned =

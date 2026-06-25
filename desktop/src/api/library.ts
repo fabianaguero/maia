@@ -30,9 +30,7 @@ export async function listPlaylists(): Promise<BaseTrackPlaylist[]> {
   return invokeOrFallback("list_playlists", undefined, () => listMockPlaylists());
 }
 
-export async function importTrack(
-  input: ImportTrackInput,
-): Promise<LibraryTrack> {
+export async function importTrack(input: ImportTrackInput): Promise<LibraryTrack> {
   return invokeOrFallback("import_track", { input }, () => importMockTrack(input));
 }
 
@@ -43,26 +41,14 @@ export async function seedDemoTracks(): Promise<LibraryTrack[]> {
 export async function saveBaseTrackPlaylist(
   input: SaveBaseTrackPlaylistInput,
 ): Promise<BaseTrackPlaylist> {
-  return invokeOrFallback(
-    "save_playlist",
-    { input },
-    () => saveMockPlaylist(input),
-  );
+  return invokeOrFallback("save_playlist", { input }, () => saveMockPlaylist(input));
 }
 
-export async function deleteBaseTrackPlaylist(
-  playlistId: string,
-): Promise<void> {
-  return invokeOrFallback(
-    "delete_playlist",
-    { playlistId },
-    () => deleteMockPlaylist(playlistId),
-  );
+export async function deleteBaseTrackPlaylist(playlistId: string): Promise<void> {
+  return invokeOrFallback("delete_playlist", { playlistId }, () => deleteMockPlaylist(playlistId));
 }
 
-export async function pickTrackSourcePath(
-  initialPath?: string,
-): Promise<string | null> {
+export async function pickTrackSourcePath(initialPath?: string): Promise<string | null> {
   return invokeOrFallback(
     "pick_track_source_path",
     { initialPath: initialPath?.trim() || undefined },
@@ -70,9 +56,7 @@ export async function pickTrackSourcePath(
   );
 }
 
-export async function pickTrackSourceDirectory(
-  initialPath?: string,
-): Promise<string | null> {
+export async function pickTrackSourceDirectory(initialPath?: string): Promise<string | null> {
   return invokeOrFallback(
     "pick_track_source_directory",
     { initialPath: initialPath?.trim() || undefined },
@@ -94,10 +78,8 @@ export async function updateTrackPerformance(
   trackId: string,
   input: UpdateTrackPerformanceInput,
 ): Promise<LibraryTrack> {
-  return invokeOrFallback(
-    "update_track_performance",
-    { trackId, input },
-    () => updateMockTrackPerformance(trackId, input),
+  return invokeOrFallback("update_track_performance", { trackId, input }, () =>
+    updateMockTrackPerformance(trackId, input),
   );
 }
 
@@ -105,10 +87,8 @@ export async function updateTrackAnalysis(
   trackId: string,
   input: UpdateTrackAnalysisInput,
 ): Promise<LibraryTrack> {
-  return invokeOrFallback(
-    "update_track_analysis",
-    { trackId, input },
-    () => updateMockTrackAnalysis(trackId, input),
+  return invokeOrFallback("update_track_analysis", { trackId, input }, () =>
+    updateMockTrackAnalysis(trackId, input),
   );
 }
 
@@ -116,19 +96,15 @@ export async function updateTrackSource(
   trackId: string,
   input: UpdateTrackSourceInput,
 ): Promise<LibraryTrack> {
-  return invokeOrFallback(
-    "update_track_source",
-    { trackId, input },
-    () => updateMockTrackSource(trackId, input),
+  return invokeOrFallback("update_track_source", { trackId, input }, () =>
+    updateMockTrackSource(trackId, input),
   );
 }
 
 export async function resolveMissingTracksFromDirectory(
   directoryPath: string,
 ): Promise<RelinkMissingTracksResult> {
-  return invokeOrFallback(
-    "resolve_missing_tracks_from_directory",
-    { directoryPath },
-    () => resolveMockMissingTracksFromDirectory(),
+  return invokeOrFallback("resolve_missing_tracks_from_directory", { directoryPath }, () =>
+    resolveMockMissingTracksFromDirectory(),
   );
 }

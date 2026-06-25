@@ -1,4 +1,5 @@
 import type { ChangeEventHandler } from "react";
+import { useT } from "../../../i18n/I18nContext";
 import {
   MUTATION_PROFILES,
   STYLE_PROFILES,
@@ -60,35 +61,35 @@ export function LiveMonitorReplayBookmarksCard({
   onApplyBookmarkSuggestion,
   onDeleteBookmark,
 }: LiveMonitorReplayBookmarksCardProps) {
+  const t = useT();
   return (
     <div className="audio-path-card audio-path-card--replay top-spaced">
-      <span>Replay bookmarks</span>
+      <span>{t.inspect.replayBookmarks}</span>
       <strong>
-        {activeReplayBookmark ? `Window ${replayWindowIndex} saved` : `Mark window ${replayWindowIndex}`}
+        {activeReplayBookmark
+          ? t.inspect.replayWindowSaved.replace("{window}", String(replayWindowIndex))
+          : t.inspect.markReplayWindow.replace("{window}", String(replayWindowIndex))}
       </strong>
-      <small>
-        Save notes on replay windows that sounded right, too noisy, or deserve a different
-        preset later.
-      </small>
+      <small>{t.inspect.replayBookmarksCopy}</small>
       <div className="replay-bookmark-form">
         <label>
-          <span className="field-label">Label</span>
+          <span className="field-label">{t.inspect.label}</span>
           <input
             className="field-input"
             type="text"
             value={bookmarkLabelDraft}
             onChange={onBookmarkLabelChange}
-            placeholder={`Window ${replayWindowIndex}`}
+            placeholder={t.inspect.windowLabel.replace("{window}", String(replayWindowIndex))}
           />
         </label>
         <label>
-          <span className="field-label">Note</span>
+          <span className="field-label">{t.inspect.note}</span>
           <textarea
             className="field-input replay-bookmark-textarea"
             rows={3}
             value={bookmarkNoteDraft}
             onChange={onBookmarkNoteChange}
-            placeholder="Why this window matters for the team's background mix."
+            placeholder={t.inspect.replayNotePlaceholder}
           />
         </label>
         <div className="replay-bookmark-tag-strip">
@@ -106,13 +107,13 @@ export function LiveMonitorReplayBookmarksCard({
         </div>
         <div className="replay-bookmark-preset-grid">
           <label>
-            <span className="field-label">Suggested style</span>
+            <span className="field-label">{t.inspect.suggestedStyle}</span>
             <select
               className="field-input"
               value={bookmarkStyleProfileIdDraft ?? ""}
               onChange={onBookmarkStyleProfileChange}
             >
-              <option value="">No style hint</option>
+              <option value="">{t.inspect.noStyleHint}</option>
               {STYLE_PROFILES.map((profile) => (
                 <option key={profile.id} value={profile.id}>
                   {profile.label}
@@ -121,13 +122,13 @@ export function LiveMonitorReplayBookmarksCard({
             </select>
           </label>
           <label>
-            <span className="field-label">Suggested mutation</span>
+            <span className="field-label">{t.inspect.suggestedMutation}</span>
             <select
               className="field-input"
               value={bookmarkMutationProfileIdDraft ?? ""}
               onChange={onBookmarkMutationProfileChange}
             >
-              <option value="">No mutation hint</option>
+              <option value="">{t.inspect.noMutationHint}</option>
               {MUTATION_PROFILES.map((profile) => (
                 <option key={profile.id} value={profile.id}>
                   {profile.label}
@@ -144,7 +145,7 @@ export function LiveMonitorReplayBookmarksCard({
             onClick={onCaptureCurrentScene}
             disabled={bookmarkBusy}
           >
-            Capture current scene
+            {t.inspect.captureCurrentScene}
           </button>
           <button
             type="button"
@@ -152,7 +153,11 @@ export function LiveMonitorReplayBookmarksCard({
             onClick={onSaveBookmark}
             disabled={bookmarkBusy}
           >
-            {bookmarkBusy ? "Saving…" : activeReplayBookmark ? "Update window note" : "Save window note"}
+            {bookmarkBusy
+              ? t.inspect.saving
+              : activeReplayBookmark
+                ? t.inspect.updateWindowNote
+                : t.inspect.saveWindowNote}
           </button>
           {activeReplayBookmark ? (
             <button
@@ -161,7 +166,7 @@ export function LiveMonitorReplayBookmarksCard({
               onClick={onDeleteCurrentBookmark}
               disabled={bookmarkBusy}
             >
-              Delete current
+              {t.inspect.deleteCurrent}
             </button>
           ) : null}
         </div>
@@ -181,9 +186,14 @@ export function LiveMonitorReplayBookmarksCard({
               >
                 <div className="replay-bookmark-head">
                   <strong>{bookmark.label}</strong>
-                  <span>W{bookmark.replayWindowIndex}</span>
+                  <span>
+                    {t.inspect.replayWindowShort.replace(
+                      "{index}",
+                      String(bookmark.replayWindowIndex),
+                    )}
+                  </span>
                 </div>
-                {bookmark.note ? <p>{bookmark.note}</p> : <p>No note yet. Saved as a timeline marker.</p>}
+                {bookmark.note ? <p>{bookmark.note}</p> : <p>{t.inspect.noNoteYet}</p>}
                 <div className="replay-bookmark-meta">
                   {bookmark.bookmarkTag ? (
                     <span>{resolveReplayBookmarkTagLabel(bookmark.bookmarkTag)}</span>
@@ -206,7 +216,7 @@ export function LiveMonitorReplayBookmarksCard({
                   className="secondary-action replay-bookmark-apply"
                   onClick={() => onApplyBookmarkSuggestion(bookmark)}
                 >
-                  Load scene
+                  {t.inspect.loadScene}
                 </button>
               ) : null}
               <button
@@ -214,17 +224,15 @@ export function LiveMonitorReplayBookmarksCard({
                 className="replay-bookmark-delete"
                 onClick={() => onDeleteBookmark(bookmark)}
                 disabled={bookmarkBusy}
-                aria-label={`Delete replay bookmark ${bookmark.label}`}
+                aria-label={t.inspect.deleteReplayBookmark.replace("{label}", bookmark.label)}
               >
-                Delete
+                {t.inspect.delete}
               </button>
             </div>
           ))}
         </div>
       ) : (
-        <small className="replay-bookmark-empty">
-          No replay bookmarks yet. Mark the windows that best represent your team soundscape.
-        </small>
+        <small className="replay-bookmark-empty">{t.inspect.noReplayBookmarks}</small>
       )}
     </div>
   );

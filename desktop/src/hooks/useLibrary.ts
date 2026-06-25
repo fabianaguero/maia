@@ -61,10 +61,7 @@ export function useLibrary() {
 
     async function bootstrap() {
       try {
-        const [nextTracks, nextPlaylists] = await Promise.all([
-          listTracks(),
-          listPlaylists(),
-        ]);
+        const [nextTracks, nextPlaylists] = await Promise.all([listTracks(), listPlaylists()]);
 
         if (!active) {
           return;
@@ -74,9 +71,7 @@ export function useLibrary() {
           const sorted = sortTracks(nextTracks);
           setTracks(sorted);
           setPlaylists(
-            [...nextPlaylists].sort((left, right) =>
-              right.updatedAt.localeCompare(left.updatedAt),
-            ),
+            [...nextPlaylists].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
           );
           setSelectedTrackId((current) => {
             if (current && sorted.some((track) => track.id === current)) {
@@ -86,10 +81,7 @@ export function useLibrary() {
             return sorted[0]?.id ?? null;
           });
           setSelectedPlaylistId((current) => {
-            if (
-              current &&
-              nextPlaylists.some((playlist) => playlist.id === current)
-            ) {
+            if (current && nextPlaylists.some((playlist) => playlist.id === current)) {
               return current;
             }
 
@@ -117,9 +109,7 @@ export function useLibrary() {
     };
   }, []);
 
-  async function importLibraryTrack(
-    input: ImportTrackInput,
-  ): Promise<LibraryTrack | null> {
+  async function importLibraryTrack(input: ImportTrackInput): Promise<LibraryTrack | null> {
     setMutating(true);
 
     try {
@@ -127,10 +117,7 @@ export function useLibrary() {
 
       startTransition(() => {
         setTracks((current) =>
-          sortTracks([
-            nextTrack,
-            ...current.filter((track) => track.id !== nextTrack.id),
-          ]),
+          sortTracks([nextTrack, ...current.filter((track) => track.id !== nextTrack.id)]),
         );
         setSelectedTrackId(nextTrack.id);
         setError(null);
@@ -174,15 +161,13 @@ export function useLibrary() {
                         ...t.analysis,
                         bpm: analyzed.suggestedBpm ?? t.analysis.bpm,
                         bpmConfidence: analyzed.confidence ?? t.analysis.bpmConfidence,
-                        waveformBins:
-                          analyzed.artifacts?.waveformBins ?? t.analysis.waveformBins,
+                        waveformBins: analyzed.artifacts?.waveformBins ?? t.analysis.waveformBins,
                         beatGrid: analyzed.artifacts?.beatGrid ?? t.analysis.beatGrid,
                         bpmCurve: analyzed.artifacts?.bpmCurve ?? t.analysis.bpmCurve,
                       },
                       bpm: analyzed.suggestedBpm ?? t.analysis.bpm,
                       bpmConfidence: analyzed.confidence ?? t.analysis.bpmConfidence,
-                      waveformBins:
-                        analyzed.artifacts?.waveformBins ?? t.analysis.waveformBins,
+                      waveformBins: analyzed.artifacts?.waveformBins ?? t.analysis.waveformBins,
                       beatGrid: analyzed.artifacts?.beatGrid ?? t.analysis.beatGrid,
                       bpmCurve: analyzed.artifacts?.bpmCurve ?? t.analysis.bpmCurve,
                     }
@@ -221,11 +206,7 @@ export function useLibrary() {
       const nextTrack = await importTrack(input);
 
       startTransition(() => {
-        setTracks((current) =>
-          sortTracks(
-            current.map((t) => (t.id === trackId ? nextTrack : t)),
-          ),
-        );
+        setTracks((current) => sortTracks(current.map((t) => (t.id === trackId ? nextTrack : t))));
         setError(null);
       });
 
@@ -299,9 +280,7 @@ export function useLibrary() {
 
       startTransition(() => {
         setTracks((current) =>
-          sortTracks(
-            current.map((track) => (track.id === trackId ? nextTrack : track)),
-          ),
+          sortTracks(current.map((track) => (track.id === trackId ? nextTrack : track))),
         );
         setError(null);
       });
@@ -328,9 +307,7 @@ export function useLibrary() {
 
       startTransition(() => {
         setTracks((current) =>
-          sortTracks(
-            current.map((track) => (track.id === trackId ? nextTrack : track)),
-          ),
+          sortTracks(current.map((track) => (track.id === trackId ? nextTrack : track))),
         );
         setError(null);
       });
@@ -365,9 +342,7 @@ export function useLibrary() {
 
       startTransition(() => {
         setTracks((current) =>
-          sortTracks(
-            current.map((entry) => (entry.id === trackId ? nextTrack : entry)),
-          ),
+          sortTracks(current.map((entry) => (entry.id === trackId ? nextTrack : entry))),
         );
         setError(null);
       });
@@ -439,10 +414,9 @@ export function useLibrary() {
 
       startTransition(() => {
         setPlaylists((current) =>
-          [
-            nextPlaylist,
-            ...current.filter((playlist) => playlist.id !== nextPlaylist.id),
-          ].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+          [nextPlaylist, ...current.filter((playlist) => playlist.id !== nextPlaylist.id)].sort(
+            (left, right) => right.updatedAt.localeCompare(left.updatedAt),
+          ),
         );
         setSelectedPlaylistId(nextPlaylist.id);
         setError(null);
@@ -459,18 +433,14 @@ export function useLibrary() {
     }
   }
 
-  async function deletePlaylist(
-    playlistId: string,
-  ): Promise<boolean> {
+  async function deletePlaylist(playlistId: string): Promise<boolean> {
     setMutating(true);
 
     try {
       await deleteBaseTrackPlaylist(playlistId);
 
       startTransition(() => {
-        setPlaylists((current) =>
-          current.filter((playlist) => playlist.id !== playlistId),
-        );
+        setPlaylists((current) => current.filter((playlist) => playlist.id !== playlistId));
         if (selectedPlaylistId === playlistId) {
           setSelectedPlaylistId(null);
         }
@@ -488,10 +458,8 @@ export function useLibrary() {
     }
   }
 
-  const selectedTrack =
-    tracks.find((track) => track.id === selectedTrackId) ?? null;
-  const selectedPlaylist =
-    playlists.find((playlist) => playlist.id === selectedPlaylistId) ?? null;
+  const selectedTrack = tracks.find((track) => track.id === selectedTrackId) ?? null;
+  const selectedPlaylist = playlists.find((playlist) => playlist.id === selectedPlaylistId) ?? null;
 
   return {
     tracks,

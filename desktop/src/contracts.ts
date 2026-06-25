@@ -129,10 +129,7 @@ export interface ErrorResponse {
   warnings: string[];
 }
 
-export type AnalyzerResponse =
-  | HealthResponse
-  | AnalysisSuccessResponse
-  | ErrorResponse;
+export type AnalyzerResponse = HealthResponse | AnalysisSuccessResponse | ErrorResponse;
 
 export interface BootstrapManifest {
   appName: string;
@@ -190,7 +187,10 @@ export function createAnalyzeTrackRequest(sourcePath: string): AnalyzeRequest {
   };
 }
 
-export function createAnalyzeRepositoryRequest(sourceKind: string, sourcePath: string): AnalyzeRequest {
+export function createAnalyzeRepositoryRequest(
+  sourceKind: string,
+  sourcePath: string,
+): AnalyzeRequest {
   return {
     contractVersion: CONTRACT_VERSION,
     requestId: createRequestId("repo"),

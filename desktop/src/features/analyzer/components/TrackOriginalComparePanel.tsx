@@ -1,4 +1,5 @@
 import type { LibraryTrack } from "../../../types/library";
+import { useT } from "../../../i18n/I18nContext";
 import {
   formatTrackTime,
   getTrackCompareAuditionPoints,
@@ -19,11 +20,7 @@ interface TrackOriginalComparePanelProps {
 
 function countAlteredCueMarkers(track: LibraryTrack): number {
   const mainCueCount = track.performance.mainCueSecond !== null ? 1 : 0;
-  return (
-    mainCueCount +
-    track.performance.hotCues.length +
-    track.performance.memoryCues.length
-  );
+  return mainCueCount + track.performance.hotCues.length + track.performance.memoryCues.length;
 }
 
 export function TrackOriginalComparePanel({
@@ -33,6 +30,7 @@ export function TrackOriginalComparePanel({
   onAudition,
   activeAuditionId = null,
 }: TrackOriginalComparePanelProps) {
+  const t = useT();
   const originalCues = getTrackOriginalWaveformCues(track);
   const alteredCues = getTrackWaveformCues(track);
   const alteredRegions = getTrackWaveformRegions(track);
@@ -53,33 +51,30 @@ export function TrackOriginalComparePanel({
     <section className="panel track-compare-panel">
       <div className="panel-header compact">
         <div>
-          <h2>Original vs altered</h2>
-          <p className="support-copy">
-            Compare the imported base track against the current Maia mutation
-            map using the same playhead.
-          </p>
+          <h2>{t.inspect.originalVsAltered}</h2>
+          <p className="support-copy">{t.inspect.originalVsAlteredCopy}</p>
         </div>
       </div>
 
       <div className="track-compare-summary">
         <div className="waveform-meta-pill">
-          <span>Original cues</span>
+          <span>{t.inspect.originalCues}</span>
           <strong>{originalCues.length}</strong>
         </div>
         <div className="waveform-meta-pill">
-          <span>Altered cues</span>
+          <span>{t.inspect.alteredCues}</span>
           <strong>{alteredCueCount}</strong>
         </div>
         <div className="waveform-meta-pill">
-          <span>Saved loops</span>
+          <span>{t.inspect.savedLoops}</span>
           <strong>{alteredRegions.length}</strong>
         </div>
         <div className="waveform-meta-pill">
-          <span>Delta</span>
+          <span>{t.inspect.delta}</span>
           <strong>{cueDelta >= 0 ? `+${cueDelta}` : cueDelta}</strong>
         </div>
         <div className="waveform-meta-pill">
-          <span>Main cue</span>
+          <span>{t.inspect.mainCue}</span>
           <strong>{formatTrackTime(track.performance.mainCueSecond)}</strong>
         </div>
       </div>
@@ -95,7 +90,7 @@ export function TrackOriginalComparePanel({
                 : `track-compare-audition track-compare-audition--${point.id}`
             }
             onClick={() => handleAudition(point)}
-            aria-label={`Audition ${point.label}`}
+            aria-label={t.inspect.audition.replace("{label}", point.label)}
           >
             <span>{point.label}</span>
             <strong>{formatTrackTime(point.second)}</strong>
@@ -107,8 +102,8 @@ export function TrackOriginalComparePanel({
       <div className="track-compare-grid">
         <div className="track-compare-column">
           <div className="track-compare-label">
-            <span>Base track</span>
-            <strong>Original</strong>
+            <span>{t.inspect.baseTrack}</span>
+            <strong>{t.inspect.original}</strong>
           </div>
           <WaveformPlaceholder
             bins={track.analysis.waveformBins}
@@ -122,8 +117,8 @@ export function TrackOriginalComparePanel({
 
         <div className="track-compare-column">
           <div className="track-compare-label altered">
-            <span>Mutation map</span>
-            <strong>Altered</strong>
+            <span>{t.inspect.mutationMap}</span>
+            <strong>{t.inspect.altered}</strong>
           </div>
           <WaveformPlaceholder
             bins={track.analysis.waveformBins}

@@ -1,0 +1,59 @@
+name: Quality
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+
+jobs:
+  python-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install analyzer dependencies
+        run: python -m pip install -e "./analyzer[dev]"
+      - name: Ruff
+        run: python -m ruff check --config analyzer/pyproject.toml analyzer/src/maia_analyzer/*.py analyzer/tests/*.py scripts/demo/*.py scripts/verification/*.py
+      - name: Mypy
+        run: python -m mypy --config-file analyzer/pyproject.toml analyzer/src/maia_analyzer/*.py
+
+  desktop-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: desktop/package-lock.json
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm ci
+      - name: Typecheck
+        working-directory: desktop
+        run: npm run typecheck
+      - name: Lint
+        working-directory: desktop
+        run: npm run lint
+
+  site-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: site/package-lock.json
+      - name: Install site dependencies
+        working-directory: site
+        run: npm ci
+      - name: Lint
+        working-directory: site
+        run: npm run lint
+      - name: Build
+        working-directory: site
+        run: npm run build

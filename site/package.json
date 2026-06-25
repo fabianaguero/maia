@@ -6,6 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"src/**/*.{js,jsx,css}\" \"*.{js,json,mjs}\"",
+    "format:check": "prettier --check \"src/**/*.{js,jsx,css}\" \"*.{js,json,mjs}\"",
+    "quality": "npm run lint && npm run build",
+    "quality:strict": "npm run quality && npm run format:check",
     "preview": "vite preview",
     "deploy:pages": "wrangler pages deploy dist --project-name ${CLOUDFLARE_PAGES_PROJECT:-maia}",
     "deploy:worker-static": "wrangler deploy --assets dist"
@@ -17,9 +23,16 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.17.0",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.20",
+    "eslint": "^9.17.0",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.16",
+    "globals": "^15.13.0",
     "postcss": "^8.4.47",
+    "prettier": "^3.4.2",
     "tailwindcss": "^3.4.14",
     "vite": "^5.4.8",
     "wrangler": "^4.80.0"

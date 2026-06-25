@@ -90,10 +90,7 @@ export async function invokeOrFallback<T>(
   }
 }
 
-export async function invokeWithBridgeRetry<T>(
-  command: string,
-  args?: InvokeArgs,
-): Promise<T> {
+export async function invokeWithBridgeRetry<T>(command: string, args?: InvokeArgs): Promise<T> {
   try {
     return await invoke<T>(command, args);
   } catch (error) {
