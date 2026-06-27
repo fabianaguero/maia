@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
 import { useT } from "../../../i18n/I18nContext";
 import { getLogger } from "../../../utils/logger";
 
@@ -21,72 +20,135 @@ import type {
   LiveLogMarker,
   LiveLogStreamUpdate,
   RepositoryAnalysis,
-  StartSessionInput,
   StreamAdapterKind,
 } from "../../../types/library";
 import type { SessionBookmark } from "../../../api/sessions";
-import { ReplayFeedbackSummaryCard } from "../../../components/ReplayFeedbackSummaryCard";
 import { useReplayBookmarks } from "../../../hooks/useReplayBookmarks";
 import { useReplayFeedbackRecommendation } from "../../../hooks/useReplayFeedbackRecommendation";
-import { resolvePlaylistTracks } from "../../../utils/playlist";
-import { resolveNextPlaylistIndex } from "../../../utils/playlistRuntime";
 import type { PlaylistTransitionPlan } from "../../../utils/playlistTransition";
 import {
-  resolvePhraseAlignedTransitionDelayMs,
-  resolvePlaylistStartPlan,
-  resolvePlaylistTransitionPlan,
-} from "../../../utils/playlistTransition";
-import {
-  getTrackAvailabilityLabel,
   getTrackTitle,
-  resolvePlayableTrackPath,
 } from "../../../utils/track";
 import {
-  deriveLiveMutationExplanations,
   type LiveMutationExplanation,
-  toLiveMutationVisualizationCues,
 } from "../../../utils/liveMutationExplainability";
-import { resolveReplayProgressForWindow } from "../../../utils/replay";
 import {
   createBasePlaylist,
   loadMonitorPrefs,
   persistReplayFeedbackRecommendation,
-  saveMonitorPrefs,
 } from "../../../utils/monitorPrefs";
-import { getStreamAdapterDescription, getStreamAdapterLabel } from "../../../utils/streamAdapter";
 import { useMonitor } from "../../monitor/MonitorContext";
-import {
-  DEFAULT_MUTATION_PROFILE_ID,
-  DEFAULT_STYLE_PROFILE_ID,
-  MUTATION_PROFILES,
-  STYLE_PROFILES,
-  resolveMutationProfile,
-  resolveStyleProfile,
-} from "../../../config/liveProfiles";
+import { DEFAULT_MUTATION_PROFILE_ID, DEFAULT_STYLE_PROFILE_ID } from "../../../config/liveProfiles";
 import { LiveSonificationScenePanel } from "./LiveSonificationScenePanel";
+import { LiveLogMonitorHeader } from "./LiveLogMonitorHeader";
+import { LiveLogMonitorSetupSection } from "./LiveLogMonitorSetupSection";
+import { LiveWaveformCanvas } from "./LiveWaveformCanvas";
 import { ComponentRoutingPanel } from "./ComponentRoutingPanel";
-import { LiveMonitorMutationTracePanel } from "./LiveMonitorMutationTracePanel";
-import { LiveMonitorReplayBookmarksCard } from "./LiveMonitorReplayBookmarksCard";
-import { LiveMonitorReplayTimelineCard } from "./LiveMonitorReplayTimelineCard";
-import { PadSequencerPanel } from "./PadSequencerPanel";
+import { LiveLogMonitorLiveDeck } from "./LiveLogMonitorLiveDeck";
+import { LiveLogMonitorDeckSection } from "./LiveLogMonitorDeckSection";
 import {
-  blendAnchors,
-  clampPan,
-  deriveReferenceAnchor,
-  resolveLiveSonificationScene,
-  resolveArrangementVoices,
-  routeCueThroughScene,
-  type ArrangementTrack,
   type ArrangementVoice,
   type ComponentOverride,
   type RoutedLiveCue,
 } from "./liveSonificationScene";
 import {
-  renderCuesToWav,
   renderBounceWav,
   BOUNCE_WINDOW_S,
-  MAX_BOUNCE_WINDOWS,
 } from "./wavRenderer";
+import {
+  appendSyncTailRows,
+  buildSyncTailRows,
+  formatConfidence,
+  formatCursor,
+  levelCount,
+  resolveBackgroundTrackSecond,
+  type SyncTailRow,
+} from "./liveLogMonitorPanelRuntime";
+import {
+  buildBasePlaylistTrackOptions,
+  buildNowPlayingSummary,
+  buildPlaylistEditorItems,
+  buildPlaylistSummaryItems,
+  buildSavedPlaylistOptions,
+  buildUpNextSummary,
+} from "./liveLogMonitorPlaylistViewState";
+import {
+  buildLiveMonitorDisplayState,
+  buildMetricGridItems,
+  resolveBounceActionLabel,
+  resolveCueEngineStateLabel,
+  resolveSessionCardDisplay,
+} from "./liveLogMonitorDisplayRuntime";
+import {
+  createManagedBlobAudioRegistry,
+  setBlobAudioVolumeState,
+  stopManagedBlobAudioState,
+  type LiveMutationState,
+} from "./liveLogMonitorAudioRuntime";
+import {
+  buildLiveLogMonitorViewModel,
+  preferredBaseAssetId,
+  preferredCompositionId,
+  toMessage,
+  type AudioEngineStatus,
+  type ForcedLiveMutationState,
+} from "./liveLogMonitorViewModel";
+import {
+  buildLiveMonitorStartResetState,
+  createLiveMonitorSessionInput,
+  resolveLiveMonitorStartAudioPlan,
+  resolveLiveMonitorCtaMeta,
+} from "./liveLogMonitorSessionRuntime";
+import {
+  resolveBookmarkJumpState,
+  resolveTraceExplanationSelection,
+} from "./liveLogMonitorInteractionRuntime";
+import {
+  createLiveMonitorSessionId,
+  resolveLiveMonitorStartFailureMessage,
+  resolveLiveMonitorStartWarning,
+} from "./liveLogMonitorControlRuntime";
+import { stopLiveMonitorAudioGraph } from "./liveLogMonitorAudioCleanupRuntime";
+import {
+  buildRepoResetMonitorState,
+  resolveNextSceneBaseAssetId,
+  resolveNextSceneCompositionId,
+  resolveGuideTrackSeedPlaylist,
+} from "./liveLogMonitorPreferencesRuntime";
+import {
+  buildRecentCueHistory,
+  buildRecentExplanationHistory,
+  buildRecentMarkerHistory,
+  buildRecentMonitorVoices,
+  resolveActiveTailWindowId,
+  resolveSelectedMonitorExplanationId,
+} from "./liveLogMonitorStreamUpdateRuntime";
+import {
+  buildLiveMonitorStopResetState,
+  resolveBookmarkSuggestionSelection,
+  resolveLiveMonitorBounceFilename,
+  resolveReplayFeedbackSelection,
+} from "./liveLogMonitorActionRuntime";
+import {
+  resolveBeatClockLiveSync,
+  startBeatLooper,
+  stopBeatLooper,
+  type BeatClock,
+  type BeatLooperState,
+} from "./liveLogMonitorBeatRuntime";
+import { buildMonitorUpdateDerivation } from "./liveLogMonitorUpdateDerivationRuntime";
+import { useLiveLogMonitorSampleBank } from "./useLiveLogMonitorSampleBank";
+import { useLiveLogMonitorResetActions } from "./useLiveLogMonitorResetActions";
+import { useLiveLogMonitorSurfaceSync } from "./useLiveLogMonitorSurfaceSync";
+import {
+  type BackgroundDeckState,
+} from "./liveLogMonitorBackgroundDeckRuntime";
+import { useLiveLogMonitorBackgroundLifecycle } from "./useLiveLogMonitorBackgroundLifecycle";
+import { useLiveLogMonitorAudioBootstrap } from "./useLiveLogMonitorAudioBootstrap";
+import { useLiveLogMonitorBackgroundAudioEngine } from "./useLiveLogMonitorBackgroundAudioEngine";
+import { useLiveLogMonitorAuxPlayback } from "./useLiveLogMonitorAuxPlayback";
+import { useLiveLogMonitorBackgroundDeckControl } from "./useLiveLogMonitorBackgroundDeckControl";
+import { useLiveLogMonitorPlayback } from "./useLiveLogMonitorPlayback";
 
 const MAX_RECENT_CUES = 8;
 const MAX_RECENT_MARKERS = 6;
@@ -96,49 +158,6 @@ const MAX_PARSED_LINES = 5;
 const MAX_ANOMALY_SOURCE_LINES = 6;
 const MAX_SYNC_TAIL_LINES = 60;
 
-// Sequencer: note config per arrangement track (kick / snare / hat)
-const SEQ_TRACK_CONFIG: Record<
-  ArrangementTrack,
-  { noteHz: number; waveform: OscillatorType; gainFactor: number; durationMs: number }
-> = {
-  foundation: { noteHz: 80, waveform: "square", gainFactor: 0.22, durationMs: 115 },
-  motion: { noteHz: 280, waveform: "triangle", gainFactor: 0.14, durationMs: 75 },
-  accent: { noteHz: 1800, waveform: "sine", gainFactor: 0.08, durationMs: 40 },
-};
-const BACKGROUND_FADE_IN_SECONDS = 0.9;
-
-type AudioEngineStatus = "idle" | "ready" | "unsupported" | "error";
-type SampleEngineStatus = "unavailable" | "loading" | "ready" | "error";
-
-interface BackgroundDeckState {
-  source: AudioBufferSourceNode;
-  buffer: AudioBuffer;
-  gain: GainNode;
-  trackId: string;
-  trackIndex: number;
-  startedAtContextTime: number;
-  bufferDurationSec: number;
-  durationSec: number;
-  entrySecond: number;
-  playbackRate: number;
-  looping: boolean;
-}
-
-interface BackgroundMutationProfile {
-  filterHz: number;
-  filterQ: number;
-  busGain: number;
-  deckGain: number;
-  driveWet: number;
-  playbackRate: number;
-  gateDepth: number;
-  gatePulses: number;
-  recoverSeconds: number;
-}
-
-type LiveMutationState = "normal" | "warning" | "critical";
-type ForcedLiveMutationState = "auto" | LiveMutationState;
-
 interface LiveLogMonitorPanelProps {
   repository: RepositoryAnalysis;
   availableBaseAssets: BaseAssetRecord[];
@@ -147,10 +166,6 @@ interface LiveLogMonitorPanelProps {
   preferredCompositionId?: string | null;
   availableTracks: LibraryTrack[];
   availablePlaylists: BaseTrackPlaylist[];
-}
-
-function toMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Unexpected live log monitor failure.";
 }
 
 function createAudioContext(): AudioContext | null {
@@ -169,753 +184,11 @@ function createAudioContext(): AudioContext | null {
 // WAV renderer is in wavRenderer.ts (imported above).
 // ---------------------------------------------------------------------------
 
-const activeBlobAudioElements = new Set<HTMLAudioElement>();
-
-function createDriveCurve(amount: number): Float32Array<ArrayBuffer> {
-  const samples = 2048;
-  const curve = new Float32Array(samples);
-  const drive = Math.max(0.1, amount);
-  for (let i = 0; i < samples; i++) {
-    const x = (i * 2) / (samples - 1) - 1;
-    curve[i] = Math.tanh(x * drive);
-  }
-  return curve as Float32Array<ArrayBuffer>;
-}
-
-function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, value));
-}
-
-function resolveBackgroundMutationProfile(
-  update: LiveLogStreamUpdate,
-  styleBackgroundGain: number,
-  styleFilterBaseHz: number,
-  styleFilterCeilingHz: number,
-  mutationProfile: {
-    backgroundDucking: number;
-    filterSweepMultiplier: number;
-    anomalyBoostMultiplier: number;
-    transitionTightness: number;
-  },
-): BackgroundMutationProfile {
-  const lineCount = Math.max(1, update.lineCount);
-  const warnCount = update.levelCounts["WARN"] ?? update.levelCounts.warn ?? 0;
-  const errorCount = update.levelCounts["ERROR"] ?? update.levelCounts.error ?? 0;
-  const anomalyRatio = clamp01(update.anomalyCount / lineCount);
-  const severityRatio = clamp01((warnCount * 0.45 + errorCount) / lineCount);
-  const densityRatio = clamp01(lineCount / 18);
-  const pressure = clamp01(
-    anomalyRatio * mutationProfile.anomalyBoostMultiplier * 0.55 +
-      severityRatio * 0.3 +
-      densityRatio * 0.15,
-  );
-  const filterFloor = Math.max(
-    180,
-    styleFilterBaseHz / Math.max(1, mutationProfile.filterSweepMultiplier),
-  );
-  const recoverSeconds = 0.9 + (1.25 - Math.min(1, mutationProfile.transitionTightness)) * 0.8;
-
-  return {
-    filterHz: Math.max(
-      filterFloor,
-      styleFilterCeilingHz - (styleFilterCeilingHz - filterFloor) * pressure,
-    ),
-    filterQ: 1 + pressure * 8,
-    busGain: Math.max(
-      0.14,
-      styleBackgroundGain - mutationProfile.backgroundDucking * (0.45 + pressure * 0.85),
-    ),
-    deckGain: Math.max(0.18, 1 - pressure * 0.42),
-    driveWet: clamp01(pressure * 0.82),
-    playbackRate: 1 - pressure * 0.045,
-    gateDepth: pressure > 0.18 ? Math.min(0.68, 0.12 + pressure * 0.56) : 0,
-    gatePulses: pressure > 0.72 ? 3 : pressure > 0.36 ? 2 : pressure > 0.18 ? 1 : 0,
-    recoverSeconds,
-  };
-}
-
-function resolveLiveMutationState(mutation: BackgroundMutationProfile): LiveMutationState {
-  if (mutation.driveWet >= 0.58 || mutation.gatePulses >= 2) {
-    return "critical";
-  }
-  if (mutation.driveWet >= 0.22 || mutation.gatePulses >= 1) {
-    return "warning";
-  }
-  return "normal";
-}
-
-function forceBackgroundMutationProfile(
-  state: LiveMutationState,
-  styleProfile: {
-    backgroundGain: number;
-    filterBaseHz: number;
-    filterCeilingHz: number;
-  },
-): BackgroundMutationProfile {
-  if (state === "critical") {
-    return {
-      filterHz: Math.max(170, styleProfile.filterBaseHz * 0.82),
-      filterQ: 9.4,
-      busGain: Math.max(0.12, styleProfile.backgroundGain * 0.42),
-      deckGain: 0.52,
-      driveWet: 0.86,
-      playbackRate: 0.94,
-      gateDepth: 0.66,
-      gatePulses: 4,
-      recoverSeconds: 1.28,
-    };
-  }
-  if (state === "warning") {
-    return {
-      filterHz: Math.max(230, styleProfile.filterCeilingHz * 0.48),
-      filterQ: 4.6,
-      busGain: Math.max(0.17, styleProfile.backgroundGain * 0.7),
-      deckGain: 0.78,
-      driveWet: 0.36,
-      playbackRate: 0.975,
-      gateDepth: 0.24,
-      gatePulses: 1,
-      recoverSeconds: 1.02,
-    };
-  }
-  return {
-    filterHz: Math.min(styleProfile.filterCeilingHz * 1.02, 22000),
-    filterQ: 1,
-    busGain: styleProfile.backgroundGain,
-    deckGain: 1,
-    driveWet: 0,
-    playbackRate: 1,
-    gateDepth: 0,
-    gatePulses: 0,
-    recoverSeconds: 0.75,
-  };
-}
-
-function setBlobAudioVolume(volume: number): void {
-  const nextVolume = Math.max(0, Math.min(1, volume));
-  activeBlobAudioElements.forEach((audio) => {
-    audio.volume = nextVolume;
-  });
-}
-
-function stopManagedBlobAudio(): void {
-  activeBlobAudioElements.forEach((audio) => {
-    audio.pause();
-    audio.currentTime = 0;
-  });
-  activeBlobAudioElements.clear();
-}
-
-function playManagedWavBlob(blob: Blob, volume: number): void {
-  const url = URL.createObjectURL(blob);
-  const audio = new Audio(url);
-  audio.volume = Math.max(0, Math.min(1, volume));
-  activeBlobAudioElements.add(audio);
-
-  const cleanup = () => {
-    activeBlobAudioElements.delete(audio);
-    URL.revokeObjectURL(url);
-  };
-
-  audio.addEventListener("ended", cleanup, { once: true });
-  audio.play().catch((err) => {
-    console.warn("[Maia Audio] WAV playback failed:", err);
-    cleanup();
-  });
-
-  setTimeout(() => {
-    if (activeBlobAudioElements.has(audio)) {
-      activeBlobAudioElements.delete(audio);
-      URL.revokeObjectURL(url);
-    }
-  }, 5000);
-}
-
-function resolveManagedAudioSource(audioPath: string | null): string | null {
-  if (!audioPath) return null;
-
-  // Allow browser fallback paths or remote URLs directly
-  if (audioPath.startsWith("browser-fallback://") || audioPath.startsWith("http")) {
-    return audioPath.replace("browser-fallback://", ""); // Strip prefix if needed
-  }
-
-  if (!isTauri()) {
-    // In web mode, we can only resolve relative paths or URLs.
-    // If it's an absolute disk path, we can't resolve it unless it's served.
-    return audioPath.startsWith("/") ? audioPath : `./${audioPath}`;
-  }
-
-  try {
-    return convertFileSrc(audioPath);
-  } catch {
-    return null;
-  }
-}
-
-function preferredBaseAssetId(
-  availableBaseAssets: BaseAssetRecord[],
-  preferredId?: string | null,
-): string {
-  if (preferredId && availableBaseAssets.some((entry) => entry.id === preferredId)) {
-    return preferredId;
-  }
-
-  return (
-    availableBaseAssets.find((entry) => entry.reusable)?.id ?? availableBaseAssets[0]?.id ?? ""
-  );
-}
-
-function preferredCompositionId(
-  availableCompositions: CompositionResultRecord[],
-  preferredId?: string | null,
-): string {
-  if (preferredId && availableCompositions.some((entry) => entry.id === preferredId)) {
-    return preferredId;
-  }
-
-  return "";
-}
-
-function scheduleCue(
-  context: AudioContext,
-  cue: RoutedLiveCue,
-  startAt: number,
-  destination: AudioNode,
-): void {
-  const oscillator = context.createOscillator();
-  const gainNode = context.createGain();
-  const stereoPanner =
-    typeof context.createStereoPanner === "function" ? context.createStereoPanner() : null;
-
-  oscillator.type = cue.waveform;
-  oscillator.frequency.setValueAtTime(cue.noteHz, startAt);
-  if (cue.accent === "anomaly") {
-    oscillator.detune.setValueAtTime(90, startAt);
-  }
-
-  gainNode.gain.setValueAtTime(0.0001, startAt);
-  gainNode.gain.linearRampToValueAtTime(Math.max(0.0001, cue.gain), startAt + 0.02);
-  gainNode.gain.exponentialRampToValueAtTime(
-    0.0001,
-    startAt + Math.max(0.08, cue.durationMs / 1000),
-  );
-
-  oscillator.connect(gainNode);
-  if (stereoPanner) {
-    stereoPanner.pan.setValueAtTime(cue.pan, startAt);
-    gainNode.connect(stereoPanner);
-    stereoPanner.connect(destination);
-  } else {
-    gainNode.connect(destination);
-  }
-
-  oscillator.start(startAt);
-  oscillator.stop(startAt + Math.max(0.1, cue.durationMs / 1000) + 0.04);
-}
-
-function scheduleSampleCue(
-  context: AudioContext,
-  cue: RoutedLiveCue,
-  sampleBuffer: AudioBuffer,
-  startAt: number,
-  destination: AudioNode,
-): void {
-  const source = context.createBufferSource();
-  const gainNode = context.createGain();
-  const stereoPanner =
-    typeof context.createStereoPanner === "function" ? context.createStereoPanner() : null;
-  const routeOffsetRatio =
-    cue.routeKey === "info"
-      ? 0.08
-      : cue.routeKey === "warn"
-        ? 0.22
-        : cue.routeKey === "error"
-          ? 0.42
-          : 0.64;
-  const cueOffsetRatio = ((cue.eventIndex % 5) * 0.07) % 0.28;
-  const offsetSeconds = Math.min(
-    Math.max(0, sampleBuffer.duration - 0.04),
-    sampleBuffer.duration * Math.min(0.88, routeOffsetRatio + cueOffsetRatio),
-  );
-  const durationSeconds = Math.min(
-    Math.max(0.09, cue.durationMs / 1000),
-    Math.max(0.09, sampleBuffer.duration - offsetSeconds),
-  );
-  const playbackRate = Math.max(0.55, Math.min(1.85, cue.noteHz / 261.63));
-
-  source.buffer = sampleBuffer;
-  source.playbackRate.setValueAtTime(playbackRate, startAt);
-  if (cue.accent === "anomaly") {
-    source.detune.setValueAtTime(120, startAt);
-  }
-
-  gainNode.gain.setValueAtTime(0.0001, startAt);
-  gainNode.gain.linearRampToValueAtTime(Math.max(0.0001, cue.gain), startAt + 0.01);
-  gainNode.gain.exponentialRampToValueAtTime(0.0001, startAt + durationSeconds);
-
-  source.connect(gainNode);
-  if (stereoPanner) {
-    stereoPanner.pan.setValueAtTime(cue.pan, startAt);
-    gainNode.connect(stereoPanner);
-    stereoPanner.connect(destination);
-  } else {
-    gainNode.connect(destination);
-  }
-
-  source.start(startAt, offsetSeconds, durationSeconds);
-  source.stop(startAt + durationSeconds + 0.03);
-}
-
-function scheduleTrackSliceCue(
-  context: AudioContext,
-  cue: RoutedLiveCue,
-  deck: BackgroundDeckState,
-  startAt: number,
-  destination: AudioNode,
-  currentTrackSecond: number | null,
-): void {
-  const source = context.createBufferSource();
-  const gainNode = context.createGain();
-  const stereoPanner =
-    typeof context.createStereoPanner === "function" ? context.createStereoPanner() : null;
-  const routeNudge =
-    cue.routeKey === "info"
-      ? -0.08
-      : cue.routeKey === "warn"
-        ? 0.02
-        : cue.routeKey === "error"
-          ? 0.08
-          : 0.14;
-  const deckDuration = Math.max(0.12, deck.buffer.duration);
-  const anchorSecond = currentTrackSecond ?? deck.entrySecond;
-  const offsetSeconds = Math.max(
-    0,
-    Math.min(deckDuration - 0.05, anchorSecond + routeNudge + (cue.eventIndex % 4) * 0.015),
-  );
-  const durationSeconds = Math.min(
-    Math.max(0.08, cue.durationMs / 1000),
-    Math.max(0.08, deckDuration - offsetSeconds),
-  );
-  const playbackRate =
-    cue.routeKey === "anomaly"
-      ? 1.08
-      : cue.routeKey === "error"
-        ? 1.03
-        : cue.routeKey === "warn"
-          ? 0.98
-          : 0.94;
-
-  source.buffer = deck.buffer;
-  source.playbackRate.setValueAtTime(playbackRate, startAt);
-  if (cue.accent === "anomaly") {
-    source.detune.setValueAtTime(80, startAt);
-  }
-
-  gainNode.gain.setValueAtTime(0.0001, startAt);
-  gainNode.gain.linearRampToValueAtTime(Math.max(0.0001, cue.gain), startAt + 0.01);
-  gainNode.gain.exponentialRampToValueAtTime(0.0001, startAt + durationSeconds);
-
-  source.connect(gainNode);
-  if (stereoPanner) {
-    stereoPanner.pan.setValueAtTime(cue.pan, startAt);
-    gainNode.connect(stereoPanner);
-    stereoPanner.connect(destination);
-  } else {
-    gainNode.connect(destination);
-  }
-
-  source.start(startAt, offsetSeconds, durationSeconds);
-  source.stop(startAt + durationSeconds + 0.03);
-}
-
-function formatCursor(offset: number | undefined): string {
-  if (typeof offset !== "number" || Number.isNaN(offset)) {
-    return "Tail seed";
-  }
-
-  return `${offset.toLocaleString()} B`;
-}
-
-function formatConfidence(confidence: number): string {
-  if (!Number.isFinite(confidence) || confidence <= 0) {
-    return "--";
-  }
-
-  return `${Math.round(confidence * 100)}%`;
-}
-
-function formatFrequency(noteHz: number): string {
-  return `${Math.round(noteHz)} Hz`;
-}
-
-function resolveBackgroundTrackSecond(
-  context: AudioContext | null,
-  deck: BackgroundDeckState | null,
-): number | null {
-  if (!context || !deck) {
-    return null;
-  }
-
-  const elapsedSeconds = Math.max(0, context.currentTime - deck.startedAtContextTime);
-  const rawSecond = deck.entrySecond + elapsedSeconds * deck.playbackRate;
-
-  if (deck.looping && deck.bufferDurationSec > 0) {
-    return Number((rawSecond % deck.bufferDurationSec).toFixed(3));
-  }
-
-  return Number(Math.min(deck.bufferDurationSec, rawSecond).toFixed(3));
-}
-
-function levelCount(levelCounts: Record<string, number>, level: string): number {
-  return levelCounts[level] ?? 0;
-}
-
-type ParsedLineTone = "error" | "warn" | "anomaly" | "info";
-
-function resolveParsedLineTone(line: string, markers: LiveLogMarker[]): ParsedLineTone {
-  const normalizedLine = line.trim().toLowerCase();
-  const matchesMarker = markers.some((marker) => {
-    const excerpt = marker.excerpt.trim().toLowerCase();
-    return (
-      Boolean(excerpt) && (normalizedLine.includes(excerpt) || excerpt.includes(normalizedLine))
-    );
-  });
-
-  if (matchesMarker || /\banomaly|drift|spike|budget\b/i.test(line)) {
-    return "anomaly";
-  }
-  if (/\berror|fatal|exception|panic|failed|refused|critical\b/i.test(line)) {
-    return "error";
-  }
-  if (/\bwarn|warning|timeout|retry|latency|slow|throttle\b/i.test(line)) {
-    return "warn";
-  }
-  return "info";
-}
-
-interface AnomalySourceRow {
-  sourcePath: string;
-  component: string;
-  level: string;
-  line: string;
-  tone: ParsedLineTone;
-}
-interface SyncTailRow {
-  id: string;
-  windowId: string;
-  sourcePath: string;
-  component: string;
-  level: string;
-  line: string;
-  tone: ParsedLineTone;
-}
-
-function resolveAnomalySourceRows(update: LiveLogStreamUpdate | null): AnomalySourceRow[] {
-  if (!update) {
-    return [];
-  }
-
-  const rows: AnomalySourceRow[] = [];
-  const seen = new Set<string>();
-
-  for (const marker of update.anomalyMarkers) {
-    const line = marker.excerpt.trim();
-    if (!line) {
-      continue;
-    }
-    const key = line.toLowerCase();
-    if (seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-    rows.push({
-      sourcePath: update.sourcePath,
-      component: marker.component || "stream",
-      level: marker.level || "anomaly",
-      line,
-      tone: resolveParsedLineTone(line, update.anomalyMarkers),
-    });
-    if (rows.length >= MAX_ANOMALY_SOURCE_LINES) {
-      return rows;
-    }
-  }
-
-  for (const parsedLine of update.parsedLines) {
-    const line = parsedLine.trim();
-    if (!line) {
-      continue;
-    }
-    const tone = resolveParsedLineTone(line, update.anomalyMarkers);
-    if (tone === "info") {
-      continue;
-    }
-    const key = line.toLowerCase();
-    if (seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-    rows.push({
-      sourcePath: update.sourcePath,
-      component: "stream",
-      level: tone,
-      line,
-      tone,
-    });
-    if (rows.length >= MAX_ANOMALY_SOURCE_LINES) {
-      break;
-    }
-  }
-
-  return rows;
-}
-function resolveTailComponent(line: string, markers: LiveLogMarker[]): string {
-  const normalized = line.trim().toLowerCase();
-  const marker = markers.find((entry) => {
-    const excerpt = entry.excerpt.trim().toLowerCase();
-    return Boolean(excerpt) && (normalized.includes(excerpt) || excerpt.includes(normalized));
-  });
-
-  return marker?.component || "stream";
-}
-
-// ---------------------------------------------------------------------------
-// Beat clock — phase-accurate scheduling across poll windows
-// ---------------------------------------------------------------------------
-
-interface BeatClock {
-  /** AudioContext time at session start — the phase anchor */
-  originTime: number;
-  /** BPM the clock was initialised with (anchor or live-detected) */
-  bpm: number;
-}
-
-/**
- * Returns the next subdivision boundary after `contextNow + lookaheadS`.
- * subdivision=4 → quarter notes, 8 → eighth notes, 16 → sixteenth notes.
- */
-function nextBeatTime(
-  contextNow: number,
-  originTime: number,
-  bpm: number,
-  subdivision: number,
-  lookaheadS: number,
-): number {
-  const subdivPeriodS = 60 / bpm / Math.max(1, subdivision / 4);
-  const elapsed = contextNow + lookaheadS - originTime;
-  const nextCount = Math.max(0, Math.ceil(elapsed / subdivPeriodS));
-  return originTime + nextCount * subdivPeriodS;
-}
-
-// ---------------------------------------------------------------------------
-// Beat looper — background rhythm pulse for beat-locked preset
-// ---------------------------------------------------------------------------
-
-interface BeatLooperState {
-  cancelled: boolean;
-}
-
-/**
- * Schedules a repeating low-level rhythm pulse at the given BPM using the
- * AudioContext clock + a lightweight setTimeout driver (100 ms lookahead).
- * Downbeats (every 4th pulse) use a lower pitch and higher gain than off-beats.
- * Only used when the beat-locked preset is active.
- */
-function startBeatLooper(
-  context: AudioContext,
-  bpm: number,
-  subdivision: number,
-  stateRef: React.MutableRefObject<BeatLooperState | null>,
-  destination: AudioNode,
-): void {
-  const state: BeatLooperState = { cancelled: false };
-  stateRef.current = state;
-  const periodMs = (60 / bpm / Math.max(1, subdivision / 4)) * 1000;
-  const lookaheadS = 0.1;
-  let step = 0;
-
-  const tick = (): void => {
-    if (state.cancelled) return;
-    const now = context.currentTime;
-    const at = now + lookaheadS;
-    const isDownbeat = step % 4 === 0;
-    const noteHz = isDownbeat ? 58 : 136;
-    const peakGain = isDownbeat ? 0.058 : 0.026;
-    const durS = isDownbeat ? 0.09 : 0.052;
-    const osc = context.createOscillator();
-    const gn = context.createGain();
-    osc.type = "square";
-    osc.frequency.setValueAtTime(noteHz, at);
-    gn.gain.setValueAtTime(0.0001, at);
-    gn.gain.linearRampToValueAtTime(peakGain, at + 0.007);
-    gn.gain.exponentialRampToValueAtTime(0.0001, at + durS);
-    osc.connect(gn);
-    gn.connect(destination);
-    osc.start(at);
-    osc.stop(at + durS + 0.02);
-    step++;
-    setTimeout(tick, periodMs);
-  };
-
-  tick();
-}
-
-function stopBeatLooper(stateRef: React.MutableRefObject<BeatLooperState | null>): void {
-  if (stateRef.current) {
-    stateRef.current.cancelled = true;
-    stateRef.current = null;
-  }
-}
+const activeBlobAudioElements = createManagedBlobAudioRegistry();
 
 // ---------------------------------------------------------------------------
 // Live waveform canvas — draws the real-time audio waveform from AnalyserNode
 // ---------------------------------------------------------------------------
-
-function LiveWaveformCanvas({
-  analyserRef,
-  active,
-  accentColor = "#21b4b8",
-  isAnomaly = false,
-}: {
-  analyserRef: React.RefObject<AnalyserNode | null>;
-  active: boolean;
-  accentColor?: string;
-  isAnomaly?: boolean;
-}) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animFrameRef = useRef<number>(0);
-
-  const draw = useCallback(() => {
-    const canvas = canvasRef.current;
-    const analyser = analyserRef.current;
-    if (!canvas || !analyser || !active) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const width = canvas.offsetWidth;
-    const height = canvas.offsetHeight;
-    const dpr = window.devicePixelRatio || 1;
-    if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
-    }
-
-    const bufLen = analyser.frequencyBinCount;
-    const timeData = new Uint8Array(bufLen);
-    const freqData = new Uint8Array(bufLen);
-    analyser.getByteTimeDomainData(timeData);
-    analyser.getByteFrequencyData(freqData);
-
-    // Clear
-    ctx.clearRect(0, 0, width, height);
-
-    // Background gradient
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
-    if (isAnomaly) {
-      bgGrad.addColorStop(0, "rgba(244, 63, 94, 0.4)");
-      bgGrad.addColorStop(1, "rgba(244, 63, 94, 0.1)");
-    } else {
-      bgGrad.addColorStop(0, "rgba(0, 0, 0, 0.3)");
-      bgGrad.addColorStop(1, "rgba(0, 0, 0, 0.05)");
-    }
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, width, height);
-
-    // Frequency bars (background)
-    const barCount = 64;
-    const barWidth = width / barCount;
-    const step = Math.floor(bufLen / barCount);
-    for (let i = 0; i < barCount; i++) {
-      const val = freqData[i * step] / 255;
-      const barH = val * height * 0.8;
-      const alpha = 0.15 + val * 0.3;
-      ctx.fillStyle = `rgba(33, 180, 184, ${alpha})`;
-      ctx.fillRect(i * barWidth + 1, height - barH, barWidth - 2, barH);
-    }
-
-    // Waveform line
-    ctx.beginPath();
-    ctx.lineWidth = 2;
-    const gradient = ctx.createLinearGradient(0, 0, width, 0);
-    gradient.addColorStop(0, `${accentColor}88`);
-    gradient.addColorStop(0.5, accentColor);
-    gradient.addColorStop(1, `${accentColor}88`);
-    ctx.strokeStyle = gradient;
-
-    const sliceWidth = width / bufLen;
-    let x = 0;
-    for (let i = 0; i < bufLen; i++) {
-      const v = timeData[i] / 128;
-      const y = (v * height) / 2;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-      x += sliceWidth;
-    }
-    ctx.lineTo(width, height / 2);
-    ctx.stroke();
-
-    // Glow effect
-    ctx.shadowColor = isAnomaly ? "#f43f5e" : accentColor;
-    ctx.shadowBlur = isAnomaly ? 24 : 8;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    // Center line
-    ctx.strokeStyle = isAnomaly ? "rgba(244, 63, 94, 0.4)" : "rgba(244, 242, 233, 0.08)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, height / 2);
-    ctx.lineTo(width, height / 2);
-    ctx.stroke();
-
-    animFrameRef.current = requestAnimationFrame(draw);
-  }, [active, accentColor, analyserRef, isAnomaly]);
-
-  useEffect(() => {
-    if (active) {
-      animFrameRef.current = requestAnimationFrame(draw);
-    }
-    return () => {
-      if (animFrameRef.current) {
-        cancelAnimationFrame(animFrameRef.current);
-      }
-    };
-  }, [active, draw]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className="live-waveform-canvas"
-      style={{
-        width: "100%",
-        height: "128px",
-        borderRadius: "14px",
-        display: "block",
-      }}
-    />
-  );
-}
-
-function audioLabel(
-  status: AudioEngineStatus,
-  liveEnabled: boolean,
-  t: ReturnType<typeof useT>,
-): string {
-  if (status === "unsupported") {
-    return t.inspect.audioStateUnavailable;
-  }
-  if (status === "error") {
-    return t.inspect.audioStateError;
-  }
-  if (liveEnabled && status === "ready") {
-    return t.inspect.audioStateActive;
-  }
-  if (status === "ready") {
-    return t.inspect.audioStateArmed;
-  }
-  return t.inspect.audioStateIdle;
-}
 
 export function LiveLogMonitorPanel({
   repository,
@@ -987,18 +260,16 @@ export function LiveLogMonitorPanel({
   const [componentOverrides, setComponentOverrides] = useState<Map<string, ComponentOverride>>(
     () => new Map(),
   );
-  const initialSceneBaseAssetIdRef = useRef(
-    preferredBaseAssetId(availableBaseAssets, preferredBaseAssetIdProp),
+  const [sceneBaseAssetId, setSceneBaseAssetId] = useState(
+    preferredBaseAssetId(availableBaseAssets, preferredBaseAssetIdProp) ?? "",
   );
-  const initialSceneCompositionIdRef = useRef(
-    preferredCompositionId(availableCompositions, preferredCompositionIdProp),
-  );
-  const [sceneBaseAssetId, setSceneBaseAssetId] = useState(initialSceneBaseAssetIdRef.current);
   const [sceneCompositionId, setSceneCompositionId] = useState(
-    initialSceneCompositionIdRef.current,
+    preferredCompositionId(availableCompositions, preferredCompositionIdProp) ?? "",
   );
   const [audioStatus, setAudioStatus] = useState<AudioEngineStatus>("idle");
-  const [sampleStatus, setSampleStatus] = useState<SampleEngineStatus>("unavailable");
+  const [sampleStatus, setSampleStatus] = useState<"unavailable" | "loading" | "ready" | "error">(
+    "unavailable",
+  );
   const [lastUpdate, setLastUpdate] = useState<LiveLogStreamUpdate | null>(null);
   const [emittedCueCount, setEmittedCueCount] = useState(0);
   const [emittedVoiceCount, setEmittedVoiceCount] = useState(0);
@@ -1017,57 +288,80 @@ export function LiveLogMonitorPanel({
   const [activeTailWindowId, setActiveTailWindowId] = useState<string | null>(null);
   const syncTailListRef = useRef<HTMLDivElement | null>(null);
   const previousAudibleVolumeRef = useRef(masterVolume > 0 ? masterVolume : 0.45);
-  const selectedSceneBaseAsset =
-    availableBaseAssets.find((entry) => entry.id === sceneBaseAssetId) ?? null;
-  const selectedSceneComposition =
-    availableCompositions.find((entry) => entry.id === sceneCompositionId) ?? null;
-  const selectedStyleProfile = resolveStyleProfile(selectedStyleProfileId);
-  const selectedMutationProfile = resolveMutationProfile(selectedMutationProfileId);
-  const playableBaseTracks = useMemo(
+  const {
+    selectedStyleProfile,
+    selectedMutationProfile,
+    playableBaseTracks,
+    playableBaseTrackIdsKey,
+    availableBaseTrackOptions,
+    backgroundNowPlayingTrack,
+    backgroundTransitionNextTrack,
+    traceWaveformTrack,
+    traceWaveformExplanations,
+    selectedTraceExplanation,
+    traceWaveformCues,
+    currentReplayExplanation,
+    referenceAnchor,
+    scene,
+    baseTrackCount,
+    hasBaseListeningBed,
+    activeAdapterLabel,
+    adapterDescription,
+    adapterTarget,
+    effectiveLiveMutationState,
+    liveMutationStateLabel,
+    cueEnginePreviewLabel,
+  } = useMemo(
     () =>
-      resolvePlaylistTracks(basePlaylist, availableTracks).filter((track) =>
-        Boolean(resolvePlayableTrackPath(track)),
-      ),
-    [availableTracks, basePlaylist],
+      buildLiveLogMonitorViewModel({
+        repository,
+        repositoryId: repository.id,
+        adapterKind,
+        sessionRepoId: monitor.session?.repoId ?? null,
+        sessionAdapterKind: monitor.session?.adapterKind ?? null,
+        availableBaseAssets,
+        availableCompositions,
+        availableTracks,
+        basePlaylist,
+        sceneBaseAssetId,
+        sceneCompositionId,
+        selectedStyleProfileId,
+        selectedMutationProfileId,
+        recentExplanations,
+        selectedExplanationId,
+        backgroundNowPlayingId,
+        backgroundTransitionPlan,
+        replayActive,
+        playbackEventIndex: monitor.playbackEventIndex,
+        forcedLiveMutationState,
+        liveMutationState,
+        sampleStatus,
+      }),
+    [
+      adapterKind,
+      availableBaseAssets,
+      availableCompositions,
+      availableTracks,
+      backgroundNowPlayingId,
+      backgroundTransitionPlan,
+      basePlaylist,
+      forcedLiveMutationState,
+      liveMutationState,
+      monitor.playbackEventIndex,
+      monitor.session?.adapterKind,
+      monitor.session?.repoId,
+      recentExplanations,
+      replayActive,
+      repository,
+      sampleStatus,
+      sceneBaseAssetId,
+      sceneCompositionId,
+      selectedExplanationId,
+      selectedMutationProfileId,
+      selectedStyleProfileId,
+    ],
   );
-  const availableBaseTrackOptions = availableTracks
-    .filter((track) => !(basePlaylist?.trackIds ?? []).includes(track.id))
-    .sort((left, right) => {
-      const leftMissing = left.file.availabilityState === "missing" ? 1 : 0;
-      const rightMissing = right.file.availabilityState === "missing" ? 1 : 0;
-      if (leftMissing !== rightMissing) {
-        return leftMissing - rightMissing;
-      }
-      return getTrackTitle(left).localeCompare(getTrackTitle(right));
-    });
-  const playableBaseTrackIdsKey = playableBaseTracks.map((track) => track.id).join("|");
-  const backgroundNowPlayingTrack = backgroundNowPlayingId
-    ? (availableTracks.find((track) => track.id === backgroundNowPlayingId) ?? null)
-    : null;
-  const backgroundTransitionNextTrack = backgroundTransitionPlan?.nextTrackId
-    ? (availableTracks.find((track) => track.id === backgroundTransitionPlan.nextTrackId) ?? null)
-    : null;
-  const traceWaveformTrack = backgroundNowPlayingTrack ?? playableBaseTracks[0] ?? null;
-  const traceWaveformExplanations = traceWaveformTrack
-    ? recentExplanations.filter(
-        (explanation) =>
-          explanation.trackId === traceWaveformTrack.id &&
-          typeof explanation.trackSecond === "number",
-      )
-    : [];
-  const selectedTraceExplanation =
-    traceWaveformExplanations.find((explanation) => explanation.id === selectedExplanationId) ??
-    null;
-  const traceWaveformCues = toLiveMutationVisualizationCues(traceWaveformExplanations);
   const replaySessionId = replayActive ? (monitor.session?.persistedSessionId ?? null) : null;
-  const currentReplayExplanation =
-    replayActive && monitor.playbackEventIndex !== null
-      ? ((selectedTraceExplanation?.replayWindowIndex === monitor.playbackEventIndex
-          ? selectedTraceExplanation
-          : recentExplanations.find(
-              (explanation) => explanation.replayWindowIndex === monitor.playbackEventIndex,
-            )) ?? null)
-      : null;
   const {
     sortedSessionBookmarks,
     activeReplayBookmark,
@@ -1109,111 +403,199 @@ export function LiveLogMonitorPanel({
     currentStyleProfileId: selectedStyleProfileId,
     currentMutationProfileId: selectedMutationProfileId,
   });
-  const playlistAnchors = (basePlaylist?.trackIds ?? [])
-    .map((id) => availableTracks.find((t) => t.id === id))
-    .filter((t): t is LibraryTrack => t !== undefined)
-    .map(deriveReferenceAnchor);
-  const referenceAnchor = playlistAnchors.length > 0 ? blendAnchors(playlistAnchors) : null;
-  const scene = resolveLiveSonificationScene(
-    selectedSceneBaseAsset,
-    selectedSceneComposition,
+  const adapterConfigured = true;
+  const { ensureAudioReady } = useLiveLogMonitorAudioBootstrap({
+    monitorAudioContext: monitor.audioContext,
+    resumeSharedAudio: monitor.resumeAudio,
+    createAudioContext,
+    audioContextRef,
+    usingSharedAudioContextRef,
+    masterGainRef,
+    analyserRef,
+    setAudioStatus,
+    liveEnabled,
+    replayActive,
+    masterVolume,
+    logger: log,
+  });
+  const { playRenderedBlobThroughGraph, playPanelTestTone } = useLiveLogMonitorAuxPlayback({
+    ensureAudioReady,
+    masterGainRef,
+    masterVolume,
+    activeBlobAudioElements,
+    setAudioStatus,
+    logger: log,
+    toMessage,
+  });
+  const { ensureBackgroundBus, applyLogModulation } = useLiveLogMonitorBackgroundAudioEngine({
+    audioContextRef,
+    masterGainRef,
+    backgroundGainRef,
+    backgroundDryGainRef,
+    backgroundDriveWetGainRef,
+    backgroundDriveNodeRef,
+    filterNodeRef,
+    backgroundDeckRef,
+    selectedStyleProfile: {
+      backgroundGain: selectedStyleProfile.backgroundGain,
+      filterBaseHz: selectedStyleProfile.filterBaseHz,
+      filterCeilingHz: selectedStyleProfile.filterCeilingHz,
+    },
+    selectedMutationProfile: {
+      backgroundDucking: selectedMutationProfile.backgroundDucking,
+      filterSweepMultiplier: selectedMutationProfile.filterSweepMultiplier,
+      anomalyBoostMultiplier: selectedMutationProfile.anomalyBoostMultiplier,
+      transitionTightness: selectedMutationProfile.transitionTightness,
+    },
+    forcedLiveMutationState,
+    liveEnabled,
+    setLiveMutationState,
+  });
+  const {
+    stopBackgroundDeck,
+    scheduleBackgroundTransition,
+    startBackgroundDeck,
+    ensureBackgroundAudio,
+  } = useLiveLogMonitorBackgroundDeckControl({
+    audioContextRef,
+    backgroundDeckRef,
+    backgroundTransitionTimerRef,
+    backgroundBufferCacheRef,
+    filterNodeRef,
+    playableBaseTracks,
+    selectedStyleProfile: {
+      backgroundGain: selectedStyleProfile.backgroundGain,
+      playlistCrossfadeSeconds: selectedStyleProfile.playlistCrossfadeSeconds,
+      transitionFeel: selectedStyleProfile.transitionFeel,
+    },
+    selectedMutationProfile: {
+      transitionTightness: selectedMutationProfile.transitionTightness,
+    },
+    maxRecentWarnings: MAX_RECENT_WARNINGS,
+    ensureBackgroundBus,
+    setBackgroundNowPlayingId,
+    setBackgroundTransitionPlan,
+    setBackgroundPlayheadSecond,
+    setRecentWarnings,
+    toMessage,
+  });
+  const { applyRepositoryReset, applyStartReset, applyStopReset } = useLiveLogMonitorResetActions({
+    knownComponentsRef,
+    beatClockRef,
+    beatLooperRef,
+    panelAudioProbePlayedRef,
+    bounceCuesRef,
+    setLastUpdate,
+    setEmittedCueCount,
+    setEmittedVoiceCount,
+    setRecentCues,
+    setRecentVoices,
+    setRecentMarkers,
+    setRecentExplanations,
+    setSelectedExplanationId,
+    setBackgroundPlayheadSecond,
+    setRecentWarnings,
+    setSyncTailRows,
+    setActiveTailWindowId,
+    setError,
+    setKnownComponents,
+    setComponentOverrides,
+    setSceneBaseAssetId,
+    setSceneCompositionId,
+    setBasePlaylist,
+    setSelectedStyleProfileId,
+    setSelectedMutationProfileId,
+    setMasterVolume,
+    setPendingAddTrackId,
+    setPendingLoadPlaylistId,
+    setBeatClockBpm,
+    setBackgroundNowPlayingId,
+    setBackgroundTransitionPlan,
+    setLiveMutationState,
+    setForcedLiveMutationState,
+    setBeatLooperActive,
+    setIsStarting,
+    setBounceWindowCount,
+    stopBeatLooper: () => stopBeatLooper(beatLooperRef),
+  });
+  const handleSampleLoadError = useCallback(
+    (message: string) => {
+      setRecentWarnings((current) =>
+        [`Base sample routing failed: ${message}`, ...current].slice(0, MAX_RECENT_WARNINGS),
+      );
+    },
+    [],
+  );
+  useLiveLogMonitorSampleBank({
+    sampleSources: scene.sampleSources,
+    audioContextRef,
+    sampleBuffersRef,
+    setSampleStatus,
+    createAudioContext,
+    onLoadError: handleSampleLoadError,
+  });
+  useLiveLogMonitorSurfaceSync({
+    repositoryId: repository.id,
+    basePlaylist,
     selectedStyleProfileId,
     selectedMutationProfileId,
-    referenceAnchor,
-  );
-  const baseTrackCount = basePlaylist?.trackIds.length ?? 0;
-  const hasBaseListeningBed = baseTrackCount > 0;
-  const adapterConfigured = true;
-  const activeAdapterKind =
-    monitor.session?.repoId === repository.id
-      ? (monitor.session?.adapterKind ?? adapterKind)
-      : adapterKind;
-  const activeAdapterLabel = getStreamAdapterLabel(activeAdapterKind);
-  const adapterDescription = getStreamAdapterDescription(adapterKind);
-  const adapterTarget = repository.sourcePath;
-  const effectiveLiveMutationState =
-    forcedLiveMutationState === "auto" ? liveMutationState : forcedLiveMutationState;
-  const liveMutationStateLabel =
-    effectiveLiveMutationState === "critical"
-      ? "Critical tension"
-      : effectiveLiveMutationState === "warning"
-        ? "Warning pressure"
-        : "Normal drift";
-  const cueEnginePreviewLabel = hasBaseListeningBed
-    ? sampleStatus === "ready"
-      ? `Guide-track modulation + samples · ${liveMutationStateLabel}`
-      : `Guide-track modulation · ${liveMutationStateLabel}`
-    : sampleStatus === "ready"
-      ? scene.sampleSourceCount > 1
-        ? `Base sample pack · ${liveMutationStateLabel}`
-        : `Base sample · ${liveMutationStateLabel}`
-      : sampleStatus === "loading"
-        ? `Loading sample · ${liveMutationStateLabel}`
-        : `Internal synth · ${liveMutationStateLabel}`;
+    masterVolume,
+    activeBlobAudioElements,
+    audioContextRef,
+    masterGainRef,
+    syncTailListRef,
+    syncTailRowCount: syncTailRows.length,
+    previousAudibleVolumeRef,
+    backgroundGainRef,
+    backgroundDryGainRef,
+    backgroundDriveWetGainRef,
+    filterNodeRef,
+    selectedStyleProfile: {
+      backgroundGain: selectedStyleProfile.backgroundGain,
+      filterCeilingHz: selectedStyleProfile.filterCeilingHz,
+    },
+  });
+  const closeOwnedAudioContext = useEffectEvent(() => {
+    if (audioContextRef.current && !usingSharedAudioContextRef.current) {
+      void audioContextRef.current.close();
+    }
+  });
 
   useEffect(() => {
-    initialSceneBaseAssetIdRef.current = preferredBaseAssetId(
-      availableBaseAssets,
-      preferredBaseAssetIdProp,
+    setSceneBaseAssetId((current) =>
+      resolveNextSceneBaseAssetId({
+        currentSceneBaseAssetId: current,
+        availableBaseAssets,
+        preferredBaseAssetIdProp,
+      }),
     );
   }, [availableBaseAssets, preferredBaseAssetIdProp]);
 
   useEffect(() => {
-    initialSceneCompositionIdRef.current = preferredCompositionId(
-      availableCompositions,
-      preferredCompositionIdProp,
+    setSceneCompositionId((current) =>
+      resolveNextSceneCompositionId({
+        currentSceneCompositionId: current,
+        availableCompositions,
+        preferredCompositionIdProp,
+      }),
     );
   }, [availableCompositions, preferredCompositionIdProp]);
-
-  useEffect(() => {
-    if (sceneBaseAssetId && availableBaseAssets.some((entry) => entry.id === sceneBaseAssetId)) {
-      return;
-    }
-
-    setSceneBaseAssetId(preferredBaseAssetId(availableBaseAssets, preferredBaseAssetIdProp));
-  }, [availableBaseAssets, preferredBaseAssetIdProp, sceneBaseAssetId]);
-
-  useEffect(() => {
-    if (
-      sceneCompositionId &&
-      availableCompositions.some((entry) => entry.id === sceneCompositionId)
-    ) {
-      return;
-    }
-
-    setSceneCompositionId(
-      preferredCompositionId(availableCompositions, preferredCompositionIdProp),
-    );
-  }, [availableCompositions, preferredCompositionIdProp, sceneCompositionId]);
 
   // Close AudioContext on unmount — the background poll loop lives in MonitorContext
   useEffect(() => {
     return () => {
-      stopManagedBlobAudio();
-      if (audioContextRef.current && !usingSharedAudioContextRef.current) {
-        void audioContextRef.current.close();
-      }
+      stopManagedBlobAudioState(activeBlobAudioElements);
+      closeOwnedAudioContext();
     };
-  }, []);
+  }, [closeOwnedAudioContext]);
 
   useEffect(() => {
-    if (!monitor.audioContext) {
-      return;
-    }
-
-    audioContextRef.current = monitor.audioContext;
-    usingSharedAudioContextRef.current = true;
-  }, [monitor.audioContext]);
-
-  useEffect(() => {
-    if ((basePlaylist?.trackIds.length ?? 0) > 0 || !monitor.guideTrackPath) {
-      return;
-    }
-
-    const guideTrack =
-      availableTracks.find((track) => resolvePlayableTrackPath(track) === monitor.guideTrackPath) ??
-      null;
-    if (!guideTrack) {
+    const seededPlaylist = resolveGuideTrackSeedPlaylist({
+      currentTrackCount: basePlaylist?.trackIds.length ?? 0,
+      guideTrackPath: monitor.guideTrackPath,
+      availableTracks,
+    });
+    if (!seededPlaylist) {
       return;
     }
 
@@ -1222,975 +604,70 @@ export function LiveLogMonitorPanel({
         return current;
       }
 
-      return createBasePlaylist([guideTrack.id], `${getTrackTitle(guideTrack)} · Monitoring`);
+      return seededPlaylist;
     });
   }, [availableTracks, basePlaylist?.trackIds.length, monitor.guideTrackPath]);
 
   useEffect(() => {
     if (replayActive) {
-      stopManagedBlobAudio();
+      stopManagedBlobAudioState(activeBlobAudioElements);
     }
   }, [replayActive]);
 
-  useEffect(() => {
-    const sampleSources = scene.sampleSources;
-    const resolvableSampleSources = sampleSources
-      .map((source) => ({
-        ...source,
-        url: resolveManagedAudioSource(source.path),
-      }))
-      .filter((source): source is { path: string; label: string; url: string } =>
-        Boolean(source.url),
-      );
-
-    sampleBuffersRef.current = new Map();
-
-    if (resolvableSampleSources.length === 0) {
-      setSampleStatus("unavailable");
-      return;
-    }
-
-    let cancelled = false;
-
-    async function loadSampleBuffer() {
-      setSampleStatus("loading");
-
-      try {
-        if (!audioContextRef.current) {
-          audioContextRef.current = createAudioContext();
-        }
-
-        if (!audioContextRef.current) {
-          setSampleStatus("unavailable");
-          return;
-        }
-
-        const decodedEntries = await Promise.all(
-          resolvableSampleSources.map(async (source) => {
-            const response = await fetch(source.url);
-            if (!response.ok) {
-              throw new Error(
-                `Failed to fetch managed sample ${source.label} (${response.status}).`,
-              );
-            }
-
-            const encodedAudio = await response.arrayBuffer();
-            const decoded = await audioContextRef.current!.decodeAudioData(encodedAudio.slice(0));
-
-            return [source.path, decoded] as const;
-          }),
-        );
-        if (cancelled) {
-          return;
-        }
-
-        sampleBuffersRef.current = new Map(decodedEntries);
-        setSampleStatus("ready");
-      } catch (nextError) {
-        if (cancelled) {
-          return;
-        }
-
-        sampleBuffersRef.current = new Map();
-        setSampleStatus("error");
-        setRecentWarnings((current) =>
-          [`Base sample routing failed: ${toMessage(nextError)}`, ...current].slice(
-            0,
-            MAX_RECENT_WARNINGS,
-          ),
-        );
-      }
-    }
-
-    void loadSampleBuffer();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [scene.sampleSources]);
-
   // Reset local display state when switching repos; the background monitor keeps running
   useEffect(() => {
-    setLastUpdate(null);
-    setEmittedCueCount(0);
-    setEmittedVoiceCount(0);
-    setRecentCues([]);
-    setRecentVoices([]);
-    setRecentMarkers([]);
-    setRecentExplanations([]);
-    setSelectedExplanationId(null);
-    setBackgroundPlayheadSecond(0);
-    setRecentWarnings([]);
-    setSyncTailRows([]);
-    setActiveTailWindowId(null);
-    setError(null);
-    knownComponentsRef.current = [];
-    setKnownComponents([]);
-    setComponentOverrides(new Map());
-    setSceneBaseAssetId(initialSceneBaseAssetIdRef.current);
-    setSceneCompositionId(initialSceneCompositionIdRef.current);
     const nextPrefs = loadMonitorPrefs(repository.id);
-    setBasePlaylist(nextPrefs?.basePlaylist ?? createBasePlaylist([]));
-    setSelectedStyleProfileId(nextPrefs?.selectedStyleProfileId ?? DEFAULT_STYLE_PROFILE_ID);
-    setSelectedMutationProfileId(
-      nextPrefs?.selectedMutationProfileId ?? DEFAULT_MUTATION_PROFILE_ID,
-    );
-    setMasterVolume(nextPrefs?.masterVolume ?? 0.45);
-    setPendingAddTrackId("");
-    setPendingLoadPlaylistId("");
-    beatClockRef.current = null;
-    setBeatClockBpm(null);
-    setBackgroundNowPlayingId(null);
-    setBackgroundTransitionPlan(null);
-    setLiveMutationState("normal");
-    setForcedLiveMutationState("auto");
-    stopBeatLooper(beatLooperRef);
-    setBeatLooperActive(false);
-  }, [repository.id]);
-
-  useEffect(() => {
-    saveMonitorPrefs(repository.id, {
-      basePlaylist,
-      selectedStyleProfileId,
-      selectedMutationProfileId,
-      masterVolume,
+    const resetState = buildRepoResetMonitorState({
+      availableBaseAssets,
+      availableCompositions,
+      preferredBaseAssetIdProp,
+      preferredCompositionIdProp,
+      prefs: nextPrefs,
     });
+    applyRepositoryReset(resetState);
   }, [
+    applyRepositoryReset,
+    availableBaseAssets,
+    availableCompositions,
+    preferredBaseAssetIdProp,
+    preferredCompositionIdProp,
     repository.id,
-    basePlaylist,
-    selectedStyleProfileId,
-    selectedMutationProfileId,
-    masterVolume,
   ]);
 
-  // Keep master gain in sync with the volume slider
-  useEffect(() => {
-    if (masterGainRef.current) {
-      masterGainRef.current.gain.setValueAtTime(
-        masterVolume,
-        audioContextRef.current?.currentTime ?? 0,
-      );
-    }
-    setBlobAudioVolume(masterVolume);
-  }, [masterVolume]);
-
-  useEffect(() => {
-    const el = syncTailListRef.current;
-    if (!el) {
-      return;
-    }
-    el.scrollTop = el.scrollHeight;
-  }, [syncTailRows.length]);
-
-  useEffect(() => {
-    if (masterVolume > 0.001) {
-      previousAudibleVolumeRef.current = masterVolume;
-    }
-  }, [masterVolume]);
-
-  useEffect(() => {
-    const context = audioContextRef.current;
-    if (!context) {
-      return;
-    }
-
-    if (backgroundGainRef.current) {
-      backgroundGainRef.current.gain.setValueAtTime(
-        selectedStyleProfile.backgroundGain,
-        context.currentTime,
-      );
-    }
-
-    if (backgroundDryGainRef.current) {
-      backgroundDryGainRef.current.gain.setValueAtTime(1, context.currentTime);
-    }
-
-    if (backgroundDriveWetGainRef.current) {
-      backgroundDriveWetGainRef.current.gain.setValueAtTime(0.0001, context.currentTime);
-    }
-
-    if (filterNodeRef.current) {
-      filterNodeRef.current.frequency.setValueAtTime(
-        selectedStyleProfile.filterCeilingHz,
-        context.currentTime,
-      );
-    }
-  }, [selectedStyleProfile.backgroundGain, selectedStyleProfile.filterCeilingHz]);
-
-  const ensureAudioReady = useEffectEvent(async (): Promise<AudioContext | null> => {
-    try {
-      if (monitor.audioContext) {
-        audioContextRef.current = monitor.audioContext;
-        usingSharedAudioContextRef.current = true;
-      }
-
-      if (!audioContextRef.current) {
-        audioContextRef.current = createAudioContext();
-        usingSharedAudioContextRef.current = false;
-      }
-
-      const ctx = audioContextRef.current;
-      if (!ctx) {
-        setAudioStatus("unsupported");
-        return null;
-      }
-
-      if (ctx.state === "suspended") {
-        log.info("Resuming AudioContext from suspended state...");
-        if (usingSharedAudioContextRef.current) {
-          await monitor.resumeAudio();
-          audioContextRef.current = monitor.audioContext ?? audioContextRef.current;
-        } else {
-          await ctx.resume();
-        }
-      }
-
-      if (ctx.state === "running") {
-        setAudioStatus("ready");
-      }
-
-      return ctx;
-    } catch (err) {
-      log.error("Failed to ensure audio ready", err);
-      setAudioStatus("error");
-      return null;
-    }
-  });
-
-  useEffect(() => {
-    const initAudio = async () => {
-      const ctx = await ensureAudioReady();
-      if (!ctx) return;
-
-      // Create master gain node once, routed: everything → masterGain → analyser → destination
-      if (!masterGainRef.current) {
-        const gain = ctx.createGain();
-        gain.gain.value = masterVolume;
-
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 2048;
-        analyser.smoothingTimeConstant = 0.7;
-        analyserRef.current = analyser;
-
-        gain.connect(analyser);
-        analyser.connect(ctx.destination);
-        masterGainRef.current = gain;
-      }
-    };
-
-    if (liveEnabled || replayActive) {
-      void initAudio();
-    }
-  }, [liveEnabled, replayActive, ensureAudioReady, masterVolume]);
-
-  const playRenderedBlobThroughGraph = useEffectEvent(async (blob: Blob, volume: number) => {
-    const ctx = await ensureAudioReady();
-    const destination = masterGainRef.current;
-    const clampedVolume = Math.max(0, Math.min(1, volume));
-
-    if (ctx && destination) {
-      try {
-        const encodedAudio = await blob.arrayBuffer();
-        const decoded = await ctx.decodeAudioData(encodedAudio.slice(0));
-        const source = ctx.createBufferSource();
-        const gain = ctx.createGain();
-        gain.gain.setValueAtTime(clampedVolume, ctx.currentTime);
-        source.buffer = decoded;
-        source.connect(gain);
-        gain.connect(destination);
-        source.start(ctx.currentTime + 0.01);
-        source.onended = () => {
-          try {
-            source.disconnect();
-            gain.disconnect();
-          } catch {
-            // ignore disconnect races
-          }
-        };
-        setAudioStatus("ready");
-        return;
-      } catch (error) {
-        log.warn("WebAudio blob playback failed; falling back to HTMLAudio: %s", toMessage(error));
-      }
-    }
-
-    playManagedWavBlob(blob, clampedVolume);
-  });
-
-  const playPanelTestTone = useEffectEvent(async () => {
-    const ctx = await ensureAudioReady();
-    const destination = masterGainRef.current;
-    if (!ctx || !destination) {
-      return;
-    }
-
-    const now = ctx.currentTime + 0.02;
-    const tones = [164.81, 220, 329.63];
-    tones.forEach((frequency, index) => {
-      const startAt = now + index * 0.16;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = index === tones.length - 1 ? "triangle" : "sawtooth";
-      osc.frequency.setValueAtTime(frequency, startAt);
-      gain.gain.setValueAtTime(0.0001, startAt);
-      gain.gain.linearRampToValueAtTime(Math.max(0.08, masterVolume * 0.55), startAt + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.22);
-      osc.connect(gain);
-      gain.connect(destination);
-      osc.start(startAt);
-      osc.stop(startAt + 0.24);
-    });
-
-    setAudioStatus("ready");
-  });
-
-  const clearBackgroundTransition = useCallback(() => {
-    if (backgroundTransitionTimerRef.current !== null) {
-      window.clearTimeout(backgroundTransitionTimerRef.current);
-      backgroundTransitionTimerRef.current = null;
-    }
-  }, []);
-
-  const stopBackgroundDeck = useEffectEvent((fadeOutSeconds = 0.18) => {
-    clearBackgroundTransition();
-
-    const context = audioContextRef.current;
-    const deck = backgroundDeckRef.current;
-    if (!context || !deck) {
-      backgroundDeckRef.current = null;
-      setBackgroundNowPlayingId(null);
-      setBackgroundTransitionPlan(null);
-      return;
-    }
-
-    const now = context.currentTime;
-    deck.gain.gain.cancelScheduledValues(now);
-    deck.gain.gain.setValueAtTime(Math.max(0.0001, deck.gain.gain.value), now);
-    deck.gain.gain.linearRampToValueAtTime(0.0001, now + fadeOutSeconds);
-    try {
-      deck.source.stop(now + fadeOutSeconds + 0.06);
-    } catch {
-      // ignore stop races
-    }
-
-    backgroundDeckRef.current = null;
-    setBackgroundNowPlayingId(null);
-    setBackgroundTransitionPlan(null);
-  });
-
-  const ensureBackgroundBus = useEffectEvent((context: AudioContext) => {
-    let createdFilter = false;
-    let createdGain = false;
-    let createdDryGain = false;
-    let createdDriveWetGain = false;
-    let createdDrive = false;
-
-    if (!filterNodeRef.current) {
-      const filter = context.createBiquadFilter();
-      filter.type = "lowpass";
-      filter.frequency.setValueAtTime(selectedStyleProfile.filterCeilingHz, context.currentTime);
-      filterNodeRef.current = filter;
-      createdFilter = true;
-    }
-
-    if (!backgroundDryGainRef.current) {
-      const dryGain = context.createGain();
-      dryGain.gain.setValueAtTime(1, context.currentTime);
-      backgroundDryGainRef.current = dryGain;
-      createdDryGain = true;
-    }
-
-    if (!backgroundDriveWetGainRef.current) {
-      const wetGain = context.createGain();
-      wetGain.gain.setValueAtTime(0.0001, context.currentTime);
-      backgroundDriveWetGainRef.current = wetGain;
-      createdDriveWetGain = true;
-    }
-
-    if (!backgroundDriveNodeRef.current) {
-      const drive = context.createWaveShaper();
-      drive.curve = createDriveCurve(1.35);
-      drive.oversample = "4x";
-      backgroundDriveNodeRef.current = drive;
-      createdDrive = true;
-    }
-
-    if (!backgroundGainRef.current) {
-      const backgroundGain = context.createGain();
-      backgroundGain.gain.setValueAtTime(selectedStyleProfile.backgroundGain, context.currentTime);
-      backgroundGain.connect(masterGainRef.current ?? context.destination);
-      backgroundGainRef.current = backgroundGain;
-      createdGain = true;
-    }
-
-    if (
-      (createdFilter || createdDryGain || createdDriveWetGain || createdDrive || createdGain) &&
-      filterNodeRef.current &&
-      backgroundDryGainRef.current &&
-      backgroundDriveNodeRef.current &&
-      backgroundDriveWetGainRef.current &&
-      backgroundGainRef.current
-    ) {
-      filterNodeRef.current.connect(backgroundDryGainRef.current);
-      backgroundDryGainRef.current.connect(backgroundGainRef.current);
-      filterNodeRef.current.connect(backgroundDriveNodeRef.current);
-      backgroundDriveNodeRef.current.connect(backgroundDriveWetGainRef.current);
-      backgroundDriveWetGainRef.current.connect(backgroundGainRef.current);
-    }
-  });
-
-  const loadBackgroundBuffer = useEffectEvent(
-    async (context: AudioContext, track: LibraryTrack): Promise<AudioBuffer | null> => {
-      const audioPath = resolvePlayableTrackPath(track);
-      if (!audioPath) {
-        return null;
-      }
-
-      const url = isTauri() ? convertFileSrc(audioPath) : null;
-      if (!url) {
-        return null;
-      }
-
-      let cached = backgroundBufferCacheRef.current.get(audioPath);
-      if (!cached) {
-        cached = (async () => {
-          const response = await fetch(url);
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status} fetching guide track`);
-          }
-          const arrayBuffer = await response.arrayBuffer();
-          return context.decodeAudioData(arrayBuffer);
-        })();
-        backgroundBufferCacheRef.current.set(audioPath, cached);
-      }
-
-      try {
-        return await cached;
-      } catch (error) {
-        backgroundBufferCacheRef.current.delete(audioPath);
-        throw error;
-      }
-    },
-  );
-
-  const scheduleBackgroundTransition = useEffectEvent(
-    (context: AudioContext, deck: BackgroundDeckState) => {
-      clearBackgroundTransition();
-
-      if (playableBaseTracks.length <= 1) {
-        setBackgroundTransitionPlan(null);
-        return;
-      }
-
-      const currentTrack = playableBaseTracks[deck.trackIndex] ?? null;
-      const nextIndex = resolveNextPlaylistIndex(deck.trackIndex, playableBaseTracks.length);
-      if (!currentTrack || nextIndex === null) {
-        setBackgroundTransitionPlan(null);
-        return;
-      }
-
-      const nextTrack = playableBaseTracks[nextIndex] ?? null;
-      if (!nextTrack) {
-        setBackgroundTransitionPlan(null);
-        return;
-      }
-
-      const transitionPlan = resolvePlaylistTransitionPlan(currentTrack, nextTrack, {
-        styleProfile: {
-          playlistCrossfadeSeconds: selectedStyleProfile.playlistCrossfadeSeconds,
-          transitionFeel: selectedStyleProfile.transitionFeel,
-        },
-        mutationProfile: {
-          transitionTightness: selectedMutationProfile.transitionTightness,
-        },
-      });
-      setBackgroundTransitionPlan(transitionPlan);
-
-      const delayMs = resolvePhraseAlignedTransitionDelayMs({
-        track: currentTrack,
-        entrySecond: deck.entrySecond,
-        playbackRate: deck.playbackRate,
-        crossfadeSeconds: transitionPlan.crossfadeSeconds,
-        phraseSpanBeats: transitionPlan.phraseSpanBeats,
-        fallbackDurationSeconds: deck.durationSec,
-      });
-
-      backgroundTransitionTimerRef.current = window.setTimeout(() => {
-        void startBackgroundDeck(context, nextIndex, transitionPlan);
-      }, delayMs);
-    },
-  );
-
-  const startBackgroundDeck = useEffectEvent(
-    async (
-      context: AudioContext,
-      trackIndex: number,
-      transitionPlan?: PlaylistTransitionPlan | null,
-    ) => {
-      const track = playableBaseTracks[trackIndex] ?? null;
-      if (!track) {
-        return;
-      }
-
-      try {
-        ensureBackgroundBus(context);
-        const filter = filterNodeRef.current;
-        if (!filter) {
-          return;
-        }
-
-        const buffer = await loadBackgroundBuffer(context, track);
-        if (!buffer) {
-          return;
-        }
-
-        const previousDeck = backgroundDeckRef.current;
-        const startAt = context.currentTime + 0.02;
-        const nextTransitionPlan =
-          transitionPlan ??
-          (playableBaseTracks.length > 1
-            ? resolvePlaylistStartPlan(track, {
-                styleProfile: {
-                  playlistCrossfadeSeconds: selectedStyleProfile.playlistCrossfadeSeconds,
-                  transitionFeel: selectedStyleProfile.transitionFeel,
-                },
-              })
-            : resolvePlaylistStartPlan(track, {
-                styleProfile: {
-                  playlistCrossfadeSeconds: BACKGROUND_FADE_IN_SECONDS,
-                  transitionFeel: "steady",
-                },
-              }));
-        const fadeSeconds =
-          playableBaseTracks.length > 1
-            ? Math.max(0.4, nextTransitionPlan.crossfadeSeconds)
-            : BACKGROUND_FADE_IN_SECONDS;
-        const targetGain = selectedStyleProfile.backgroundGain;
-        const entrySecond =
-          playableBaseTracks.length > 1
-            ? Math.min(nextTransitionPlan.entrySecond, Math.max(0, buffer.duration - 0.25))
-            : 0;
-        const playbackRate = playableBaseTracks.length > 1 ? nextTransitionPlan.tempoRatio : 1;
-
-        const source = context.createBufferSource();
-        source.buffer = buffer;
-        source.loop = playableBaseTracks.length === 1;
-        source.playbackRate.setValueAtTime(playbackRate, startAt);
-
-        const trackGain = context.createGain();
-        trackGain.gain.setValueAtTime(0.0001, startAt);
-
-        source.connect(trackGain);
-        trackGain.connect(filter);
-        source.start(startAt, entrySecond);
-        trackGain.gain.linearRampToValueAtTime(targetGain, startAt + fadeSeconds);
-
-        if (previousDeck) {
-          previousDeck.gain.gain.cancelScheduledValues(startAt);
-          previousDeck.gain.gain.setValueAtTime(
-            Math.max(0.0001, previousDeck.gain.gain.value),
-            startAt,
-          );
-          previousDeck.gain.gain.linearRampToValueAtTime(0.0001, startAt + fadeSeconds);
-          try {
-            previousDeck.source.stop(startAt + fadeSeconds + 0.08);
-          } catch {
-            // ignore stop races
-          }
-        }
-
-        const nextDeck: BackgroundDeckState = {
-          source,
-          buffer,
-          gain: trackGain,
-          trackId: track.id,
-          trackIndex,
-          startedAtContextTime: startAt,
-          bufferDurationSec: buffer.duration,
-          durationSec: Math.max(0.25, (buffer.duration - entrySecond) / playbackRate),
-          entrySecond,
-          playbackRate,
-          looping: playableBaseTracks.length === 1,
-        };
-
-        backgroundDeckRef.current = nextDeck;
-        setBackgroundNowPlayingId(track.id);
-        setBackgroundTransitionPlan(
-          transitionPlan && transitionPlan.nextTrackId === track.id ? transitionPlan : null,
-        );
-        setBackgroundPlayheadSecond(entrySecond);
-        scheduleBackgroundTransition(context, nextDeck);
-      } catch (err) {
-        backgroundDeckRef.current = null;
-        setBackgroundNowPlayingId(null);
-        setBackgroundTransitionPlan(null);
-        setRecentWarnings((current) =>
-          [`Failed to start guide track: ${toMessage(err)}`, ...current].slice(
-            0,
-            MAX_RECENT_WARNINGS,
-          ),
-        );
-      }
-    },
-  );
-
-  const ensureBackgroundAudio = useEffectEvent(async (context: AudioContext) => {
-    if (backgroundDeckRef.current || playableBaseTracks.length === 0) {
-      return;
-    }
-    await startBackgroundDeck(context, 0);
-  });
-
-  useEffect(() => {
-    if (!liveEnabled) {
-      stopBackgroundDeck(0.12);
-      if (audioContextRef.current && audioContextRef.current.state === "running") {
-        void audioContextRef.current.suspend();
-      }
-      return;
-    }
-
-    const context = audioContextRef.current;
-    if (!context) {
-      return;
-    }
-
-    if (context.state === "suspended") {
-      void context.resume();
-    }
-
-    const currentDeck = backgroundDeckRef.current;
-    if (playableBaseTracks.length === 0) {
-      stopBackgroundDeck();
-      return;
-    }
-
-    if (playableBaseTracks.length === 1) {
-      const onlyTrack = playableBaseTracks[0];
-      if (
-        !currentDeck ||
-        currentDeck.trackId !== onlyTrack.id ||
-        currentDeck.source.loop !== true
-      ) {
-        stopBackgroundDeck(0.1);
-        void startBackgroundDeck(context, 0);
-      } else {
-        setBackgroundNowPlayingId(onlyTrack.id);
-        setBackgroundTransitionPlan(null);
-      }
-      return;
-    }
-
-    if (!currentDeck) {
-      void startBackgroundDeck(context, 0);
-      return;
-    }
-
-    const currentIndex = playableBaseTracks.findIndex((track) => track.id === currentDeck.trackId);
-    if (currentIndex === -1) {
-      stopBackgroundDeck(0.1);
-      void startBackgroundDeck(context, 0);
-      return;
-    }
-
-    const syncedDeck = { ...currentDeck, trackIndex: currentIndex };
-    backgroundDeckRef.current = syncedDeck;
-    setBackgroundNowPlayingId(currentDeck.trackId);
-    scheduleBackgroundTransition(context, syncedDeck);
-  }, [
+  useLiveLogMonitorBackgroundLifecycle({
     liveEnabled,
     playableBaseTracks,
     playableBaseTrackIdsKey,
-    scheduleBackgroundTransition,
-    startBackgroundDeck,
+    audioContextRef,
+    backgroundDeckRef,
+    setBackgroundNowPlayingId,
+    setBackgroundTransitionPlan: () => setBackgroundTransitionPlan(null),
     stopBackgroundDeck,
-  ]);
-
-  const applyBackgroundMutation = useEffectEvent(
-    (mutation: BackgroundMutationProfile, nextState: LiveMutationState) => {
-      const context = audioContextRef.current;
-      const filter = filterNodeRef.current;
-      const backgroundGain = backgroundGainRef.current;
-      const dryGain = backgroundDryGainRef.current;
-      const driveWetGain = backgroundDriveWetGainRef.current;
-      const driveNode = backgroundDriveNodeRef.current;
-      const activeDeck = backgroundDeckRef.current;
-      if (
-        !context ||
-        !filter ||
-        !backgroundGain ||
-        !dryGain ||
-        !driveWetGain ||
-        !driveNode ||
-        !activeDeck
-      ) {
-        return;
-      }
-      setLiveMutationState(nextState);
-      const now = context.currentTime;
-      const recoverAt = now + mutation.recoverSeconds;
-
-      filter.frequency.cancelScheduledValues(now);
-      filter.Q.cancelScheduledValues(now);
-      filter.frequency.setValueAtTime(Math.max(40, filter.frequency.value), now);
-      filter.Q.setValueAtTime(Math.max(0.001, filter.Q.value), now);
-      filter.frequency.exponentialRampToValueAtTime(mutation.filterHz, now + 0.06);
-      filter.frequency.exponentialRampToValueAtTime(
-        selectedStyleProfile.filterCeilingHz,
-        recoverAt,
-      );
-      filter.Q.linearRampToValueAtTime(mutation.filterQ, now + 0.05);
-      filter.Q.linearRampToValueAtTime(1, recoverAt);
-
-      backgroundGain.gain.cancelScheduledValues(now);
-      backgroundGain.gain.setValueAtTime(Math.max(0.0001, backgroundGain.gain.value), now);
-      backgroundGain.gain.linearRampToValueAtTime(mutation.busGain, now + 0.04);
-      backgroundGain.gain.linearRampToValueAtTime(selectedStyleProfile.backgroundGain, recoverAt);
-
-      dryGain.gain.cancelScheduledValues(now);
-      driveWetGain.gain.cancelScheduledValues(now);
-      dryGain.gain.setValueAtTime(Math.max(0.0001, dryGain.gain.value), now);
-      driveWetGain.gain.setValueAtTime(Math.max(0.0001, driveWetGain.gain.value), now);
-      dryGain.gain.linearRampToValueAtTime(Math.max(0.3, 1 - mutation.driveWet * 0.75), now + 0.04);
-      driveWetGain.gain.linearRampToValueAtTime(Math.max(0.0001, mutation.driveWet), now + 0.04);
-      dryGain.gain.linearRampToValueAtTime(1, recoverAt);
-      driveWetGain.gain.linearRampToValueAtTime(0.0001, recoverAt);
-      driveNode.curve = createDriveCurve(1.4 + mutation.driveWet * 6);
-
-      activeDeck.source.playbackRate.cancelScheduledValues(now);
-      activeDeck.source.playbackRate.setValueAtTime(activeDeck.source.playbackRate.value, now);
-      activeDeck.source.playbackRate.linearRampToValueAtTime(mutation.playbackRate, now + 0.05);
-      activeDeck.source.playbackRate.linearRampToValueAtTime(1, recoverAt);
-
-      activeDeck.gain.gain.cancelScheduledValues(now);
-      activeDeck.gain.gain.setValueAtTime(Math.max(0.0001, activeDeck.gain.gain.value), now);
-      activeDeck.gain.gain.linearRampToValueAtTime(mutation.deckGain, now + 0.03);
-
-      if (mutation.gatePulses > 0 && mutation.gateDepth > 0) {
-        const pulseSpacing = 0.12;
-        for (let pulse = 0; pulse < mutation.gatePulses; pulse++) {
-          const pulseAt = now + 0.07 + pulse * pulseSpacing;
-          const gateFloor = Math.max(0.06, mutation.deckGain * (1 - mutation.gateDepth));
-          activeDeck.gain.gain.linearRampToValueAtTime(gateFloor, pulseAt);
-          activeDeck.gain.gain.linearRampToValueAtTime(mutation.deckGain, pulseAt + 0.05);
-        }
-      }
-
-      activeDeck.gain.gain.linearRampToValueAtTime(1, recoverAt);
-    },
-  );
-
-  const applyLogModulation = useEffectEvent((update: LiveLogStreamUpdate) => {
-    const computedMutation = resolveBackgroundMutationProfile(
-      update,
-      selectedStyleProfile.backgroundGain,
-      selectedStyleProfile.filterBaseHz,
-      selectedStyleProfile.filterCeilingHz,
-      selectedMutationProfile,
-    );
-    const mutation =
-      forcedLiveMutationState === "auto"
-        ? computedMutation
-        : forceBackgroundMutationProfile(forcedLiveMutationState, selectedStyleProfile);
-    const nextState =
-      forcedLiveMutationState === "auto"
-        ? resolveLiveMutationState(computedMutation)
-        : forcedLiveMutationState;
-    applyBackgroundMutation(mutation, nextState);
+    startBackgroundDeck,
+    scheduleBackgroundTransition,
   });
 
-  useEffect(() => {
-    if (!liveEnabled || !backgroundDeckRef.current || forcedLiveMutationState === "auto") {
-      return;
-    }
-
-    const mutation = forceBackgroundMutationProfile(forcedLiveMutationState, selectedStyleProfile);
-    applyBackgroundMutation(mutation, forcedLiveMutationState);
-  }, [applyBackgroundMutation, forcedLiveMutationState, liveEnabled, selectedStyleProfile]);
-
-  const playWithCurrentEngine = useEffectEvent((cues: RoutedLiveCue[], liveBpm?: number | null) => {
-    log.info("playWithCurrentEngine cues=%d bpm=%s vol=%s", cues.length, liveBpm, masterVolume);
-    if (cues.length === 0) {
-      log.debug("playWithCurrentEngine — skipped (0 cues)");
-      return;
-    }
-
-    const preferGuideTrackMutation =
-      playableBaseTracks.length > 0 && backgroundDeckRef.current !== null;
-    const cueIntensityMultiplier = !preferGuideTrackMutation
-      ? 1
-      : effectiveLiveMutationState === "critical"
-        ? 0.34
-        : effectiveLiveMutationState === "warning"
-          ? 0.18
-          : 0.08;
-    const allowExternalCueLayer =
-      !preferGuideTrackMutation || effectiveLiveMutationState === "critical";
-
-    const preset = scene.preset;
-    const cappedCues = cues.slice(0, preset.maxCuesPerWindow);
-
-    // Expand each cue into arrangement voices
-    const voices = resolveArrangementVoices(cappedCues, scene.mutationProfile.arrangementDepth);
-    const voicedCues: RoutedLiveCue[] = voices.map((voice) => ({
-      ...voice.cue,
-      noteHz: Number((voice.cue.noteHz * voice.noteMultiplier).toFixed(2)),
-      gain: Number(
-        Math.min(0.34, Math.max(0.005, voice.cue.gain * voice.gainMultiplier)).toFixed(3),
-      ),
-      pan: clampPan(voice.cue.pan + voice.panOffset),
-    }));
-
-    const audibleVoiceEntries = voices
-      .map((voice, index) => {
-        const voicedCue = voicedCues[index];
-        if (!voicedCue) {
-          return null;
-        }
-
-        if (
-          preferGuideTrackMutation &&
-          voicedCue.routeKey === "info" &&
-          voicedCue.accent !== "anomaly"
-        ) {
-          return null;
-        }
-
-        return {
-          voice,
-          voicedCue: preferGuideTrackMutation
-            ? {
-                ...voicedCue,
-                noteHz: Number((voicedCue.noteHz * 0.42).toFixed(2)),
-                gain: Number(
-                  Math.min(0.08, Math.max(0.002, voicedCue.gain * cueIntensityMultiplier)).toFixed(
-                    3,
-                  ),
-                ),
-                waveform: voicedCue.accent === "anomaly" ? "triangle" : voicedCue.waveform,
-                durationMs:
-                  effectiveLiveMutationState === "critical"
-                    ? voicedCue.durationMs
-                    : Math.max(70, Math.round(voicedCue.durationMs * 0.72)),
-              }
-            : {
-                ...voicedCue,
-                gain: Number(Math.min(0.52, Math.max(0.03, voicedCue.gain * 1.9)).toFixed(3)),
-                durationMs: Math.max(120, Math.round(voicedCue.durationMs * 1.2)),
-              },
-        };
-      })
-      .filter(
-        (entry): entry is { voice: ArrangementVoice; voicedCue: RoutedLiveCue } => entry !== null,
-      );
-    const audibleVoiceEntriesForPlayback = audibleVoiceEntries.filter(
-      (entry) =>
-        !preferGuideTrackMutation ||
-        effectiveLiveMutationState === "critical" ||
-        entry.voicedCue.accent === "anomaly" ||
-        entry.voicedCue.routeKey === "error" ||
-        entry.voicedCue.gain >= 0.008,
-    );
-    const audibleVoicedCues = audibleVoiceEntriesForPlayback
-      .map((entry) => entry.voicedCue)
-      .filter(
-        (cue) =>
-          !preferGuideTrackMutation ||
-          effectiveLiveMutationState === "critical" ||
-          cue.accent === "anomaly" ||
-          cue.gain >= 0.008,
-      );
-
-    // When a guide/base track is armed, keep the cue layer restrained so the
-    // listener hears the source track being modulated instead of a second synth track.
-    if (allowExternalCueLayer && audibleVoicedCues.length > 0) {
-      const wavBlob = renderCuesToWav(audibleVoicedCues, 1);
-      if (wavBlob) {
-        log.info(
-          "WAV blob rendered size=%d voices=%d audibleVoices=%d — playing",
-          wavBlob.size,
-          voicedCues.length,
-          audibleVoicedCues.length,
-        );
-        void playRenderedBlobThroughGraph(
-          wavBlob,
-          preferGuideTrackMutation
-            ? Math.min(0.14, masterVolume * 0.3)
-            : Math.max(0.22, Math.min(0.92, masterVolume * 1.35)),
-        );
-      } else {
-        log.warn("renderCuesToWav returned null for %d audible cues", audibleVoicedCues.length);
-      }
-    }
-
-    // ── Accumulate voiced cues for full mix bounce ──
-    if (voicedCues.length > 0) {
-      bounceCuesRef.current = [...bounceCuesRef.current, voicedCues].slice(-MAX_BOUNCE_WINDOWS);
-      setBounceWindowCount(bounceCuesRef.current.length);
-    }
-
-    // ── Feed AnalyserNode for waveform visualization ──
-    // Schedule oscillators through the Web Audio graph so the AnalyserNode
-    // picks up the signal for the live waveform canvas.
-    const context = audioContextRef.current;
-    if (context && context.state === "running" && masterGainRef.current) {
-      const dest = masterGainRef.current;
-      const currentDeck = backgroundDeckRef.current;
-      const currentTrackSecond = resolveBackgroundTrackSecond(context, currentDeck);
-      const clock = beatClockRef.current;
-      const activeBpm = clock?.bpm ?? (typeof liveBpm === "number" && liveBpm > 0 ? liveBpm : null);
-      const useBeat = preset.useBeatGrid && activeBpm !== null && clock !== null;
-      const firstCueAt = useBeat
-        ? nextBeatTime(
-            context.currentTime,
-            clock!.originTime,
-            activeBpm!,
-            preset.rhythmDivision,
-            0.04,
-          )
-        : context.currentTime + 0.04;
-      const gapSeconds = useBeat
-        ? 60 / activeBpm! / Math.max(1, preset.rhythmDivision / 4)
-        : preset.scheduleGapMs / 1000;
-
-      for (const entry of audibleVoiceEntriesForPlayback) {
-        const voice = entry.voice;
-        const cuePriority = cappedCues.indexOf(voice.cue);
-        const cueStartAt = firstCueAt + cuePriority * gapSeconds + voice.timeOffsetMs / 1000;
-        const voicedCue = entry.voicedCue;
-        const sampleBuffer =
-          sampleStatus === "ready" && voice.cue.samplePath && voice.track === "foundation"
-            ? (sampleBuffersRef.current.get(voice.cue.samplePath) ?? null)
-            : null;
-        const shouldUseTrackSlice =
-          preferGuideTrackMutation &&
-          currentDeck !== null &&
-          voice.track !== "accent" &&
-          (effectiveLiveMutationState === "critical" ||
-            voice.cue.accent === "anomaly" ||
-            voice.cue.routeKey === "error" ||
-            (effectiveLiveMutationState === "warning" && voice.track === "foundation"));
-        if (sampleBuffer) {
-          scheduleSampleCue(context, voicedCue, sampleBuffer, cueStartAt, dest);
-        } else if (shouldUseTrackSlice && currentDeck) {
-          scheduleTrackSliceCue(
-            context,
-            voicedCue,
-            currentDeck,
-            cueStartAt,
-            dest,
-            currentTrackSecond,
-          );
-        } else {
-          scheduleCue(context, voicedCue, cueStartAt, dest);
-        }
-      }
-    } else if (context?.state === "suspended") {
-      void context.resume();
-    }
-
-    setEmittedVoiceCount((c) => c + voicedCues.length);
-  });
+  const { playWithCurrentEngine, handleSequencerStepFire } =
+    useLiveLogMonitorPlayback({
+      audioContextRef,
+      masterGainRef,
+      backgroundDeckRef,
+      sampleBuffersRef,
+      beatClockRef,
+      bounceCuesRef,
+      masterVolume,
+      scene: {
+        preset: scene.preset,
+        mutationProfile: scene.mutationProfile,
+      },
+      effectiveLiveMutationState,
+      sampleStatus,
+      playableBaseTracks,
+      playRenderedBlobThroughGraph,
+      setBounceWindowCount,
+      setEmittedVoiceCount,
+      logger: log,
+    });
 
   // ---------------------------------------------------------------------------
   // Stream update handler — receives poll windows from MonitorContext
@@ -2216,34 +693,25 @@ export function LiveLogMonitorPanel({
     }
 
     // Accumulate known components for per-component stereo routing
-    const updatedComponents = [...knownComponentsRef.current];
-    let componentsChanged = false;
-    for (const cmp of update.topComponents.map((c) => c.component)) {
-      if (!updatedComponents.includes(cmp)) {
-        updatedComponents.push(cmp);
-        componentsChanged = true;
-      }
-    }
-    knownComponentsRef.current = updatedComponents.slice(0, 12);
-    if (componentsChanged) {
-      setKnownComponents(knownComponentsRef.current.slice());
-    }
-
-    const routedCues = update.sonificationCues.map((cue, index) =>
-      routeCueThroughScene(cue, scene, index, knownComponentsRef.current, componentOverrides),
-    );
     const currentDeck = backgroundDeckRef.current;
     const currentTrackSecond = resolveBackgroundTrackSecond(audioContextRef.current, currentDeck);
-    const currentTrack = currentDeck
-      ? (availableTracks.find((track) => track.id === currentDeck.trackId) ?? null)
-      : null;
-    const nextExplanations = deriveLiveMutationExplanations(routedCues, update.anomalyMarkers, {
-      limit: MAX_RECENT_EXPLANATIONS,
-      replayWindowIndex: update.replayWindowIndex ?? null,
-      trackId: currentTrack?.id ?? null,
-      trackTitle: currentTrack ? getTrackTitle(currentTrack) : null,
-      trackSecond: currentTrackSecond,
+    const updateDerivation = buildMonitorUpdateDerivation({
+      update,
+      scene,
+      knownComponents: knownComponentsRef.current,
+      componentOverrides,
+      currentDeckTrackId: currentDeck?.trackId ?? null,
+      availableTracks,
+      currentTrackSecond,
+      maxRecentExplanations: MAX_RECENT_EXPLANATIONS,
     });
+
+    knownComponentsRef.current = updateDerivation.knownComponents;
+    if (updateDerivation.knownComponentsChanged) {
+      setKnownComponents(knownComponentsRef.current.slice());
+    }
+    const routedCues = updateDerivation.routedCues;
+    const nextExplanations = updateDerivation.nextExplanations;
 
     startTransition(() => {
       setLastUpdate(update);
@@ -2255,91 +723,62 @@ export function LiveLogMonitorPanel({
         return;
       }
 
-      const windowId = `${update.fromOffset}-${update.toOffset}-${update.replayWindowIndex ?? "live"}`;
-      const nextTailRows = (update.parsedLines || [])
-        .filter((line) => line.trim().length > 0)
-        .slice(-MAX_PARSED_LINES)
-        .map((line, index) => {
-          const tone = resolveParsedLineTone(line, update.anomalyMarkers);
-          const component = resolveTailComponent(line, update.anomalyMarkers);
-          const level = tone === "anomaly" ? "anomaly" : tone;
-          return {
-            id: `${windowId}-${index}`,
-            windowId,
-            sourcePath: update.sourcePath,
-            component,
-            level,
-            line,
-            tone,
-          } satisfies SyncTailRow;
-        });
+      const nextTailRows = buildSyncTailRows({
+        update,
+        maxParsedLines: MAX_PARSED_LINES,
+      });
 
       if (nextTailRows.length > 0) {
-        setSyncTailRows((current) => [...current, ...nextTailRows].slice(-MAX_SYNC_TAIL_LINES));
+        setSyncTailRows((current) =>
+          appendSyncTailRows(current, nextTailRows, MAX_SYNC_TAIL_LINES),
+        );
       }
-      setActiveTailWindowId(windowId);
+      setActiveTailWindowId(resolveActiveTailWindowId(nextTailRows));
 
       if (update.anomalyCount > 0) {
         setIsAnomalyFlash(true);
         window.setTimeout(() => setIsAnomalyFlash(false), 1200);
       }
 
-      // Extract the most relevant log line for synchronized wave overlay
-      const primaryLine = update.parsedLines?.[update.parsedLines.length - 1] || "";
-
       if (replayActive) return;
 
       setEmittedCueCount((current) => current + routedCues.length);
       setRecentCues((current) =>
-        [
-          ...routedCues
-            .slice()
-            .reverse()
-            .map((cue) => ({
-              ...cue,
-              logLine: primaryLine, // Attach the log line to the cue for synchronized rendering
-            })),
-          ...current,
-        ].slice(0, MAX_RECENT_CUES),
+        buildRecentCueHistory(current, routedCues, updateDerivation.primaryLine, MAX_RECENT_CUES),
       );
       setRecentMarkers((current) =>
-        [...update.anomalyMarkers.slice().reverse(), ...current].slice(0, MAX_RECENT_MARKERS),
+        buildRecentMarkerHistory(current, update.anomalyMarkers, MAX_RECENT_MARKERS),
       );
       setRecentExplanations((current) =>
-        [...nextExplanations.slice().reverse(), ...current].slice(0, MAX_RECENT_EXPLANATIONS),
+        buildRecentExplanationHistory(
+          current,
+          nextExplanations,
+          MAX_RECENT_EXPLANATIONS,
+        ),
       );
       if (typeof currentTrackSecond === "number") {
         setBackgroundPlayheadSecond(currentTrackSecond);
       }
       if (nextExplanations[0]) {
         setSelectedExplanationId((current) =>
-          monitor.isPlayback ? nextExplanations[0]!.id : (current ?? nextExplanations[0]!.id),
+          resolveSelectedMonitorExplanationId(current, nextExplanations, monitor.isPlayback),
         );
       }
-      setRecentVoices(
-        resolveArrangementVoices(routedCues, scene.mutationProfile.arrangementDepth).slice(0, 12),
-      );
+      setRecentVoices(buildRecentMonitorVoices(routedCues, scene.mutationProfile.arrangementDepth, 12));
     });
 
     if (update.hasData && !replayActive) {
       void ensureAudioReady();
 
-      // Auto-seed beat clock from the first live BPM; re-sync on >12% drift
-      const liveBpmVal = update.suggestedBpm;
-      if (typeof liveBpmVal === "number" && liveBpmVal > 0) {
-        if (beatClockRef.current === null && scene.preset.useBeatGrid) {
-          const ctx = audioContextRef.current;
-          if (ctx) {
-            beatClockRef.current = { originTime: ctx.currentTime, bpm: liveBpmVal };
-            setBeatClockBpm(liveBpmVal);
-          }
-        } else if (beatClockRef.current !== null) {
-          const drift = Math.abs(liveBpmVal - beatClockRef.current.bpm) / beatClockRef.current.bpm;
-          if (drift > 0.12) {
-            beatClockRef.current = { ...beatClockRef.current, bpm: liveBpmVal };
-            setBeatClockBpm(liveBpmVal);
-          }
-        }
+      const beatClockSyncPlan = resolveBeatClockLiveSync({
+        currentClock: beatClockRef.current,
+        liveBpm: update.suggestedBpm,
+        useBeatGrid: scene.preset.useBeatGrid,
+        audioCurrentTime: audioContextRef.current?.currentTime ?? null,
+      });
+      if (beatClockSyncPlan.changed) {
+        beatClockRef.current = beatClockSyncPlan.nextClock;
+        setBeatClockBpm(beatClockSyncPlan.nextDisplayBpm);
       }
 
       log.info(
@@ -2370,43 +809,25 @@ export function LiveLogMonitorPanel({
   // ---------------------------------------------------------------------------
 
   async function handleStart() {
-    setLastUpdate(null);
-    setEmittedCueCount(0);
-    setRecentCues([]);
-    setRecentVoices([]);
-    setRecentMarkers([]);
-    setRecentExplanations([]);
-    setSelectedExplanationId(null);
-    setBackgroundPlayheadSecond(0);
-    setSyncTailRows([]);
-    setActiveTailWindowId(null);
-    setError(null);
-    setIsStarting(true);
-    panelAudioProbePlayedRef.current = false;
-    bounceCuesRef.current = [];
-    setBounceWindowCount(0);
+    const resetState = buildLiveMonitorStartResetState();
+    applyStartReset(resetState);
 
     // Prime the AudioContext BEFORE any other async operation so the browser
     // still recognises this as a trusted user gesture. WebKit requires
     // new AudioContext() / resume() to be called during a user interaction.
     await ensureAudioReady();
 
-    const sessionId = `sess-${repository.id}-${Date.now()}`;
+    const sessionId = createLiveMonitorSessionId(repository.id, Date.now());
 
     try {
-      if (adapterKind === "file" && repository.sourcePath.startsWith("/tmp/")) {
+      const startWarning = resolveLiveMonitorStartWarning(adapterKind, repository.sourcePath);
+      if (startWarning) {
         setRecentWarnings((c) => [
-          "Warning: Log path is in /tmp/. We moved the generator to the project root for persistence.",
+          startWarning,
           ...c,
         ]);
       }
-      const input: StartSessionInput = {
-        sessionId,
-        adapterKind: "file",
-        source: repository.sourcePath,
-        label: repository.title,
-        startFromBeginning: true,
-      };
+      const input = createLiveMonitorSessionInput(repository, sessionId);
 
       const started = await monitor.startSession(repository, input);
       if (!started) {
@@ -2414,21 +835,24 @@ export function LiveLogMonitorPanel({
       }
 
       // AudioContext was already created above — just read the ref
-      const anchorBpm = referenceAnchor?.bpm ?? null;
       const ctx = audioContextRef.current;
-      if (ctx && anchorBpm && anchorBpm > 0) {
-        beatClockRef.current = { originTime: ctx.currentTime, bpm: anchorBpm };
-        setBeatClockBpm(anchorBpm);
+      const startAudioPlan = resolveLiveMonitorStartAudioPlan({
+        contextTime: ctx?.currentTime ?? null,
+        anchorBpm: referenceAnchor?.bpm ?? null,
+        useBeatGrid: scene.preset.useBeatGrid,
+      });
+      if (startAudioPlan.beatClockSeed) {
+        beatClockRef.current = startAudioPlan.beatClockSeed;
+        setBeatClockBpm(startAudioPlan.beatClockBpm);
       } else {
         beatClockRef.current = null;
         setBeatClockBpm(null);
       }
       // Start the background rhythm pulse when beat-locked preset is active
-      if (ctx && scene.preset.useBeatGrid) {
-        const looperBpm = anchorBpm ?? 120;
+      if (ctx && startAudioPlan.shouldStartBeatLooper && startAudioPlan.beatLooperBpm) {
         startBeatLooper(
           ctx,
-          looperBpm,
+          startAudioPlan.beatLooperBpm,
           scene.preset.rhythmDivision,
           beatLooperRef,
           masterGainRef.current ?? ctx.destination,
@@ -2442,55 +866,32 @@ export function LiveLogMonitorPanel({
       }
     } catch (err) {
       console.error("Start session failed", err);
-      setError(`Failed to start monitor: ${toMessage(err)}`);
+      setError(resolveLiveMonitorStartFailureMessage(err, toMessage));
     } finally {
       setIsStarting(false);
     }
   }
 
   function handleStop() {
-    void monitor.stopSession();
-    setRecentExplanations([]);
-    setSelectedExplanationId(null);
-    setBackgroundPlayheadSecond(0);
-    setLiveMutationState("normal");
-    setForcedLiveMutationState("auto");
-    beatClockRef.current = null;
-    setBeatClockBpm(null);
-    stopBeatLooper(beatLooperRef);
-    setBeatLooperActive(false);
-    stopBackgroundDeck();
-    if (backgroundGainRef.current) {
-      backgroundGainRef.current.disconnect();
-      backgroundGainRef.current = null;
-    }
-    if (backgroundDryGainRef.current) {
-      backgroundDryGainRef.current.disconnect();
-      backgroundDryGainRef.current = null;
-    }
-    if (backgroundDriveWetGainRef.current) {
-      backgroundDriveWetGainRef.current.disconnect();
-      backgroundDriveWetGainRef.current = null;
-    }
-    if (backgroundDriveNodeRef.current) {
-      backgroundDriveNodeRef.current.disconnect();
-      backgroundDriveNodeRef.current = null;
-    }
-    if (filterNodeRef.current) {
-      filterNodeRef.current.disconnect();
-      filterNodeRef.current = null;
-    }
+    const resetState = buildLiveMonitorStopResetState();
 
-    if (masterGainRef.current) {
-      masterGainRef.current.disconnect();
-      masterGainRef.current = null;
-    }
-    setBlobAudioVolume(0);
-    stopManagedBlobAudio();
-    if (analyserRef.current) {
-      analyserRef.current.disconnect();
-      analyserRef.current = null;
-    }
+    void monitor.stopSession();
+    applyStopReset(resetState);
+    stopLiveMonitorAudioGraph({
+      stopBackgroundDeck,
+      stopBeatLooper: () => stopBeatLooper(beatLooperRef),
+      muteManagedBlobAudio: () => {
+        setBlobAudioVolumeState(activeBlobAudioElements, 0);
+        stopManagedBlobAudioState(activeBlobAudioElements);
+      },
+      backgroundGainRef,
+      backgroundDryGainRef,
+      backgroundDriveWetGainRef,
+      backgroundDriveNodeRef,
+      filterNodeRef,
+      masterGainRef,
+      analyserRef,
+    });
   }
 
   function handleBounce() {
@@ -2500,20 +901,24 @@ export function LiveLogMonitorPanel({
     if (!blob) return;
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    const durationS = (windows.length * BOUNCE_WINDOW_S).toFixed(0);
     a.href = url;
-    a.download = `maia-bounce-${repository.title.replace(/[^a-z0-9]/gi, "_")}-${durationS}s.wav`;
+    a.download = resolveLiveMonitorBounceFilename({
+      repositoryTitle: repository.title,
+      windowCount: windows.length,
+      bounceWindowSeconds: BOUNCE_WINDOW_S,
+    });
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
 
   function handleApplyBookmarkSuggestion(bookmark: SessionBookmark) {
-    if (bookmark.suggestedStyleProfileId) {
-      setSelectedStyleProfileId(bookmark.suggestedStyleProfileId);
+    const nextSelection = resolveBookmarkSuggestionSelection(bookmark);
+    if (nextSelection.selectedStyleProfileId) {
+      setSelectedStyleProfileId(nextSelection.selectedStyleProfileId);
     }
 
-    if (bookmark.suggestedMutationProfileId) {
-      setSelectedMutationProfileId(bookmark.suggestedMutationProfileId);
+    if (nextSelection.selectedMutationProfileId) {
+      setSelectedMutationProfileId(nextSelection.selectedMutationProfileId);
     }
   }
 
@@ -2532,76 +937,43 @@ export function LiveLogMonitorPanel({
       replayFeedbackRecommendation,
     );
 
-    setSelectedStyleProfileId(nextPrefs.selectedStyleProfileId);
-    setSelectedMutationProfileId(nextPrefs.selectedMutationProfileId);
+    const nextSelection = resolveReplayFeedbackSelection({
+      suggestedStyleProfileId: nextPrefs.selectedStyleProfileId,
+      suggestedMutationProfileId: nextPrefs.selectedMutationProfileId,
+    });
+
+    setSelectedStyleProfileId(nextSelection.selectedStyleProfileId ?? selectedStyleProfileId);
+    setSelectedMutationProfileId(
+      nextSelection.selectedMutationProfileId ?? selectedMutationProfileId,
+    );
   }
 
-  const handleSequencerStepFire = useEffectEvent(
-    (firings: Array<{ track: ArrangementTrack; step: number; humanizeOffsetMs: number }>) => {
-      // Group firings by their delay bucket (0 = immediate, otherwise setTimeout)
-      const immediate: typeof firings = [];
-      const deferred: typeof firings = [];
-      for (const f of firings) {
-        if (f.humanizeOffsetMs <= 4) immediate.push(f);
-        else deferred.push(f);
-      }
-
-      function playFirings(batch: typeof firings) {
-        const cues: RoutedLiveCue[] = batch.map(({ track }, i) => {
-          const cfg = SEQ_TRACK_CONFIG[track];
-          return {
-            id: `seq-${track}-${i}`,
-            eventIndex: i,
-            level: "info" as const,
-            component: "",
-            excerpt: "",
-            noteHz: cfg.noteHz,
-            durationMs: cfg.durationMs,
-            gain: cfg.gainFactor,
-            waveform: cfg.waveform,
-            accent: "none" as const,
-            pan: 0,
-            routeKey: "info" as const,
-            routeLabel: track,
-            stemLabel: "",
-            sectionLabel: "",
-            focus: "",
-            samplePath: null,
-            sampleLabel: null,
-          };
-        });
-        const blob = renderCuesToWav(cues, 1);
-        if (blob) void playRenderedBlobThroughGraph(blob, Math.min(0.18, masterVolume * 0.4));
-      }
-
-      if (immediate.length > 0) playFirings(immediate);
-
-      // Each deferred firing gets its own timed WAV render so the offset is audible
-      for (const f of deferred) {
-        const delay = f.humanizeOffsetMs;
-        setTimeout(() => playFirings([f]), delay);
-      }
-    },
-  );
-
   function handleJumpToBookmark(bookmark: SessionBookmark) {
-    if (monitor.playbackEventCount === null) {
+    const bookmarkExplanation =
+      recentExplanations.find(
+        (explanation) => explanation.replayWindowIndex === bookmark.replayWindowIndex,
+      ) ?? null;
+    const jumpState = resolveBookmarkJumpState({
+      playbackEventCount: monitor.playbackEventCount,
+      bookmark,
+      bookmarkExplanation,
+    });
+
+    if (!jumpState) {
       return;
     }
 
-    monitor.pausePlayback();
-    monitor.seekPlaybackProgress(
-      resolveReplayProgressForWindow(bookmark.replayWindowIndex, monitor.playbackEventCount),
-    );
-
-    const bookmarkExplanation = recentExplanations.find(
-      (explanation) => explanation.replayWindowIndex === bookmark.replayWindowIndex,
-    );
-    if (bookmarkExplanation) {
-      setSelectedExplanationId(bookmarkExplanation.id);
+    if (jumpState.shouldPausePlayback) {
+      monitor.pausePlayback();
     }
-    if (typeof bookmark.trackSecond === "number") {
-      setBackgroundPlayheadSecond(bookmark.trackSecond);
+    if (jumpState.nextPlaybackProgress !== null) {
+      monitor.seekPlaybackProgress(jumpState.nextPlaybackProgress);
+    }
+    if (jumpState.nextSelectedExplanationId) {
+      setSelectedExplanationId(jumpState.nextSelectedExplanationId);
+    }
+    if (jumpState.nextBackgroundPlayheadSecond !== null) {
+      setBackgroundPlayheadSecond(jumpState.nextBackgroundPlayheadSecond);
     }
   }
 
@@ -2620,17 +992,218 @@ export function LiveLogMonitorPanel({
     });
   }, []);
 
-  const currentLevelCounts = lastUpdate?.levelCounts ?? {};
-  const anomalySourceRows = resolveAnomalySourceRows(lastUpdate);
-  const waveAnomalyMarkers = recentMarkers.slice(0, 4);
-  const liveSourceLabel = lastUpdate?.sourcePath ?? repository.sourcePath;
-  const recentSyncTailRows = syncTailRows.slice(-MAX_SYNC_TAIL_LINES);
-  const deckStatusLabel = replayActive
-    ? t.session.replay
-    : liveEnabled
-      ? t.appShell.live
-      : t.session.stopped;
-  const audioStateLabel = audioLabel(audioStatus, liveEnabled, t);
+  const {
+    currentLevelCounts,
+    anomalySourceRows,
+    waveAnomalyMarkers,
+    liveSourceLabel,
+    recentSyncTailRows,
+    deckStatusLabel,
+    audioStateLabel: resolvedAudioStateLabel,
+    audioBadgeLabel,
+    audioBadgeTone,
+  } = useMemo(
+    () =>
+      buildLiveMonitorDisplayState({
+        lastUpdate,
+        recentMarkers,
+        syncTailRows,
+        maxSyncTailLines: MAX_SYNC_TAIL_LINES,
+        maxAnomalySourceLines: MAX_ANOMALY_SOURCE_LINES,
+        replayActive,
+        liveEnabled,
+        repositorySourcePath: repository.sourcePath,
+        audioStatus,
+        labels: {
+          replayLabel: t.session.replay,
+          liveLabel: t.appShell.live,
+          stoppedLabel: t.session.stopped,
+          audioUnavailable: t.inspect.audioStateUnavailable,
+          audioError: t.inspect.audioStateError,
+          audioActive: t.inspect.audioStateActive,
+          audioArmed: t.inspect.audioStateArmed,
+          audioIdle: t.inspect.audioStateIdle,
+          audioOn: t.inspect.audioOn,
+          audioBlocked: t.inspect.audioBlocked,
+        },
+      }),
+    [audioStatus, lastUpdate, liveEnabled, recentMarkers, replayActive, repository.sourcePath, syncTailRows, t],
+  );
+  const bounceAction = useMemo(
+    () => resolveBounceActionLabel(bounceWindowCount, BOUNCE_WINDOW_S),
+    [bounceWindowCount],
+  );
+  const cueEngineStateLabel = useMemo(
+    () =>
+      resolveCueEngineStateLabel({
+        sampleStatus,
+        sampleSourceCount: scene.sampleSourceCount,
+        labels: {
+          cueEngineBaseSamplePack: t.inspect.cueEngineBaseSamplePack,
+          cueEngineBaseSample: t.inspect.cueEngineBaseSample,
+          cueEngineLoadingSample: t.inspect.cueEngineLoadingSample,
+          cueEngineInternalSynth: t.inspect.cueEngineInternalSynth,
+        },
+      }),
+    [sampleStatus, scene.sampleSourceCount, t],
+  );
+  const sessionCardDisplay = useMemo(
+    () =>
+      liveEnabled && monitor.session
+        ? resolveSessionCardDisplay({
+            session: monitor.session,
+            replayActive,
+            playbackPercent,
+            windowsHeard: monitor.metrics.windowCount,
+            labels: {
+              replaySessionTitle: t.inspect.replaySession,
+              sessionTitle: t.inspect.sessionLabel,
+              storedSourceReplay: t.inspect.storedSourceReplay,
+              fallbackDirectFilePoll: t.inspect.fallbackDirectFilePoll,
+              replayComplete: t.session.complete,
+              windowsReplayed: t.inspect.windowsReplayed,
+            },
+          })
+        : null,
+    [liveEnabled, monitor.metrics.windowCount, monitor.session, playbackPercent, replayActive, t],
+  );
+  const metricGridItems = useMemo(
+    () =>
+      buildMetricGridItems({
+        replayActive,
+        replaySessionTitle: t.inspect.replaySession,
+        activeAdapterLabel,
+        audioStateLabel: resolvedAudioStateLabel,
+        styleProfileLabel: selectedStyleProfile.label,
+        mutationProfileLabel: selectedMutationProfile.label,
+        cueEngineStateLabel,
+        playbackWindowLabel,
+        windowsHeard: monitor.metrics.windowCount,
+        cuesEmitted: emittedCueCount,
+        processedLines: monitor.metrics.processedLines,
+        anomaliesHeard: monitor.metrics.totalAnomalies,
+        beatClockBpm,
+        voicesEmitted: emittedVoiceCount,
+        beatLooperActive,
+        labels: {
+          modeLabel: t.inspect.mode,
+          audioEngineLabel: t.simpleMode.monitor.audioEngine,
+          styleProfileTitle: t.inspect.styleProfileTitle,
+          mutationProfileTitle: t.inspect.mutationProfileTitle,
+          cueEngineLabel: t.inspect.cueEngineLabel,
+          windowsHeardLabel: t.inspect.windowsHeard,
+          cuesEmittedLabel: t.inspect.cuesEmitted,
+          linesProcessedLabel: t.session.linesProcessed,
+          anomaliesHeardLabel: t.inspect.anomaliesHeard,
+          beatClockLabel: t.inspect.beatClock,
+          freeLabel: t.inspect.free,
+          voicesEmittedLabel: t.inspect.voicesEmitted,
+          rhythmPulseLabel: t.inspect.rhythmPulse,
+          activeLabel: t.session.active,
+          offLabel: t.inspect.off,
+        },
+      }),
+    [
+      activeAdapterLabel,
+      beatClockBpm,
+      beatLooperActive,
+      cueEngineStateLabel,
+      emittedCueCount,
+      emittedVoiceCount,
+      monitor.metrics.processedLines,
+      monitor.metrics.totalAnomalies,
+      monitor.metrics.windowCount,
+      playbackWindowLabel,
+      replayActive,
+      resolvedAudioStateLabel,
+      selectedMutationProfile.label,
+      selectedStyleProfile.label,
+      t,
+    ],
+  );
+  const playlistSummaryItems = useMemo(
+    () => buildPlaylistSummaryItems(basePlaylist?.trackIds, availableTracks),
+    [availableTracks, basePlaylist?.trackIds],
+  );
+  const basePlaylistEditorItems = useMemo(
+    () => buildPlaylistEditorItems(basePlaylist?.trackIds, availableTracks),
+    [availableTracks, basePlaylist?.trackIds],
+  );
+  const basePlaylistTrackOptions = useMemo(
+    () => buildBasePlaylistTrackOptions(availableBaseTrackOptions, t.library.lost.toUpperCase()),
+    [availableBaseTrackOptions, t.library.lost],
+  );
+  const savedPlaylistOptions = useMemo(
+    () => buildSavedPlaylistOptions(availablePlaylists),
+    [availablePlaylists],
+  );
+  const nowPlayingSummary = useMemo(
+    () => buildNowPlayingSummary(liveEnabled, backgroundNowPlayingTrack, "Now playing"),
+    [backgroundNowPlayingTrack, liveEnabled],
+  );
+  const upNextSummary = useMemo(
+    () =>
+      buildUpNextSummary(
+        liveEnabled,
+        backgroundTransitionNextTrack,
+        backgroundTransitionPlan?.summary ?? null,
+        "Up next",
+      ),
+    [backgroundTransitionNextTrack, backgroundTransitionPlan?.summary, liveEnabled],
+  );
+  const windowMetricGridItems = useMemo(
+    () =>
+      lastUpdate
+        ? [
+            {
+              label: t.inspect.suggestedBpm,
+              value:
+                typeof lastUpdate.suggestedBpm === "number"
+                  ? lastUpdate.suggestedBpm.toFixed(0)
+                  : (repository.suggestedBpm?.toFixed(0) ?? t.inspect.pending),
+            },
+            {
+              label: t.session.confidence,
+              value: formatConfidence(lastUpdate.confidence),
+            },
+            {
+              label: t.session.dominantLevel,
+              value: lastUpdate.dominantLevel,
+            },
+            {
+              label: t.inspect.chunkLines,
+              value: String(lastUpdate.lineCount),
+            },
+            {
+              label: t.inspect.errors,
+              value: String(levelCount(currentLevelCounts, "error")),
+            },
+            {
+              label: t.inspect.warnings,
+              value: String(levelCount(currentLevelCounts, "warn")),
+            },
+            {
+              label: t.inspect.info,
+              value: String(levelCount(currentLevelCounts, "info")),
+            },
+            {
+              label: t.inspect.tailWindow,
+              value: `${formatCursor(lastUpdate.fromOffset)} → ${formatCursor(lastUpdate.toOffset)}`,
+            },
+          ]
+        : [],
+    [currentLevelCounts, lastUpdate, repository.suggestedBpm, t],
+  );
+  const ctaMetaLabel = resolveLiveMonitorCtaMeta({
+    hasBaseListeningBed,
+    baseTrackCount,
+    soundsLabel: t.library.sounds,
+    armedLabel: t.session.armed,
+    notArmedLabel: t.session.notArmed,
+    basePlaylistLabel: t.inspect.basePlaylist,
+    styleLabel: selectedStyleProfile.label,
+    mutationLabel: selectedMutationProfile.label,
+  });
 
   if (!expanded && !liveEnabled) {
     return (
@@ -2639,12 +1212,7 @@ export function LiveLogMonitorPanel({
           <div>
             <h2>{t.inspect.liveMonitorDeckTitle}</h2>
             <p className="support-copy">{t.inspect.liveMonitorDeckCta}</p>
-            <small className="monitor-cta-meta">
-              {hasBaseListeningBed
-                ? `${baseTrackCount} ${t.library.sounds.toLowerCase()}${baseTrackCount === 1 ? "" : "s"} ${t.session.armed.toLowerCase()}`
-                : `${t.inspect.basePlaylist} ${t.session.notArmed.toLowerCase()}`}
-              {` · ${selectedStyleProfile.label} · ${selectedMutationProfile.label}`}
-            </small>
+            <small className="monitor-cta-meta">{ctaMetaLabel}</small>
           </div>
           <button type="button" className="action" onClick={() => setExpanded(true)}>
             {t.inspect.liveMonitorDeckOpen}
@@ -2656,1131 +1224,282 @@ export function LiveLogMonitorPanel({
 
   return (
     <section className="panel waveform-panel">
-      <div className="panel-header">
-        <div>
-          <h2>{t.inspect.liveMonitorDeckTitle}</h2>
-          <p className="support-copy">
-            {replayActive ? t.inspect.liveMonitorReplayCopy : t.inspect.liveMonitorLiveCopy}
-          </p>
-        </div>
-        <div className="live-log-toolbar">
-          <span className={`live-log-badge ${liveEnabled ? "live" : "idle"}`}>
-            {deckStatusLabel}
-          </span>
-          <span className="live-log-badge">{activeAdapterLabel}</span>
-          <span
-            className={`live-log-badge ${audioStatus === "ready" ? "ready" : "warn"}`}
-            title={
-              audioStatus === "ready" ? t.inspect.audioEngineActive : t.inspect.audioEngineBlocked
-            }
-            onClick={() => void ensureAudioReady()}
-            style={{ cursor: "pointer" }}
-          >
-            {audioStatus === "ready" ? t.inspect.audioOn : t.inspect.audioBlocked}
-          </span>
-          <button
-            type="button"
-            className="secondary-action"
-            onClick={() => void playPanelTestTone()}
-          >
-            {t.inspect.testAudio}
-          </button>
-          {liveEnabled ? (
-            <button type="button" className="secondary-action" onClick={handleStop}>
-              {replayActive ? t.session.exitReplay : t.inspect.stopMonitor}
-            </button>
-          ) : null}
-          {bounceWindowCount > 0 ? (
-            <button
-              type="button"
-              className="secondary-action"
-              onClick={handleBounce}
-              title={`Bounce ${(bounceWindowCount * BOUNCE_WINDOW_S).toFixed(0)}s of session audio to WAV`}
-            >
-              ↓ Bounce {(bounceWindowCount * BOUNCE_WINDOW_S).toFixed(0)}s
-            </button>
-          ) : null}
-        </div>
-      </div>
+      <LiveLogMonitorHeader
+        title={t.inspect.liveMonitorDeckTitle}
+        subtitle={replayActive ? t.inspect.liveMonitorReplayCopy : t.inspect.liveMonitorLiveCopy}
+        deckStatusLabel={deckStatusLabel}
+        activeAdapterLabel={activeAdapterLabel}
+        audioBadgeTone={audioBadgeTone}
+        audioBadgeLabel={audioBadgeLabel}
+        audioBadgeTitle={
+          audioStatus === "ready" ? t.inspect.audioEngineActive : t.inspect.audioEngineBlocked
+        }
+        testAudioLabel={t.inspect.testAudio}
+        liveEnabled={liveEnabled}
+        stopLabel={replayActive ? t.session.exitReplay : t.inspect.stopMonitor}
+        bounceAction={bounceAction}
+        onEnsureAudioReady={() => void ensureAudioReady()}
+        onPlayTestTone={() => void playPanelTestTone()}
+        onStop={handleStop}
+        onBounce={handleBounce}
+      />
 
-      {!liveEnabled ? (
-        <>
-          <div className="workflow-strip" aria-hidden="true">
-            <div className="workflow-step-wrap">
-              <span className={`workflow-step${hasBaseListeningBed ? " active" : ""}`}>
-                {t.inspect.baseBedStep}
-              </span>
-              <span className="workflow-arrow">→</span>
-            </div>
-            <div className="workflow-step-wrap">
-              <span className={`workflow-step${adapterConfigured ? " active" : ""}`}>
-                {t.inspect.sourceFeedStep}
-              </span>
-              <span className="workflow-arrow">→</span>
-            </div>
-            <div className="workflow-step-wrap">
-              <span className="workflow-step active">{t.inspect.sceneStep}</span>
-              <span className="workflow-arrow">→</span>
-            </div>
-            <div className="workflow-step-wrap">
-              <span className="workflow-step">{t.inspect.runStep}</span>
-            </div>
-          </div>
+      <LiveLogMonitorSetupSection
+        visible={!liveEnabled}
+        t={t}
+        adapterKind={adapterKind}
+        adapterDescription={adapterDescription}
+        adapterTarget={adapterTarget}
+        selectedStyleProfileId={selectedStyleProfileId}
+        selectedMutationProfileId={selectedMutationProfileId}
+        selectedStyleProfile={selectedStyleProfile}
+        selectedMutationProfile={selectedMutationProfile}
+        forcedLiveMutationState={forcedLiveMutationState}
+        hasBaseListeningBed={hasBaseListeningBed}
+        baseTrackCount={baseTrackCount}
+        adapterConfigured={adapterConfigured}
+        cueEnginePreviewLabel={cueEnginePreviewLabel}
+        liveMutationStateLabel={liveMutationStateLabel}
+        error={error}
+        isStarting={isStarting}
+        pendingAddTrackId={pendingAddTrackId}
+        pendingLoadPlaylistId={pendingLoadPlaylistId}
+        basePlaylist={basePlaylist}
+        basePlaylistTrackOptions={basePlaylistTrackOptions}
+        savedPlaylistOptions={savedPlaylistOptions}
+        basePlaylistEditorItems={basePlaylistEditorItems}
+        availablePlaylists={availablePlaylists}
+        availableTracks={availableTracks}
+        setBasePlaylist={setBasePlaylist}
+        setPendingAddTrackId={setPendingAddTrackId}
+        setPendingLoadPlaylistId={setPendingLoadPlaylistId}
+        setAdapterKind={setAdapterKind}
+        setSelectedStyleProfileId={setSelectedStyleProfileId}
+        setSelectedMutationProfileId={setSelectedMutationProfileId}
+        setForcedLiveMutationState={setForcedLiveMutationState}
+        onStart={handleStart}
+      />
 
-          <div className="monitor-setup-grid">
-            <div className="audio-path-card monitor-setup-card">
-              <span>{t.inspect.baseListeningBedTitle}</span>
-              <strong>{basePlaylist?.name ?? t.inspect.basePlaylist}</strong>
-              <p className="support-copy">{t.inspect.stableBedCopy}</p>
-              <div className="monitor-setup-stack">
-                <input
-                  type="text"
-                  value={basePlaylist?.name ?? ""}
-                  onChange={(event) =>
-                    setBasePlaylist((current) =>
-                      current
-                        ? {
-                            ...current,
-                            name: event.target.value,
-                            updatedAt: new Date().toISOString(),
-                          }
-                        : createBasePlaylist([], event.target.value || "Base playlist"),
-                    )
-                  }
-                  placeholder={t.inspect.nameBasePlaylist}
-                  aria-label={t.inspect.basePlaylist}
-                />
-                {availableTracks.length > 0 ? (
-                  <div className="monitor-setup-row">
-                    <select
-                      className="compact-select"
-                      value={pendingAddTrackId}
-                      onChange={(e) => setPendingAddTrackId(e.target.value)}
-                      title={t.inspect.addBaseTrack}
-                    >
-                      <option value="">{t.inspect.addBaseTrack}</option>
-                      {availableBaseTrackOptions.map((track) => (
-                        <option
-                          key={track.id}
-                          value={track.id}
-                          disabled={track.file.availabilityState === "missing"}
-                        >
-                          {getTrackTitle(track)}
-                          {track.analysis.bpm !== null
-                            ? ` · ${track.analysis.bpm.toFixed(0)} BPM`
-                            : ""}
-                          {track.file.availabilityState === "missing"
-                            ? ` · ${t.library.lost.toUpperCase()}`
-                            : ""}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      className="compact-action"
-                      disabled={!pendingAddTrackId}
-                      onClick={() => {
-                        if (!pendingAddTrackId) {
-                          return;
-                        }
-                        setBasePlaylist((current) => {
-                          const nextTrackIds = current?.trackIds ?? [];
-                          if (nextTrackIds.includes(pendingAddTrackId)) {
-                            return current;
-                          }
-
-                          if (current) {
-                            return {
-                              ...current,
-                              trackIds: [...current.trackIds, pendingAddTrackId],
-                              updatedAt: new Date().toISOString(),
-                            };
-                          }
-
-                          return createBasePlaylist([pendingAddTrackId]);
-                        });
-                        setPendingAddTrackId("");
-                      }}
-                    >
-                      {t.inspect.addAction}
-                    </button>
-                  </div>
-                ) : null}
-                {availablePlaylists.length > 0 ? (
-                  <div className="monitor-setup-row">
-                    <select
-                      className="compact-select"
-                      value={pendingLoadPlaylistId}
-                      onChange={(e) => setPendingLoadPlaylistId(e.target.value)}
-                      title={t.inspect.loadSavedPlaylist}
-                    >
-                      <option value="">{t.inspect.loadSavedPlaylist}</option>
-                      {availablePlaylists.map((playlist) => (
-                        <option key={playlist.id} value={playlist.id}>
-                          {playlist.name} · {playlist.trackIds.length} tracks
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      className="compact-action"
-                      disabled={!pendingLoadPlaylistId}
-                      onClick={() => {
-                        const nextPlaylist =
-                          availablePlaylists.find(
-                            (playlist) => playlist.id === pendingLoadPlaylistId,
-                          ) ?? null;
-                        if (!nextPlaylist) {
-                          return;
-                        }
-                        setBasePlaylist({
-                          ...nextPlaylist,
-                          trackIds: nextPlaylist.trackIds.filter((trackId) =>
-                            availableTracks.some((track) => track.id === trackId),
-                          ),
-                        });
-                      }}
-                    >
-                      {t.inspect.loadAction}
-                    </button>
-                  </div>
-                ) : null}
-                {hasBaseListeningBed ? (
-                  <div className="pill-strip">
-                    {basePlaylist?.trackIds.map((id, idx) => {
-                      const track = availableTracks.find((t) => t.id === id);
-                      if (!track) {
-                        return null;
-                      }
-                      return (
-                        <span
-                          key={id}
-                          className={`pill-removable${track.file.availabilityState === "missing" ? " pill-removable--lost" : ""}`}
-                        >
-                          <button
-                            type="button"
-                            className="pill-reorder"
-                            aria-label={t.inspect.moveUp.replace("{name}", getTrackTitle(track))}
-                            disabled={idx === 0}
-                            onClick={() =>
-                              setBasePlaylist((current) => {
-                                if (!current) {
-                                  return current;
-                                }
-                                const next = [...current.trackIds];
-                                [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
-                                return {
-                                  ...current,
-                                  trackIds: next,
-                                  updatedAt: new Date().toISOString(),
-                                };
-                              })
-                            }
-                          >
-                            ↑
-                          </button>
-                          {getTrackTitle(track)}
-                          {track.analysis.bpm !== null
-                            ? ` · ${track.analysis.bpm.toFixed(0)} BPM`
-                            : ""}
-                          {track.file.availabilityState === "missing" ? (
-                            <span
-                              className="track-lost-badge"
-                              title={getTrackAvailabilityLabel(track)}
-                            >
-                              {t.library.lost.toUpperCase()}
-                            </span>
-                          ) : null}
-                          <button
-                            type="button"
-                            className="pill-reorder"
-                            aria-label={t.inspect.moveDown.replace("{name}", getTrackTitle(track))}
-                            disabled={idx === (basePlaylist?.trackIds.length ?? 0) - 1}
-                            onClick={() =>
-                              setBasePlaylist((current) => {
-                                if (!current) {
-                                  return current;
-                                }
-                                const next = [...current.trackIds];
-                                [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
-                                return {
-                                  ...current,
-                                  trackIds: next,
-                                  updatedAt: new Date().toISOString(),
-                                };
-                              })
-                            }
-                          >
-                            ↓
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={t.inspect.removeFromPlaylist.replace(
-                              "{name}",
-                              getTrackTitle(track),
-                            )}
-                            onClick={() =>
-                              setBasePlaylist((current) =>
-                                current
-                                  ? {
-                                      ...current,
-                                      trackIds: current.trackIds.filter(
-                                        (trackId) => trackId !== id,
-                                      ),
-                                      updatedAt: new Date().toISOString(),
-                                    }
-                                  : current,
-                              )
-                            }
-                          >
-                            ×
-                          </button>
-                        </span>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="monitor-empty-hint">{t.inspect.intendedListeningBedHint}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="audio-path-card monitor-setup-card">
-              <span>{t.inspect.signalFeedTitle}</span>
-              <strong>{getStreamAdapterLabel(adapterKind)}</strong>
-              <p className="support-copy">{adapterDescription}</p>
-              <div className="monitor-setup-stack">
-                <select
-                  className="compact-select"
-                  value={adapterKind}
-                  onChange={(e) => setAdapterKind(e.target.value as StreamAdapterKind)}
-                  disabled
-                >
-                  <option value="file">{t.library.fileTail}</option>
-                </select>
-                <p className="support-copy">{t.inspect.weekOnePipeline}</p>
-                <div className="monitor-source-summary">
-                  <small>{t.inspect.targetLabel}</small>
-                  <strong>{adapterTarget}</strong>
-                </div>
-              </div>
-            </div>
-
-            <div className="audio-path-card monitor-setup-card">
-              <span>{t.inspect.sceneLaunchTitle}</span>
-              <strong>
-                {selectedStyleProfile.label} · {selectedMutationProfile.label}
-              </strong>
-              <p className="support-copy">
-                {selectedStyleProfile.description} {selectedMutationProfile.description}
-              </p>
-              <div className="monitor-setup-stack">
-                <select
-                  className="compact-select"
-                  value={selectedStyleProfileId}
-                  onChange={(e) => setSelectedStyleProfileId(e.target.value)}
-                  title={t.inspect.styleProfileTitle}
-                >
-                  {STYLE_PROFILES.map((profile) => (
-                    <option key={profile.id} value={profile.id}>
-                      {profile.label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="compact-select"
-                  value={selectedMutationProfileId}
-                  onChange={(e) => setSelectedMutationProfileId(e.target.value)}
-                  title={t.inspect.mutationProfileTitle}
-                >
-                  {MUTATION_PROFILES.map((profile) => (
-                    <option key={profile.id} value={profile.id}>
-                      {profile.label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="compact-select"
-                  value={forcedLiveMutationState}
-                  onChange={(e) =>
-                    setForcedLiveMutationState(e.target.value as ForcedLiveMutationState)
-                  }
-                  title={t.inspect.auditionOverrideTitle}
-                >
-                  <option value="auto">{t.inspect.auditionAuto}</option>
-                  <option value="normal">{t.inspect.auditionNormal}</option>
-                  <option value="warning">{t.inspect.auditionWarning}</option>
-                  <option value="critical">{t.inspect.auditionCritical}</option>
-                </select>
-                <ul className="monitor-readiness-list">
-                  <li className="monitor-readiness-item">
-                    <span>{t.session.baseBed}</span>
-                    <strong
-                      className={`monitor-readiness-state${hasBaseListeningBed ? " ready" : ""}`}
-                    >
-                      {hasBaseListeningBed
-                        ? `${baseTrackCount} ${t.library.sounds.toLowerCase()}${baseTrackCount === 1 ? "" : "s"} ${t.session.armed.toLowerCase()}`
-                        : t.inspect.recommended}
-                    </strong>
-                  </li>
-                  <li className="monitor-readiness-item">
-                    <span>{t.session.sourceFeed}</span>
-                    <strong
-                      className={`monitor-readiness-state${adapterConfigured ? " ready" : ""}`}
-                    >
-                      {adapterConfigured ? t.inspect.ready : t.inspect.needsConfig}
-                    </strong>
-                  </li>
-                  <li className="monitor-readiness-item">
-                    <span>{t.inspect.cueEngineLabel}</span>
-                    <strong className="monitor-readiness-state ready">
-                      {cueEnginePreviewLabel}
-                    </strong>
-                  </li>
-                </ul>
-                {!hasBaseListeningBed ? (
-                  <p className="monitor-empty-hint">{t.inspect.synthOnlyHint}</p>
-                ) : null}
-                <p className="support-copy">
-                  {t.inspect.auditionOverridePrefix}{" "}
-                  {forcedLiveMutationState === "auto"
-                    ? t.inspect.liveLogDriven
-                    : liveMutationStateLabel}
-                </p>
-                <p className="support-copy">
-                  {forcedLiveMutationState === "normal"
-                    ? t.inspect.forcedStateNormal
-                    : forcedLiveMutationState === "warning"
-                      ? t.inspect.forcedStateWarning
-                      : forcedLiveMutationState === "critical"
-                        ? t.inspect.forcedStateCritical
-                        : t.inspect.liveLogDriven}
-                </p>
-                <div className="monitor-launch-row">
-                  <button
-                    type="button"
-                    className="action"
-                    disabled={isStarting || !adapterConfigured}
-                    onClick={() => void handleStart()}
-                  >
-                    {isStarting ? (
-                      <>
-                        <span className="spin-ring" aria-hidden="true" /> {t.inspect.starting}
-                      </>
-                    ) : (
-                      t.inspect.startMonitor
-                    )}
-                  </button>
-                  <small>
-                    {adapterConfigured
-                      ? t.inspect.feedTarget.replace("{target}", adapterTarget)
-                      : t.inspect.configureFeedBeforeStart}
-                  </small>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      ) : null}
-
-      {error && (
-        <div
-          style={{
-            padding: "8px 16px",
-            background: "rgba(255,0,0,0.1)",
-            border: "1px solid #f44",
-            borderRadius: "4px",
-            margin: "10px",
-            color: "#f44",
-            fontSize: "0.85rem",
-          }}
-        >
-          {error}
-        </div>
-      )}
-
-      {liveEnabled && (basePlaylist?.trackIds.length ?? 0) > 0 ? (
-        <>
-          <div className="audio-path-card top-spaced">
-            <span>{t.inspect.basePlaylist}</span>
-            <strong>{basePlaylist?.name ?? t.inspect.basePlaylist}</strong>
-            {liveEnabled && backgroundNowPlayingTrack ? (
-              <small>
-                Now playing: {getTrackTitle(backgroundNowPlayingTrack)}
-                {backgroundNowPlayingTrack.analysis.bpm !== null
-                  ? ` · ${backgroundNowPlayingTrack.analysis.bpm.toFixed(0)} BPM`
-                  : ""}
-              </small>
-            ) : null}
-            {liveEnabled && backgroundTransitionPlan && backgroundTransitionNextTrack ? (
-              <small>
-                Up next: {getTrackTitle(backgroundTransitionNextTrack)} ·{" "}
-                {backgroundTransitionPlan.summary}
-              </small>
-            ) : null}
-            <p className="support-copy top-spaced">
-              {selectedStyleProfile.description} {selectedMutationProfile.description}
-            </p>
-          </div>
-
-          <p className="support-copy top-spaced">{t.inspect.basePlaylist}</p>
-          <div className="pill-strip">
-            {basePlaylist?.trackIds.map((id) => {
-              const track = availableTracks.find((t) => t.id === id);
-              if (!track) {
-                return null;
+      <LiveLogMonitorLiveDeck
+        liveEnabled={liveEnabled}
+        hasBasePlaylist={(basePlaylist?.trackIds.length ?? 0) > 0}
+        playlistSummaryProps={{
+          label: t.inspect.basePlaylist,
+          title: basePlaylist?.name ?? t.inspect.basePlaylist,
+          nowPlayingLine: nowPlayingSummary,
+          upNextLine: upNextSummary,
+          profileDescription: `${selectedStyleProfile.description} ${selectedMutationProfile.description}`,
+          items: playlistSummaryItems,
+          lostLabel: t.library.lost.toUpperCase(),
+        }}
+        sessionCardProps={
+          liveEnabled && monitor.session && sessionCardDisplay
+            ? {
+                replayActive,
+                replayProgressAria: t.inspect.replayProgressAria,
+                playbackPercent,
+                repoTitle: monitor.session.repoTitle,
+                display: sessionCardDisplay,
               }
-              return (
-                <span key={id}>
-                  {getTrackTitle(track)}
-                  {track.analysis.bpm !== null ? ` · ${track.analysis.bpm.toFixed(0)} BPM` : ""}
-                  {track.file.availabilityState === "missing" ? (
-                    <span className="track-lost-badge" title={getTrackAvailabilityLabel(track)}>
-                      {t.library.lost.toUpperCase()}
-                    </span>
-                  ) : null}
-                </span>
-              );
-            })}
-          </div>
-        </>
-      ) : null}
-
-      {liveEnabled && monitor.session ? (
-        <div className={`audio-path-card${replayActive ? " audio-path-card--replay" : ""}`}>
-          <span>{replayActive ? t.inspect.replaySession : t.inspect.sessionLabel}</span>
-          <strong>{monitor.session.repoTitle}</strong>
-          <small>
-            {replayActive
-              ? `${t.inspect.storedSourceReplay} · ${monitor.session.sourcePath}`
-              : monitor.session.pollMode === "direct"
-                ? t.inspect.fallbackDirectFilePoll
-                : monitor.session.pollMode === "websocket"
-                  ? `${getStreamAdapterLabel("websocket")} · ${monitor.session.sourcePath}`
-                  : monitor.session.pollMode === "http-poll"
-                    ? `${getStreamAdapterLabel("http-poll")} · ${monitor.session.sourcePath}`
-                    : `${getStreamAdapterLabel(monitor.session.adapterKind)} · ${monitor.session.sourcePath}`}
-          </small>
-          {replayActive && playbackPercent !== null ? (
-            <div
-              className="monitor-progress-track"
-              role="progressbar"
-              aria-label={t.inspect.replayProgressAria}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={playbackPercent}
-            >
-              <span style={{ width: `${playbackPercent}%` }} />
-            </div>
-          ) : null}
-          {replayActive && playbackPercent !== null ? (
-            <small>
-              {playbackPercent}% {t.session.complete} ·{" "}
-              {t.inspect.windowsReplayed.replace("{count}", String(monitor.metrics.windowCount))}
-            </small>
-          ) : null}
-        </div>
-      ) : null}
-
-      {replayActive && monitor.playbackProgress !== null && monitor.playbackEventCount !== null ? (
-        <LiveMonitorReplayTimelineCard
-          playbackProgress={monitor.playbackProgress}
-          playbackPercent={playbackPercent ?? 0}
-          playbackWindowLabel={playbackWindowLabel}
-          isPlaybackPaused={monitor.isPlaybackPaused}
-          playbackEventCount={monitor.playbackEventCount}
-          onStepWindow={(direction) => monitor.stepPlaybackWindow(direction)}
-          onTogglePause={() =>
-            monitor.isPlaybackPaused ? monitor.resumePlayback() : monitor.pausePlayback()
-          }
-          onSeekProgress={(progress) => monitor.seekPlaybackProgress(progress)}
-        />
-      ) : null}
-
-      {replayActive && replaySessionId && monitor.playbackEventIndex !== null ? (
-        <LiveMonitorReplayBookmarksCard
-          replayWindowIndex={monitor.playbackEventIndex}
-          activeReplayBookmark={activeReplayBookmark}
-          sortedSessionBookmarks={sortedSessionBookmarks}
-          playbackEventCount={monitor.playbackEventCount}
-          bookmarkLabelDraft={bookmarkLabelDraft}
-          bookmarkNoteDraft={bookmarkNoteDraft}
-          bookmarkTagDraft={bookmarkTagDraft}
-          bookmarkStyleProfileIdDraft={bookmarkStyleProfileIdDraft}
-          bookmarkMutationProfileIdDraft={bookmarkMutationProfileIdDraft}
-          bookmarkBusy={bookmarkBusy}
-          bookmarkError={bookmarkError}
-          onBookmarkLabelChange={(event) => setBookmarkLabelDraft(event.target.value)}
-          onBookmarkNoteChange={(event) => setBookmarkNoteDraft(event.target.value)}
-          onBookmarkTagToggle={(tagId) =>
-            setBookmarkTagDraft((current) => (current === tagId ? null : tagId))
-          }
-          onBookmarkStyleProfileChange={(event) =>
-            setBookmarkStyleProfileIdDraft(event.target.value || null)
-          }
-          onBookmarkMutationProfileChange={(event) =>
-            setBookmarkMutationProfileIdDraft(event.target.value || null)
-          }
-          onCaptureCurrentScene={captureCurrentScene}
-          onSaveBookmark={() => void saveReplayBookmark()}
-          onDeleteCurrentBookmark={() => {
+            : null
+        }
+        replaySectionProps={{
+          replayActive,
+          playbackProgress: monitor.playbackProgress,
+          playbackPercent,
+          playbackWindowLabel,
+          isPlaybackPaused: monitor.isPlaybackPaused,
+          playbackEventCount: monitor.playbackEventCount,
+          playbackEventIndex: monitor.playbackEventIndex,
+          replaySessionId,
+          activeReplayBookmark,
+          sortedSessionBookmarks,
+          bookmarkLabelDraft,
+          bookmarkNoteDraft,
+          bookmarkTagDraft,
+          bookmarkStyleProfileIdDraft,
+          bookmarkMutationProfileIdDraft,
+          bookmarkBusy,
+          bookmarkError,
+          replayFeedbackRecommendation,
+          labels: {
+            sceneAlreadyAligned: t.inspect.sceneAlreadyAligned,
+            applyFeedbackMix: t.inspect.applyFeedbackMix,
+          },
+          onStepWindow: (direction) => monitor.stepPlaybackWindow(direction),
+          onTogglePause: () =>
+            monitor.isPlaybackPaused ? monitor.resumePlayback() : monitor.pausePlayback(),
+          onSeekProgress: (progress) => monitor.seekPlaybackProgress(progress),
+          onBookmarkLabelChange: (event) => setBookmarkLabelDraft(event.target.value),
+          onBookmarkNoteChange: (event) => setBookmarkNoteDraft(event.target.value),
+          onBookmarkTagToggle: (tagId) =>
+            setBookmarkTagDraft((current) => (current === tagId ? null : tagId)),
+          onBookmarkStyleProfileChange: (event) =>
+            setBookmarkStyleProfileIdDraft(event.target.value || null),
+          onBookmarkMutationProfileChange: (event) =>
+            setBookmarkMutationProfileIdDraft(event.target.value || null),
+          onCaptureCurrentScene: captureCurrentScene,
+          onSaveBookmark: () => void saveReplayBookmark(),
+          onDeleteCurrentBookmark: () => {
             if (!activeReplayBookmark) {
               return;
             }
             void deleteReplayBookmark(activeReplayBookmark);
-          }}
-          onJumpToBookmark={handleJumpToBookmark}
-          onApplyBookmarkSuggestion={handleApplyBookmarkSuggestion}
-          onDeleteBookmark={(bookmark) => void deleteReplayBookmark(bookmark)}
-        />
-      ) : null}
-
-      {replayActive && replayFeedbackRecommendation ? (
-        <ReplayFeedbackSummaryCard
-          recommendation={replayFeedbackRecommendation}
-          className="audio-path-card--replay top-spaced"
-          actionLabel={
-            replayFeedbackRecommendation.isAligned
-              ? t.inspect.sceneAlreadyAligned
-              : t.inspect.applyFeedbackMix
-          }
-          actionDisabled={replayFeedbackRecommendation.isAligned}
-          onApply={handleApplyReplayFeedbackRecommendation}
-        />
-      ) : null}
-
-      <div className="metric-grid">
-        <div>
-          <span>{t.inspect.mode}</span>
-          <strong>{replayActive ? t.inspect.replaySession : activeAdapterLabel}</strong>
-        </div>
-        <div>
-          <span>Audio</span>
-          <strong>{audioStateLabel}</strong>
-        </div>
-        <div>
-          <span>{t.inspect.styleProfileTitle}</span>
-          <strong>{selectedStyleProfile.label}</strong>
-        </div>
-        <div>
-          <span>{t.inspect.mutationProfileTitle}</span>
-          <strong>{selectedMutationProfile.label}</strong>
-        </div>
-        <div>
-          <span>{t.inspect.cueEngineLabel}</span>
-          <strong>
-            {sampleStatus === "ready"
-              ? scene.sampleSourceCount > 1
-                ? t.inspect.cueEngineBaseSamplePack
-                : t.inspect.cueEngineBaseSample
-              : sampleStatus === "loading"
-                ? t.inspect.cueEngineLoadingSample
-                : t.inspect.cueEngineInternalSynth}
-          </strong>
-        </div>
-        <div>
-          <span>{t.inspect.windowsHeard}</span>
-          <strong>
-            {replayActive && playbackWindowLabel
-              ? playbackWindowLabel
-              : monitor.metrics.windowCount}
-          </strong>
-        </div>
-        <div>
-          <span>{t.inspect.cuesEmitted}</span>
-          <strong>{emittedCueCount}</strong>
-        </div>
-        <div>
-          <span>{t.session.linesProcessed}</span>
-          <strong>{monitor.metrics.processedLines}</strong>
-        </div>
-        <div>
-          <span>{t.inspect.anomaliesHeard}</span>
-          <strong>{monitor.metrics.totalAnomalies}</strong>
-        </div>
-        <div>
-          <span>{t.inspect.beatClock}</span>
-          <strong>
-            {beatClockBpm !== null ? `${beatClockBpm.toFixed(0)} BPM` : t.inspect.free}
-          </strong>
-        </div>
-        <div>
-          <span>{t.inspect.voicesEmitted}</span>
-          <strong>{emittedVoiceCount}</strong>
-        </div>
-        <div>
-          <span>{t.inspect.rhythmPulse}</span>
-          <strong>{beatLooperActive ? t.session.active : t.inspect.off}</strong>
-        </div>
-      </div>
-
-      <div className="monitor-volume-control top-spaced">
-        <label className="monitor-volume-label">
-          <span>{t.inspect.masterVolume}</span>
-          <strong>{Math.round(masterVolume * 100)}%</strong>
-        </label>
-        <input
-          type="range"
-          className="volume-slider"
-          min={0}
-          max={1}
-          step={0.01}
-          value={masterVolume}
-          onChange={(e) => handleSetMasterVolume(Number(e.target.value))}
-          aria-label={t.inspect.masterVolumeAria}
-        />
-        <div className="monitor-volume-actions">
-          <button type="button" className="secondary-action" onClick={handleToggleMute}>
-            {masterVolume <= 0.001 ? t.inspect.unmuteAction : t.inspect.muteAction}
-          </button>
-          <button
-            type="button"
-            className="secondary-action"
-            onClick={() => handleSetMasterVolume(0.2)}
-          >
-            20%
-          </button>
-          <button
-            type="button"
-            className="secondary-action"
-            onClick={() => handleSetMasterVolume(0.4)}
-          >
-            40%
-          </button>
-          <button
-            type="button"
-            className="secondary-action"
-            onClick={() => handleSetMasterVolume(0.6)}
-          >
-            60%
-          </button>
-        </div>
-      </div>
-
-      <div className="audio-path-card top-spaced">
-        <span>{replayActive ? t.inspect.replaySourcePath : t.inspect.liveSourcePath}</span>
-        <strong>{repository.sourcePath}</strong>
-      </div>
-
-      <LiveSonificationScenePanel
-        availableBaseAssets={availableBaseAssets}
-        availableCompositions={availableCompositions}
-        sceneBaseAssetId={sceneBaseAssetId}
-        sceneCompositionId={sceneCompositionId}
-        onSceneBaseAssetIdChange={setSceneBaseAssetId}
-        onSceneCompositionIdChange={setSceneCompositionId}
-        scene={scene}
-      />
-
-      <ComponentRoutingPanel
-        knownComponents={knownComponents}
-        overrides={componentOverrides}
-        liveActive={monitor.session?.repoId === repository.id}
-        onOverrideChange={(component, override) =>
-          setComponentOverrides((current) => {
-            const next = new Map(current);
-            next.set(component, override);
-            return next;
-          })
-        }
-      />
-
-      {lastUpdate ? (
-        <div className="live-waveform-container top-spaced">
-          <div className="panel-header compact">
-            <div>
-              <h2>Live system rhythm</h2>
-              <p className="support-copy">{t.inspect.liveSystemRhythmCopy}</p>
-            </div>
-          </div>
-          <LiveWaveformCanvas
-            analyserRef={analyserRef}
-            active={liveEnabled}
-            accentColor={scene.genreId === "tropical-house" ? "#ef7f45" : "#21b4b8"}
-            isAnomaly={isAnomalyFlash}
-          />
-          <div
-            className={`live-scrolling-wave ${scene.genreId === "tropical-house" ? "tropical-theme" : ""}`}
-          >
-            {recentCues.map((cue, idx) => (
-              <div
-                key={`${cue.id}-${idx}`}
-                className={`live-wave-bar ${cue.routeKey}${cue.accent === "anomaly" ? " is-anomaly" : ""}`}
-                title={`${cue.component} · ${cue.excerpt}`}
-                style={
-                  {
-                    "--bar-height": `${cue.accent === "anomaly" ? Math.max(60, cue.gain * 400) : Math.max(10, cue.gain * 220)}px`,
-                    "--bar-opacity": Math.max(0.3, 1 - idx / MAX_RECENT_CUES),
-                  } as any
-                }
-              />
-            ))}
-            {recentCues.length === 0 && (
-              <div className="live-wave-placeholder">{t.inspect.awaitingSystemPulse}</div>
-            )}
-          </div>
-          <div className="monitor-recent-horizontal-tail">
-            {recentCues.map((cue, idx) => (
-              <div
-                key={`tail-${cue.id}-${idx}`}
-                className={`monitor-horizontal-tail-cell is-${cue.routeKey}`}
-                style={
-                  {
-                    "--cell-opacity": Math.max(0.3, 1 - idx / MAX_RECENT_CUES),
-                  } as any
-                }
-              >
-                {cue.logLine ? (
-                  <div className="monitor-horizontal-tail-text">
-                    <span className="tail-component">[{cue.component}]</span> {cue.logLine}
-                  </div>
-                ) : (
-                  <div className="monitor-horizontal-tail-empty">{t.inspect.idleUpper}</div>
-                )}
-              </div>
-            ))}
-          </div>
-          <div className="live-wave-anomaly-strip">
-            <div className="monitor-parsed-lines-head">
-              <span>{t.inspect.waveAnomalyMarkers}</span>
-              <strong>{waveAnomalyMarkers.length}/4</strong>
-            </div>
-            {waveAnomalyMarkers.length > 0 ? (
-              <div className="live-wave-anomaly-chip-list">
-                {waveAnomalyMarkers.map((marker, index) => (
-                  <div key={`${marker.eventIndex}-${index}`} className="live-wave-anomaly-chip">
-                    <span className="live-wave-anomaly-chip-level">
-                      {marker.level.toUpperCase()}
-                    </span>
-                    <span className="live-wave-anomaly-chip-component">{marker.component}</span>
-                    <code className="live-wave-anomaly-chip-excerpt">{marker.excerpt}</code>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="monitor-empty-hint">{t.inspect.noAnomalyMarkersLatestWindows}</p>
-            )}
-          </div>
-          <div className="audio-path-card">
-            <span>{t.inspect.waveSourceStream}</span>
-            <strong>{liveSourceLabel}</strong>
-          </div>
-          <div className="monitor-lines-under-wave">
-            <div className="monitor-parsed-lines">
-              <div className="monitor-parsed-lines-head">
-                <span>{t.inspect.streamTailSync}</span>
-                <strong>
-                  {recentSyncTailRows.length}/{MAX_SYNC_TAIL_LINES} lines
-                </strong>
-              </div>
-              <div
-                ref={syncTailListRef}
-                className="monitor-parsed-lines-list monitor-sync-tail-list"
-                role="list"
-                aria-label={t.inspect.syncTailAria}
-              >
-                {recentSyncTailRows.length > 0 ? (
-                  recentSyncTailRows.map((row, index) => (
-                    <div
-                      key={row.id}
-                      className={`monitor-parsed-line is-${row.tone}${row.windowId === activeTailWindowId ? " is-current-window" : ""}`}
-                      role="listitem"
-                    >
-                      <span className="monitor-parsed-line-index">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      <span className="monitor-parsed-line-tone">{row.level.toUpperCase()}</span>
-                      <code className="monitor-parsed-line-code">
-                        [{row.component}] {row.line}
-                        {`\n`}
-                        <span className="monitor-anomaly-source-path">{row.sourcePath}</span>
-                      </code>
-                    </div>
-                  ))
-                ) : (
-                  <div className="monitor-parsed-line is-empty" role="listitem">
-                    <span className="monitor-parsed-line-index">--</span>
-                    <span className="monitor-parsed-line-tone">{t.inspect.idleUpper}</span>
-                    <code className="monitor-parsed-line-code">
-                      {t.inspect.waitingSynchronizedLines}
-                    </code>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="monitor-anomaly-source-lines">
-              <div className="monitor-parsed-lines-head">
-                <span>{t.inspect.anomalySourceLines}</span>
-                <strong>
-                  {anomalySourceRows.length}/{MAX_ANOMALY_SOURCE_LINES}
-                </strong>
-              </div>
-              {anomalySourceRows.length > 0 ? (
-                <div
-                  className="monitor-parsed-lines-list"
-                  role="list"
-                  aria-label={t.inspect.anomalySourceAria}
-                >
-                  {anomalySourceRows.map((row, index) => (
-                    <div
-                      key={`${lastUpdate.fromOffset}-${index}-${row.level}`}
-                      className={`monitor-parsed-line is-${row.tone}`}
-                      role="listitem"
-                    >
-                      <span className="monitor-parsed-line-index">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      <span className="monitor-parsed-line-tone">{row.level.toUpperCase()}</span>
-                      <code className="monitor-parsed-line-code">
-                        [{row.component}] {row.line}
-                        {`\n`}
-                        <span className="monitor-anomaly-source-path">{row.sourcePath}</span>
-                      </code>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="monitor-parsed-line is-empty">
-                  <span className="monitor-parsed-line-index">--</span>
-                  <span className="monitor-parsed-line-tone">{t.inspect.idleUpper}</span>
-                  <code className="monitor-parsed-line-code">
-                    {t.inspect.noAnomalyProducingLine}
-                  </code>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {lastUpdate ? (
-        <>
-          <div className="render-master-card top-spaced">
-            <span>{t.inspect.currentWindowSummary}</span>
-            <strong>{lastUpdate.summary}</strong>
-          </div>
-
-          <div className="metric-grid top-spaced">
-            <div>
-              <span>{t.inspect.suggestedBpm}</span>
-              <strong>
-                {typeof lastUpdate.suggestedBpm === "number"
-                  ? lastUpdate.suggestedBpm.toFixed(0)
-                  : (repository.suggestedBpm?.toFixed(0) ?? t.inspect.pending)}
-              </strong>
-            </div>
-            <div>
-              <span>{t.session.confidence}</span>
-              <strong>{formatConfidence(lastUpdate.confidence)}</strong>
-            </div>
-            <div>
-              <span>{t.session.dominantLevel}</span>
-              <strong>{lastUpdate.dominantLevel}</strong>
-            </div>
-            <div>
-              <span>{t.inspect.chunkLines}</span>
-              <strong>{lastUpdate.lineCount}</strong>
-            </div>
-            <div>
-              <span>{t.inspect.errors}</span>
-              <strong>{levelCount(currentLevelCounts, "error")}</strong>
-            </div>
-            <div>
-              <span>{t.inspect.warnings}</span>
-              <strong>{levelCount(currentLevelCounts, "warn")}</strong>
-            </div>
-            <div>
-              <span>{t.inspect.info}</span>
-              <strong>{levelCount(currentLevelCounts, "info")}</strong>
-            </div>
-            <div>
-              <span>{t.inspect.tailWindow}</span>
-              <strong>
-                {formatCursor(lastUpdate.fromOffset)} → {formatCursor(lastUpdate.toOffset)}
-              </strong>
-            </div>
-          </div>
-
-          {lastUpdate.topComponents.length > 0 ? (
-            <>
-              <div className="panel-header compact top-spaced">
-                <div>
-                  <h2>{t.inspect.activeComponentsTitle}</h2>
-                  <p className="support-copy">{t.inspect.activeComponentsCopy}</p>
-                </div>
-              </div>
-              <div className="pill-strip">
-                {lastUpdate.topComponents.map((component) => (
-                  <span key={`${component.component}-${component.count}`}>
-                    {component.component} · {component.count}
-                  </span>
-                ))}
-              </div>
-            </>
-          ) : null}
-
-          <LiveMonitorMutationTracePanel
-            replayActive={replayActive}
-            playbackEventIndex={monitor.playbackEventIndex}
-            traceWaveformTrack={traceWaveformTrack}
-            traceWaveformExplanations={traceWaveformExplanations}
-            traceWaveformCues={traceWaveformCues}
-            traceWaveformCurrentTime={
-              selectedTraceExplanation?.trackSecond ?? backgroundPlayheadSecond
-            }
-            recentExplanations={recentExplanations}
-            selectedExplanationId={selectedExplanationId}
-            onSelectExplanation={(explanation) => {
-              if (
-                replayActive &&
-                explanation.replayWindowIndex !== null &&
-                monitor.playbackEventCount !== null
-              ) {
-                monitor.pausePlayback();
-                monitor.seekPlaybackProgress(
-                  resolveReplayProgressForWindow(
-                    explanation.replayWindowIndex,
-                    monitor.playbackEventCount,
-                  ),
-                );
+          },
+          onJumpToBookmark: handleJumpToBookmark,
+          onApplyBookmarkSuggestion: handleApplyBookmarkSuggestion,
+          onDeleteBookmark: (bookmark) => void deleteReplayBookmark(bookmark),
+          onApplyReplayFeedbackRecommendation: handleApplyReplayFeedbackRecommendation,
+        }}
+        operationsPanelProps={{
+          metricGridItems,
+          masterVolume,
+          replayActive,
+          repositorySourcePath: repository.sourcePath,
+          labels: {
+            masterVolume: t.inspect.masterVolume,
+            masterVolumeAria: t.inspect.masterVolumeAria,
+            muteAction: t.inspect.muteAction,
+            unmuteAction: t.inspect.unmuteAction,
+            replaySourcePath: t.inspect.replaySourcePath,
+            liveSourcePath: t.inspect.liveSourcePath,
+          },
+          onSetMasterVolume: handleSetMasterVolume,
+          onToggleMute: handleToggleMute,
+          scenePanel: (
+            <LiveSonificationScenePanel
+              availableBaseAssets={availableBaseAssets}
+              availableCompositions={availableCompositions}
+              sceneBaseAssetId={sceneBaseAssetId}
+              sceneCompositionId={sceneCompositionId}
+              onSceneBaseAssetIdChange={setSceneBaseAssetId}
+              onSceneCompositionIdChange={setSceneCompositionId}
+              scene={scene}
+            />
+          ),
+          routingPanel: (
+            <ComponentRoutingPanel
+              knownComponents={knownComponents}
+              overrides={componentOverrides}
+              liveActive={monitor.session?.repoId === repository.id}
+              onOverrideChange={(component, override) =>
+                setComponentOverrides((current) => {
+                  const next = new Map(current);
+                  next.set(component, override);
+                  return next;
+                })
               }
-              setSelectedExplanationId(explanation.id);
-              if (typeof explanation.trackSecond === "number") {
-                setBackgroundPlayheadSecond(explanation.trackSecond);
-              }
+            />
+          ),
+        }}
+        activeDeckContent={
+          <LiveLogMonitorDeckSection
+            hasUpdate={Boolean(lastUpdate)}
+            emptyStateLabel={t.inspect.startLiveTailHint}
+            activityPanelProps={{
+              waveform: (
+                <LiveWaveformCanvas
+                  analyserRef={analyserRef}
+                  active={liveEnabled}
+                  accentColor={scene.genreId === "tropical-house" ? "#ef7f45" : "#21b4b8"}
+                  isAnomaly={isAnomalyFlash}
+                />
+              ),
+              recentCues,
+              waveAnomalyMarkers,
+              liveSourceLabel,
+              recentSyncTailRows,
+              anomalySourceRows,
+              activeTailWindowId,
+              syncTailListRef,
+              isTropicalTheme: scene.genreId === "tropical-house",
+              maxRecentCues: MAX_RECENT_CUES,
+              maxSyncTailLines: MAX_SYNC_TAIL_LINES,
+              maxAnomalySourceLines: MAX_ANOMALY_SOURCE_LINES,
+              labels: {
+                liveSystemRhythm: t.inspect.liveSystemRhythm,
+                liveSystemRhythmCopy: t.inspect.liveSystemRhythmCopy,
+                awaitingSystemPulse: t.inspect.awaitingSystemPulse,
+                idleUpper: t.inspect.idleUpper,
+                waveAnomalyMarkers: t.inspect.waveAnomalyMarkers,
+                noAnomalyMarkersLatestWindows: t.inspect.noAnomalyMarkersLatestWindows,
+                waveSourceStream: t.inspect.waveSourceStream,
+                streamTailSync: t.inspect.streamTailSync,
+                syncTailAria: t.inspect.syncTailAria,
+                waitingSynchronizedLines: t.inspect.waitingSynchronizedLines,
+                anomalySourceLines: t.inspect.anomalySourceLines,
+                anomalySourceAria: t.inspect.anomalySourceAria,
+                noAnomalyProducingLine: t.inspect.noAnomalyProducingLine,
+              },
+            }}
+            windowSummaryLabel={t.inspect.currentWindowSummary}
+            windowSummary={lastUpdate?.summary ?? ""}
+            windowMetrics={windowMetricGridItems}
+            activeComponentsTitle={t.inspect.activeComponentsTitle}
+            activeComponentsCopy={t.inspect.activeComponentsCopy}
+            activeComponents={lastUpdate?.topComponents ?? []}
+            tracePanelProps={{
+              replayActive,
+              playbackEventIndex: monitor.playbackEventIndex,
+              traceWaveformTrack,
+              traceWaveformExplanations,
+              traceWaveformCues,
+              traceWaveformCurrentTime:
+                selectedTraceExplanation?.trackSecond ?? backgroundPlayheadSecond,
+              recentExplanations,
+              selectedExplanationId,
+              onSelectExplanation: (explanation) => {
+                const selectionState = resolveTraceExplanationSelection({
+                  replayActive,
+                  playbackEventCount: monitor.playbackEventCount,
+                  explanation,
+                });
+
+                if (selectionState.shouldPausePlayback) {
+                  monitor.pausePlayback();
+                }
+                if (selectionState.nextPlaybackProgress !== null) {
+                  monitor.seekPlaybackProgress(selectionState.nextPlaybackProgress);
+                }
+                setSelectedExplanationId(selectionState.nextSelectedExplanationId);
+                if (selectionState.nextBackgroundPlayheadSecond !== null) {
+                  setBackgroundPlayheadSecond(selectionState.nextBackgroundPlayheadSecond);
+                }
+              },
+            }}
+            performanceSummaryProps={{
+              recentVoices,
+              recentCues,
+              recentMarkers,
+              recentWarnings,
+              error,
+              labels: {
+                arrangementLayers: t.inspect.arrangementLayers,
+                arrangementLayersCopy: t.inspect.arrangementLayersCopy,
+                noArrangementVoices: t.inspect.noArrangementVoices,
+                padSequencerTitle: t.inspect.padSequencerTitle,
+                padSequencerCopy: t.inspect.padSequencerCopy,
+                recentCuesTitle: t.inspect.recentCuesTitle,
+                recentCuesCopy: t.inspect.recentCuesCopy,
+                noLiveCues: t.inspect.noLiveCues,
+                recentAnomalyMarkersTitle: t.inspect.recentAnomalyMarkersTitle,
+                recentAnomalyMarkersCopy: t.inspect.recentAnomalyMarkersCopy,
+                eventLabel: t.inspect.eventLabel,
+                noAnomalyMarkersSession: t.inspect.noAnomalyMarkersSession,
+                monitorNotesTitle: t.inspect.monitorNotesTitle,
+                monitorNotesCopy: t.inspect.monitorNotesCopy,
+                runtimeError: t.inspect.runtimeError,
+                monitorNoteLabel: t.inspect.monitorNoteLabel,
+              },
+            }}
+            sequencerPanelProps={{
+              bpm: beatClockBpm ?? repository.suggestedBpm ?? 120,
+              recentVoices,
+              onStepFire: handleSequencerStepFire,
             }}
           />
-        </>
-      ) : (
-        <div className="empty-state top-spaced">
-          <p>{t.inspect.startLiveTailHint}</p>
-        </div>
-      )}
-
-      <div className="panel-header compact top-spaced">
-        <div>
-          <h2>{t.inspect.arrangementLayers}</h2>
-          <p className="support-copy">{t.inspect.arrangementLayersCopy}</p>
-        </div>
-      </div>
-
-      {recentVoices.length > 0 ? (
-        <div className="arrangement-lane-grid">
-          {(["foundation", "motion", "accent"] as const).map((track) => {
-            const trackVoices = recentVoices.filter((v) => v.track === track);
-            return (
-              <div key={track} className={`arrangement-lane arrangement-lane--${track}`}>
-                <span className="arrangement-lane-label">{track}</span>
-                <div className="arrangement-lane-chips">
-                  {trackVoices.map((v, i) => (
-                    <span key={i} className="arrangement-lane-chip">
-                      {v.cue.component} · {v.cue.routeLabel}
-                    </span>
-                  ))}
-                  {trackVoices.length === 0 && <span className="arrangement-lane-empty">—</span>}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="empty-state">
-          <p>{t.inspect.noArrangementVoices}</p>
-        </div>
-      )}
-
-      <div className="panel-header compact top-spaced">
-        <div>
-          <h2>{t.inspect.padSequencerTitle}</h2>
-          <p className="support-copy">{t.inspect.padSequencerCopy}</p>
-        </div>
-      </div>
-
-      <PadSequencerPanel
-        bpm={beatClockBpm ?? repository.suggestedBpm ?? 120}
-        recentVoices={recentVoices}
-        onStepFire={handleSequencerStepFire}
+        }
       />
-
-      <div className="panel-header compact top-spaced">
-        <div>
-          <h2>{t.inspect.recentCuesTitle}</h2>
-          <p className="support-copy">{t.inspect.recentCuesCopy}</p>
-        </div>
-      </div>
-
-      {recentCues.length > 0 ? (
-        <div className="cue-pill-strip">
-          {recentCues.map((cue) => (
-            <article key={cue.id} className="cue-pill">
-              <span>
-                {cue.level} · {cue.waveform} · {cue.routeLabel}
-              </span>
-              <strong>{cue.component}</strong>
-              <small>
-                {formatFrequency(cue.noteHz)} · {cue.durationMs} ms
-              </small>
-              <small>
-                {cue.stemLabel} · {cue.sectionLabel}
-              </small>
-            </article>
-          ))}
-        </div>
-      ) : (
-        <div className="empty-state">
-          <p>{t.inspect.noLiveCues}</p>
-        </div>
-      )}
-
-      <div className="panel-header compact top-spaced">
-        <div>
-          <h2>{t.inspect.recentAnomalyMarkersTitle}</h2>
-          <p className="support-copy">{t.inspect.recentAnomalyMarkersCopy}</p>
-        </div>
-      </div>
-
-      {recentMarkers.length > 0 ? (
-        <ul className="stack-list">
-          {recentMarkers.map((marker) => (
-            <li key={`${marker.eventIndex}-${marker.component}-${marker.level}`}>
-              <strong>
-                {t.inspect.eventLabel.replace("{index}", String(marker.eventIndex))} ·{" "}
-                {marker.level} · {marker.component}
-              </strong>
-              <small>{marker.excerpt}</small>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="empty-state">
-          <p>{t.inspect.noAnomalyMarkersSession}</p>
-        </div>
-      )}
-
-      {recentWarnings.length > 0 || error ? (
-        <>
-          <div className="panel-header compact top-spaced">
-            <div>
-              <h2>{t.inspect.monitorNotesTitle}</h2>
-              <p className="support-copy">{t.inspect.monitorNotesCopy}</p>
-            </div>
-          </div>
-          <ul className="stack-list live-log-warning-list">
-            {error ? (
-              <li key="live-log-error">
-                <strong>{t.inspect.runtimeError}</strong>
-                <small>{error}</small>
-              </li>
-            ) : null}
-            {recentWarnings.map((warning) => (
-              <li key={warning}>
-                <strong>{t.inspect.monitorNoteLabel}</strong>
-                <small>{warning}</small>
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : null}
     </section>
   );
 }
