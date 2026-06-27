@@ -18,3 +18,11 @@ export function normalizeTrackId(sourceType: string, id: string): string {
 export function normalizeIsoTimestamp(): string {
   return new Date().toISOString();
 }
+
+/**
+ * Convert ISO timestamp to display date
+ */
+export function isoToDisplayDate(isoString: string): string {
+  const d = new Date(isoString);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
