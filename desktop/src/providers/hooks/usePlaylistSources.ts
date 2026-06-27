@@ -5,8 +5,8 @@ import type {
   RemoteTrackMetadata,
   ProviderError,
 } from "../runtime/types";
-import { listSpotifyPlaylists, listTracksInSpotifyPlaylist } from "../runtime/spotify";
-import { listSoundCloudPlaylists, listTracksInSoundCloudPlaylist } from "../runtime/soundcloud";
+import { listSpotifyPlaylists } from "../runtime/spotify";
+import { listSoundCloudPlaylists } from "../runtime/soundcloud";
 
 export interface UsePlaylistSourcesReturn {
   sources: PlaylistSourceAuth[];
@@ -26,7 +26,7 @@ export interface UsePlaylistSourcesReturn {
 export function usePlaylistSources(): UsePlaylistSourcesReturn {
   const [sources, setSources] = useState<PlaylistSourceAuth[]>([]);
   const [playlists, setPlaylists] = useState<PlaylistMetadata[]>([]);
-  const [tracks, setTracks] = useState<Map<string, RemoteTrackMetadata[]>>(new Map());
+  const [tracks] = useState<Map<string, RemoteTrackMetadata[]>>(new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ProviderError | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
