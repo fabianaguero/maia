@@ -5,9 +5,12 @@ Use this before switching the repository to public visibility on GitHub.
 ## Required Before Public Release
 
 - Choose and add a `LICENSE`.
+- Add a real `.github/CODEOWNERS` file with actual maintainer handles before opening the repository to outside contributors.
 - Verify the public repository name, description, and topics.
 - Review `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, and `SECURITY.md`.
+- Review `SUPPORT.md` and `MAINTAINERS.md`.
 - Confirm that `docs/open-source-maintainer-guide.md` reflects the active runtime.
+- Confirm that `docs/frontend-architecture.md` reflects the mounted desktop shell.
 - Review `docs/demo-assets-and-fixtures.md` and decide which demo artifacts should stay public.
 
 ## Architecture Sanity Check

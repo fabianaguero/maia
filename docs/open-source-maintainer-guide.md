@@ -24,6 +24,8 @@ Use these paths first:
 - `contracts/`: request/response schemas shared across runtimes
 - `database/schema.sql`: persistent storage model
 - `docs/architecture.md`: product-level architecture narrative
+- `docs/frontend-architecture.md`: active frontend module map and monitor startup flow
+- `docs/testing-and-quality.md`: current quality gates, coverage flow, and runtime testing priorities
 - `docs/sdd.md`: lightweight functional spec and roadmap history
 
 Non-product path:
@@ -231,6 +233,18 @@ These are the strongest parts of the design today:
 - Good separation between persistent library state and transient live monitoring state
 - Sensible use of Rust for OS-facing concerns and Python for analysis heuristics
 - Strong product identity: the audio layer modifies a known track instead of producing generic alerts
+
+## Quality gates contributors should respect
+
+Before merging runtime-affecting changes, contributors should validate:
+
+- desktop typecheck and lint
+- desktop coverage run
+- analyzer tests with dev dependencies installed
+- translation integrity when touching visible copy
+
+The current quality workflow and local commands are documented in
+`docs/testing-and-quality.md`.
 
 ## Architectural drift and contributor caveats
 

@@ -1,9 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { en } from "../../src/i18n/en";
 import {
   formatBpmLabel,
   formatDominantLevelLabel,
+  formatMonitorShortUptime,
   getStreamAdapterCode,
+  getMonitorAnomaliesInlineLabel,
+  getMonitorLiveStatusLabel,
   resolveSessionStatusLabel,
 } from "../../src/utils/monitorLabels";
 
@@ -36,7 +39,21 @@ describe("monitorLabels", () => {
   it("humanizes dominant level labels", () => {
     expect(formatDominantLevelLabel("error_spike")).toBe("Error Spike");
     expect(formatDominantLevelLabel(" WARN-BURST ")).toBe("Warn Burst");
+    expect(formatDominantLevelLabel("-")).toBe("—");
     expect(formatDominantLevelLabel("")).toBe("—");
     expect(formatDominantLevelLabel("   ", "Idle")).toBe("Idle");
+  });
+
+  it("formats short monitor uptime defensively", () => {
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(120_000);
+    expect(formatMonitorShortUptime(118_000)).toBe("2s");
+    expect(formatMonitorShortUptime(10_000)).toBe("1m 50s");
+    expect(formatMonitorShortUptime(null)).toBe("00:00");
+    nowSpy.mockRestore();
+  });
+
+  it("exposes shared monitor status labels", () => {
+    expect(getMonitorLiveStatusLabel(en)).toBe(en.simpleMode.monitor.systemActive);
+    expect(getMonitorAnomaliesInlineLabel(en)).toBe("anomalies");
   });
 });

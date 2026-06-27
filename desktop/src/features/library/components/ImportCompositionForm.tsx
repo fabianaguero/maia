@@ -1,6 +1,7 @@
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 
+import { useT } from "../../../i18n/I18nContext";
 import type {
   BaseAssetRecord,
   BaseTrackPlaylist,
@@ -35,6 +36,7 @@ export function ImportCompositionForm({
   repositories,
   onImportComposition,
 }: ImportCompositionFormProps) {
+  const t = useT();
   const [baseAssetId, setBaseAssetId] = useState(deriveDefaultBaseAssetId(baseAssets));
   const [baseMode, setBaseMode] = useState<CompositionBaseMode>(
     tracks.length > 0 ? "track" : "playlist",
@@ -93,17 +95,17 @@ export function ImportCompositionForm({
     event.preventDefault();
 
     if (!baseAssetId.trim()) {
-      setError("Select a base asset before composing.");
+      setError(t.compose.forms.baseAssetRequiredError);
       return;
     }
 
     if (baseMode === "track" && !trackId.trim()) {
-      setError("Select a track as the musical base.");
+      setError(t.compose.forms.trackRequiredError);
       return;
     }
 
     if (baseMode === "playlist" && !playlistId.trim()) {
-      setError("Select a playlist as the musical base.");
+      setError(t.compose.forms.playlistRequiredError);
       return;
     }
 
@@ -141,16 +143,13 @@ export function ImportCompositionForm({
     <form className="import-form" onSubmit={(event) => void handleSubmit(event)}>
       <div className="panel-header compact">
         <div>
-          <h2>Create composition result</h2>
-          <p className="support-copy">
-            Start from one deck track or a saved base playlist, then let code or logs reshape the
-            arrangement while Maia keeps the groove DJ-readable.
-          </p>
+          <h2>{t.compose.forms.title}</h2>
+          <p className="support-copy">{t.compose.forms.description}</p>
         </div>
       </div>
 
       <label className="field">
-        <span>Base asset</span>
+        <span>{t.compose.forms.baseAsset}</span>
         <select
           value={baseAssetId}
           onChange={(event) => setBaseAssetId(event.target.value)}
@@ -169,7 +168,7 @@ export function ImportCompositionForm({
           <strong>{selectedBaseAsset.title}</strong>
           <p>
             {selectedBaseAsset.categoryLabel} · {selectedBaseAsset.entryCount} entries ·{" "}
-            {selectedBaseAsset.reusable ? "Reusable" : "Single-use"}
+            {selectedBaseAsset.reusable ? t.compose.forms.reusable : t.compose.forms.singleUse}
           </p>
         </div>
       ) : null}
@@ -181,7 +180,7 @@ export function ImportCompositionForm({
           onClick={() => setBaseMode("track")}
           disabled={busy || tracks.length === 0}
         >
-          Base track
+          {t.compose.forms.baseTrack}
         </button>
         <button
           type="button"
@@ -189,23 +188,23 @@ export function ImportCompositionForm({
           onClick={() => setBaseMode("playlist")}
           disabled={busy || playlists.length === 0}
         >
-          Base playlist
+          {t.compose.forms.basePlaylist}
         </button>
       </div>
 
       {baseMode === "track" ? (
         <>
           <label className="field">
-            <span>Track (musical base) *</span>
+            <span>{t.compose.forms.trackLabel}</span>
             <select
               value={trackId}
               onChange={(event) => setTrackId(event.target.value)}
               disabled={busy || tracks.length === 0}
             >
-              <option value="">— Select a track —</option>
+              <option value="">{t.compose.forms.trackPlaceholder}</option>
               {tracks.map((track) => (
                 <option key={track.id} value={track.id}>
-                  {getTrackTitle(track)} · {track.analysis.bpm?.toFixed(0) ?? "No BPM"} BPM
+                  {getTrackTitle(track)} · {track.analysis.bpm?.toFixed(0) ?? t.library.noBpm} BPM
                 </option>
               ))}
             </select>
@@ -214,23 +213,23 @@ export function ImportCompositionForm({
           {selectedTrack ? (
             <div className="style-preview">
               <strong>{selectedTrack.tags.title}</strong>
-              <p>Musical base at {selectedTrack.analysis.bpm?.toFixed(0) ?? "?"} BPM</p>
+              <p>{t.compose.forms.trackPreview.replace("{bpm}", selectedTrack.analysis.bpm?.toFixed(0) ?? "?")}</p>
             </div>
           ) : null}
         </>
       ) : (
         <>
           <label className="field">
-            <span>Playlist (musical base) *</span>
+            <span>{t.compose.forms.playlistLabel}</span>
             <select
               value={playlistId}
               onChange={(event) => setPlaylistId(event.target.value)}
               disabled={busy || playlists.length === 0}
             >
-              <option value="">— Select a playlist —</option>
+              <option value="">{t.compose.forms.playlistPlaceholder}</option>
               {playlists.map((playlist) => (
                 <option key={playlist.id} value={playlist.id}>
-                  {playlist.name} · {playlist.trackIds.length} tracks
+                  {playlist.name} · {playlist.trackIds.length} {t.compose.forms.tracks}
                 </option>
               ))}
             </select>
@@ -240,7 +239,7 @@ export function ImportCompositionForm({
             <div className="style-preview">
               <strong>{selectedPlaylist.name}</strong>
               <p>
-                {selectedPlaylist.trackIds.length} tracks · Median BPM{" "}
+                {selectedPlaylist.trackIds.length} {t.compose.forms.tracks} · {t.compose.forms.medianBpm}{" "}
                 {selectedPlaylistBpm?.toFixed(0) ?? "?"}
               </p>
               <p>{summarizePlaylistTracks(selectedPlaylist, tracks)}</p>
@@ -250,16 +249,16 @@ export function ImportCompositionForm({
       )}
 
       <label className="field">
-        <span>Code/Log (structure source) - optional</span>
+        <span>{t.compose.forms.structureLabel}</span>
         <select
           value={structureId}
           onChange={(event) => setStructureId(event.target.value)}
           disabled={busy || repositories.length === 0}
         >
-          <option value="">— None (use track BPM only) —</option>
+          <option value="">{t.compose.forms.structureNone}</option>
           {repositories.map((repository) => (
             <option key={repository.id} value={repository.id}>
-              {repository.title} · {repository.suggestedBpm?.toFixed(0) ?? "No BPM"} BPM
+              {repository.title} · {repository.suggestedBpm?.toFixed(0) ?? t.library.noBpm} BPM
             </option>
           ))}
         </select>
@@ -269,26 +268,24 @@ export function ImportCompositionForm({
         <div className="style-preview">
           <strong>{selectedStructure.title}</strong>
           <p>
-            Structure source at {selectedStructure.suggestedBpm?.toFixed(0) ?? "?"} BPM (anomalies
-            will drive variations)
+            {t.compose.forms.structurePreview.replace(
+              "{bpm}",
+              selectedStructure.suggestedBpm?.toFixed(0) ?? "?",
+            )}
           </p>
         </div>
       ) : null}
 
       <label className="field">
-        <span>Composition label</span>
+        <span>{t.compose.forms.compositionLabel}</span>
         <input
           value={label}
           onChange={(event) => setLabel(event.target.value)}
-          placeholder="Peak-hour with error motifs"
+          placeholder={t.compose.forms.compositionLabelPlaceholder}
         />
       </label>
 
-      <p className="field-hint">
-        Composition results are arrangement plans with preview artifacts, phrase sections, cue
-        points, and a managed internal `preview.wav`. The chosen base track or playlist provides the
-        groove frame, and anomalies from the code/log source modulate the arrangement.
-      </p>
+      <p className="field-hint">{t.compose.forms.hint}</p>
 
       {error ? <p className="inline-error">{error}</p> : null}
 
@@ -302,10 +299,10 @@ export function ImportCompositionForm({
         >
           {busy ? (
             <>
-              <span className="spin-ring" aria-hidden="true" /> Composing...
+              <span className="spin-ring" aria-hidden="true" /> {t.compose.forms.composing}
             </>
           ) : (
-            "Create composition"
+            t.compose.forms.createComposition
           )}
         </button>
       </div>

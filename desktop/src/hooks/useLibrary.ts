@@ -28,24 +28,26 @@ import type {
   UpdateTrackPerformanceInput,
   UpdateTrackSourceInput,
 } from "../types/library";
-
-function toMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  if (typeof error === "string" && error.trim()) {
-    return error;
-  }
-
-  return "Unexpected library failure.";
-}
-
-function sortTracks(tracks: LibraryTrack[]): LibraryTrack[] {
-  return [...tracks].sort((left, right) =>
-    right.analysis.importedAt.localeCompare(left.analysis.importedAt),
-  );
-}
+import {
+  appendImportedTrack,
+  appendSavedPlaylist,
+  applyAnalyzedTrackMetadata,
+  clearDeletedPlaylistSelection,
+  clearDeletedTrackSelection,
+  removeDeletedPlaylist,
+  removeDeletedTrack,
+  removeTrackFromPlaylists,
+  replaceRelinkedTracks,
+  replaceTrack,
+  resolvePreferredRelinkSelection,
+  resolveReanalyzeTrackInput,
+  resolveSelectedPlaylistId,
+  resolveSelectedTrackId,
+  shouldAnalyzeImportedTrack,
+  sortPlaylistsByUpdatedAt,
+  sortTracksByImportedAt,
+  toLibraryErrorMessage,
+} from "./libraryRuntime";
 
 export function useLibrary() {
   const [tracks, setTracks] = useState<LibraryTrack[]>([]);
@@ -68,25 +70,14 @@ export function useLibrary() {
         }
 
         startTransition(() => {
-          const sorted = sortTracks(nextTracks);
+          const sorted = sortTracksByImportedAt(nextTracks);
+          const sortedPlaylists = sortPlaylistsByUpdatedAt(nextPlaylists);
           setTracks(sorted);
-          setPlaylists(
-            [...nextPlaylists].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+          setPlaylists(sortedPlaylists);
+          setSelectedTrackId((current) => resolveSelectedTrackId(current, sorted));
+          setSelectedPlaylistId((current) =>
+            resolveSelectedPlaylistId(current, sortedPlaylists),
           );
-          setSelectedTrackId((current) => {
-            if (current && sorted.some((track) => track.id === current)) {
-              return current;
-            }
-
-            return sorted[0]?.id ?? null;
-          });
-          setSelectedPlaylistId((current) => {
-            if (current && nextPlaylists.some((playlist) => playlist.id === current)) {
-              return current;
-            }
-
-            return nextPlaylists[0]?.id ?? null;
-          });
           setError(null);
           setLoading(false);
         });
@@ -96,7 +87,7 @@ export function useLibrary() {
         }
 
         startTransition(() => {
-          setError(toMessage(nextError));
+          setError(toLibraryErrorMessage(nextError));
           setLoading(false);
         });
       }
@@ -116,15 +107,13 @@ export function useLibrary() {
       const nextTrack = await importTrack(input);
 
       startTransition(() => {
-        setTracks((current) =>
-          sortTracks([nextTrack, ...current.filter((track) => track.id !== nextTrack.id)]),
-        );
+        setTracks((current) => appendImportedTrack(current, nextTrack));
         setSelectedTrackId(nextTrack.id);
         setError(null);
       });
 
       // Start background analysis without blocking or error handling
-      if (nextTrack.analysis.analyzerStatus === "pending") {
+      if (shouldAnalyzeImportedTrack(nextTrack)) {
         analyzeTrackBackground(nextTrack).catch((err) => {
           console.debug("Background analysis error (non-blocking):", err);
         });
@@ -133,7 +122,7 @@ export function useLibrary() {
       return nextTrack;
     } catch (nextError) {
       startTransition(() => {
-        setError(toMessage(nextError));
+        setError(toLibraryErrorMessage(nextError));
       });
       return null;
     } finally {
@@ -151,30 +140,7 @@ export function useLibrary() {
         // Just update metadata, don't change analyzerStatus
         // Status change requires re-import from backend to persist to DB
         startTransition(() => {
-          setTracks((current) =>
-            sortTracks(
-              current.map((t) =>
-                t.id === track.id
-                  ? {
-                      ...t,
-                      analysis: {
-                        ...t.analysis,
-                        bpm: analyzed.suggestedBpm ?? t.analysis.bpm,
-                        bpmConfidence: analyzed.confidence ?? t.analysis.bpmConfidence,
-                        waveformBins: analyzed.artifacts?.waveformBins ?? t.analysis.waveformBins,
-                        beatGrid: analyzed.artifacts?.beatGrid ?? t.analysis.beatGrid,
-                        bpmCurve: analyzed.artifacts?.bpmCurve ?? t.analysis.bpmCurve,
-                      },
-                      bpm: analyzed.suggestedBpm ?? t.analysis.bpm,
-                      bpmConfidence: analyzed.confidence ?? t.analysis.bpmConfidence,
-                      waveformBins: analyzed.artifacts?.waveformBins ?? t.analysis.waveformBins,
-                      beatGrid: analyzed.artifacts?.beatGrid ?? t.analysis.beatGrid,
-                      bpmCurve: analyzed.artifacts?.bpmCurve ?? t.analysis.bpmCurve,
-                    }
-                  : t,
-              ),
-            ),
-          );
+          setTracks((current) => applyAnalyzedTrackMetadata(current, track.id, analyzed));
         });
       }
     } catch (err) {
@@ -196,24 +162,17 @@ export function useLibrary() {
         throw new Error(`Track file not found: ${track.file.sourcePath}`);
       }
 
-      // Re-analyze using the same source path
-      const input: ImportTrackInput = {
-        title: track.tags.title,
-        sourcePath: track.file.sourcePath,
-        musicStyleId: track.tags.musicStyleId,
-      };
-
-      const nextTrack = await importTrack(input);
+      const nextTrack = await importTrack(resolveReanalyzeTrackInput(track));
 
       startTransition(() => {
-        setTracks((current) => sortTracks(current.map((t) => (t.id === trackId ? nextTrack : t))));
+        setTracks((current) => replaceTrack(current, trackId, nextTrack));
         setError(null);
       });
 
       return nextTrack;
     } catch (nextError) {
       startTransition(() => {
-        setError(toMessage(nextError));
+        setError(toLibraryErrorMessage(nextError));
       });
       return null;
     } finally {
@@ -228,14 +187,14 @@ export function useLibrary() {
       const nextTracks = await seedDemoTracks();
 
       startTransition(() => {
-        const sorted = sortTracks(nextTracks);
+        const sorted = sortTracksByImportedAt(nextTracks);
         setTracks(sorted);
         setSelectedTrackId(sorted[0]?.id ?? null);
         setError(null);
       });
     } catch (nextError) {
       startTransition(() => {
-        setError(toMessage(nextError));
+        setError(toLibraryErrorMessage(nextError));
       });
     } finally {
       setMutating(false);
@@ -247,23 +206,16 @@ export function useLibrary() {
       await deleteTrack(trackId);
 
       startTransition(() => {
-        setTracks((current) => current.filter((t) => t.id !== trackId));
-        setPlaylists((current) =>
-          current.map((playlist) => ({
-            ...playlist,
-            trackIds: playlist.trackIds.filter((id) => id !== trackId),
-          })),
-        );
-        if (selectedTrackId === trackId) {
-          setSelectedTrackId(null);
-        }
+        setTracks((current) => removeDeletedTrack(current, trackId));
+        setPlaylists((current) => removeTrackFromPlaylists(current, trackId));
+        setSelectedTrackId((current) => clearDeletedTrackSelection(current, trackId));
         setError(null);
       });
 
       return true;
     } catch (nextError) {
       startTransition(() => {
-        setError(toMessage(nextError));
+        setError(toLibraryErrorMessage(nextError));
       });
       return false;
     }
@@ -279,16 +231,14 @@ export function useLibrary() {
       const nextTrack = await persistTrackPerformance(trackId, input);
 
       startTransition(() => {
-        setTracks((current) =>
-          sortTracks(current.map((track) => (track.id === trackId ? nextTrack : track))),
-        );
+        setTracks((current) => replaceTrack(current, trackId, nextTrack));
         setError(null);
       });
 
       return nextTrack;
     } catch (nextError) {
       startTransition(() => {
-        setError(toMessage(nextError));
+        setError(toLibraryErrorMessage(nextError));
       });
       return null;
     } finally {
@@ -306,16 +256,14 @@ export function useLibrary() {
       const nextTrack = await persistTrackAnalysis(trackId, input);
 
       startTransition(() => {
-        setTracks((current) =>
-          sortTracks(current.map((track) => (track.id === trackId ? nextTrack : track))),
-        );
+        setTracks((current) => replaceTrack(current, trackId, nextTrack));
         setError(null);
       });
 
       return nextTrack;
     } catch (nextError) {
       startTransition(() => {
-        setError(toMessage(nextError));
+        setError(toLibraryErrorMessage(nextError));
       });
       return null;
     } finally {
@@ -341,16 +289,14 @@ export function useLibrary() {
       const nextTrack = await persistTrackSource(trackId, input);
 
       startTransition(() => {
-        setTracks((current) =>
-          sortTracks(current.map((entry) => (entry.id === trackId ? nextTrack : entry))),
-        );
+        setTracks((current) => replaceTrack(current, trackId, nextTrack));
         setError(null);
       });
 
       return nextTrack;
     } catch (nextError) {
       startTransition(() => {
-        setError(toMessage(nextError));
+        setError(toLibraryErrorMessage(nextError));
       });
       return null;
     } finally {
@@ -372,23 +318,12 @@ export function useLibrary() {
       }
 
       const result = await persistMissingTrackRelink(pickedDirectory);
-      const relinkedIds = new Set(result.relinkedTracks.map((track) => track.id));
 
       startTransition(() => {
-        setTracks((current) =>
-          sortTracks(
-            current.map((track) => {
-              const relinkedTrack =
-                result.relinkedTracks.find((entry) => entry.id === track.id) ?? null;
-              return relinkedTrack ?? track;
-            }),
-          ),
-        );
-        if (relinkedIds.size > 0) {
-          const preferredSelection = result.relinkedTracks[0]?.id ?? null;
-          if (preferredSelection) {
-            setSelectedTrackId(preferredSelection);
-          }
+        setTracks((current) => replaceRelinkedTracks(current, result));
+        const preferredSelection = resolvePreferredRelinkSelection(result);
+        if (preferredSelection) {
+          setSelectedTrackId(preferredSelection);
         }
         setError(null);
       });
@@ -396,7 +331,7 @@ export function useLibrary() {
       return result;
     } catch (nextError) {
       startTransition(() => {
-        setError(toMessage(nextError));
+        setError(toLibraryErrorMessage(nextError));
       });
       return null;
     } finally {
@@ -413,11 +348,7 @@ export function useLibrary() {
       const nextPlaylist = await saveBaseTrackPlaylist(input);
 
       startTransition(() => {
-        setPlaylists((current) =>
-          [nextPlaylist, ...current.filter((playlist) => playlist.id !== nextPlaylist.id)].sort(
-            (left, right) => right.updatedAt.localeCompare(left.updatedAt),
-          ),
-        );
+        setPlaylists((current) => appendSavedPlaylist(current, nextPlaylist));
         setSelectedPlaylistId(nextPlaylist.id);
         setError(null);
       });
@@ -425,7 +356,7 @@ export function useLibrary() {
       return nextPlaylist;
     } catch (nextError) {
       startTransition(() => {
-        setError(toMessage(nextError));
+        setError(toLibraryErrorMessage(nextError));
       });
       return null;
     } finally {
@@ -440,17 +371,15 @@ export function useLibrary() {
       await deleteBaseTrackPlaylist(playlistId);
 
       startTransition(() => {
-        setPlaylists((current) => current.filter((playlist) => playlist.id !== playlistId));
-        if (selectedPlaylistId === playlistId) {
-          setSelectedPlaylistId(null);
-        }
+        setPlaylists((current) => removeDeletedPlaylist(current, playlistId));
+        setSelectedPlaylistId((current) => clearDeletedPlaylistSelection(current, playlistId));
         setError(null);
       });
 
       return true;
     } catch (nextError) {
       startTransition(() => {
-        setError(toMessage(nextError));
+        setError(toLibraryErrorMessage(nextError));
       });
       return false;
     } finally {

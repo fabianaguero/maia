@@ -5,7 +5,8 @@ import {
   buildMonitorSourceSelectionModel,
   shouldResetSelectedSource,
 } from "../../../src/features/simple/monitorSourceOptions";
-import type { LogSourceConnection, RepositoryAnalysis } from "../../../src/types/library";
+import type { RepositoryAnalysis } from "../../../src/types/library";
+import type { LogSourceConnection } from "../../../src/types/monitor";
 
 describe("monitorSourceOptions", () => {
   const repositories = [

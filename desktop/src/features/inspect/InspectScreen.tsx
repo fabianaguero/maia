@@ -1,5 +1,3 @@
-import { Activity } from "lucide-react";
-import { useEffect, useState } from "react";
 import type {
   AnalyzerViewMode,
   BaseAssetRecord,
@@ -9,51 +7,13 @@ import type {
   UpdateTrackAnalysisInput,
   UpdateTrackPerformanceInput,
 } from "../../types/library";
-import { formatShortDate } from "../../utils/date";
-import { BaseAssetMetricsPanel } from "../analyzer/components/BaseAssetMetricsPanel";
-import { BaseAssetOverviewPanel } from "../analyzer/components/BaseAssetOverviewPanel";
-import { BeatGridEditorPanel } from "../analyzer/components/BeatGridEditorPanel";
-import { BpmCurvePanel } from "../analyzer/components/BpmCurvePanel";
-import { BpmPanel } from "../analyzer/components/BpmPanel";
-import { LiveLogMonitorPanel } from "../analyzer/components/LiveLogMonitorPanel";
-import { LogSignalPanel } from "../analyzer/components/LogSignalPanel";
-import { RepositoryMetricsPanel } from "../analyzer/components/RepositoryMetricsPanel";
-import { RepositoryOverviewPanel } from "../analyzer/components/RepositoryOverviewPanel";
-import { RepoStatusPanel } from "../analyzer/components/RepoStatusPanel";
-import { SongMetadataPanel } from "../analyzer/components/SongMetadataPanel";
-import { TrackPerformancePanel } from "../analyzer/components/TrackPerformancePanel";
-import { TrackPlaybackPanel } from "../analyzer/components/TrackPlaybackPanel";
-import { TrackOriginalComparePanel } from "../analyzer/components/TrackOriginalComparePanel";
-import { WaveformPlaceholder } from "../analyzer/components/WaveformPlaceholder";
 import { useT } from "../../i18n/I18nContext";
-import { useMonitor } from "../monitor/MonitorContext";
-import {
-  createAnchoredBeatGridUpdate,
-  isEditableBpm,
-  type BeatGridPhraseRange,
-} from "../../utils/beatGrid";
-import {
-  resolveTrackPlacementSecond,
-  moveTrackSavedLoop,
-  setTrackCuePointSecond,
-  setTrackSavedLoopBoundary,
-  getTrackSourcePath,
-  getTrackStoragePath,
-  getTrackTitle,
-  getTrackWaveformRegions,
-  getTrackWaveformCues,
-  hasUsableBeatGrid,
-  type TrackCompareAuditionPoint,
-} from "../../utils/track";
-import type { ManagedAudioCueRequest } from "../analyzer/components/ManagedAudioPlayer";
-
-function formatAnalysisMode(analysisMode: string): string {
-  return analysisMode
-    .split("-")
-    .filter(Boolean)
-    .map((s) => s[0]?.toUpperCase() + s.slice(1))
-    .join(" ");
-}
+import { InspectContextBar } from "./InspectContextBar";
+import { InspectBaseAssetView } from "./InspectBaseAssetView";
+import { InspectEmptyState } from "./InspectEmptyState";
+import { InspectRepositoryView } from "./InspectRepositoryView";
+import { getTrackTitle } from "../../utils/track";
+import { InspectTrackView } from "./InspectTrackView";
 
 interface InspectScreenProps {
   track: LibraryTrack | null;
@@ -97,131 +57,53 @@ export function InspectScreen({
   trackMutating,
 }: InspectScreenProps) {
   const t = useT();
-  const monitor = useMonitor();
-  const [currentTime, setCurrentTime] = useState(0);
-  const [selectedPhraseRange, setSelectedPhraseRange] = useState<BeatGridPhraseRange | null>(null);
-  const [compareCueRequest, setCompareCueRequest] = useState<ManagedAudioCueRequest | null>(null);
-  const [activeCompareAuditionId, setActiveCompareAuditionId] = useState<
-    TrackCompareAuditionPoint["id"] | null
-  >(null);
-  const [activeCompareAuditionLabel, setActiveCompareAuditionLabel] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"overview" | "grid" | "performance" | "metadata">(
-    "overview",
-  );
-  const activeTrackId = track?.id ?? null;
-  const activeBeatGridLength = track?.analysis.beatGrid.length ?? 0;
-  const activeFirstBeatSecond = track?.analysis.beatGrid[0]?.second ?? null;
-  const activeTrackDurationSeconds = track?.analysis.durationSeconds ?? null;
-
-  useEffect(() => {
-    setSelectedPhraseRange(null);
-    setCompareCueRequest(null);
-    setActiveCompareAuditionId(null);
-    setActiveCompareAuditionLabel(null);
-  }, [activeBeatGridLength, activeFirstBeatSecond, activeTrackDurationSeconds, activeTrackId]);
-
   const hasAnyAsset =
     availableTracks.length > 0 ||
     availableRepositories.length > 0 ||
     availableBaseAssets.length > 0;
 
   const contextBar = (
-    <div className="analyzer-context-bar">
-      <div className="analyzer-mode-tabs">
-        {availableTracks.length > 0 && (
-          <button
-            type="button"
-            className={mode === "track" ? "mode-tab active" : "mode-tab"}
-            onClick={() => onChangeMode("track")}
-          >
-            {t.sidebar.tracks}
-            <span className="mode-tab-count">{availableTracks.length}</span>
-          </button>
-        )}
-        {availableRepositories.length > 0 && (
-          <button
-            type="button"
-            className={mode === "repo" ? "mode-tab active" : "mode-tab"}
-            onClick={() => onChangeMode("repo")}
-          >
-            {t.library.logSources}
-            <span className="mode-tab-count">{availableRepositories.length}</span>
-          </button>
-        )}
-        {availableBaseAssets.length > 0 && (
-          <button
-            type="button"
-            className={mode === "base" ? "mode-tab active" : "mode-tab"}
-            onClick={() => onChangeMode("base")}
-          >
-            {t.sidebar.bases}
-            <span className="mode-tab-count">{availableBaseAssets.length}</span>
-          </button>
-        )}
-      </div>
-
-      <div className="analyzer-asset-picker">
-        {mode === "track" && availableTracks.length > 0 && (
-          <select
-            value={track?.id ?? ""}
-            onChange={(e) => onSelectTrack(e.target.value)}
-            className="context-select"
-          >
-            {availableTracks.map((t) => (
-              <option key={t.id} value={t.id}>
-                {getTrackTitle(t)}
-              </option>
-            ))}
-          </select>
-        )}
-        {mode === "repo" && availableRepositories.length > 0 && (
-          <select
-            value={repository?.id ?? ""}
-            onChange={(e) => onSelectRepository(e.target.value)}
-            className="context-select"
-          >
-            {availableRepositories.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.title}
-              </option>
-            ))}
-          </select>
-        )}
-        {mode === "base" && availableBaseAssets.length > 0 && (
-          <select
-            value={baseAsset?.id ?? ""}
-            onChange={(e) => onSelectBaseAsset(e.target.value)}
-            className="context-select"
-          >
-            {availableBaseAssets.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.title}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
-    </div>
+    <InspectContextBar
+      mode={mode}
+      trackCount={availableTracks.length}
+      repositoryCount={availableRepositories.length}
+      baseAssetCount={availableBaseAssets.length}
+      selectedTrackId={track?.id ?? null}
+      selectedRepositoryId={repository?.id ?? null}
+      selectedBaseAssetId={baseAsset?.id ?? null}
+      trackOptions={availableTracks.map((entry) => ({
+        id: entry.id,
+        label: getTrackTitle(entry),
+      }))}
+      repositoryOptions={availableRepositories.map((entry) => ({
+        id: entry.id,
+        label: entry.title,
+      }))}
+      baseAssetOptions={availableBaseAssets.map((entry) => ({
+        id: entry.id,
+        label: entry.title,
+      }))}
+      labels={{
+        tracks: t.sidebar.tracks,
+        logSources: t.library.logSources,
+        bases: t.sidebar.bases,
+      }}
+      onChangeMode={onChangeMode}
+      onSelectTrack={onSelectTrack}
+      onSelectRepository={onSelectRepository}
+      onSelectBaseAsset={onSelectBaseAsset}
+    />
   );
 
   if (!hasAnyAsset) {
     return (
-      <section className="screen">
-        <header className="screen-header">
-          <div>
-            <p className="eyebrow">{t.inspect.title}</p>
-            <h2>{t.inspect.nothingYet}</h2>
-            <p className="support-copy">{t.inspect.copy}</p>
-          </div>
-        </header>
-        <section className="panel empty-state large">
-          <Activity size={32} style={{ opacity: 0.3, marginBottom: 12 }} />
-          <p>{t.inspect.importFirst}</p>
-          <button type="button" className="action" onClick={onGoLibrary}>
-            {t.inspect.goLibrary}
-          </button>
-        </section>
-      </section>
+      <InspectEmptyState
+        eyebrow={t.inspect.title}
+        title={t.inspect.nothingYet}
+        description={t.inspect.copy}
+        actionLabel={t.inspect.goLibrary}
+        onAction={onGoLibrary}
+      />
     );
   }
 
@@ -240,335 +122,16 @@ export function InspectScreen({
         </section>
       );
     }
-
-    const editableTrackBpm = isEditableBpm(track.analysis.bpm) ? track.analysis.bpm : null;
-    const waveformEditableCues = [
-      ...(track.performance.mainCueSecond !== null
-        ? [
-            {
-              id: "main-cue",
-              second: track.performance.mainCueSecond,
-              label: "Main",
-              kind: "main" as const,
-              color: track.performance.color,
-            },
-          ]
-        : []),
-      ...track.performance.hotCues.map((cue) => ({
-        id: cue.id,
-        second: cue.second,
-        label: cue.label,
-        kind: cue.kind,
-        color: cue.color,
-      })),
-      ...track.performance.memoryCues.map((cue) => ({
-        id: cue.id,
-        second: cue.second,
-        label: cue.label,
-        kind: cue.kind,
-        color: cue.color,
-      })),
-    ];
-    const quantizeWaveformEdits = hasUsableBeatGrid(track.analysis.beatGrid);
-
-    const handleMoveWaveformCue = (
-      cue: {
-        id: string;
-        second: number;
-        label: string;
-        kind: "main" | "hot" | "memory";
-      },
-      second: number,
-    ) => {
-      if (cue.kind === "main") {
-        return void onUpdateTrackPerformance(track.id, {
-          mainCueSecond: resolveTrackPlacementSecond(
-            second,
-            track.analysis.durationSeconds,
-            track.analysis.beatGrid,
-            quantizeWaveformEdits,
-          ),
-        });
-      }
-
-      const cueCollection =
-        cue.kind === "hot" ? track.performance.hotCues : track.performance.memoryCues;
-      const nextCues = setTrackCuePointSecond(cueCollection, cue.id, second, {
-        durationSeconds: track.analysis.durationSeconds,
-        beatGrid: track.analysis.beatGrid,
-        quantizeEnabled: quantizeWaveformEdits,
-      });
-
-      return void onUpdateTrackPerformance(track.id, {
-        [cue.kind === "hot" ? "hotCues" : "memoryCues"]: nextCues,
-      });
-    };
-
-    const handleCompareAudition = (point: TrackCompareAuditionPoint) => {
-      setCurrentTime(point.second);
-      monitor.seekGuideTrack(point.second);
-      setActiveCompareAuditionId(point.id);
-      setActiveCompareAuditionLabel(point.label);
-      setCompareCueRequest((previous) => ({
-        id: (previous?.id ?? 0) + 1,
-        second: point.second,
-        autoplay: true,
-      }));
-    };
-
     return (
-      <section className="screen">
-        <header className="screen-header">
-          <div>
-            <p className="eyebrow">{t.inspect.title}</p>
-            <h2>{track.tags.title}</h2>
-            <p className="support-copy">{t.inspect.copy}</p>
-          </div>
-          <div className="screen-summary">
-            <div className="summary-pill">
-              <span>{t.inspect.status}</span>
-              <strong>{track.analysis.analyzerStatus}</strong>
-            </div>
-            <div className="summary-pill">
-              <span>{t.inspect.style}</span>
-              <strong>{track.tags.musicStyleLabel}</strong>
-            </div>
-            <div className="summary-pill">
-              <span>{t.inspect.imported}</span>
-              <strong>{formatShortDate(track.analysis.importedAt)}</strong>
-            </div>
-          </div>
-        </header>
-        {contextBar}
-
-        <div className="analyzer-deck">
-          <WaveformPlaceholder
-            bins={track.analysis.waveformBins}
-            beatGrid={track.analysis.beatGrid}
-            durationSeconds={track.analysis.durationSeconds}
-            hotCues={getTrackWaveformCues(track)}
-            regions={getTrackWaveformRegions(track)}
-            editableCues={waveformEditableCues}
-            editableLoops={track.performance.savedLoops}
-            currentTime={currentTime}
-            hero
-            onSeek={monitor.seekGuideTrack}
-            analysisProgress={monitor.playbackProgress}
-            canEditBeatGrid={
-              !trackMutating &&
-              !track.performance.gridLock &&
-              editableTrackBpm !== null &&
-              track.analysis.durationSeconds !== null
-            }
-            onSetDownbeatAtSecond={
-              editableTrackBpm !== null
-                ? (second) =>
-                    void onUpdateTrackAnalysis(
-                      track.id,
-                      createAnchoredBeatGridUpdate(
-                        editableTrackBpm,
-                        track.analysis.durationSeconds,
-                        second,
-                      ),
-                    )
-                : undefined
-            }
-            canSelectPhrase={hasUsableBeatGrid(track.analysis.beatGrid)}
-            selectedPhraseRange={selectedPhraseRange}
-            onSelectPhraseRange={setSelectedPhraseRange}
-            canEditPerformance={!trackMutating}
-            onMoveCue={handleMoveWaveformCue}
-            onNudgeCue={handleMoveWaveformCue}
-            onMoveLoopBoundary={(loopId, boundary, second) =>
-              void onUpdateTrackPerformance(track.id, {
-                savedLoops: setTrackSavedLoopBoundary(
-                  track.performance.savedLoops,
-                  loopId,
-                  boundary,
-                  second,
-                  {
-                    bpm: editableTrackBpm,
-                    durationSeconds: track.analysis.durationSeconds,
-                    beatGrid: track.analysis.beatGrid,
-                    quantizeEnabled: quantizeWaveformEdits,
-                  },
-                ),
-              })
-            }
-            onMoveLoop={(loopId, second) =>
-              void onUpdateTrackPerformance(track.id, {
-                savedLoops: moveTrackSavedLoop(track.performance.savedLoops, loopId, second, {
-                  durationSeconds: track.analysis.durationSeconds,
-                  beatGrid: track.analysis.beatGrid,
-                  quantizeEnabled: quantizeWaveformEdits,
-                }),
-              })
-            }
-          />
-          <TrackOriginalComparePanel
-            track={track}
-            currentTime={currentTime}
-            onSeek={monitor.seekGuideTrack}
-            onAudition={handleCompareAudition}
-            activeAuditionId={activeCompareAuditionId}
-          />
-          <TrackPlaybackPanel
-            track={track}
-            onTimeUpdate={setCurrentTime}
-            cueRequest={compareCueRequest}
-            auditionLabel={activeCompareAuditionLabel}
-          />
-        </div>
-
-        <div className="analyzer-layout">
-          <div className="analyzer-main-stack">
-            <BpmCurvePanel
-              bpmCurve={track.analysis.bpmCurve}
-              fallbackBpm={track.analysis.bpm}
-              durationSeconds={track.analysis.durationSeconds}
-            />
-          </div>
-          <div className="analyzer-sidebar">
-            <div className="inspect-tabs">
-              <ul className="inspect-tab-list" role="tablist">
-                <li role="presentation">
-                  <button
-                    role="tab"
-                    aria-selected={activeTab === "overview"}
-                    aria-controls="tab-overview"
-                    className="inspect-tab-button"
-                    onClick={() => setActiveTab("overview")}
-                  >
-                    {t.inspect.overview}
-                  </button>
-                </li>
-                <li role="presentation">
-                  <button
-                    role="tab"
-                    aria-selected={activeTab === "grid"}
-                    aria-controls="tab-grid"
-                    className="inspect-tab-button"
-                    onClick={() => setActiveTab("grid")}
-                  >
-                    {t.inspect.beatGrid}
-                  </button>
-                </li>
-                <li role="presentation">
-                  <button
-                    role="tab"
-                    aria-selected={activeTab === "performance"}
-                    aria-controls="tab-performance"
-                    className="inspect-tab-button"
-                    onClick={() => setActiveTab("performance")}
-                  >
-                    {t.inspect.performance}
-                  </button>
-                </li>
-                <li role="presentation">
-                  <button
-                    role="tab"
-                    aria-selected={activeTab === "metadata"}
-                    aria-controls="tab-metadata"
-                    className="inspect-tab-button"
-                    onClick={() => setActiveTab("metadata")}
-                  >
-                    {t.inspect.details}
-                  </button>
-                </li>
-              </ul>
-
-              {/* Overview Tab */}
-              <section
-                id="tab-overview"
-                role="tabpanel"
-                aria-hidden={activeTab !== "overview"}
-                className="inspect-tab-content"
-              >
-                <BpmPanel track={track} />
-                <RepoStatusPanel track={track} analyzerLabel={analyzerLabel} />
-              </section>
-
-              {/* Beat Grid Tab */}
-              <section
-                id="tab-grid"
-                role="tabpanel"
-                aria-hidden={activeTab !== "grid"}
-                className="inspect-tab-content"
-              >
-                <BeatGridEditorPanel
-                  track={track}
-                  busy={trackMutating}
-                  currentTime={currentTime}
-                  onUpdateAnalysis={(input) => onUpdateTrackAnalysis(track.id, input)}
-                />
-              </section>
-
-              {/* Performance Tab */}
-              <section
-                id="tab-performance"
-                role="tabpanel"
-                aria-hidden={activeTab !== "performance"}
-                className="inspect-tab-content"
-              >
-                <TrackPerformancePanel
-                  track={track}
-                  busy={trackMutating}
-                  currentTime={currentTime}
-                  selectedPhraseRange={selectedPhraseRange}
-                  onUpdatePerformance={(input) => onUpdateTrackPerformance(track.id, input)}
-                />
-              </section>
-
-              {/* Metadata Tab */}
-              <section
-                id="tab-metadata"
-                role="tabpanel"
-                aria-hidden={activeTab !== "metadata"}
-                className="inspect-tab-content"
-              >
-                <SongMetadataPanel track={track} />
-                <section className="panel metric-panel">
-                  <details className="panel-collapsible">
-                    <summary className="panel-collapsible-summary">
-                      {t.inspect.notesAnalysis}
-                    </summary>
-                    <div className="panel-collapsible-body">
-                      {track.analysis.notes.length > 0 && (
-                        <ul className="stack-list note-list">
-                          {track.analysis.notes.map((note) => (
-                            <li key={note}>{note}</li>
-                          ))}
-                        </ul>
-                      )}
-                      <dl className="meta-list compact-meta">
-                        <div>
-                          <dt>{t.inspect.analysisMode}</dt>
-                          <dd>{formatAnalysisMode(track.analysis.analysisMode)}</dd>
-                        </div>
-                        <div>
-                          <dt>{t.inspect.sourcePath}</dt>
-                          <dd>{getTrackSourcePath(track)}</dd>
-                        </div>
-                        <div>
-                          <dt>{t.inspect.storagePath}</dt>
-                          <dd>{getTrackStoragePath(track) ?? t.inspect.noSnapshot}</dd>
-                        </div>
-                      </dl>
-                    </div>
-                  </details>
-                </section>
-              </section>
-            </div>
-
-            <div className="inspect-compose-cta">
-              <p className="support-copy">{t.inspect.buildCompositionTrack}</p>
-              <button type="button" className="action" onClick={onGoCompose}>
-                {t.inspect.composeCta}
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
+      <InspectTrackView
+        track={track}
+        analyzerLabel={analyzerLabel}
+        trackMutating={trackMutating}
+        contextBar={contextBar}
+        onGoCompose={onGoCompose}
+        onUpdateTrackPerformance={onUpdateTrackPerformance}
+        onUpdateTrackAnalysis={onUpdateTrackAnalysis}
+      />
     );
   }
 
@@ -589,89 +152,16 @@ export function InspectScreen({
     }
 
     return (
-      <section className="screen">
-        <header className="screen-header">
-          <div>
-            <p className="eyebrow">{t.inspect.title}</p>
-            <h2>{repository.title}</h2>
-            <p className="support-copy">
-              {repository.sourceKind === "file"
-                ? t.inspect.logSignalAnalysis
-                : t.inspect.repoSignalAnalysis}
-            </p>
-          </div>
-          <div className="screen-summary">
-            <div className="summary-pill">
-              <span>{t.inspect.source}</span>
-              <strong>
-                {repository.sourceKind === "directory"
-                  ? t.inspect.filesystem
-                  : repository.sourceKind === "file"
-                    ? t.library.logFile
-                    : t.library.githubUrl}
-              </strong>
-            </div>
-            <div className="summary-pill">
-              <span>{t.inspect.imported}</span>
-              <strong>{formatShortDate(repository.importedAt)}</strong>
-            </div>
-          </div>
-        </header>
-        {contextBar}
-
-        <div className="analyzer-layout">
-          <div className="analyzer-main-stack">
-            <RepositoryOverviewPanel repository={repository} />
-            {repository.sourceKind === "file" ? (
-              <>
-                <LogSignalPanel repository={repository} />
-                <LiveLogMonitorPanel
-                  repository={repository}
-                  availableBaseAssets={availableBaseAssets}
-                  availableCompositions={[]}
-                  preferredBaseAssetId={baseAsset?.id}
-                  preferredCompositionId={undefined}
-                  availableTracks={availableTracks}
-                  availablePlaylists={availablePlaylists}
-                />
-              </>
-            ) : null}
-          </div>
-          <div className="analyzer-sidebar">
-            <RepositoryMetricsPanel repository={repository} analyzerLabel={analyzerLabel} />
-            <section className="panel metric-panel">
-              <details className="panel-collapsible">
-                <summary className="panel-collapsible-summary">{t.inspect.notesMetadata}</summary>
-                <div className="panel-collapsible-body">
-                  {repository.notes.length > 0 && (
-                    <ul className="stack-list note-list">
-                      {repository.notes.map((note) => (
-                        <li key={note}>{note}</li>
-                      ))}
-                    </ul>
-                  )}
-                  <dl className="meta-list compact-meta">
-                    <div>
-                      <dt>{t.inspect.sourcePath}</dt>
-                      <dd>{repository.sourcePath}</dd>
-                    </div>
-                    <div>
-                      <dt>{t.inspect.storagePath}</dt>
-                      <dd>{repository.storagePath ?? t.inspect.noSnapshot}</dd>
-                    </div>
-                  </dl>
-                </div>
-              </details>
-            </section>
-            <div className="inspect-compose-cta">
-              <p className="support-copy">{t.inspect.useLogSignal}</p>
-              <button type="button" className="action" onClick={onGoCompose}>
-                {t.inspect.composeCta}
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
+      <InspectRepositoryView
+        repository={repository}
+        availableBaseAssets={availableBaseAssets}
+        availableTracks={availableTracks}
+        availablePlaylists={availablePlaylists}
+        preferredBaseAssetId={baseAsset?.id ?? null}
+        analyzerLabel={analyzerLabel}
+        contextBar={contextBar}
+        onGoCompose={onGoCompose}
+      />
     );
   }
 
@@ -691,70 +181,11 @@ export function InspectScreen({
   }
 
   return (
-    <section className="screen">
-      <header className="screen-header">
-        <div>
-          <p className="eyebrow">{t.inspect.title}</p>
-          <h2>{baseAsset.title}</h2>
-          <p className="support-copy">{t.inspect.baseAssetCopy}</p>
-        </div>
-        <div className="screen-summary">
-          <div className="summary-pill">
-            <span>{t.inspect.category}</span>
-            <strong>{baseAsset.categoryLabel}</strong>
-          </div>
-          <div className="summary-pill">
-            <span>{t.inspect.reusable}</span>
-            <strong>{baseAsset.reusable ? t.inspect.yes : t.inspect.singleUse}</strong>
-          </div>
-          <div className="summary-pill">
-            <span>{t.inspect.imported}</span>
-            <strong>{formatShortDate(baseAsset.importedAt)}</strong>
-          </div>
-        </div>
-      </header>
-      {contextBar}
-
-      <div className="analyzer-layout">
-        <BaseAssetOverviewPanel baseAsset={baseAsset} />
-        <div className="analyzer-sidebar">
-          <BaseAssetMetricsPanel baseAsset={baseAsset} analyzerLabel={analyzerLabel} />
-          <section className="panel metric-panel">
-            <details className="panel-collapsible">
-              <summary className="panel-collapsible-summary">{t.inspect.notesMetadata}</summary>
-              <div className="panel-collapsible-body">
-                {baseAsset.notes.length > 0 && (
-                  <ul className="stack-list note-list">
-                    {baseAsset.notes.map((note) => (
-                      <li key={note}>{note}</li>
-                    ))}
-                  </ul>
-                )}
-                <dl className="meta-list compact-meta">
-                  <div>
-                    <dt>{t.inspect.sourcePath}</dt>
-                    <dd>{baseAsset.sourcePath}</dd>
-                  </div>
-                  <div>
-                    <dt>{t.inspect.storagePath}</dt>
-                    <dd>{baseAsset.storagePath}</dd>
-                  </div>
-                  <div>
-                    <dt>{t.inspect.checksum}</dt>
-                    <dd>{baseAsset.checksum ?? t.inspect.pending}</dd>
-                  </div>
-                </dl>
-              </div>
-            </details>
-          </section>
-          <div className="inspect-compose-cta">
-            <p className="support-copy">{t.inspect.useBaseAsset}</p>
-            <button type="button" className="action" onClick={onGoCompose}>
-              {t.inspect.composeCta}
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
+    <InspectBaseAssetView
+      baseAsset={baseAsset}
+      analyzerLabel={analyzerLabel}
+      contextBar={contextBar}
+      onGoCompose={onGoCompose}
+    />
   );
 }

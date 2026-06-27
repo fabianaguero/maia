@@ -8,6 +8,15 @@ import {
   type PersistedSession,
   type SessionBookmark,
 } from "../api/sessions";
+import {
+  appendCreatedSession,
+  buildSessionBookmarksMap,
+  clearDeletedSelectedSessionId,
+  removeDeletedSession,
+  removeDeletedSessionBookmarks,
+  sortSessionsByCreatedAt,
+  toSessionErrorMessage,
+} from "./sessionsRuntime";
 
 export function useSessions() {
   const [sessions, setSessions] = useState<PersistedSession[]>([]);
@@ -23,10 +32,10 @@ export function useSessions() {
     setLoading(true);
     try {
       const data = await listPersistedSessions();
-      setSessions(data.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+      setSessions(sortSessionsByCreatedAt(data));
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load sessions");
+      setError(toSessionErrorMessage(err, "Failed to load sessions"));
     } finally {
       setLoading(false);
     }
@@ -40,10 +49,10 @@ export function useSessions() {
           return [session.id, bookmarks] as const;
         }),
       );
-      setSessionBookmarksBySessionId(Object.fromEntries(entries));
+      setSessionBookmarksBySessionId(buildSessionBookmarksMap(entries));
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load session bookmarks");
+      setError(toSessionErrorMessage(err, "Failed to load session bookmarks"));
     }
   }
 
@@ -56,17 +65,13 @@ export function useSessions() {
     try {
       const session = await createPersistedSession(input);
       if (session) {
-        setSessions((prev) =>
-          [session, ...prev.filter((entry) => entry.id !== session.id)].sort((a, b) =>
-            b.createdAt.localeCompare(a.createdAt),
-          ),
-        );
+        setSessions((prev) => appendCreatedSession(prev, session));
         setSelectedSessionId(session.id);
       }
       setError(null);
       return session;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create session");
+      setError(toSessionErrorMessage(err, "Failed to create session"));
       return null;
     } finally {
       setMutating(false);
@@ -78,17 +83,13 @@ export function useSessions() {
     try {
       const success = await deletePersistedSession(id);
       if (success) {
-        setSessions((prev) => prev.filter((session) => session.id !== id));
-        setSessionBookmarksBySessionId((prev) => {
-          const next = { ...prev };
-          delete next[id];
-          return next;
-        });
-        setSelectedSessionId((prev) => (prev === id ? null : prev));
+        setSessions((prev) => removeDeletedSession(prev, id));
+        setSessionBookmarksBySessionId((prev) => removeDeletedSessionBookmarks(prev, id));
+        setSelectedSessionId((prev) => clearDeletedSelectedSessionId(prev, id));
       }
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete session");
+      setError(toSessionErrorMessage(err, "Failed to delete session"));
     } finally {
       setMutating(false);
     }

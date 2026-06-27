@@ -5,17 +5,15 @@ import {
   upsertSessionBookmark,
   type SessionBookmark,
 } from "../api/sessions";
-
-function toMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Unexpected replay bookmark failure.";
-}
-
-interface ReplayExplanationSnapshot {
-  eventIndex: number | null;
-  trackId: string | null;
-  trackTitle: string | null;
-  trackSecond: number | null;
-}
+import {
+  buildReplayBookmarkDraftState,
+  removeReplayBookmark,
+  resolveActiveReplayBookmark,
+  sortReplayBookmarks,
+  toReplayBookmarkErrorMessage,
+  type ReplayExplanationSnapshot,
+  upsertSortedReplayBookmark,
+} from "./replayBookmarksRuntime";
 
 interface UseReplayBookmarksOptions {
   replaySessionId: string | null;
@@ -54,20 +52,12 @@ export function useReplayBookmarks({
   const [bookmarkError, setBookmarkError] = useState<string | null>(null);
 
   const sortedSessionBookmarks = useMemo(
-    () =>
-      sessionBookmarks
-        .slice()
-        .sort((left, right) => left.replayWindowIndex - right.replayWindowIndex),
+    () => sortReplayBookmarks(sessionBookmarks),
     [sessionBookmarks],
   );
 
   const activeReplayBookmark = useMemo(
-    () =>
-      replayActive && replayWindowIndex !== null
-        ? (sortedSessionBookmarks.find(
-            (bookmark) => bookmark.replayWindowIndex === replayWindowIndex,
-          ) ?? null)
-        : null,
+    () => resolveActiveReplayBookmark(sortedSessionBookmarks, replayActive, replayWindowIndex),
     [replayActive, replayWindowIndex, sortedSessionBookmarks],
   );
 
@@ -94,11 +84,7 @@ export function useReplayBookmarks({
         }
 
         startTransition(() => {
-          setSessionBookmarks(
-            bookmarks
-              .slice()
-              .sort((left, right) => left.replayWindowIndex - right.replayWindowIndex),
-          );
+          setSessionBookmarks(sortReplayBookmarks(bookmarks));
         });
       } catch (nextError) {
         if (cancelled) {
@@ -106,7 +92,9 @@ export function useReplayBookmarks({
         }
 
         startTransition(() => {
-          setBookmarkError(`Failed to load replay bookmarks: ${toMessage(nextError)}`);
+          setBookmarkError(
+            `Failed to load replay bookmarks: ${toReplayBookmarkErrorMessage(nextError)}`,
+          );
         });
       } finally {
         if (!cancelled) {
@@ -123,29 +111,18 @@ export function useReplayBookmarks({
   }, [replaySessionId]);
 
   useEffect(() => {
-    if (!replayActive || replayWindowIndex === null) {
-      setBookmarkLabelDraft("");
-      setBookmarkNoteDraft("");
-      setBookmarkTagDraft(null);
-      setBookmarkStyleProfileIdDraft(null);
-      setBookmarkMutationProfileIdDraft(null);
-      return;
-    }
-
-    if (activeReplayBookmark) {
-      setBookmarkLabelDraft(activeReplayBookmark.label);
-      setBookmarkNoteDraft(activeReplayBookmark.note);
-      setBookmarkTagDraft(activeReplayBookmark.bookmarkTag);
-      setBookmarkStyleProfileIdDraft(activeReplayBookmark.suggestedStyleProfileId);
-      setBookmarkMutationProfileIdDraft(activeReplayBookmark.suggestedMutationProfileId);
-      return;
-    }
-
-    setBookmarkLabelDraft(`Window ${replayWindowIndex}`);
-    setBookmarkNoteDraft("");
-    setBookmarkTagDraft(null);
-    setBookmarkStyleProfileIdDraft(selectedStyleProfileId);
-    setBookmarkMutationProfileIdDraft(selectedMutationProfileId);
+    const draftState = buildReplayBookmarkDraftState({
+      activeReplayBookmark,
+      replayActive,
+      replayWindowIndex,
+      selectedStyleProfileId,
+      selectedMutationProfileId,
+    });
+    setBookmarkLabelDraft(draftState.label);
+    setBookmarkNoteDraft(draftState.note);
+    setBookmarkTagDraft(draftState.tag);
+    setBookmarkStyleProfileIdDraft(draftState.styleProfileId);
+    setBookmarkMutationProfileIdDraft(draftState.mutationProfileId);
   }, [
     activeReplayBookmark,
     replayActive,
@@ -190,21 +167,14 @@ export function useReplayBookmarks({
       }
 
       startTransition(() => {
-        setSessionBookmarks((current) =>
-          [
-            ...current.filter(
-              (bookmark) =>
-                bookmark.id !== savedBookmark.id &&
-                bookmark.replayWindowIndex !== savedBookmark.replayWindowIndex,
-            ),
-            savedBookmark,
-          ].sort((left, right) => left.replayWindowIndex - right.replayWindowIndex),
-        );
+        setSessionBookmarks((current) => upsertSortedReplayBookmark(current, savedBookmark));
       });
 
       return savedBookmark;
     } catch (nextError) {
-      setBookmarkError(`Failed to save replay bookmark: ${toMessage(nextError)}`);
+      setBookmarkError(
+        `Failed to save replay bookmark: ${toReplayBookmarkErrorMessage(nextError)}`,
+      );
       return null;
     } finally {
       setBookmarkBusy(false);
@@ -235,11 +205,13 @@ export function useReplayBookmarks({
       }
 
       startTransition(() => {
-        setSessionBookmarks((current) => current.filter((entry) => entry.id !== bookmark.id));
+        setSessionBookmarks((current) => removeReplayBookmark(current, bookmark.id));
       });
       return true;
     } catch (nextError) {
-      setBookmarkError(`Failed to delete replay bookmark: ${toMessage(nextError)}`);
+      setBookmarkError(
+        `Failed to delete replay bookmark: ${toReplayBookmarkErrorMessage(nextError)}`,
+      );
       return false;
     } finally {
       setBookmarkBusy(false);

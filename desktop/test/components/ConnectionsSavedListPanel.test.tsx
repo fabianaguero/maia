@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ConnectionsSavedListPanel } from "../../src/features/simple/ConnectionsSavedListPanel";
-import type { LogSourceConnection } from "../../src/types/library";
+import type { LogSourceConnection } from "../../src/types/monitor";
 
 afterEach(() => {
   cleanup();
@@ -91,15 +91,20 @@ describe("ConnectionsSavedListPanel", () => {
     expect(screen.getByText("services")).toBeInTheDocument();
     expect(screen.getByText("GCP Cloud Run")).toBeInTheDocument();
     expect(screen.getByText(/Stream lookback: 120m/i)).toBeInTheDocument();
+    expect(screen.getByText("Process")).toBeInTheDocument();
     expect(screen.getByText("OK")).toBeInTheDocument();
 
     fireEvent.click(screen.getByText("services"));
+    fireEvent.keyDown(screen.getByRole("button", { name: "Edit connection: services" }), {
+      key: "Enter",
+    });
     fireEvent.click(screen.getByTitle("Start live tail"));
     fireEvent.click(screen.getByTitle("Edit connection"));
     fireEvent.click(screen.getByTitle("Test persistent connection"));
     fireEvent.click(screen.getByTitle("Delete connection"));
 
-    expect(onSelectConnection).toHaveBeenCalledWith(connection);
+    expect(onSelectConnection).toHaveBeenNthCalledWith(1, connection);
+    expect(onSelectConnection).toHaveBeenNthCalledWith(2, connection);
     expect(onStartTail).toHaveBeenCalledWith(connection);
     expect(onEditConnection).toHaveBeenCalledWith(connection);
     expect(onTestConnection).toHaveBeenCalledWith(connection);

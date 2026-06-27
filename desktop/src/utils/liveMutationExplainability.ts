@@ -1,4 +1,5 @@
-import type { LiveLogMarker, VisualizationCuePoint } from "../types/library";
+import type { VisualizationCuePoint } from "../types/library";
+import type { LiveLogMarker } from "../types/monitor";
 
 export interface ExplainableLiveCue {
   id: string;

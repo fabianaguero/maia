@@ -1,6 +1,6 @@
 # Architecture
 
-**Last Updated:** June 25, 2026
+**Last Updated:** June 26, 2026
 
 ## Intent
 Maia is a local-first desktop product for passive operational monitoring through sound.
@@ -195,6 +195,9 @@ This keeps the product aligned with the UX promise:
 The main monitor surface is moving toward a modular deck:
 
 - `SimpleMonitorScreen.tsx`: orchestration and runtime wiring
+- `SimpleMonitorActiveView.tsx`: active monitor composition shell
+- `MonitorActiveDeckSection.tsx`: deck-focused split for the active route
+- `MonitorActiveFooter.tsx`: footer/status transport split
 - `MonitorSetupScreen.tsx`: dedicated setup route from the lateral menu
 - `ConnectionsScreen.tsx`: persistent cloud/file/process connection management
 - `MonitorActiveHeader.tsx`: session identity and state
@@ -202,6 +205,7 @@ The main monitor surface is moving toward a modular deck:
 - `MonitorDeckHeader.tsx`: BPM, time, severity legend
 - `MonitorDeckControlPanel.tsx`: operator-editable deck parameters
 - `MonitorDeckWavePanel.tsx`: overview + moving waveform deck
+- `LibraryScreen.tsx`: library shell for tracks, sources, connections, and base assets
 - `SessionScreen.tsx`: session route orchestration, now reduced through extracted panels
 - `SessionSetupPanel.tsx`: source / sound profile / initialization flow
 - `SessionBoothPanel.tsx`: live booth summary and launch state
@@ -209,23 +213,39 @@ The main monitor surface is moving toward a modular deck:
 - extracted runtime hooks:
   - `useMonitorLiveStream.ts`
   - `useMonitorDeckControls.ts`
+  - `useSimpleMonitorDeckRuntime.ts`
+  - `useSimpleMonitorScreenState.ts`
 - extracted pure logic:
   - `monitorLogParsing.ts`
   - `monitorAudioMutation.ts`
   - `monitorDeckViewModel.ts`
   - `monitorSourceOptions.ts`
   - `monitorSessions.ts`
+  - `libraryScreenViewModel.ts`
+  - `simpleMonitorDeckRuntime.ts`
+  - `simpleMonitorScreenRuntime.ts`
+  - `waveformBarRuntime.ts`
+  - `proMonitorScreenRuntime.ts`
 
 This split is important because the previous single-file monitor accumulated rendering, parsing, deck math, audio mutation, source selection, and session UI in one place.
+The same rule now applies to library surfaces: tabs, toolbar copy, empty states, and label/status derivation should live in pure view-model helpers instead of growing inline inside the screen component.
 
 ```mermaid
 flowchart LR
   Sidebar[Sidebar menu]
+  Shell[App-v0 + screen model]
   SetupRoute[Setup route]
   MonitorRoute[Monitor route]
   ConnectionsRoute[Connections route]
   SessionRoute[Session route]
+  FloatingBar[Floating monitor bar]
 
+  Sidebar --> Shell
+  Shell --> FloatingBar
+  Shell --> SetupRoute
+  Shell --> MonitorRoute
+  Shell --> ConnectionsRoute
+  Shell --> SessionRoute
   SetupRoute --> SetupPanel[SessionSetupPanel]
   SetupRoute --> HistoryPanel[SessionSavedSessionsPanel]
   MonitorRoute --> Header[MonitorActiveHeader]
@@ -235,10 +255,7 @@ flowchart LR
   MonitorRoute --> DeckControls[MonitorDeckControlPanel]
   SessionRoute --> Booth[SessionBoothPanel]
 
-  Sidebar --> SetupRoute
-  Sidebar --> MonitorRoute
-  Sidebar --> ConnectionsRoute
-  Sidebar --> SessionRoute
+  FloatingBar --> MonitorRoute
 ```
 
 ## Localization Layer
@@ -253,22 +270,31 @@ Architectural rule:
 - UI components should consume `useT()` instead of embedding visible copy.
 - View-model and formatting helpers may receive translated labels as parameters when they need to compose operator-facing text.
 - New deck/setup controls should land in both locales during the same change.
+- Selection and setup helpers should receive translated copy from the active locale instead of falling back silently to English at module scope.
 
 ## Coverage Snapshot
 Coverage was measured on June 25, 2026 with `npm run coverage` inside `desktop/`.
 
-- Global statements: `41.82%`
-- Global branches: `61.24%`
-- Global functions: `65.6%`
-- Global lines: `41.82%`
+- Global statements: `52.21%`
+- Global branches: `64.86%`
+- Global functions: `68.86%`
+- Global lines: `52.21%`
 - Strongest area today:
   - extracted support modules such as `monitorDeckViewModel.ts`, `monitorAudioMutation.ts`, `monitorLogParsing.ts`, and `monitorSourceOptions.ts`
   - session support modules such as `sessionBoothViewModel.ts` and `sourceTemplates.ts`
-  - analyzer-side panels with focused interactions such as `TrackPerformancePanel.tsx` and `BeatGridEditorPanel.tsx`
+  - focused desktop panels such as `AppShell.tsx`, `AppSidebar.tsx`, `TrackPerformancePanel.tsx`, and `BeatGridEditorPanel.tsx`
 - Weakest area today:
   - app shell / route composition such as `App.tsx`, `App-v0.tsx`, and `AppShell.tsx`
   - large screen containers such as `ConnectionsScreen.tsx`, `MonitorSetupScreen.tsx`, and `SimpleMonitorScreen.tsx`
   - stateful hooks and provider-heavy flows such as `MonitorContext.tsx`, `useLibrary.ts`, and `useSessions.ts`
+
+```mermaid
+xychart-beta
+  title "Desktop Coverage Snapshot"
+  x-axis ["Statements","Branches","Functions","Lines"]
+  y-axis "Percent" 0 --> 100
+  bar [52.21, 64.86, 68.86, 52.21]
+```
 
 ## Operator-Tunable Parameters
 The monitor now treats key experience parameters as operator-editable controls rather than hidden constants.
@@ -302,8 +328,8 @@ That means:
 - Some large screens are now partially decomposed, but the next maintainability win depends on moving more logic out of route components and into tested view-model/helpers.
 
 ## Next Refactor Targets
-1. Add integration tests around connection-backed monitoring, tail updates, and cloud backfill windows.
-2. Continue reducing `SimpleMonitorScreen.tsx` by isolating canvas interaction, scrub logic, and active-session composition.
-3. Move operator customization into a dedicated setup/customization route and persist typed deck settings so behavior survives app restarts.
-4. Add setup-route coverage for source selection, sound profile selection, and connection-backed launch flows.
+1. Add interaction coverage for `MonitorSetupScreen.tsx`, `ConnectionsScreen.tsx`, and connection-backed launch flows.
+2. Add integration tests around connection-backed monitoring, tail updates, and cloud backfill windows.
+3. Continue reducing `SimpleMonitorScreen.tsx` by isolating canvas interaction, scrub logic, and active-session composition.
+4. Persist typed operator customization profiles per skin/preset so the deck survives restarts consistently.
 5. Expand locale-aware tests so UI copy regressions are caught without relying on brittle literal snapshots.

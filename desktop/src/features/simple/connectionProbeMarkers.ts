@@ -1,4 +1,4 @@
-import type { StreamSessionPollResult } from "../../types/library";
+import type { StreamSessionPollResult } from "../../types/monitor";
 
 const GCLOUD_READY_MARKERS = ["Initializing tail session", "Waiting for new log lines"] as const;
 

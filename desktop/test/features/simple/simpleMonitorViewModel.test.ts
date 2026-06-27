@@ -3,8 +3,12 @@ import { describe, expect, it } from "vitest";
 import { en } from "../../../src/i18n/en";
 import {
   buildSimpleMonitorScreenViewModel,
+  buildSimpleMonitorDeckStateViewModel,
+  coerceSimpleMonitorCollection,
   formatSimpleMonitorUptimeLabel,
   resolveSimpleMonitorActiveTrack,
+  resolveSimpleMonitorDeckPresetLabel,
+  resolveSimpleMonitorVisualPreset,
 } from "../../../src/features/simple/simpleMonitorViewModel";
 import type { ActiveMonitorSession } from "../../../src/features/monitor/MonitorContext";
 import type { LibraryTrack } from "../../../src/types/library";
@@ -97,11 +101,17 @@ describe("simpleMonitorViewModel", () => {
   it("resolves the active track from explicit track name or session fallback", () => {
     const tracks = [makeTrack("track-1", "Around The World"), makeTrack("track-2", "Sweet Dreams")];
 
-    expect(resolveSimpleMonitorActiveTrack(tracks, "Sweet Dreams", undefined)?.id).toBe("track-2");
-    expect(resolveSimpleMonitorActiveTrack(tracks, undefined, "Around The World")?.id).toBe(
-      "track-1",
-    );
-    expect(resolveSimpleMonitorActiveTrack(tracks, undefined, undefined)).toBeNull();
+    expect(resolveSimpleMonitorActiveTrack(tracks, "track-2", undefined, undefined, undefined)?.id)
+      .toBe("track-2");
+    expect(resolveSimpleMonitorActiveTrack(tracks, undefined, "Sweet Dreams", undefined, undefined)?.id)
+      .toBe("track-2");
+    expect(resolveSimpleMonitorActiveTrack(tracks, undefined, undefined, "track-1", undefined)?.id)
+      .toBe("track-1");
+    expect(
+      resolveSimpleMonitorActiveTrack(tracks, undefined, undefined, undefined, "Around The World")
+        ?.id,
+    ).toBe("track-1");
+    expect(resolveSimpleMonitorActiveTrack(tracks, undefined, undefined, undefined, undefined)).toBeNull();
   });
 
   it("formats uptime for seconds and minute boundaries", () => {
@@ -172,5 +182,76 @@ describe("simpleMonitorViewModel", () => {
     expect(model.isConnectingMonitor).toBe(true);
     expect(model.uptimeLabel).toBe("0s");
     expect(model.deckRemainingSeconds).toBeNull();
+  });
+
+  it("coerces nullable monitor collections defensively", () => {
+    expect(coerceSimpleMonitorCollection([1, 2, 3])).toEqual([1, 2, 3]);
+    expect(coerceSimpleMonitorCollection(null)).toEqual([]);
+    expect(coerceSimpleMonitorCollection(undefined)).toEqual([]);
+  });
+
+  it("resolves preset label and visual preset for custom shapes", () => {
+    expect(resolveSimpleMonitorDeckPresetLabel("passive", en)).toBe(
+      en.simpleMode.deckSetup.presetPassive,
+    );
+    expect(resolveSimpleMonitorDeckPresetLabel("balanced", en)).toBe(
+      en.simpleMode.deckSetup.presetBalanced,
+    );
+    expect(resolveSimpleMonitorDeckPresetLabel("alert", en)).toBe(
+      en.simpleMode.deckSetup.presetAlert,
+    );
+    expect(resolveSimpleMonitorDeckPresetLabel("custom", en)).toBe(
+      en.simpleMode.deckSetup.presetCustom,
+    );
+
+    expect(
+      resolveSimpleMonitorVisualPreset({
+        activePreset: "custom",
+        alertShape: "soft",
+      }),
+    ).toBe("passive");
+    expect(
+      resolveSimpleMonitorVisualPreset({
+        activePreset: "custom",
+        alertShape: "tight",
+      }),
+    ).toBe("balanced");
+    expect(
+      resolveSimpleMonitorVisualPreset({
+        activePreset: "custom",
+        alertShape: "aggressive",
+      }),
+    ).toBe("alert");
+  });
+
+  it("builds deck state for active track and launch state", () => {
+    const track = makeTrack("track-1", "Around The World");
+    const session: ActiveMonitorSession = {
+      sessionId: "session-1",
+      repoId: "repo-1",
+      repoTitle: "visits-service",
+      sourcePath: "/logs/visits-service.log",
+      startedAt: 10_000,
+      trackName: "Around The World",
+      adapterKind: "file",
+    };
+
+    const deckState = buildSimpleMonitorDeckStateViewModel({
+      session,
+      isListening: true,
+      isLaunchingMonitor: false,
+      activeTrack: track,
+      trackDurationSeconds: 240,
+      activePreset: "custom",
+      alertShape: "aggressive",
+      t: en,
+    });
+
+    expect(deckState.deckDurationSeconds).toBe(240);
+    expect(deckState.activeBeatGrid).toEqual([]);
+    expect(deckState.streamAdapterLabel).toBe("FILE_TAIL");
+    expect(deckState.isMonitorActive).toBe(true);
+    expect(deckState.deckPresetLabel).toBe(en.simpleMode.deckSetup.presetCustom);
+    expect(deckState.deckVisualPreset).toBe("alert");
   });
 });

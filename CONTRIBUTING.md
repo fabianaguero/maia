@@ -11,8 +11,11 @@ Before changing code, read:
 
 - [README.md](README.md)
 - [docs/architecture.md](docs/architecture.md)
+- [docs/frontend-architecture.md](docs/frontend-architecture.md)
 - [docs/open-source-maintainer-guide.md](docs/open-source-maintainer-guide.md)
 - [docs/sdd.md](docs/sdd.md)
+- [SUPPORT.md](SUPPORT.md)
+- [MAINTAINERS.md](MAINTAINERS.md)
 
 ## Project Principles
 
@@ -41,6 +44,18 @@ Do not bypass the JSON contract to couple Rust and Python implicitly.
 - `desktop/src/App.tsx` exists, but it is not the mounted shell today.
 
 If you are changing the active desktop product surface, validate that you are editing the mounted path first.
+
+## Open Source Repository Expectations
+
+This repository is intended for public MIT-licensed publication on GitHub.
+That means contributors should assume:
+
+- documentation is part of the product surface
+- runtime boundaries should be understandable to first-time contributors
+- issue templates, support docs, and contributor guidance should stay accurate
+- CI checks should remain representative of the active product, not only of dead code paths
+
+If your change materially alters the active shell, monitor flow, or public contributor story, update the relevant docs in the same pull request.
 
 ## Development Setup
 

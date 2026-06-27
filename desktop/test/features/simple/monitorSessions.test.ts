@@ -75,9 +75,9 @@ describe("monitorSessions", () => {
   });
 
   it("formats session metadata strings safely", () => {
-    expect(formatSessionLineCount(0)).toBe("0 lines");
-    expect(formatSessionLineCount(1)).toBe("1 line");
-    expect(formatSessionLineCount(12)).toBe("12 lines");
-    expect(formatSessionUpdatedAt("invalid")).toBe("just now");
+    expect(formatSessionLineCount(0, "line", "lines")).toBe("0 lines");
+    expect(formatSessionLineCount(1, "line", "lines")).toBe("1 line");
+    expect(formatSessionLineCount(12, "line", "lines")).toBe("12 lines");
+    expect(formatSessionUpdatedAt("invalid", "en-US", "Just now")).toBe("Just now");
   });
 });

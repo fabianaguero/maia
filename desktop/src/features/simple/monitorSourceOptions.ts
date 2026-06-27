@@ -1,5 +1,6 @@
-import { en, type AppTranslations } from "../../i18n/en";
-import type { LogSourceConnection, RepositoryAnalysis } from "../../types/library";
+import type { AppTranslations } from "../../i18n/en";
+import type { RepositoryAnalysis } from "../../types/library";
+import type { LogSourceConnection } from "../../types/monitor";
 
 export type MonitorSourceFilter = "all" | "file" | "folder" | "cloud";
 
@@ -39,22 +40,6 @@ export interface MonitorSourceCopy {
   startHintReady: string;
   startHintSelect: string;
 }
-
-const DEFAULT_MONITOR_SOURCE_COPY: MonitorSourceCopy = {
-  logFile: en.simpleMode.setup.logFile,
-  folder: en.simpleMode.setup.folder,
-  cloudRemote: en.simpleMode.setup.cloudRemote,
-  cloudConnection: en.simpleMode.setup.cloudConnection,
-  emptyCloudReady: en.simpleMode.setup.emptyCloudReady,
-  emptyCloudMissing: en.simpleMode.setup.emptyCloudMissing,
-  emptyFolder: en.simpleMode.setup.emptyFolder,
-  emptyDefault: en.simpleMode.setup.emptyDefault,
-  startHintDisabledConnection: en.simpleMode.setup.startHintDisabledConnection,
-  startHintCloudManaged: en.simpleMode.setup.startHintCloudManaged,
-  startHintFileOnly: en.simpleMode.setup.startHintFileOnly,
-  startHintReady: en.simpleMode.setup.startHintReady,
-  startHintSelect: en.simpleMode.setup.startHintSelect,
-};
 
 export function buildMonitorSourceCopy(t: AppTranslations): MonitorSourceCopy {
   return {
@@ -136,14 +121,13 @@ export function buildMonitorSourceSelectionModel(input: {
   selectedSourceId: string;
   selectedSoundId: string;
   sourceFilter: MonitorSourceFilter;
-  copy?: Partial<MonitorSourceCopy>;
+  copy: MonitorSourceCopy;
 }): MonitorSourceSelectionModel {
-  const copy: MonitorSourceCopy = {
-    ...DEFAULT_MONITOR_SOURCE_COPY,
-    ...input.copy,
-  };
-  const monitorSourceOptions = buildRepositorySourceOptions(input.repositories, copy);
-  const cloudConnectionOptions = buildCloudConnectionOptions(input.persistentConnections, copy);
+  const monitorSourceOptions = buildRepositorySourceOptions(input.repositories, input.copy);
+  const cloudConnectionOptions = buildCloudConnectionOptions(
+    input.persistentConnections,
+    input.copy,
+  );
   const allMonitorSourceOptions: MonitorLaunchSource[] = [
     ...monitorSourceOptions,
     ...cloudConnectionOptions,
@@ -160,22 +144,22 @@ export function buildMonitorSourceSelectionModel(input: {
   const sourceEmptyMessage =
     input.sourceFilter === "cloud"
       ? cloudConnectionCount > 0
-        ? copy.emptyCloudReady
-        : copy.emptyCloudMissing
+        ? input.copy.emptyCloudReady
+        : input.copy.emptyCloudMissing
       : input.sourceFilter === "folder"
-        ? copy.emptyFolder
-        : copy.emptyDefault;
+        ? input.copy.emptyFolder
+        : input.copy.emptyDefault;
 
   const startHint =
     selectedSourceOption && !selectedSourceOption.startable
       ? selectedSourceOption.origin === "connection"
-        ? copy.startHintDisabledConnection
+        ? input.copy.startHintDisabledConnection
         : selectedSourceOption.sourceType === "cloud"
-          ? copy.startHintCloudManaged
-          : copy.startHintFileOnly
+          ? input.copy.startHintCloudManaged
+          : input.copy.startHintFileOnly
       : input.selectedSourceId && input.selectedSoundId
-        ? copy.startHintReady
-        : copy.startHintSelect;
+        ? input.copy.startHintReady
+        : input.copy.startHintSelect;
 
   return {
     allMonitorSourceOptions,

@@ -33,18 +33,22 @@ export function sortMonitorSessions(sessions: PersistedSession[]): PersistedSess
   });
 }
 
-export function formatSessionUpdatedAt(timestamp: string | null | undefined): string {
+export function formatSessionUpdatedAt(
+  timestamp: string | null | undefined,
+  locale: string,
+  fallbackLabel: string,
+): string {
   if (!timestamp) {
-    return "just now";
+    return fallbackLabel;
   }
 
   const parsed = Date.parse(timestamp);
   if (!Number.isFinite(parsed)) {
-    return "just now";
+    return fallbackLabel;
   }
 
   const date = new Date(parsed);
-  return date.toLocaleString("es-AR", {
+  return date.toLocaleString(locale, {
     day: "numeric",
     month: "short",
     hour: "2-digit",
@@ -52,12 +56,16 @@ export function formatSessionUpdatedAt(timestamp: string | null | undefined): st
   });
 }
 
-export function formatSessionLineCount(value: number): string {
+export function formatSessionLineCount(
+  value: number,
+  singularLabel: string,
+  pluralLabel: string,
+): string {
   if (!Number.isFinite(value) || value <= 0) {
-    return "0 lines";
+    return `0 ${pluralLabel}`;
   }
   if (value === 1) {
-    return "1 line";
+    return `1 ${singularLabel}`;
   }
-  return `${value} lines`;
+  return `${value} ${pluralLabel}`;
 }

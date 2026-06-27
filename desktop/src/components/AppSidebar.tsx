@@ -1,11 +1,21 @@
 import { Activity, AudioWaveform, Cable, Library } from "lucide-react";
 import type React from "react";
-import type { ActiveMonitorSession, MonitorMetrics } from "../features/monitor/MonitorContext";
+import type {
+  ActiveMonitorSession,
+  MonitorMetrics,
+} from "../features/monitor/monitorContextTypes";
 import { useT } from "../i18n/I18nContext";
 import { useUserMode } from "../features/simple/UserModeContext";
 import type { AppPillar } from "../types/library";
 import { getStreamAdapterLabel } from "../utils/streamAdapter";
+import {
+  formatMonitorShortUptime,
+  getMonitorAnomaliesInlineLabel,
+  getMonitorLiveStatusLabel,
+} from "../utils/monitorLabels";
 import { ModeToggle } from "./ModeToggle";
+import { BrandLockup } from "./Branding";
+import { buildSidebarNavItems } from "./appNavigationViewModel";
 
 const PILLAR_ICONS: Record<AppPillar, React.ReactNode> = {
   perform: <Activity size={18} />,
@@ -47,65 +57,19 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const t = useT();
   const { userMode } = useUserMode();
+  const liveStatusLabel = getMonitorLiveStatusLabel(t);
+  const anomaliesInlineLabel = getMonitorAnomaliesInlineLabel(t);
+  const navigationItems = buildSidebarNavItems({
+    t,
+    userMode,
+    liveStatusLabel,
+    monitorActive: Boolean(monitorSession),
+    trackCount,
+    repositoryCount,
+    compositionCount,
+  });
 
-  const navigationItems =
-    userMode === "simple"
-      ? [
-          {
-            id: "perform" as AppPillar,
-            label: t.simpleMode.nav.monitor,
-            description: t.simpleMode.shell.realTimeLogMonitoring,
-            lane: null,
-            detail: monitorSession ? t.simpleMode.status.listening : t.simpleMode.status.standby,
-          },
-          {
-            id: "curate" as AppPillar,
-            label: t.simpleMode.nav.files,
-            description: t.simpleMode.shell.manageFilesAndLogs,
-            lane: null,
-            detail: t.simpleMode.shell.items.replace(
-              "{count}",
-              String(trackCount + repositoryCount),
-            ),
-          },
-        ]
-      : [
-          {
-            id: "perform" as AppPillar,
-            label: t.nav.pillars.perform.label,
-            description: t.nav.pillars.perform.description,
-            lane: t.nav.pillars.perform.lane,
-            detail: monitorSession ? t.simpleMode.shell.engineLive : t.simpleMode.status.standby,
-          },
-          {
-            id: "design" as AppPillar,
-            label: t.nav.pillars.design.label,
-            description: t.nav.pillars.design.description,
-            lane: t.nav.pillars.design.lane,
-            detail: t.simpleMode.shell.arrangementsCued.replace(
-              "{count}",
-              String(compositionCount),
-            ),
-          },
-          {
-            id: "curate" as AppPillar,
-            label: t.nav.pillars.curate.label,
-            description: t.nav.pillars.curate.description,
-            lane: t.nav.pillars.curate.lane,
-            detail: t.simpleMode.shell.assetsInVault.replace(
-              "{count}",
-              String(trackCount + repositoryCount),
-            ),
-          },
-        ];
-
-  const uptimeSeconds = monitorSession
-    ? Math.floor((Date.now() - monitorSession.startedAt) / 1000)
-    : 0;
-  const uptimeLabel =
-    uptimeSeconds < 60
-      ? `${uptimeSeconds}s`
-      : `${Math.floor(uptimeSeconds / 60)}m ${uptimeSeconds % 60}s`;
+  const uptimeLabel = formatMonitorShortUptime(monitorSession?.startedAt);
   const monitorAdapterLabel = monitorSession
     ? getStreamAdapterLabel(monitorSession.adapterKind)
     : null;
@@ -113,14 +77,10 @@ export function AppSidebar({
   return (
     <aside className="sidebar panel role-based-sidebar">
       <div className="sidebar-brand">
-        <div className="sidebar-logo-lockup">
-          <img src="/assets/branding/maia-icon-site.png" alt="MAIA" className="sidebar-logo-icon" />
-          <img
-            src="/assets/branding/maia-wordmark-site.png"
-            alt="MAIA"
-            className="sidebar-wordmark"
-          />
-        </div>
+        <BrandLockup
+          className="sidebar-brand-lockup sidebar-brand-lockup--pro"
+          wordmarkClassName="sidebar-wordmark sidebar-wordmark--pro"
+        />
         <p className="sidebar-tagline">{t.tagline}</p>
         <ModeToggle />
       </div>
@@ -168,9 +128,7 @@ export function AppSidebar({
           <div className="monitor-status-header">
             <span className="monitor-pulse" aria-hidden="true" />
             <span className="monitor-status-label">
-              {userMode === "simple"
-                ? t.simpleMode.status.listening
-                : t.simpleMode.shell.engineLive}
+              {liveStatusLabel}
             </span>
             <span className="monitor-mode-badge">{monitorAdapterLabel}</span>
           </div>
@@ -179,7 +137,7 @@ export function AppSidebar({
           </p>
           <div className="monitor-metrics">
             <span>
-              {monitorMetrics.totalAnomalies} {t.simpleMode.monitor.anomalies.toLowerCase()}
+              {monitorMetrics.totalAnomalies} {anomaliesInlineLabel}
             </span>
             <span>·</span>
             <span>{uptimeLabel}</span>
@@ -198,15 +156,21 @@ export function AppSidebar({
       {userMode === "expert" && (
         <div className="sidebar-meta">
           <div className="sidebar-stat">
-            <small className="sidebar-stat-code">SND</small>
+            <small className="sidebar-stat-code" title={t.simpleMode.shell.tracksTitle}>
+              {t.simpleMode.shell.tracksShort}
+            </small>
             <strong>{trackCount}</strong>
           </div>
           <div className="sidebar-stat">
-            <small className="sidebar-stat-code">LOG</small>
+            <small className="sidebar-stat-code" title={t.simpleMode.shell.logsTitle}>
+              {t.simpleMode.shell.logsShort}
+            </small>
             <strong>{repositoryCount}</strong>
           </div>
           <div className="sidebar-stat">
-            <small className="sidebar-stat-code">PRF</small>
+            <small className="sidebar-stat-code" title={t.simpleMode.shell.profilesTitle}>
+              {t.simpleMode.shell.profilesShort}
+            </small>
             <strong>{baseAssetCount}</strong>
           </div>
         </div>

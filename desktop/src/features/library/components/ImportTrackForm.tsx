@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 
 import { pickTrackSourcePath } from "../../../api/library";
+import { useT } from "../../../i18n/I18nContext";
 import type { ImportTrackInput } from "../../../types/library";
 import type { MusicStyleOption } from "../../../types/music";
 
@@ -14,9 +15,9 @@ interface ImportTrackFormProps {
   onSeedDemo: () => Promise<void>;
 }
 
-function deriveTitle(sourcePath: string): string {
+function deriveTitle(sourcePath: string, fallbackTitle: string): string {
   const tail = sourcePath.trim().split(/[\\/]/).pop() ?? "";
-  return tail.replace(/\.[^.]+$/, "") || "Imported Track";
+  return tail.replace(/\.[^.]+$/, "") || fallbackTitle;
 }
 
 export function ImportTrackForm({
@@ -26,6 +27,7 @@ export function ImportTrackForm({
   onImportTrack,
   onSeedDemo,
 }: ImportTrackFormProps) {
+  const t = useT();
   const fallbackMusicStyleId = defaultMusicStyleId ?? musicStyles[0]?.id ?? "";
   const [title, setTitle] = useState("");
   const [sourcePath, setSourcePath] = useState("");
@@ -43,16 +45,17 @@ export function ImportTrackForm({
     event.preventDefault();
 
     const normalizedPath = sourcePath.trim();
-    const normalizedTitle = title.trim() || deriveTitle(normalizedPath);
+    const normalizedTitle =
+      title.trim() || deriveTitle(normalizedPath, t.library.forms.track.fallbackTitle);
     const normalizedMusicStyleId = musicStyleId.trim();
 
     if (!normalizedPath) {
-      setError("A local source path is required.");
+      setError(t.library.forms.track.pathRequiredError);
       return;
     }
 
     if (!normalizedMusicStyleId) {
-      setError("Select a music style before importing the track.");
+      setError(t.library.forms.track.musicStyleRequiredError);
       return;
     }
 
@@ -83,12 +86,12 @@ export function ImportTrackForm({
       }
 
       setSourcePath(pickedPath);
-      setTitle((current) => current.trim() || deriveTitle(pickedPath));
+      setTitle((current) => current.trim() || deriveTitle(pickedPath, t.library.forms.track.fallbackTitle));
     } catch (nextError) {
       setError(
         nextError instanceof Error
           ? nextError.message
-          : "Native file picker failed. Enter the path manually.",
+          : t.library.forms.track.pickerFailed,
       );
     } finally {
       setPickerBusy(false);
@@ -99,17 +102,13 @@ export function ImportTrackForm({
     <form className="import-form" onSubmit={(event) => void handleSubmit(event)}>
       <div className="panel-header compact">
         <div>
-          <h2>Import track</h2>
-          <p className="support-copy">
-            Select a configured music style before importing. The chosen prior is persisted locally.
-            Browsing can use the native desktop picker, but waveform and BPM processing run inside
-            the analyzer during import.
-          </p>
+          <h2>{t.library.forms.track.title}</h2>
+          <p className="support-copy">{t.library.forms.track.description}</p>
         </div>
       </div>
 
       <label className="field">
-        <span>Music style</span>
+        <span>{t.library.forms.track.musicStyle}</span>
         <select
           value={musicStyleId}
           onChange={(event) => setMusicStyleId(event.target.value)}
@@ -134,28 +133,24 @@ export function ImportTrackForm({
       ) : null}
 
       <label className="field">
-        <span>Track title</span>
+        <span>{t.library.forms.track.trackTitle}</span>
         <input
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          placeholder="Night Drive"
+          placeholder={t.library.forms.track.trackTitlePlaceholder}
         />
       </label>
 
       <label className="field">
-        <span>Local path</span>
+        <span>{t.library.forms.track.localPath}</span>
         <input
           value={sourcePath}
           onChange={(event) => setSourcePath(event.target.value)}
-          placeholder="~/Music/night-drive.wav"
+          placeholder={t.library.forms.track.localPathPlaceholder}
         />
       </label>
 
-      <p className="field-hint">
-        Browse uses the native desktop picker when available. Embedded analysis currently decodes
-        WAV, MP3, FLAC, and OGG/Vorbis inside the analyzer; other formats still import with a
-        deterministic fallback.
-      </p>
+      <p className="field-hint">{t.library.forms.track.hint}</p>
 
       {error ? <p className="inline-error">{error}</p> : null}
 
@@ -168,22 +163,22 @@ export function ImportTrackForm({
         >
           {pickerBusy ? (
             <>
-              <span className="spin-ring" aria-hidden="true" /> Browsing...
+              <span className="spin-ring" aria-hidden="true" /> {t.library.forms.track.browsing}
             </>
           ) : (
             <>
-              <FolderOpen size={14} /> Browse audio file
+              <FolderOpen size={14} /> {t.library.forms.track.browseAudioFile}
             </>
           )}
         </button>
         <button type="submit" className="action" disabled={busy}>
           {busy ? (
             <>
-              <span className="spin-ring" aria-hidden="true" /> Saving...
+              <span className="spin-ring" aria-hidden="true" /> {t.library.forms.track.saving}
             </>
           ) : (
             <>
-              <Music size={14} /> Import track
+              <Music size={14} /> {t.library.forms.track.importTrack}
             </>
           )}
         </button>
@@ -193,7 +188,7 @@ export function ImportTrackForm({
           onClick={() => void onSeedDemo()}
           disabled={busy}
         >
-          <Shuffle size={14} /> Load demo tracks
+          <Shuffle size={14} /> {t.library.forms.track.loadDemoTracks}
         </button>
       </div>
     </form>

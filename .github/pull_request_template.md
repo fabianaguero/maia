@@ -19,6 +19,7 @@ Describe any boundary changes between React, Rust, Python, contracts, or persist
 - [ ] Not run
 - [ ] Analyzer tests
 - [ ] Desktop tests
+- [ ] Desktop build
 - [ ] Manual desktop verification
 
 Commands run:
@@ -33,3 +34,4 @@ Commands run:
 - [ ] I called out contract changes if payloads changed.
 - [ ] I called out persistence changes if SQLite or managed storage behavior changed.
 - [ ] I avoided introducing unnecessary coupling across runtimes.
+- [ ] I verified I changed the active mounted shell if the PR touches desktop product UI.

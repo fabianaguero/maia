@@ -30,8 +30,8 @@ export interface ProMonitorMockData {
 }
 
 export function buildProMonitorMockData(t: AppTranslations): ProMonitorMockData {
-  const sessionTitle = "payments-api";
-  const trackTitle = "Eurythmics - Sweet Dreams";
+  const sessionTitle = t.simpleMode.proMonitor.demoSessionTitle;
+  const trackTitle = t.simpleMode.proMonitor.demoTrackTitle;
 
   return {
     sessionTitle,

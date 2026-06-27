@@ -1,4 +1,4 @@
-import type { LiveLogMarker } from "../../types/library";
+import type { LiveLogMarker } from "../../types/monitor";
 
 export interface MonitorTrackMutationInput {
   lineCount?: number;

@@ -1,11 +1,13 @@
 import type {
   ImportRepositoryInput,
+  RepositoryAnalysis,
+} from "../types/library";
+import type {
   LiveLogComponentCount,
   LiveLogCue,
   LiveLogMarker,
   LiveLogStreamUpdate,
-  RepositoryAnalysis,
-} from "../types/library";
+} from "../types/monitor";
 
 const STORAGE_KEY = "maia.library.repositories.v1";
 let memoryStore: RepositoryAnalysis[] = [];

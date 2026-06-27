@@ -1,9 +1,17 @@
 import { useT } from "../i18n/I18nContext";
 import { useUserMode } from "../features/simple/UserModeContext";
 import type { AppSection } from "../features/simple/appSections";
-import { Radio, Library, AudioWaveform, Cable, Users, Sliders, Dot } from "lucide-react";
+import { Radio, Library, AudioWaveform, Cable, Users, Sliders } from "lucide-react";
+import { BrandIcon, BrandLockup } from "./Branding";
+import {
+  getMonitorAnomaliesInlineLabel,
+  getMonitorLiveStatusLabel,
+} from "../utils/monitorLabels";
+import { buildShellNavItems } from "./appNavigationViewModel";
+import { AppShellMonitorStatusBadge } from "./AppShellMonitorStatusBadge";
+import { AppShellStatsFooter } from "./AppShellStatsFooter";
 
-interface AppShellProps {
+export interface AppShellProps {
   children: React.ReactNode;
   currentSection?: AppSection;
   isMonitoring?: boolean;
@@ -42,77 +50,18 @@ export function AppShell({
   const t = useT();
   const { userMode, setUserMode } = useUserMode();
   const isMonitorActive = isMonitoring;
+  const liveStatusLabel = getMonitorLiveStatusLabel(t);
+  const anomaliesInlineLabel = getMonitorAnomaliesInlineLabel(t);
 
-  // Navigation structure differs by mode
-  const navItems =
-    userMode === "simple"
-      ? [
-          {
-            id: "monitor",
-            icon: Radio,
-            label: t.simpleMode.nav.monitor,
-            subtitle: t.simpleMode.setup.monitorSubtitle,
-            lane: undefined,
-          },
-          {
-            id: "connections",
-            icon: Cable,
-            label: t.simpleMode.nav.connections,
-            subtitle: t.simpleMode.setup.connectionsSubtitle,
-            lane: undefined,
-          },
-          {
-            id: "setup",
-            icon: Sliders,
-            label: t.simpleMode.nav.setup,
-            subtitle: t.simpleMode.setup.setupSubtitle,
-            lane: undefined,
-          },
-          {
-            id: "library",
-            icon: Library,
-            label: t.simpleMode.nav.files,
-            subtitle: t.simpleMode.setup.filesSubtitle,
-            lane: undefined,
-          },
-        ]
-      : [
-          {
-            id: "monitor",
-            icon: Radio,
-            label: t.nav.session.label,
-            subtitle: t.nav.session.description,
-            lane: "A01",
-          },
-          {
-            id: "connections",
-            icon: Cable,
-            label: t.simpleMode.nav.connections,
-            subtitle: t.simpleMode.shell.connectionsExpertSubtitle,
-            lane: "B02",
-          },
-          {
-            id: "setup",
-            icon: Sliders,
-            label: t.simpleMode.nav.setup,
-            subtitle: t.simpleMode.shell.setupExpertSubtitle,
-            lane: "C03",
-          },
-          {
-            id: "compose",
-            icon: AudioWaveform,
-            label: t.nav.compose.label,
-            subtitle: t.nav.compose.description,
-            lane: "D04",
-          },
-          {
-            id: "library",
-            icon: Library,
-            label: t.nav.library.label,
-            subtitle: t.nav.library.description,
-            lane: "E05",
-          },
-        ];
+  const navItems = buildShellNavItems({ t, userMode });
+  const shellIcons = {
+    monitor: Radio,
+    connections: Cable,
+    setup: Sliders,
+    compose: AudioWaveform,
+    library: Library,
+    inspect: Library,
+  } satisfies Record<AppSection, typeof Radio>;
 
   return (
     <div className={`app-shell-layout ${isCollapsed ? "sidebar-collapsed" : ""}`}>
@@ -121,8 +70,14 @@ export function AppShell({
         {/* Logo + Branding */}
         <div className="sidebar-brand">
           <div className="sidebar-logo">
-            <img src="/assets/branding/maia-icon-site.png" alt="MAIA" className="logo-main" />
-            {!isCollapsed && <span className="logo-text">MAIA</span>}
+            {isCollapsed ? (
+              <BrandIcon className="logo-main" />
+            ) : (
+              <BrandLockup
+                className="sidebar-brand-lockup"
+                wordmarkClassName="sidebar-wordmark"
+              />
+            )}
           </div>
           <button className="btn-collapse" onClick={onToggleCollapse}>
             {isCollapsed ? "→" : "←"}
@@ -159,14 +114,15 @@ export function AppShell({
         {/* Navigation */}
         <nav className="sidebar-nav">
           {navItems.map((item) => {
-            const Icon = item.icon;
+            const Icon = shellIcons[item.id];
             const isActive = currentSection === item.id;
 
             return (
               <div key={item.id} className="nav-item-wrapper">
                 <button
+                  type="button"
                   className={`nav-item ${isActive ? "active" : ""}`}
-                  onClick={() => onSectionChange?.(item.id as any)}
+                  onClick={() => onSectionChange?.(item.id)}
                 >
                   <Icon size={18} className="nav-icon" />
                   {!isCollapsed && (
@@ -182,42 +138,17 @@ export function AppShell({
 
                 {/* Monitor status badge (when monitoring) */}
                 {item.id === "monitor" && isMonitorActive && (
-                  <div className="monitor-status-badge">
-                    <Dot size={8} className="pulsing-dot" />
-                    <span className="status-label">
-                      {userMode === "simple"
-                        ? t.simpleMode.status.listening
-                        : t.simpleMode.shell.engineLive}
-                    </span>
-                    {monitoringStatus.source && (
-                      <>
-                        <span className="status-source">{monitoringStatus.source}</span>
-                        <div className="status-metrics">
-                          <span className="metric-anomalies">
-                            {monitoringStatus.anomalies || 0}{" "}
-                            {t.simpleMode.monitor.anomalies.toLowerCase()}
-                          </span>
-                          <span className="metric-uptime">
-                            {monitoringStatus.uptime || "00:00"}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          className="btn-inspect-small"
-                          onClick={() => onInspect?.()}
-                        >
-                          {t.simpleMode.common.inspect}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-stop-small"
-                          onClick={() => onStopMonitoring?.()}
-                        >
-                          {t.simpleMode.common.stop}
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  <AppShellMonitorStatusBadge
+                    liveStatusLabel={liveStatusLabel}
+                    anomaliesInlineLabel={anomaliesInlineLabel}
+                    anomalies={monitoringStatus.anomalies}
+                    uptime={monitoringStatus.uptime}
+                    source={monitoringStatus.source}
+                    inspectLabel={t.simpleMode.common.inspect}
+                    stopLabel={t.simpleMode.common.stop}
+                    onInspect={onInspect}
+                    onStopMonitoring={onStopMonitoring}
+                  />
                 )}
               </div>
             );
@@ -226,20 +157,17 @@ export function AppShell({
 
         {/* Stats Footer (only in Pro mode) */}
         {userMode === "expert" && (
-          <div className="sidebar-stats">
-            <div className="stat-item">
-              <span className="stat-label">SND</span>
-              <span className="stat-value">{trackCount}</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-label">LOG</span>
-              <span className="stat-value">{repositoryCount}</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-label">PRF</span>
-              <span className="stat-value">{baseAssetCount}</span>
-            </div>
-          </div>
+          <AppShellStatsFooter
+            tracksTitle={t.simpleMode.shell.tracksTitle}
+            tracksShort={t.simpleMode.shell.tracksShort}
+            trackCount={trackCount}
+            logsTitle={t.simpleMode.shell.logsTitle}
+            logsShort={t.simpleMode.shell.logsShort}
+            repositoryCount={repositoryCount}
+            profilesTitle={t.simpleMode.shell.profilesTitle}
+            profilesShort={t.simpleMode.shell.profilesShort}
+            baseAssetCount={baseAssetCount}
+          />
         )}
 
         {/* Selected Item Footer */}
@@ -247,7 +175,9 @@ export function AppShell({
           <span className="footer-label">
             {userMode === "simple" ? t.simpleMode.shell.currentFocus : t.sidebar.selected}
           </span>
-          <span className="footer-value">{selectedItem || "—"}</span>
+          <span className="footer-value" title={selectedItem || t.simpleMode.shell.none}>
+            {selectedItem || t.simpleMode.shell.none}
+          </span>
         </div>
       </aside>
 

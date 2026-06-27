@@ -19,6 +19,14 @@ jobs:
         run: python -m ruff check --config analyzer/pyproject.toml analyzer/src/maia_analyzer/*.py analyzer/tests/*.py scripts/demo/*.py scripts/verification/*.py
       - name: Mypy
         run: python -m mypy --config-file analyzer/pyproject.toml analyzer/src/maia_analyzer/*.py
+      - name: Analyzer tests
+        run: python -m pytest analyzer/tests -v --cov=maia_analyzer --cov-report=term-missing --cov-report=xml
+      - name: Upload analyzer coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyzer-coverage
+          path: analyzer/coverage.xml
 
   desktop-quality:
     runs-on: ubuntu-latest
@@ -38,6 +46,18 @@ jobs:
       - name: Lint
         working-directory: desktop
         run: npm run lint
+      - name: Desktop tests
+        working-directory: desktop
+        run: npm run coverage
+      - name: Upload desktop coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-coverage
+          path: desktop/coverage
+      - name: Desktop build
+        working-directory: desktop
+        run: npm run build
 
   site-quality:
     runs-on: ubuntu-latest

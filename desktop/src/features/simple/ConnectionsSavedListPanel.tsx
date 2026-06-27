@@ -1,12 +1,14 @@
-import { Cable, Pencil, Play, RefreshCw, Square, Trash2 } from "lucide-react";
+import { Cable, RefreshCw } from "lucide-react";
 
-import { useT } from "../../i18n/I18nContext";
-import type { LogSourceConnection } from "../../types/library";
+import type { LogSourceConnection } from "../../types/monitor";
 import {
-  deriveCloudBackfillLabel,
   type ConnectionKind,
   type ConnectionTestStatus,
 } from "./connectionsViewModel";
+import { buildConnectionsSavedListViewModel } from "./connectionsSavedListViewModel";
+import { ConnectionsSavedRow } from "./ConnectionsSavedRow";
+import { ConnectionsTailConsole } from "./ConnectionsTailConsole";
+import { useT } from "../../i18n/I18nContext";
 
 interface ConnectionsSavedListPanelProps {
   loading: boolean;
@@ -50,167 +52,71 @@ export function ConnectionsSavedListPanel({
   onDeleteConnection,
 }: ConnectionsSavedListPanelProps) {
   const t = useT();
+  const viewModel = buildConnectionsSavedListViewModel({
+    t,
+    connections,
+    connectionKindLabel,
+    activeConnectionId,
+    activeSessionId,
+    editingConnectionId,
+    saving,
+    testStatusById,
+    testMessageById,
+    tailStatus,
+  });
 
   return (
     <section className="panel connections-panel">
       <div className="panel-header compact">
         <div>
-          <h3>{t.simpleMode.connections.savedConnections}</h3>
-          <p className="support-copy">{t.simpleMode.connections.savedConnectionsHelp}</p>
+          <h3>{viewModel.title}</h3>
+          <p className="support-copy">{viewModel.help}</p>
         </div>
       </div>
 
       {loading ? (
         <div className="placeholder-loading">
           <span className="spin-ring" aria-hidden="true" />
-          {t.simpleMode.connections.loading}
+          {viewModel.loadingLabel}
         </div>
       ) : connections.length === 0 ? (
         <div className="empty-state compact-empty">
           <Cable size={28} />
-          <strong>{t.simpleMode.connections.noConnections}</strong>
-          <p>{t.simpleMode.connections.noConnectionsHelp}</p>
+          <strong>{viewModel.emptyTitle}</strong>
+          <p>{viewModel.emptyHelp}</p>
         </div>
       ) : (
-        <ul className="asset-card-list">
-          {connections.map((connection) => (
-            <li
-              key={connection.id}
-              className={`asset-card ${editingConnectionId === connection.id ? "selected" : ""}`}
-              onClick={() => onSelectConnection(connection)}
-            >
-              <div className="asset-card-icon source-icon">
-                <Cable size={18} />
-              </div>
-              <div className="asset-card-body">
-                <strong className="asset-card-title">{connection.label}</strong>
-                <div className="asset-card-meta">
-                  <span className="type-badge">
-                    {connectionKindLabel[connection.kind as ConnectionKind] ?? connection.kind}
-                  </span>
-                  <span className={connection.enabled ? "bpm-badge" : "bpm-badge pending"}>
-                    {connection.enabled
-                      ? t.simpleMode.connections.enabled
-                      : t.simpleMode.connections.disabled}
-                  </span>
-                  {" · "}
-                  {connection.adapterKind}
-                  {activeConnectionId === connection.id
-                    ? ` · ${t.simpleMode.connections.tailingNow}`
-                    : ""}
-                </div>
-                {testStatusById[connection.id] && testStatusById[connection.id] !== "idle" ? (
-                  <div className="asset-card-meta">
-                    <span
-                      className={
-                        testStatusById[connection.id] === "success"
-                          ? "bpm-badge"
-                          : testStatusById[connection.id] === "error"
-                            ? "bpm-badge pending"
-                            : "type-badge"
-                      }
-                    >
-                      {testStatusById[connection.id] === "testing"
-                        ? t.simpleMode.connections.testing
-                        : testStatusById[connection.id] === "success"
-                          ? t.simpleMode.connections.connectionOk
-                          : t.simpleMode.connections.testFailed}
-                    </span>
-                    <span>{testMessageById[connection.id]}</span>
-                  </div>
-                ) : null}
-                <span className="asset-card-date" title={connection.sourceUri}>
-                  {connection.sourceUri}
-                </span>
-                {deriveCloudBackfillLabel(connection) ? (
-                  <span className="asset-card-date">
-                    {`${t.simpleMode.connections.streamLookback}: ${deriveCloudBackfillLabel(connection)}`}
-                  </span>
-                ) : null}
-              </div>
-              <div className="asset-card-actions">
-                {activeConnectionId === connection.id ? (
-                  <button
-                    type="button"
-                    className="card-action-delete"
-                    title={t.simpleMode.connections.stopLiveTail}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      void onStopTail();
-                    }}
-                  >
-                    <Square size={14} />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="card-action-delete"
-                    title={t.simpleMode.connections.startLiveTail}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      void onStartTail(connection);
-                    }}
-                    disabled={activeSessionId !== null}
-                  >
-                    <Play size={14} />
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="card-action-btn"
-                  title={t.simpleMode.connections.editConnectionAction}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onEditConnection(connection);
-                  }}
-                  disabled={saving}
-                >
-                  <Pencil size={14} />
-                  {t.simpleMode.connections.editConnection}
-                </button>
-                <button
-                  type="button"
-                  className="card-action-btn"
-                  title={t.simpleMode.connections.testPersistentConnection}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    void onTestConnection(connection);
-                  }}
-                  disabled={activeSessionId !== null || testStatusById[connection.id] === "testing"}
-                >
-                  {t.simpleMode.connections.testConnection}
-                </button>
-                <button
-                  type="button"
-                  className="card-action-delete"
-                  title={t.simpleMode.connections.deleteConnection}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    void onDeleteConnection(connection.id);
-                  }}
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            </li>
+        <ul className="connections-saved-list">
+          {viewModel.rows.map((row) => (
+            <ConnectionsSavedRow
+              key={row.id}
+              row={row}
+              onSelectConnection={onSelectConnection}
+              onStartTail={onStartTail}
+              onStopTail={onStopTail}
+              onEditConnection={onEditConnection}
+              onTestConnection={onTestConnection}
+              onDeleteConnection={onDeleteConnection}
+            />
           ))}
         </ul>
       )}
 
       {activeSessionId ? (
-        <div className="form-notice">
-          <strong>{t.simpleMode.connections.liveTail}</strong>
-          <span>{tailStatus ?? t.simpleMode.connections.connected}</span>
-          {tailPreview.length > 0 ? <pre>{tailPreview.join("\n")}</pre> : null}
-        </div>
+        <ConnectionsTailConsole
+          title={viewModel.tailTitle}
+          statusLabel={viewModel.tailStatusLabel}
+          preview={tailPreview}
+        />
       ) : null}
 
       <button
         type="button"
         className="control-button"
+        aria-label={viewModel.refreshTitle}
         onClick={() => void onRefreshConnections()}
         disabled={loading || saving}
-        title={t.simpleMode.connections.refreshConnections}
+        title={viewModel.refreshTitle}
       >
         <RefreshCw size={16} />
       </button>

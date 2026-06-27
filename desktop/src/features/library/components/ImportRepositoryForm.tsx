@@ -7,6 +7,7 @@ import {
   pickRepositoryFile,
   upsertLogSourceConnection,
 } from "../../../api/repositories";
+import { useT } from "../../../i18n/I18nContext";
 import type { ImportRepositoryInput, RepositorySourceKind } from "../../../types/library";
 import { Web3Spinner } from "../../../components/Web3Spinner";
 
@@ -17,38 +18,38 @@ interface ImportRepositoryFormProps {
   onLogConnectionSaved?: () => void;
 }
 
-const importModes: Array<{
-  id: RepositorySourceKind;
-  label: string;
-  help: string;
-  icon: typeof FolderOpen;
-}> = [
-  {
-    id: "directory",
-    label: "Project Folder",
-    help: "Import a local directory into a managed Maia snapshot.",
-    icon: FolderOpen,
-  },
-  {
-    id: "file",
-    label: "Log File",
-    help: "Import a local log file for operational signal analysis.",
-    icon: ScrollText,
-  },
-  {
-    id: "url",
-    label: "GitHub Repo",
-    help: "Register a remote repository for metadata-only intake.",
-    icon: GitBranch,
-  },
-];
-
 export function ImportRepositoryForm({
   busy,
   defaultDirectoryPath,
   onImportRepository,
   onLogConnectionSaved,
 }: ImportRepositoryFormProps) {
+  const t = useT();
+  const importModes: Array<{
+    id: RepositorySourceKind;
+    label: string;
+    help: string;
+    icon: typeof FolderOpen;
+  }> = [
+    {
+      id: "directory",
+      label: t.library.forms.repository.projectFolder,
+      help: t.library.forms.repository.projectFolderHelp,
+      icon: FolderOpen,
+    },
+    {
+      id: "file",
+      label: t.library.forms.repository.logFile,
+      help: t.library.forms.repository.logFileHelp,
+      icon: ScrollText,
+    },
+    {
+      id: "url",
+      label: t.library.forms.repository.githubRepo,
+      help: t.library.forms.repository.githubRepoHelp,
+      icon: GitBranch,
+    },
+  ];
   const [sourceKind, setSourceKind] = useState<RepositorySourceKind>("directory");
   const [sourcePath, setSourcePath] = useState("");
   const [label, setLabel] = useState("");
@@ -68,13 +69,13 @@ export function ImportRepositoryForm({
       const projectId = gcpProjectId.trim();
       const serviceName = gcpServiceName.trim();
       if (!projectId || !serviceName) {
-        setError("GCP Cloud Run requires a project ID and service name.");
+        setError(t.library.forms.repository.gcpRequiresProjectAndService);
         return;
       }
       setError(null);
       await upsertLogSourceConnection({
         kind: "gcp_cloud_run",
-        label: normalizedLabel || `${serviceName} · Cloud Run`,
+        label: normalizedLabel || `${serviceName} · ${t.simpleMode.connections.cloudRunLabelSuffix}`,
         config: {
           projectId,
           serviceName,
@@ -91,7 +92,7 @@ export function ImportRepositoryForm({
     }
 
     if (!normalizedPath) {
-      setError("A local code/log path, GitHub URL, or GCP Cloud Run source is required.");
+      setError(t.library.forms.repository.sourceRequiredError);
       return;
     }
 
@@ -127,7 +128,7 @@ export function ImportRepositoryForm({
       setError(
         nextError instanceof Error
           ? nextError.message
-          : "Native directory picker failed. Enter the path manually.",
+          : t.library.forms.repository.directoryPickerFailed,
       );
     } finally {
       setPickerBusy(false);
@@ -150,7 +151,7 @@ export function ImportRepositoryForm({
       setError(
         nextError instanceof Error
           ? nextError.message
-          : "Native file picker failed. Enter the path manually.",
+          : t.library.forms.repository.filePickerFailed,
       );
     } finally {
       setPickerBusy(false);
@@ -159,13 +160,13 @@ export function ImportRepositoryForm({
 
   return (
     <form className="import-form maia-pro-form" onSubmit={(event) => void handleSubmit(event)}>
-      <Web3Spinner visible={busy} label="Ingesting Telemetry Source..." />
+      <Web3Spinner visible={busy} label={t.library.forms.repository.ingestingTelemetrySource} />
       <div className="form-intro">
-        <h2>Import code or logs</h2>
-        <p className="support-copy">Select a source type to begin operational telemetry intake.</p>
+        <h2>{t.library.forms.repository.title}</h2>
+        <p className="support-copy">{t.library.forms.repository.description}</p>
       </div>
 
-      <div className="source-card-grid" role="tablist" aria-label="Repository import type">
+      <div className="source-card-grid" role="tablist" aria-label={t.library.forms.repository.importTypeAria}>
         {importModes.map((mode) => {
           const Icon = mode.icon;
           const active = mode.id === sourceKind;
@@ -198,8 +199,8 @@ export function ImportRepositoryForm({
             <Globe size={24} />
           </div>
           <div className="source-card-content">
-            <strong>GCP Cloud Run</strong>
-            <p>Persist a gcloud logging tail connector for Cloud Run services.</p>
+            <strong>{t.library.forms.repository.gcpCloudRun}</strong>
+            <p>{t.library.forms.repository.gcpCloudRunHelp}</p>
           </div>
         </button>
       </div>
@@ -208,30 +209,30 @@ export function ImportRepositoryForm({
         {sourceKind === "url" && sourcePath === "gcp-cloud-run" ? (
           <>
             <label className="field maia-field">
-              <span className="field-label">GCP Project ID</span>
+              <span className="field-label">{t.library.forms.repository.gcpProjectId}</span>
               <input
                 value={gcpProjectId}
                 className="maia-input"
                 onChange={(event) => setGcpProjectId(event.target.value)}
-                placeholder="my-gcp-project"
+                placeholder={t.library.forms.repository.gcpProjectIdPlaceholder}
               />
             </label>
             <label className="field maia-field">
-              <span className="field-label">Cloud Run service</span>
+              <span className="field-label">{t.library.forms.repository.cloudRunService}</span>
               <input
                 value={gcpServiceName}
                 className="maia-input"
                 onChange={(event) => setGcpServiceName(event.target.value)}
-                placeholder="checkout-api"
+                placeholder={t.library.forms.repository.cloudRunServicePlaceholder}
               />
             </label>
             <label className="field maia-field">
-              <span className="field-label">Region (optional)</span>
+              <span className="field-label">{t.library.forms.repository.regionOptional}</span>
               <input
                 value={gcpRegion}
                 className="maia-input"
                 onChange={(event) => setGcpRegion(event.target.value)}
-                placeholder="us-central1"
+                placeholder={t.library.forms.repository.regionPlaceholder}
               />
             </label>
           </>
@@ -239,10 +240,10 @@ export function ImportRepositoryForm({
           <label className="field maia-field">
             <span className="field-label">
               {sourceKind === "directory"
-                ? "Local Project Path"
+                ? t.library.forms.repository.localProjectPath
                 : sourceKind === "file"
-                  ? "Source Log Path"
-                  : "GitHub Repository URL"}
+                  ? t.library.forms.repository.sourceLogPath
+                  : t.library.forms.repository.githubRepositoryUrl}
             </span>
             <div className="field-input-wrapper">
               <input
@@ -251,10 +252,10 @@ export function ImportRepositoryForm({
                 onChange={(event) => setSourcePath(event.target.value)}
                 placeholder={
                   sourceKind === "directory"
-                    ? "/home/dev/project"
+                    ? t.library.forms.repository.localProjectPathPlaceholder
                     : sourceKind === "file"
-                      ? "/var/log/app.log"
-                      : "https://github.com/..."
+                      ? t.library.forms.repository.sourceLogPathPlaceholder
+                      : t.library.forms.repository.githubRepositoryUrlPlaceholder
                 }
               />
               {sourceKind === "directory" && (
@@ -264,7 +265,7 @@ export function ImportRepositoryForm({
                   disabled={busy || pickerBusy}
                   onClick={() => void handleBrowseDirectory()}
                 >
-                  {pickerBusy ? "..." : <FolderOpen size={16} />}
+                  {pickerBusy ? t.library.forms.repository.pickerBusy : <FolderOpen size={16} />}
                 </button>
               )}
               {sourceKind === "file" && (
@@ -274,7 +275,7 @@ export function ImportRepositoryForm({
                   disabled={busy || pickerBusy}
                   onClick={() => void handleBrowseFile()}
                 >
-                  {pickerBusy ? "..." : <ScrollText size={16} />}
+                  {pickerBusy ? t.library.forms.repository.pickerBusy : <ScrollText size={16} />}
                 </button>
               )}
             </div>
@@ -282,12 +283,12 @@ export function ImportRepositoryForm({
         )}
 
         <label className="field maia-field">
-          <span className="field-label">Target session label (Optional)</span>
+          <span className="field-label">{t.library.forms.repository.targetSessionLabelOptional}</span>
           <input
             value={label}
             className="maia-input"
             onChange={(event) => setLabel(event.target.value)}
-            placeholder="maia-session-01"
+            placeholder={t.library.forms.repository.targetSessionLabelPlaceholder}
           />
         </label>
       </div>
@@ -302,11 +303,11 @@ export function ImportRepositoryForm({
         <button type="submit" className="action primary-launch-btn" disabled={busy}>
           {busy ? (
             <>
-              <span className="spin-ring" aria-hidden="true" /> Analyzing...
+              <span className="spin-ring" aria-hidden="true" /> {t.library.forms.repository.analyzing}
             </>
           ) : (
             <>
-              <GitBranch size={16} /> Start Ingestion
+              <GitBranch size={16} /> {t.library.forms.repository.startIngestion}
             </>
           )}
         </button>
@@ -321,7 +322,7 @@ export function ImportRepositoryForm({
               setSourcePath(defaultDirectoryPath);
             }}
           >
-            Use current workspace
+            {t.library.forms.repository.useCurrentWorkspace}
           </button>
         )}
       </div>

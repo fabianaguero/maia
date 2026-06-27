@@ -25,6 +25,8 @@ import {
   updateTrackCuePoint,
   updateTrackSavedLoop,
 } from "../../../utils/track";
+import { TrackCueList } from "./TrackCueList";
+import { TrackSavedLoopList } from "./TrackSavedLoopList";
 
 interface TrackPerformancePanelProps {
   track: LibraryTrack;
@@ -503,242 +505,60 @@ export function TrackPerformancePanel({
             <p className="support-copy top-spaced">{t.inspect.armPhraseSelect}</p>
           )}
 
-          <p className="support-copy top-spaced">{t.inspect.hotCues}</p>
-          {performance.hotCues.length > 0 ? (
-            <ul className="stack-list">
-              {performance.hotCues.map((cue) => (
-                <li key={cue.id}>
-                  <div className="pill-strip">
-                    <span>{renderCueLabel(cue, t.inspect.slot)}</span>
-                    <span>
-                      <label>
-                        {t.inspect.label}
-                        <input
-                          key={`${cue.id}:${cue.label}`}
-                          className="compact-input"
-                          aria-label={`${t.inspect.label} ${cue.id}`}
-                          defaultValue={cue.label}
-                          disabled={!canEditPerformance}
-                          onBlur={(event) =>
-                            void patchCue("hot", cue.id, {
-                              label: event.target.value,
-                            })
-                          }
-                        />
-                      </label>
-                    </span>
-                    <span>
-                      <label>
-                        {t.inspect.color}
-                        <select
-                          className="compact-select"
-                          aria-label={`${t.inspect.color} ${cue.id}`}
-                          value={cue.color ?? ""}
-                          disabled={!canEditPerformance}
-                          onChange={(event) =>
-                            void patchCue("hot", cue.id, {
-                              color: event.target.value || null,
-                            })
-                          }
-                        >
-                          {TRACK_COLOR_OPTIONS.map((option) => (
-                            <option key={option.value || "none"} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    </span>
-                    <span>
-                      <button
-                        type="button"
-                        className="compact-action danger"
-                        disabled={!canEditPerformance}
-                        onClick={() => void removeCue("hot", cue.id)}
-                      >
-                        {t.inspect.removeNamed.replace("{name}", cue.label)}
-                      </button>
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="support-copy">{t.inspect.noHotCuesStored}</p>
-          )}
+          <TrackCueList
+            cues={performance.hotCues}
+            cueKind="hot"
+            canEditPerformance={canEditPerformance}
+            sectionLabel={t.inspect.hotCues}
+            emptyLabel={t.inspect.noHotCuesStored}
+            labelText={t.inspect.label}
+            colorText={t.inspect.color}
+            removeText={(name) => t.inspect.removeNamed.replace("{name}", name)}
+            slotTemplate={t.inspect.slot}
+            onPatchCue={(kind, cueId, patch) => void patchCue(kind, cueId, patch)}
+            onRemoveCue={(kind, cueId) => void removeCue(kind, cueId)}
+            renderCueLabel={renderCueLabel}
+            colorOptions={TRACK_COLOR_OPTIONS}
+          />
 
-          <p className="support-copy top-spaced">{t.inspect.memoryCues}</p>
-          {performance.memoryCues.length > 0 ? (
-            <ul className="stack-list">
-              {performance.memoryCues.map((cue) => (
-                <li key={cue.id}>
-                  <div className="pill-strip">
-                    <span>{renderCueLabel(cue, t.inspect.slot)}</span>
-                    <span>
-                      <label>
-                        {t.inspect.label}
-                        <input
-                          key={`${cue.id}:${cue.label}`}
-                          className="compact-input"
-                          aria-label={`${t.inspect.label} ${cue.id}`}
-                          defaultValue={cue.label}
-                          disabled={!canEditPerformance}
-                          onBlur={(event) =>
-                            void patchCue("memory", cue.id, {
-                              label: event.target.value,
-                            })
-                          }
-                        />
-                      </label>
-                    </span>
-                    <span>
-                      <label>
-                        {t.inspect.color}
-                        <select
-                          className="compact-select"
-                          aria-label={`${t.inspect.color} ${cue.id}`}
-                          value={cue.color ?? ""}
-                          disabled={!canEditPerformance}
-                          onChange={(event) =>
-                            void patchCue("memory", cue.id, {
-                              color: event.target.value || null,
-                            })
-                          }
-                        >
-                          {TRACK_COLOR_OPTIONS.map((option) => (
-                            <option key={option.value || "none"} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    </span>
-                    <span>
-                      <button
-                        type="button"
-                        className="compact-action danger"
-                        disabled={!canEditPerformance}
-                        onClick={() => void removeCue("memory", cue.id)}
-                      >
-                        {t.inspect.removeNamed.replace("{name}", cue.label)}
-                      </button>
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="support-copy">{t.inspect.noMemoryCuesStored}</p>
-          )}
+          <TrackCueList
+            cues={performance.memoryCues}
+            cueKind="memory"
+            canEditPerformance={canEditPerformance}
+            sectionLabel={t.inspect.memoryCues}
+            emptyLabel={t.inspect.noMemoryCuesStored}
+            labelText={t.inspect.label}
+            colorText={t.inspect.color}
+            removeText={(name) => t.inspect.removeNamed.replace("{name}", name)}
+            slotTemplate={t.inspect.slot}
+            onPatchCue={(kind, cueId, patch) => void patchCue(kind, cueId, patch)}
+            onRemoveCue={(kind, cueId) => void removeCue(kind, cueId)}
+            renderCueLabel={renderCueLabel}
+            colorOptions={TRACK_COLOR_OPTIONS}
+          />
 
-          <p className="support-copy top-spaced">{t.inspect.savedLoops}</p>
-          {performance.savedLoops.length > 0 ? (
-            <ul className="stack-list">
-              {performance.savedLoops.map((loop) => (
-                <li key={loop.id}>
-                  <div className="pill-strip">
-                    <span>
-                      {renderLoopLabel(
-                        loop,
-                        t.inspect.slot,
-                        t.inspect.loopWord,
-                        t.inspect.locked,
-                        t.inspect.editable,
-                      )}
-                    </span>
-                    <span>
-                      <button
-                        type="button"
-                        className="compact-action"
-                        aria-label={`${t.inspect.setStart} ${loop.id}`}
-                        disabled={!canEditPerformance}
-                        onClick={() => void setSavedLoopBoundary(loop.id, "start")}
-                      >
-                        {t.inspect.setStart}
-                      </button>
-                    </span>
-                    <span>
-                      <button
-                        type="button"
-                        className="compact-action"
-                        aria-label={`${t.inspect.setEnd} ${loop.id}`}
-                        disabled={!canEditPerformance}
-                        onClick={() => void setSavedLoopBoundary(loop.id, "end")}
-                      >
-                        {t.inspect.setEnd}
-                      </button>
-                    </span>
-                    <span>
-                      <label>
-                        {t.inspect.label}
-                        <input
-                          key={`${loop.id}:${loop.label}`}
-                          className="compact-input"
-                          aria-label={`${t.inspect.label} ${loop.id}`}
-                          defaultValue={loop.label}
-                          disabled={!canEditPerformance}
-                          onBlur={(event) =>
-                            void patchSavedLoop(loop.id, {
-                              label: event.target.value,
-                            })
-                          }
-                        />
-                      </label>
-                    </span>
-                    <span>
-                      <label>
-                        {t.inspect.color}
-                        <select
-                          className="compact-select"
-                          aria-label={`${t.inspect.color} ${loop.id}`}
-                          value={loop.color ?? ""}
-                          disabled={!canEditPerformance}
-                          onChange={(event) =>
-                            void patchSavedLoop(loop.id, {
-                              color: event.target.value || null,
-                            })
-                          }
-                        >
-                          {TRACK_COLOR_OPTIONS.map((option) => (
-                            <option key={option.value || "none"} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    </span>
-                    <span>
-                      <button
-                        type="button"
-                        className="compact-action"
-                        aria-label={`${loop.locked ? t.inspect.unlockLoop : t.inspect.lockLoop} ${loop.id}`}
-                        disabled={!canEditPerformance}
-                        onClick={() =>
-                          void patchSavedLoop(loop.id, {
-                            locked: !loop.locked,
-                          })
-                        }
-                      >
-                        {loop.locked ? t.inspect.unlockLoop : t.inspect.lockLoop}
-                      </button>
-                    </span>
-                    <span>
-                      <button
-                        type="button"
-                        className="compact-action danger"
-                        disabled={!canEditPerformance}
-                        onClick={() => void removeSavedLoop(loop.id)}
-                      >
-                        {t.inspect.removeNamed.replace("{name}", loop.label)}
-                      </button>
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="support-copy">{t.inspect.noSavedLoopsStored}</p>
-          )}
+          <TrackSavedLoopList
+            loops={performance.savedLoops}
+            canEditPerformance={canEditPerformance}
+            sectionLabel={t.inspect.savedLoops}
+            emptyLabel={t.inspect.noSavedLoopsStored}
+            labelText={t.inspect.label}
+            colorText={t.inspect.color}
+            slotTemplate={t.inspect.slot}
+            loopWord={t.inspect.loopWord}
+            lockedLabel={t.inspect.locked}
+            editableLabel={t.inspect.editable}
+            setStartText={t.inspect.setStart}
+            setEndText={t.inspect.setEnd}
+            unlockLoopText={t.inspect.unlockLoop}
+            lockLoopText={t.inspect.lockLoop}
+            removeText={(name) => t.inspect.removeNamed.replace("{name}", name)}
+            onSetBoundary={(loopId, boundary) => void setSavedLoopBoundary(loopId, boundary)}
+            onPatchLoop={(loopId, patch) => void patchSavedLoop(loopId, patch)}
+            onRemoveLoop={(loopId) => void removeSavedLoop(loopId)}
+            renderLoopLabel={renderLoopLabel}
+            colorOptions={TRACK_COLOR_OPTIONS}
+          />
         </div>
       </details>
     </section>

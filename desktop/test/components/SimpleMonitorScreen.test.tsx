@@ -5,8 +5,9 @@ import { SimpleMonitorScreen } from "../../src/features/simple/SimpleMonitorScre
 import type {
   ActiveMonitorSession,
   MonitorMetrics,
-} from "../../src/features/monitor/MonitorContext";
+} from "../../src/features/monitor/monitorContextTypes";
 import type { PersistedSession } from "../../src/api/sessions";
+import { DEFAULT_MONITOR_SETUP_PREFERENCES } from "../../src/features/simple/monitorSetupPreferences";
 import type { LibraryTrack, RepositoryAnalysis } from "../../src/types/library";
 
 afterEach(() => {
@@ -14,12 +15,9 @@ afterEach(() => {
 });
 
 const metrics: MonitorMetrics = {
-  totalLines: 0,
+  windowCount: 0,
+  processedLines: 0,
   totalAnomalies: 0,
-  avgLinesPerSecond: 0,
-  peakLinesPerSecond: 0,
-  lastTimestamp: null,
-  anomalyBursts: 0,
 };
 
 const repository: RepositoryAnalysis = {
@@ -123,12 +121,14 @@ const track: LibraryTrack = {
 
 const activeSession: ActiveMonitorSession = {
   sessionId: "session-1",
+  persistedSessionId: null,
   repoId: "repo-1",
   repoTitle: "visits-service",
   sourcePath: "/tmp/visits-service.log",
   startedAt: Date.now(),
   trackName: "around-the-world.mp3",
   adapterKind: "file",
+  pollMode: "direct",
 };
 
 const persistedSession: PersistedSession = {
@@ -157,6 +157,7 @@ describe("SimpleMonitorScreen", () => {
     onReplaySession: vi.fn(),
     subscribe: vi.fn(() => () => {}),
     onToggleConsole: vi.fn(),
+    liveSettings: DEFAULT_MONITOR_SETUP_PREFERENCES,
   };
 
   it("renders idle state without crashing when track titles are empty", () => {
@@ -164,7 +165,7 @@ describe("SimpleMonitorScreen", () => {
       <SimpleMonitorScreen {...commonProps} session={null} pastSessions={[persistedSession]} />,
     );
 
-    expect(screen.getByText(/Initialize monitoring/i)).toBeInTheDocument();
+    expect(screen.getByText(/Initialize passive monitoring/i)).toBeInTheDocument();
     expect(screen.getByText("Past sessions")).toBeInTheDocument();
   });
 

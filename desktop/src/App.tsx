@@ -1,18 +1,21 @@
 import { Globe2, Moon, Sun } from "lucide-react";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 
+import { AppSectionContent } from "./AppSectionContent";
 import { loadBootstrapManifest, runAnalyzerRequest } from "./api/analyzer";
-import { discoverRepositoryLogs } from "./api/repositories";
-import type { PersistedSession } from "./api/sessions";
 import { AppSidebar } from "./components/AppSidebar";
+import { BrandLockup, BrandWordmark } from "./components/Branding";
 import { useMonitor } from "./features/monitor/MonitorContext";
 import { UserModeProvider, useUserMode } from "./features/simple/UserModeContext";
 import { useModeTransition } from "./features/simple/ModeTransition";
 import { useSessions } from "./hooks/useSessions";
 import { useBaseAssets } from "./hooks/useBaseAssets";
 import { useCompositionResults } from "./hooks/useCompositionResults";
+import { useAppCatalogActions } from "./hooks/useAppCatalogActions";
 import { useLibrary } from "./hooks/useLibrary";
+import { useAppMonitorActions } from "./hooks/useAppMonitorActions";
+import { useAppSelectionActions } from "./hooks/useAppSelectionActions";
 import { useRepositories } from "./hooks/useRepositories";
 import { NotificationProvider, useNotify } from "./components/NotificationSystem";
 import { Web3Spinner } from "./components/Web3Spinner";
@@ -21,61 +24,23 @@ import { en } from "./i18n/en";
 import { es } from "./i18n/es";
 import { I18nContext } from "./i18n/I18nContext";
 import {
+  buildAppContentStatusViewModel,
+  resolveAppContentRouteState,
+  resolveAppMutationState,
+  resolveAppOpenConnectionsState,
+  resolveAppPillarNavigationState,
+} from "./appContentRuntime";
+import {
   createHealthRequest,
   type AnalyzerResponse,
   type BootstrapManifest,
-  type HealthResponse,
 } from "./contracts";
-import { findPlaylistLeadTrack, resolvePlaylistTracks } from "./utils/playlist";
-import { resolvePlayableTrackPath } from "./utils/track";
 import type {
   AnalyzerViewMode,
-  AppScreen,
   AppPillar,
-  SaveBaseTrackPlaylistInput,
-  ImportCompositionInput,
-  ImportBaseAssetInput,
-  ImportRepositoryInput,
-  ImportTrackInput,
-  UpdateTrackAnalysisInput,
-  UpdateTrackPerformanceInput,
+  AppScreen,
 } from "./types/library";
 import type { LibraryTab } from "./features/library/LibraryScreen";
-
-const ComposeScreen = lazy(() =>
-  import("./features/compose/ComposeScreen").then((module) => ({
-    default: module.ComposeScreen,
-  })),
-);
-const InspectScreen = lazy(() =>
-  import("./features/inspect/InspectScreen").then((module) => ({
-    default: module.InspectScreen,
-  })),
-);
-const LibraryScreen = lazy(() =>
-  import("./features/library/LibraryScreen").then((module) => ({
-    default: module.LibraryScreen,
-  })),
-);
-const SessionScreen = lazy(() =>
-  import("./features/session/SessionScreen").then((module) => ({
-    default: module.SessionScreen,
-  })),
-);
-const SimpleModeWizard = lazy(() =>
-  import("./features/simple/SimpleModeWizard").then((module) => ({
-    default: module.SimpleModeWizard,
-  })),
-);
-const SimpleModeLibraryView = lazy(() =>
-  import("./features/simple/SimpleModeLibraryView").then((module) => ({
-    default: module.SimpleModeLibraryView,
-  })),
-);
-
-function isHealthResponse(response: AnalyzerResponse | null): response is HealthResponse {
-  return Boolean(response && response.status === "ok" && "analyzerVersion" in response.payload);
-}
 
 export default function App() {
   return (
@@ -109,15 +74,12 @@ function AppContent() {
   const monitor = useMonitor();
   const sessions = useSessions();
   const refreshSessionBookmarks = sessions.refreshBookmarks;
-  const selectedGuidePlaylist = library.selectedPlaylist;
-  const selectedGuideTrack = library.selectedTrack;
-  const setMonitorGuideTrack = monitor.setGuideTrack;
-  const setMonitorGuideTrackPlaylist = monitor.setGuideTrackPlaylist;
 
-  // Simple mode routing: collapse to just library and session
-  const effectivePillar = userMode === "simple" && pillar === "design" ? "curate" : pillar;
-  const effectiveScreen =
-    userMode === "simple" && (screen === "inspect" || screen === "compose") ? "library" : screen;
+  const { effectivePillar, effectiveScreen } = resolveAppContentRouteState(
+    userMode,
+    pillar,
+    screen,
+  );
 
   useEffect(() => {
     if (isDark) {
@@ -133,135 +95,76 @@ function AppContent() {
     }
   }, [refreshSessionBookmarks, screen]);
 
-  function armTrackBase(trackId: string | null | undefined) {
-    const track =
-      typeof trackId === "string"
-        ? (library.tracks.find((entry) => entry.id === trackId) ?? null)
-        : null;
-    library.setSelectedPlaylistId(null);
-    library.setSelectedTrackId(track?.id ?? null);
-  }
-
-  function armPlaylistBase(playlistId: string | null | undefined) {
-    const playlist =
-      typeof playlistId === "string"
-        ? (library.playlists.find((entry) => entry.id === playlistId) ?? null)
-        : null;
-    const leadTrack = findPlaylistLeadTrack(playlist, library.tracks);
-    library.setSelectedPlaylistId(playlist?.id ?? null);
-    library.setSelectedTrackId(leadTrack?.id ?? null);
-  }
-
-  // Auto-sync selected base track / playlist → monitor guide runtime
-  useEffect(() => {
-    if (selectedGuidePlaylist) {
-      const queue = resolvePlaylistTracks(selectedGuidePlaylist, library.tracks)
-        .map((track) => resolvePlayableTrackPath(track))
-        .filter((path): path is string => Boolean(path));
-      setMonitorGuideTrackPlaylist(queue);
-      return;
-    }
-
-    const path = selectedGuideTrack ? resolvePlayableTrackPath(selectedGuideTrack) : null;
-    setMonitorGuideTrack(path);
-  }, [
-    library.tracks,
-    selectedGuidePlaylist,
-    selectedGuideTrack,
-    setMonitorGuideTrack,
-    setMonitorGuideTrackPlaylist,
-  ]);
-
-  function armSessionMusicalBase(draft?: { trackId?: string; playlistId?: string }) {
-    if (draft?.playlistId) {
-      armPlaylistBase(draft.playlistId);
-      return;
-    }
-
-    if (draft?.trackId) {
-      armTrackBase(draft.trackId);
-      return;
-    }
-
-    library.setSelectedPlaylistId(null);
-    library.setSelectedTrackId(null);
-  }
-
-  function primeMonitorGuideTrack(draft?: { trackId?: string; playlistId?: string }) {
-    if (draft?.playlistId) {
-      const playlist = library.playlists.find((entry) => entry.id === draft.playlistId) ?? null;
-      const queue = resolvePlaylistTracks(playlist, library.tracks)
-        .map((track) => resolvePlayableTrackPath(track))
-        .filter((path): path is string => Boolean(path));
-      monitor.setGuideTrackPlaylist(queue);
-      return;
-    }
-
-    if (draft?.trackId) {
-      const track = library.tracks.find((entry) => entry.id === draft.trackId) ?? null;
-      monitor.setGuideTrack(track ? resolvePlayableTrackPath(track) : null);
-      return;
-    }
-
-    monitor.setGuideTrack(null);
-  }
-
-  async function startReplaySession(
-    session: PersistedSession,
-    replayWindowIndex?: number,
-  ): Promise<boolean> {
-    sessions.setSelectedSessionId(session.id);
-    armSessionMusicalBase({
-      trackId: session.trackId ?? undefined,
-      playlistId: session.playlistId ?? undefined,
-    });
-    primeMonitorGuideTrack({
-      trackId: session.trackId ?? undefined,
-      playlistId: session.playlistId ?? undefined,
-    });
-
-    const sourceRepository =
-      (session.sourceId
-        ? repositories.repositories.find((entry) => entry.id === session.sourceId)
-        : null) ??
-      repositories.repositories.find(
-        (entry) => session.sourcePath !== null && entry.sourcePath === session.sourcePath,
-      ) ??
-      null;
-
-    if (!sourceRepository) {
-      notify("error", t.appShell.replayUnavailableTitle, t.appShell.replayUnavailableBody);
-      return false;
-    }
-
-    repositories.setSelectedRepositoryId(sourceRepository.id);
-    setAnalysisMode("repo");
-
-    const alreadyActiveReplay =
-      monitor.isPlayback && monitor.session?.persistedSessionId === session.id;
-
-    const ok = alreadyActiveReplay
-      ? true
-      : await monitor.playbackSession({
-          sessionId: session.id,
-          label: session.label || t.session.unnamedSession,
-          sourcePath: session.sourcePath || "",
-          repoId: sourceRepository.id ?? session.sourceId,
-        });
-
-    if (!ok) {
-      return false;
-    }
-
-    if (typeof replayWindowIndex === "number") {
-      monitor.pausePlayback();
-      monitor.seekPlaybackWindow(replayWindowIndex);
-    }
-
-    setAnalysisMode("repo");
-    setScreen("inspect");
-    return true;
-  }
+  const {
+    armTrackBase,
+    armPlaylistBase,
+    startReplaySession,
+    startLiveSession,
+    openMonitoredRepo,
+  } = useAppMonitorActions({
+    t,
+    library,
+    repositories,
+    sessions,
+    monitor,
+    notify,
+    setAnalysisMode,
+    setScreen,
+    setPillar,
+  });
+  const {
+    handleImportTrack,
+    handleImportRepository,
+    handleImportBaseAsset,
+    handleImportComposition,
+    handleReanalyzeTrack,
+    handleRelinkTrack,
+    handleRelinkMissingTracks,
+    handleReanalyzeRepository,
+    handleDeleteTrack,
+    handleDeleteRepository,
+    handleUpdateTrackPerformance,
+    handleUpdateTrackAnalysis,
+    handleSavePlaylist,
+    handleDeletePlaylist,
+  } = useAppCatalogActions({
+    t,
+    notify,
+    setNewlyImportedId,
+    setAnalysisMode,
+    setScreen,
+    library,
+    repositories,
+    baseAssets,
+    compositions,
+  });
+  const {
+    selectSimpleTrack,
+    selectSimpleRepository,
+    selectTrack,
+    selectPlaylist,
+    selectRepository,
+    selectBaseAsset,
+    selectComposition,
+    inspectTrack,
+    inspectRepository,
+    inspectBaseAsset,
+    inspectComposition,
+    goLibrary,
+    goCompose,
+    startSimpleMonitoring,
+    startSimpleWizardSession,
+  } = useAppSelectionActions({
+    armPlaylistBase,
+    armTrackBase,
+    library,
+    repositories,
+    baseAssets,
+    compositions,
+    setAnalysisMode,
+    setPillar,
+    setScreen,
+  });
 
   useEffect(() => {
     let active = true;
@@ -297,323 +200,38 @@ function AppContent() {
     };
   }, []);
 
-  async function handleImportTrack(input: ImportTrackInput) {
-    try {
-      const nextTrack = await library.importLibraryTrack(input);
-      if (nextTrack) {
-        notify(
-          "success",
-          t.appShell.trackImportedTitle,
-          t.appShell.trackImportedBody.replace("{title}", nextTrack.tags.title),
-        );
-        setNewlyImportedId(nextTrack.id);
-        setTimeout(() => setNewlyImportedId(null), 3000);
-        setAnalysisMode("track");
-        setScreen("inspect");
-        return true;
-      }
-    } catch (err) {
-      notify("error", t.appShell.importFailedTitle, String(err));
-    }
-    return false;
-  }
-
-  async function handleImportRepository(input: ImportRepositoryInput) {
-    try {
-      const nextRepository = await repositories.importRepositorySource(input);
-      if (nextRepository) {
-        let msg = t.appShell.repositoryConnectedBody.replace("{title}", nextRepository.title);
-
-        // Log Discovery v5.3: Automatically scan and import logs from directory
-        if (input.sourceKind === "directory") {
-          const discovered = await discoverRepositoryLogs(input.sourcePath);
-          if (discovered.length > 0) {
-            // Import discovered logs in background
-            for (const logPath of discovered) {
-              const fileName = logPath.split("/").pop() || logPath;
-              // We don't wait for each one's analysis, just register them
-              void repositories.importRepositorySource({
-                sourceKind: "file",
-                sourcePath: logPath,
-                label: fileName,
-              });
-            }
-            msg = t.appShell.repositoryConnectedRescuedBody
-              .replace("{title}", nextRepository.title)
-              .replace("{count}", String(discovered.length));
-          }
-        }
-
-        notify("success", t.appShell.repositoryConnectedTitle, msg);
-        setNewlyImportedId(nextRepository.id);
-        setTimeout(() => setNewlyImportedId(null), 3000);
-        setAnalysisMode("repo");
-        setScreen("inspect");
-        return true;
-      }
-    } catch (err) {
-      notify("error", t.appShell.connectionFailedTitle, String(err));
-    }
-    return false;
-  }
-
-  async function handleImportBaseAsset(input: ImportBaseAssetInput) {
-    try {
-      const nextBaseAsset = await baseAssets.importLibraryBaseAsset(input);
-      if (nextBaseAsset) {
-        notify(
-          "success",
-          t.appShell.assetImportedTitle,
-          t.appShell.assetImportedBody.replace("{title}", nextBaseAsset.title),
-        );
-        setNewlyImportedId(nextBaseAsset.id);
-        setTimeout(() => setNewlyImportedId(null), 3000);
-        setAnalysisMode("base");
-        setScreen("inspect");
-        return true;
-      }
-    } catch (err) {
-      notify("error", t.appShell.assetImportFailedTitle, String(err));
-    }
-    return false;
-  }
-
-  async function handleImportComposition(input: ImportCompositionInput) {
-    try {
-      const nextComposition = await compositions.importLibraryComposition(input);
-      if (nextComposition) {
-        notify(
-          "success",
-          t.appShell.compositionReadyTitle,
-          t.appShell.compositionReadyBody.replace("{title}", nextComposition.title),
-        );
-        return true;
-      }
-    } catch (err) {
-      notify("error", t.appShell.compositionFailedTitle, String(err));
-    }
-    return false;
-  }
-
-  async function handleReanalyzeTrack(trackId: string) {
-    try {
-      const nextTrack = await library.reanalyzeTrack(trackId);
-      if (nextTrack) {
-        notify(
-          "success",
-          t.appShell.reanalysisCompleteTitle,
-          t.appShell.reanalysisCompleteBody.replace("{title}", nextTrack.tags.title),
-        );
-        return true;
-      }
-    } catch (err) {
-      notify("error", t.appShell.reanalysisFailedTitle, String(err));
-    }
-    return false;
-  }
-
-  async function handleRelinkTrack(trackId: string) {
-    try {
-      const nextTrack = await library.relinkTrack(trackId);
-      if (nextTrack) {
-        notify(
-          "success",
-          t.appShell.trackRelinkedTitle,
-          t.appShell.trackRelinkedBody.replace("{title}", nextTrack.tags.title),
-        );
-        return true;
-      }
-    } catch (err) {
-      notify("error", t.appShell.relinkFailedTitle, String(err));
-    }
-    return false;
-  }
-
-  async function handleRelinkMissingTracks() {
-    try {
-      const result = await library.relinkMissingTracksFromDirectory();
-      if (!result) {
-        return false;
-      }
-
-      const relinkedCount = result.relinkedTracks.length;
-      const unresolvedCount = result.unresolvedTrackIds.length;
-      if (relinkedCount > 0) {
-        notify(
-          "success",
-          t.appShell.missingTracksRelinkedTitle,
-          unresolvedCount > 0
-            ? t.appShell.missingTracksRelinkedPartialBody
-                .replace("{resolved}", String(relinkedCount))
-                .replace("{missing}", String(unresolvedCount))
-            : t.appShell.missingTracksRelinkedSuccessBody.replace("{count}", String(relinkedCount)),
-        );
-      } else {
-        notify("info", t.appShell.noMatchesFoundTitle, t.appShell.noMatchesFoundBody);
-      }
-      return true;
-    } catch (err) {
-      notify("error", t.appShell.bulkRelinkFailedTitle, String(err));
-    }
-    return false;
-  }
-
-  async function handleReanalyzeRepository(repositoryId: string) {
-    try {
-      const nextRepository = await repositories.reanalyzeRepository(repositoryId);
-      if (nextRepository) {
-        notify(
-          "success",
-          t.appShell.reanalysisCompleteTitle,
-          t.appShell.reanalysisCompleteBody.replace("{title}", nextRepository.title),
-        );
-        return true;
-      }
-    } catch (err) {
-      notify("error", t.appShell.reanalysisFailedTitle, String(err));
-    }
-    return false;
-  }
-
-  async function handleDeleteTrack(trackId: string) {
-    try {
-      const success = await library.deleteLibraryTrack(trackId);
-      if (success) {
-        notify("success", t.appShell.trackDeletedTitle, t.appShell.trackDeletedBody);
-        return true;
-      }
-    } catch (err) {
-      notify("error", t.appShell.deleteFailedTitle, String(err));
-    }
-    return false;
-  }
-
-  async function handleDeleteRepository(repositoryId: string) {
-    try {
-      const success = await repositories.deleteLibraryRepository(repositoryId);
-      if (success) {
-        notify("success", t.appShell.repositoryDeletedTitle, t.appShell.repositoryDeletedBody);
-        return true;
-      }
-    } catch (err) {
-      notify("error", t.appShell.deleteFailedTitle, String(err));
-    }
-    return false;
-  }
-
-  async function handleUpdateTrackPerformance(
-    trackId: string,
-    input: UpdateTrackPerformanceInput,
-  ): Promise<void> {
-    try {
-      const nextTrack = await library.updateTrackPerformance(trackId, input);
-      if (!nextTrack) {
-        notify("error", t.appShell.trackUpdateFailedTitle, t.appShell.trackUpdateFailedBody);
-      }
-    } catch (err) {
-      notify("error", t.appShell.trackUpdateFailedTitle, String(err));
-    }
-  }
-
-  async function handleUpdateTrackAnalysis(
-    trackId: string,
-    input: UpdateTrackAnalysisInput,
-  ): Promise<void> {
-    try {
-      const nextTrack = await library.updateTrackAnalysis(trackId, input);
-      if (!nextTrack) {
-        notify("error", t.appShell.beatGridUpdateFailedTitle, t.appShell.beatGridUpdateFailedBody);
-      }
-    } catch (err) {
-      notify("error", t.appShell.beatGridUpdateFailedTitle, String(err));
-    }
-  }
-
-  async function handleSavePlaylist(input: SaveBaseTrackPlaylistInput): Promise<boolean> {
-    try {
-      const nextPlaylist = await library.savePlaylist(input);
-      if (nextPlaylist) {
-        notify(
-          "success",
-          t.appShell.playlistSavedTitle,
-          t.appShell.playlistSavedBody.replace("{name}", nextPlaylist.name),
-        );
-        return true;
-      }
-    } catch (err) {
-      notify("error", t.appShell.playlistSaveFailedTitle, String(err));
-    }
-    return false;
-  }
-
-  async function handleDeletePlaylist(playlistId: string): Promise<boolean> {
-    try {
-      const success = await library.deletePlaylist(playlistId);
-      if (success) {
-        notify("success", t.appShell.playlistDeletedTitle, t.appShell.playlistDeletedBody);
-        return true;
-      }
-    } catch (err) {
-      notify("error", t.appShell.playlistDeleteFailedTitle, String(err));
-    }
-    return false;
-  }
-
-  function handleOpenMonitoredRepo() {
-    const { session } = monitor;
-    if (!session) return;
-    repositories.setSelectedRepositoryId(session.repoId);
-    setAnalysisMode("repo");
-    setScreen("inspect");
-    setPillar("curate");
-  }
-
   function handleOpenConnections() {
-    setPillar("curate");
-    setScreen("library");
-    setLibraryTab("connections");
+    const nextState = resolveAppOpenConnectionsState();
+    setPillar(nextState.pillar);
+    setScreen(nextState.screen);
+    setLibraryTab(nextState.libraryTab);
   }
 
-  const analyzerLabel = isHealthResponse(health)
-    ? `${health.payload.analyzerVersion} on ${health.payload.runtime}`
-    : booting
-      ? t.appShell.bootingAnalyzerBridge
-      : t.appShell.analyzerUnavailable;
+  const { analyzerLabel, detailDeckLabel, screenLabel, selectedItemTitle } =
+    buildAppContentStatusViewModel(
+      {
+        analysisMode,
+        baseAsset: baseAssets.selectedBaseAsset,
+        booting,
+        composition: compositions.selectedComposition,
+        health,
+        playlistName: library.selectedPlaylist?.name ?? null,
+        repository: repositories.selectedRepository,
+        screen,
+        track: library.selectedTrack,
+      },
+      t,
+    );
 
-  const screenLabel =
-    screen === "library"
-      ? t.nav.library.label
-      : screen === "session"
-        ? t.nav.session.label
-        : screen === "inspect"
-          ? t.nav.inspect.label
-          : t.nav.compose.label;
-
-  const detailDeckLabel =
-    analysisMode === "repo"
-      ? t.appShell.sourceDeckArmed
-      : analysisMode === "base"
-        ? t.appShell.basePoolArmed
-        : t.appShell.trackDeckArmed;
-
-  const selectedItemTitle =
-    screen === "compose"
-      ? (compositions.selectedComposition?.title ?? null)
-      : screen === "inspect" && analysisMode === "repo"
-        ? (repositories.selectedRepository?.title ?? null)
-        : screen === "inspect" && analysisMode === "base"
-          ? (baseAssets.selectedBaseAsset?.title ?? null)
-          : (library.selectedPlaylist?.name ?? library.selectedTrack?.tags.title ?? null);
-
-  const isMutating =
-    library.mutating || repositories.mutating || baseAssets.mutating || compositions.mutating;
-  const mutateLabel = library.mutating
-    ? t.appShell.scanningTrackDna
-    : repositories.mutating
-      ? t.appShell.mappingRepository
-      : baseAssets.mutating
-        ? t.appShell.poolIngest
-        : t.appShell.renderingComposition;
+  const { isMutating, mutateLabel } = resolveAppMutationState(
+    {
+      baseAssetsMutating: baseAssets.mutating,
+      compositionsMutating: compositions.mutating,
+      libraryMutating: library.mutating,
+      repositoriesMutating: repositories.mutating,
+    },
+    t,
+  );
 
   return (
     <I18nContext.Provider value={t}>
@@ -624,14 +242,13 @@ function AppContent() {
       <main className="app-shell">
         <header className="topbar">
           <div className="topbar-brand">
-            {userMode === "expert" && (
-              <img
-                src="/assets/branding/maia-wordmark-site.png"
-                alt="MAIA"
-                className="topbar-wordmark"
+            {userMode === "expert" && <BrandWordmark className="topbar-wordmark" />}
+            {userMode === "simple" && (
+              <BrandLockup
+                className="topbar-brand-lockup"
+                wordmarkClassName="topbar-wordmark"
               />
             )}
-            {userMode === "simple" && <span className="topbar-simple-title">{t.workspace}</span>}
             {userMode === "expert" && (
               <div className="topbar-copy">
                 <span className="topbar-subtitle">{t.workspace}</span>
@@ -696,10 +313,9 @@ function AppContent() {
           <AppSidebar
             currentPillar={effectivePillar}
             onPillarChange={(p) => {
-              setPillar(userMode === "simple" && p === "design" ? "curate" : p);
-              if (p === "perform") setScreen("session");
-              if (p === "design" && userMode === "expert") setScreen("compose");
-              if (p === "curate") setScreen("library");
+              const nextState = resolveAppPillarNavigationState(userMode, p);
+              setPillar(nextState.pillar);
+              setScreen(nextState.screen);
             }}
             trackCount={library.tracks.length}
             repositoryCount={repositories.repositories.length}
@@ -709,7 +325,7 @@ function AppContent() {
             monitorSession={monitor.session}
             monitorMetrics={monitor.metrics}
             onStopMonitor={() => void monitor.stopSession()}
-            onOpenMonitoredRepo={handleOpenMonitoredRepo}
+            onOpenMonitoredRepo={openMonitoredRepo}
             onOpenConnections={handleOpenConnections}
             connectionsActive={
               pillar === "curate" && screen === "library" && libraryTab === "connections"
@@ -741,298 +357,96 @@ function AppContent() {
               </section>
             }
           >
-            {effectivePillar === "curate" &&
-              effectiveScreen === "library" &&
-              userMode === "simple" &&
-              !monitor.session &&
-              repositories.repositories.length === 0 && (
-                <SimpleModeWizard
-                  busyRepository={repositories.mutating}
-                  busyBaseAsset={baseAssets.mutating}
-                  onImportRepository={handleImportRepository}
-                  onImportBaseAsset={handleImportBaseAsset}
-                  onStartSession={async (repoId, presetId) => {
-                    const repo = repositories.repositories.find((r) => r.id === repoId);
-                    const preset = baseAssets.baseAssets.find((b) => b.id === presetId);
-                    if (!repo || !preset) return;
-                    setPillar("perform");
-                    setScreen("session");
-                  }}
-                  repositoryCount={repositories.repositories.length}
-                  baseAssetCount={baseAssets.baseAssets.length}
-                  baseAssetCategories={manifest?.baseAssetCategories ?? []}
-                  defaultCategoryId={manifest?.defaultBaseAssetCategoryId}
-                />
-              )}
-
-            {effectivePillar === "curate" &&
-              effectiveScreen === "library" &&
-              userMode === "simple" &&
-              repositories.repositories.length > 0 && (
-                <SimpleModeLibraryView
-                  tracks={library.tracks}
-                  repositories={repositories.repositories}
-                  baseAssets={baseAssets.baseAssets}
-                  selectedRepositoryId={repositories.selectedRepositoryId}
-                  selectedTrackId={library.selectedTrackId}
-                  onSelectRepository={(repositoryId) => {
-                    repositories.setSelectedRepositoryId(repositoryId);
-                  }}
-                  onSelectTrack={(trackId) => {
-                    library.setSelectedTrackId(trackId);
-                  }}
-                  onImportRepository={handleImportRepository}
-                  onImportBaseAsset={handleImportBaseAsset}
-                  onStartMonitoring={(repoId, trackId) => {
-                    const repo = repositories.repositories.find((r) => r.id === repoId);
-                    if (!repo) return;
-                    library.setSelectedTrackId(trackId ?? null);
-                    setPillar("perform");
-                    setScreen("session");
-                  }}
-                />
-              )}
-
-            {effectivePillar === "curate" &&
-              effectiveScreen === "library" &&
-              userMode === "expert" && (
-                <LibraryScreen
-                  tracks={library.tracks}
-                  playlists={library.playlists}
-                  repositories={repositories.repositories}
-                  baseAssets={baseAssets.baseAssets}
-                  compositions={compositions.compositions}
-                  newlyImportedId={newlyImportedId}
-                  selectedTrackId={library.selectedTrackId}
-                  selectedPlaylistId={library.selectedPlaylistId}
-                  selectedRepositoryId={repositories.selectedRepositoryId}
-                  selectedBaseAssetId={baseAssets.selectedBaseAssetId}
-                  selectedCompositionId={compositions.selectedCompositionId}
-                  activeTab={libraryTab}
-                  onTabChange={setLibraryTab}
-                  manifest={manifest}
-                  musicStyles={manifest?.musicStyles ?? []}
-                  baseAssetCategories={manifest?.baseAssetCategories ?? []}
-                  defaultTrackMusicStyleId={manifest?.defaultTrackMusicStyleId}
-                  defaultBaseAssetCategoryId={manifest?.defaultBaseAssetCategoryId}
-                  trackLoading={library.loading}
-                  repositoryLoading={repositories.loading}
-                  baseAssetLoading={baseAssets.loading}
-                  compositionLoading={compositions.loading}
-                  trackBusy={library.mutating}
-                  repositoryBusy={repositories.mutating}
-                  baseAssetBusy={baseAssets.mutating}
-                  compositionBusy={compositions.mutating}
-                  trackError={library.error}
-                  repositoryError={repositories.error}
-                  baseAssetError={baseAssets.error}
-                  compositionError={compositions.error}
-                  onImportTrack={handleImportTrack}
-                  onImportRepository={handleImportRepository}
-                  onImportBaseAsset={handleImportBaseAsset}
-                  onImportComposition={handleImportComposition}
-                  onReanalyzeTrack={handleReanalyzeTrack}
-                  onRelinkTrack={handleRelinkTrack}
-                  onRelinkMissingTracks={handleRelinkMissingTracks}
-                  onReanalyzeRepository={handleReanalyzeRepository}
-                  onDeleteTrack={handleDeleteTrack}
-                  onDeleteRepository={handleDeleteRepository}
-                  onSeedDemo={library.seedLibrary}
-                  onSavePlaylist={handleSavePlaylist}
-                  onDeletePlaylist={handleDeletePlaylist}
-                  onSelectTrack={(trackId) => {
-                    armTrackBase(trackId);
-                    setAnalysisMode("track");
-                  }}
-                  onSelectPlaylist={armPlaylistBase}
-                  onSelectRepository={(repositoryId) => {
-                    repositories.setSelectedRepositoryId(repositoryId);
-                    setAnalysisMode("repo");
-                  }}
-                  onSelectBaseAsset={(baseAssetId) => {
-                    baseAssets.setSelectedBaseAssetId(baseAssetId);
-                    setAnalysisMode("base");
-                  }}
-                  onSelectComposition={(compositionId) => {
-                    compositions.setSelectedCompositionId(compositionId);
-                  }}
-                  onInspectTrack={(trackId) => {
-                    armTrackBase(trackId);
-                    setAnalysisMode("track");
-                    setScreen("inspect");
-                  }}
-                  onInspectRepository={(repositoryId) => {
-                    repositories.setSelectedRepositoryId(repositoryId);
-                    setAnalysisMode("repo");
-                    setScreen("inspect");
-                  }}
-                  onInspectBaseAsset={(baseAssetId) => {
-                    baseAssets.setSelectedBaseAssetId(baseAssetId);
-                    setAnalysisMode("base");
-                    setScreen("inspect");
-                  }}
-                  onInspectComposition={(compositionId) => {
-                    compositions.setSelectedCompositionId(compositionId);
-                    setScreen("compose");
-                  }}
-                />
-              )}
-
-            {userMode === "expert" &&
-              effectivePillar === "curate" &&
-              effectiveScreen === "inspect" && (
-                <InspectScreen
-                  track={library.selectedTrack}
-                  repository={repositories.selectedRepository}
-                  baseAsset={baseAssets.selectedBaseAsset}
-                  availableTracks={library.tracks}
-                  availablePlaylists={library.playlists}
-                  availableRepositories={repositories.repositories}
-                  availableBaseAssets={baseAssets.baseAssets}
-                  mode={analysisMode}
-                  analyzerLabel={analyzerLabel}
-                  onChangeMode={setAnalysisMode}
-                  onSelectTrack={(id: string) => {
-                    armTrackBase(id);
-                    setAnalysisMode("track");
-                  }}
-                  onSelectRepository={(id: string) => {
-                    repositories.setSelectedRepositoryId(id);
-                    setAnalysisMode("repo");
-                  }}
-                  onSelectBaseAsset={(id: string) => {
-                    baseAssets.setSelectedBaseAssetId(id);
-                    setAnalysisMode("base");
-                  }}
-                  onGoLibrary={() => setScreen("library")}
-                  onGoCompose={() => setScreen("compose")}
-                  onUpdateTrackPerformance={handleUpdateTrackPerformance}
-                  onUpdateTrackAnalysis={handleUpdateTrackAnalysis}
-                  trackMutating={library.mutating}
-                />
-              )}
-
-            {userMode === "expert" && effectivePillar === "design" && (
-              <ComposeScreen
-                composition={compositions.selectedComposition}
-                compositions={compositions.compositions}
-                baseAssets={baseAssets.baseAssets}
-                tracks={library.tracks}
-                playlists={library.playlists}
-                repositories={repositories.repositories}
-                analyzerLabel={analyzerLabel}
-                busy={compositions.mutating}
-                onImportComposition={handleImportComposition}
-                onSelectComposition={(id: string) => compositions.setSelectedCompositionId(id)}
-                onGoLibrary={() => setScreen("library")}
-              />
-            )}
-
-            {effectivePillar === "perform" && (
-              <SessionScreen
-                tracks={library.tracks}
-                playlists={library.playlists}
-                repositories={repositories.repositories}
-                sessions={sessions.sessions}
-                sessionBookmarksBySessionId={sessions.sessionBookmarksBySessionId}
-                selectedSessionId={sessions.selectedSessionId}
-                loading={sessions.loading}
-                mutating={sessions.mutating}
-                error={sessions.error}
-                activeSessionId={
-                  monitor.session?.persistedSessionId ?? monitor.session?.sessionId ?? null
-                }
-                activeSessionMode={
-                  monitor.session ? (monitor.isPlayback ? "playback" : "live") : null
-                }
-                activePlaybackProgress={monitor.isPlayback ? monitor.playbackProgress : null}
-                onStartSession={async (input, persistedSessionId, draft) => {
-                  sessions.clearError();
-                  armSessionMusicalBase({
-                    trackId: draft?.trackId,
-                    playlistId: draft?.playlistId,
-                  });
-                  primeMonitorGuideTrack({
-                    trackId: draft?.trackId,
-                    playlistId: draft?.playlistId,
-                  });
-                  const success = await monitor.startSession(
-                    input.adapterKind === "file"
-                      ? (repositories.repositories.find((r) => r.sourcePath === input.source) ??
-                          ({
-                            id: input.sessionId,
-                            title: input.label ?? t.session.unnamedSession,
-                            sourcePath: input.source,
-                            storagePath: null,
-                            sourceKind: "file",
-                            importedAt: new Date().toISOString(),
-                            suggestedBpm: null,
-                            confidence: 0,
-                            summary: "",
-                            analyzerStatus: "pending",
-                            buildSystem: "",
-                            primaryLanguage: "",
-                            javaFileCount: 0,
-                            testFileCount: 0,
-                            notes: [],
-                            tags: [],
-                            metrics: {},
-                          } as any))
-                      : (repositories.repositories.find((r) => r.sourcePath === input.source) ??
-                          ({
-                            id: input.sessionId,
-                            title: input.label ?? t.session.unnamedSession,
-                            sourcePath: input.source,
-                            storagePath: null,
-                            sourceKind: "directory",
-                            importedAt: new Date().toISOString(),
-                            suggestedBpm: null,
-                            confidence: 0,
-                            summary: "",
-                            analyzerStatus: "pending",
-                            buildSystem: "",
-                            primaryLanguage: "",
-                            javaFileCount: 0,
-                            testFileCount: 0,
-                            notes: [],
-                            tags: [],
-                            metrics: {},
-                          } as any)),
-                    input,
-                    persistedSessionId,
-                  );
-                  if (success) {
-                    const isExistingSession = sessions.sessions.some(
-                      (entry) => entry.id === persistedSessionId,
-                    );
-                    if (!isExistingSession) {
-                      await sessions.createSession({
-                        id: persistedSessionId,
-                        label: input.label,
-                        sourceId: draft?.sourceId,
-                        trackId: draft?.trackId,
-                        playlistId: draft?.playlistId,
-                        adapterKind: input.adapterKind,
-                        mode: "live",
-                      });
-                    } else {
-                      sessions.setSelectedSessionId(persistedSessionId);
-                    }
-                  }
-                  return success;
-                }}
-                onStopSession={() => monitor.stopSession()}
-                onResume={(sessionId) => sessions.setSelectedSessionId(sessionId)}
-                onPlayback={async (session) => {
-                  return startReplaySession(session);
-                }}
-                onReplayBookmark={async (session, replayWindowIndex) =>
-                  startReplaySession(session, replayWindowIndex)
-                }
-                onDelete={(sessionId) => sessions.removeSession(sessionId)}
-                onSelectSession={(sessionId) => sessions.setSelectedSessionId(sessionId)}
-              />
-            )}
+            <AppSectionContent
+              userMode={userMode}
+              effectivePillar={effectivePillar}
+              effectiveScreen={effectiveScreen}
+              monitorSession={monitor.session}
+              monitorIsPlayback={monitor.isPlayback}
+              monitorPlaybackProgress={monitor.playbackProgress}
+              manifest={manifest}
+              musicStyles={manifest?.musicStyles ?? []}
+              baseAssetCategories={manifest?.baseAssetCategories ?? []}
+              defaultTrackMusicStyleId={manifest?.defaultTrackMusicStyleId}
+              defaultBaseAssetCategoryId={manifest?.defaultBaseAssetCategoryId}
+              libraryTab={libraryTab}
+              tracks={library.tracks}
+              playlists={library.playlists}
+              repositories={repositories.repositories}
+              baseAssets={baseAssets.baseAssets}
+              compositions={compositions.compositions}
+              newlyImportedId={newlyImportedId}
+              selectedTrack={library.selectedTrack}
+              selectedTrackId={library.selectedTrackId}
+              selectedPlaylistId={library.selectedPlaylistId}
+              selectedRepository={repositories.selectedRepository}
+              selectedRepositoryId={repositories.selectedRepositoryId}
+              selectedBaseAsset={baseAssets.selectedBaseAsset}
+              selectedBaseAssetId={baseAssets.selectedBaseAssetId}
+              selectedComposition={compositions.selectedComposition}
+              selectedCompositionId={compositions.selectedCompositionId}
+              trackLoading={library.loading}
+              repositoryLoading={repositories.loading}
+              baseAssetLoading={baseAssets.loading}
+              compositionLoading={compositions.loading}
+              trackBusy={library.mutating}
+              repositoryBusy={repositories.mutating}
+              baseAssetBusy={baseAssets.mutating}
+              compositionBusy={compositions.mutating}
+              trackError={library.error}
+              repositoryError={repositories.error}
+              baseAssetError={baseAssets.error}
+              compositionError={compositions.error}
+              analysisMode={analysisMode}
+              analyzerLabel={analyzerLabel}
+              sessionBookmarksBySessionId={sessions.sessionBookmarksBySessionId}
+              sessions={sessions.sessions}
+              selectedSessionId={sessions.selectedSessionId}
+              sessionsLoading={sessions.loading}
+              sessionsMutating={sessions.mutating}
+              sessionsError={sessions.error}
+              onImportTrack={handleImportTrack}
+              onImportRepository={handleImportRepository}
+              onImportBaseAsset={handleImportBaseAsset}
+              onImportComposition={handleImportComposition}
+              onReanalyzeTrack={handleReanalyzeTrack}
+              onRelinkTrack={handleRelinkTrack}
+              onRelinkMissingTracks={handleRelinkMissingTracks}
+              onReanalyzeRepository={handleReanalyzeRepository}
+              onDeleteTrack={handleDeleteTrack}
+              onDeleteRepository={handleDeleteRepository}
+              onSeedDemo={library.seedLibrary}
+              onSavePlaylist={handleSavePlaylist}
+              onDeletePlaylist={handleDeletePlaylist}
+              onSelectSimpleTrack={selectSimpleTrack}
+              onSelectSimpleRepository={selectSimpleRepository}
+              onSelectTrack={selectTrack}
+              onSelectPlaylist={selectPlaylist}
+              onSelectRepository={selectRepository}
+              onSelectBaseAsset={selectBaseAsset}
+              onSelectComposition={selectComposition}
+              onInspectTrack={inspectTrack}
+              onInspectRepository={inspectRepository}
+              onInspectBaseAsset={inspectBaseAsset}
+              onInspectComposition={inspectComposition}
+              onGoLibrary={goLibrary}
+              onGoCompose={goCompose}
+              onTabChange={setLibraryTab}
+              onChangeAnalysisMode={setAnalysisMode}
+              onUpdateTrackPerformance={handleUpdateTrackPerformance}
+              onUpdateTrackAnalysis={handleUpdateTrackAnalysis}
+              onStartSimpleMonitoring={startSimpleMonitoring}
+              onStartSimpleWizardSession={startSimpleWizardSession}
+              onStartSession={startLiveSession}
+              onStopSession={() => monitor.stopSession()}
+              onResumeSession={(sessionId) => sessions.setSelectedSessionId(sessionId)}
+              onPlaybackSession={startReplaySession}
+              onReplayBookmark={(session, replayWindowIndex) =>
+                startReplaySession(session, replayWindowIndex)
+              }
+              onDeleteSession={(sessionId) => sessions.removeSession(sessionId)}
+              onSelectSession={(sessionId) => sessions.setSelectedSessionId(sessionId)}
+            />
           </Suspense>
         </section>
       </main>

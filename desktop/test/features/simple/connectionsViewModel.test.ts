@@ -2,12 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import { en } from "../../../src/i18n/en";
 import {
+  buildConnectionsFormViewModel,
   buildConnectionUpsertInput,
   createConnectionDraftFromConnection,
   createEmptyConnectionDraft,
   deriveCloudBackfillLabel,
 } from "../../../src/features/simple/connectionsViewModel";
-import type { LogSourceConnection } from "../../../src/types/library";
+import type { LogSourceConnection } from "../../../src/types/monitor";
 
 describe("connectionsViewModel", () => {
   it("creates an empty draft with file defaults", () => {
@@ -20,6 +21,8 @@ describe("connectionsViewModel", () => {
       gcpRegion: "",
       gcpBackfillFreshness: "10m",
     });
+
+    expect(createEmptyConnectionDraft("120m").gcpBackfillFreshness).toBe("120m");
   });
 
   it("hydrates a draft from a persisted cloud connection", () => {
@@ -142,5 +145,34 @@ describe("connectionsViewModel", () => {
     } as LogSourceConnection;
 
     expect(deriveCloudBackfillLabel(connection)).toBe("off");
+  });
+
+  it("builds form copy and active kind state", () => {
+    const createView = buildConnectionsFormViewModel({
+      draft: createEmptyConnectionDraft(),
+      editingConnectionId: null,
+      saving: false,
+      t: en,
+    });
+    const editView = buildConnectionsFormViewModel({
+      draft: {
+        ...createEmptyConnectionDraft(),
+        kind: "gcp_cloud_run",
+      },
+      editingConnectionId: "conn-1",
+      saving: true,
+      t: en,
+    });
+
+    expect(createView.title).toBe(en.simpleMode.connections.newConnection);
+    expect(createView.isFileLog).toBe(true);
+    expect(createView.labelPlaceholder).toBe(en.simpleMode.connections.fileLabelPlaceholder);
+    expect(createView.kindOptions[0]).toMatchObject({ id: "file_log", isActive: true });
+
+    expect(editView.title).toBe(en.simpleMode.connections.editConnection);
+    expect(editView.isFileLog).toBe(false);
+    expect(editView.labelPlaceholder).toBe(en.simpleMode.connections.cloudLabelPlaceholder);
+    expect(editView.primaryActionLabel).toBe(en.simpleMode.status.loading);
+    expect(editView.kindOptions[1]).toMatchObject({ id: "gcp_cloud_run", isActive: true });
   });
 });

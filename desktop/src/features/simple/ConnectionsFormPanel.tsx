@@ -1,7 +1,11 @@
 import { Cable, FolderOpen, Globe, ScrollText, X } from "lucide-react";
 
 import { useT } from "../../i18n/I18nContext";
-import type { ConnectionDraft, ConnectionKind } from "./connectionsViewModel";
+import {
+  buildConnectionsFormViewModel,
+  type ConnectionDraft,
+  type ConnectionKind,
+} from "./connectionsViewModel";
 
 interface ConnectionsFormPanelProps {
   editingConnectionId: string | null;
@@ -31,20 +35,18 @@ export function ConnectionsFormPanel({
   onCancelEdit,
 }: ConnectionsFormPanelProps) {
   const t = useT();
+  const viewModel = buildConnectionsFormViewModel({
+    draft,
+    editingConnectionId,
+    saving,
+    t,
+  });
 
   return (
     <section className="panel connections-panel">
       <div className="form-intro">
-        <h3>
-          {editingConnectionId
-            ? t.simpleMode.connections.editConnection
-            : t.simpleMode.connections.newConnection}
-        </h3>
-        <p className="support-copy">
-          {editingConnectionId
-            ? t.simpleMode.connections.editConnectionHelp
-            : t.simpleMode.connections.newConnectionHelp}
-        </p>
+        <h3>{viewModel.title}</h3>
+        <p className="support-copy">{viewModel.help}</p>
       </div>
 
       <div
@@ -52,36 +54,26 @@ export function ConnectionsFormPanel({
         role="tablist"
         aria-label={t.simpleMode.connections.connectionKindAria}
       >
-        <button
-          type="button"
-          className={`source-card ${draft.kind === "file_log" ? "active" : ""}`}
-          onClick={() => onKindChange("file_log")}
-        >
-          <div className="source-card-icon">
-            <ScrollText size={24} />
-          </div>
-          <div className="source-card-content">
-            <strong>{t.simpleMode.connections.fileLog}</strong>
-            <p>{t.simpleMode.connections.fileLogDescription}</p>
-          </div>
-        </button>
-        <button
-          type="button"
-          className={`source-card ${draft.kind === "gcp_cloud_run" ? "active" : ""}`}
-          onClick={() => onKindChange("gcp_cloud_run")}
-        >
-          <div className="source-card-icon">
-            <Globe size={24} />
-          </div>
-          <div className="source-card-content">
-            <strong>{t.simpleMode.connections.gcpCloudRun}</strong>
-            <p>{t.simpleMode.connections.gcpCloudRunDescription}</p>
-          </div>
-        </button>
+        {viewModel.kindOptions.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            className={`source-card ${option.isActive ? "active" : ""}`}
+            onClick={() => onKindChange(option.id)}
+          >
+            <div className="source-card-icon">
+              {option.id === "file_log" ? <ScrollText size={24} /> : <Globe size={24} />}
+            </div>
+            <div className="source-card-content">
+              <strong>{option.label}</strong>
+              <p>{option.description}</p>
+            </div>
+          </button>
+        ))}
       </div>
 
       <div className="form-fields-section">
-        {draft.kind === "file_log" ? (
+        {viewModel.isFileLog ? (
           <label className="field maia-field">
             <span className="field-label">{t.simpleMode.connections.logFilePath}</span>
             <div className="field-input-wrapper">
@@ -149,11 +141,7 @@ export function ConnectionsFormPanel({
             value={draft.label}
             className="maia-input"
             onChange={(event) => onDraftChange({ label: event.target.value })}
-            placeholder={
-              draft.kind === "file_log"
-                ? t.simpleMode.connections.fileLabelPlaceholder
-                : t.simpleMode.connections.cloudLabelPlaceholder
-            }
+            placeholder={viewModel.labelPlaceholder}
           />
         </label>
       </div>
@@ -172,11 +160,7 @@ export function ConnectionsFormPanel({
           onClick={() => void onSaveConnection()}
         >
           <Cable size={16} />
-          {saving
-            ? ` ${t.simpleMode.status.loading}`
-            : editingConnectionId
-              ? ` ${t.simpleMode.connections.updateConnection}`
-              : ` ${t.simpleMode.connections.saveConnection}`}
+          {` ${viewModel.primaryActionLabel}`}
         </button>
         {editingConnectionId ? (
           <button

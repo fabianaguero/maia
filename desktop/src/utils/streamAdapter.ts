@@ -1,4 +1,4 @@
-import type { StreamAdapterKind } from "../types/library";
+import type { StreamAdapterKind } from "../types/monitor";
 
 export function getStreamAdapterLabel(adapterKind: StreamAdapterKind): string {
   switch (adapterKind) {

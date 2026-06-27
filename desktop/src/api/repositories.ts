@@ -5,15 +5,17 @@ const log = getLogger("API.Repos");
 
 import type {
   ImportRepositoryInput,
+  RepositoryAnalysis,
+} from "../types/library";
+import type {
   LogSourceConnection,
   StartLogSourceConnectionInput,
   UpsertLogSourceConnectionInput,
   LiveLogStreamUpdate,
-  RepositoryAnalysis,
   StartSessionInput,
   StreamSessionPollResult,
   StreamSessionRecord,
-} from "../types/library";
+} from "../types/monitor";
 import { importMockRepository, listMockRepositories, pollMockLogStream } from "./mockRepositories";
 
 export async function listRepositories(): Promise<RepositoryAnalysis[]> {

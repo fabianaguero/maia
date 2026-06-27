@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 
 import {
+  areMonitorDeckControlsEqual,
   DEFAULT_MONITOR_DECK_CONTROLS,
   loadMonitorDeckControls,
+  MONITOR_DECK_PRESETS,
   MONITOR_DECK_CONTROLS_STORAGE_KEY,
+  resolveActiveMonitorDeckPreset,
   sanitizeMonitorDeckControls,
   type MonitorDeckControls,
+  type MonitorDeckPresetId,
 } from "./monitorDeckControls";
 
 export function useMonitorDeckControls() {
@@ -40,10 +44,20 @@ export function useMonitorDeckControls() {
     );
   };
 
+  const applyDeckPreset = (presetId: MonitorDeckPresetId) => {
+    setDeckControls(MONITOR_DECK_PRESETS[presetId]);
+  };
+
+  const activePreset = resolveActiveMonitorDeckPreset(deckControls);
+  const isDirty = !areMonitorDeckControlsEqual(deckControls, DEFAULT_MONITOR_DECK_CONTROLS);
+
   return {
     deckControls,
     setDeckControls,
     updateDeckControl,
+    applyDeckPreset,
+    activePreset,
+    isDirty,
     resetDeckControls: () => setDeckControls(DEFAULT_MONITOR_DECK_CONTROLS),
   };
 }

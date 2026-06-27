@@ -12,11 +12,35 @@ Source of truth:
 
 The product app is started from `desktop/` with `npm run tauri dev`.
 
+## Open Source Readiness
+
+Maia is intended to be published as an MIT-licensed GitHub project.
+The repository already includes the baseline community files expected for a public project:
+
+- [LICENSE](LICENSE)
+- [README.md](README.md)
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- [SECURITY.md](SECURITY.md)
+- [SUPPORT.md](SUPPORT.md)
+- [MAINTAINERS.md](MAINTAINERS.md)
+- [.github/CODEOWNERS](.github/CODEOWNERS)
+- [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md)
+
+If you are preparing a public release, also review:
+
+- [docs/github-publish-checklist.md](docs/github-publish-checklist.md)
+- [docs/frontend-architecture.md](docs/frontend-architecture.md)
+- [docs/open-source-maintainer-guide.md](docs/open-source-maintainer-guide.md)
+- [docs/testing-and-quality.md](docs/testing-and-quality.md)
+
 ## Documentation Map
 
 - `docs/architecture.md`: product and runtime architecture overview
+- `docs/frontend-architecture.md`: active desktop/frontend structure, monitor startup flow, and current refactor direction
 - `docs/sdd.md`: lightweight functional spec and shipped/future scope
 - `docs/open-source-maintainer-guide.md`: codebase tour, runtime boundaries, and architecture analysis for contributors
+- `docs/testing-and-quality.md`: quality gates, coverage commands, and testing priorities for contributors
 - `docs/ai-roadmap.md`: staged plan for ML and AI adoption across analyzer, prep workflows, and hybrid mixing
 - `docs/github-publish-checklist.md`: pre-publication checklist before making the repository public
 - `docs/demo-assets-and-fixtures.md`: explanation of demo audio, curated fixtures, and non-runtime helper artifacts
@@ -24,6 +48,8 @@ The product app is started from `desktop/` with `npm run tauri dev`.
 - `CONTRIBUTING.md`: contributor workflow and runtime ownership rules
 - `CODE_OF_CONDUCT.md`: collaboration expectations for the repository
 - `SECURITY.md`: vulnerability reporting policy and security scope
+- `SUPPORT.md`: support expectations and where to ask for help
+- `MAINTAINERS.md`: maintainer responsibilities and runtime ownership
 - `LICENSE`: MIT license for the repository
 - `contracts/`: cross-runtime JSON contracts
 - `database/schema.sql`: SQLite storage model
@@ -70,6 +96,19 @@ What is still evolving is the longer-running product mode: Maia should ultimatel
 | Local database | SQLite |
 | Repo parsing | tree-sitter |
 | Optional optimization | Rust |
+
+## Active Frontend Path
+
+For contributors, the current desktop UI path is:
+
+```text
+desktop/src/main.tsx
+  -> MonitorProvider
+  -> desktop/src/App-v0.tsx
+```
+
+`desktop/src/App.tsx` exists in-repo, but it is not the mounted entrypoint today.
+If you are changing user-facing desktop behavior, start from the active path above unless the maintainer docs say otherwise.
 
 ## Domain Model
 
@@ -164,12 +203,18 @@ For Cloudflare build settings, use:
 ```bash
 # Analyzer tests
 python3 -m pip install -e './analyzer[dev]'
-python3 -m pytest analyzer/tests -v
+python3 -m pytest analyzer/tests -v --cov=maia_analyzer --cov-report=term-missing --cov-report=xml
 
 # Desktop tests
 cd desktop
-npm run test:run
+npm run coverage
 ```
+
+## Support
+
+- Use [SUPPORT.md](SUPPORT.md) for triage guidance.
+- Use GitHub Issues for bugs, features, and documentation improvements.
+- Use [SECURITY.md](SECURITY.md) for private vulnerability reporting.
 
 ### Coverage
 

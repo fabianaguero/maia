@@ -1,5 +1,4 @@
 import {
-  startTransition,
   useCallback,
   useEffect,
   useEffectEvent,
@@ -56,12 +55,9 @@ import {
   BOUNCE_WINDOW_S,
 } from "./wavRenderer";
 import {
-  appendSyncTailRows,
-  buildSyncTailRows,
   formatConfidence,
   formatCursor,
   levelCount,
-  resolveBackgroundTrackSecond,
   type SyncTailRow,
 } from "./liveLogMonitorPanelRuntime";
 import {
@@ -116,27 +112,17 @@ import {
   resolveGuideTrackSeedPlaylist,
 } from "./liveLogMonitorPreferencesRuntime";
 import {
-  buildRecentCueHistory,
-  buildRecentExplanationHistory,
-  buildRecentMarkerHistory,
-  buildRecentMonitorVoices,
-  resolveActiveTailWindowId,
-  resolveSelectedMonitorExplanationId,
-} from "./liveLogMonitorStreamUpdateRuntime";
-import {
   buildLiveMonitorStopResetState,
   resolveBookmarkSuggestionSelection,
   resolveLiveMonitorBounceFilename,
   resolveReplayFeedbackSelection,
 } from "./liveLogMonitorActionRuntime";
 import {
-  resolveBeatClockLiveSync,
   startBeatLooper,
   stopBeatLooper,
   type BeatClock,
   type BeatLooperState,
 } from "./liveLogMonitorBeatRuntime";
-import { buildMonitorUpdateDerivation } from "./liveLogMonitorUpdateDerivationRuntime";
 import { useLiveLogMonitorSampleBank } from "./useLiveLogMonitorSampleBank";
 import { useLiveLogMonitorResetActions } from "./useLiveLogMonitorResetActions";
 import { useLiveLogMonitorSurfaceSync } from "./useLiveLogMonitorSurfaceSync";
@@ -149,12 +135,10 @@ import { useLiveLogMonitorBackgroundAudioEngine } from "./useLiveLogMonitorBackg
 import { useLiveLogMonitorAuxPlayback } from "./useLiveLogMonitorAuxPlayback";
 import { useLiveLogMonitorBackgroundDeckControl } from "./useLiveLogMonitorBackgroundDeckControl";
 import { useLiveLogMonitorPlayback } from "./useLiveLogMonitorPlayback";
+import { useLiveLogMonitorOrchestrator } from "./useLiveLogMonitorOrchestrator";
 
 const MAX_RECENT_CUES = 8;
-const MAX_RECENT_MARKERS = 6;
 const MAX_RECENT_WARNINGS = 4;
-const MAX_RECENT_EXPLANATIONS = 6;
-const MAX_PARSED_LINES = 5;
 const MAX_ANOMALY_SOURCE_LINES = 6;
 const MAX_SYNC_TAIL_LINES = 60;
 
@@ -669,131 +653,44 @@ export function LiveLogMonitorPanel({
       logger: log,
     });
 
-  // ---------------------------------------------------------------------------
-  // Stream update handler — receives poll windows from MonitorContext
-  // ---------------------------------------------------------------------------
-
-  const onStreamUpdate = useEffectEvent((update: LiveLogStreamUpdate) => {
-    log.trace(
-      "onStreamUpdate hasData=%s lines=%d cues=%d sessionRepo=%s panelRepo=%s",
-      update.hasData,
-      update.lineCount,
-      update.sonificationCues.length,
-      monitor.session?.repoId,
-      repository.id,
-    );
-    // Only process updates for the repo this panel is showing
-    if (monitor.session?.repoId !== repository.id) {
-      log.debug(
-        "onStreamUpdate — skipped (repo mismatch session=%s vs panel=%s)",
-        monitor.session?.repoId,
-        repository.id,
-      );
-      return;
-    }
-
-    // Accumulate known components for per-component stereo routing
-    const currentDeck = backgroundDeckRef.current;
-    const currentTrackSecond = resolveBackgroundTrackSecond(audioContextRef.current, currentDeck);
-    const updateDerivation = buildMonitorUpdateDerivation({
-      update,
-      scene,
-      knownComponents: knownComponentsRef.current,
-      componentOverrides,
-      currentDeckTrackId: currentDeck?.trackId ?? null,
-      availableTracks,
-      currentTrackSecond,
-      maxRecentExplanations: MAX_RECENT_EXPLANATIONS,
-    });
-
-    knownComponentsRef.current = updateDerivation.knownComponents;
-    if (updateDerivation.knownComponentsChanged) {
-      setKnownComponents(knownComponentsRef.current.slice());
-    }
-    const routedCues = updateDerivation.routedCues;
-    const nextExplanations = updateDerivation.nextExplanations;
-
-    startTransition(() => {
-      setLastUpdate(update);
-      setRecentWarnings(update.warnings.slice(0, MAX_RECENT_WARNINGS));
-      setError(null);
-
-      if (!update.hasData) {
-        setLastUpdate(update);
-        return;
-      }
-
-      const nextTailRows = buildSyncTailRows({
-        update,
-        maxParsedLines: MAX_PARSED_LINES,
-      });
-
-      if (nextTailRows.length > 0) {
-        setSyncTailRows((current) =>
-          appendSyncTailRows(current, nextTailRows, MAX_SYNC_TAIL_LINES),
-        );
-      }
-      setActiveTailWindowId(resolveActiveTailWindowId(nextTailRows));
-
-      if (update.anomalyCount > 0) {
-        setIsAnomalyFlash(true);
-        window.setTimeout(() => setIsAnomalyFlash(false), 1200);
-      }
-
-      if (replayActive) return;
-
-      setEmittedCueCount((current) => current + routedCues.length);
-      setRecentCues((current) =>
-        buildRecentCueHistory(current, routedCues, updateDerivation.primaryLine, MAX_RECENT_CUES),
-      );
-      setRecentMarkers((current) =>
-        buildRecentMarkerHistory(current, update.anomalyMarkers, MAX_RECENT_MARKERS),
-      );
-      setRecentExplanations((current) =>
-        buildRecentExplanationHistory(
-          current,
-          nextExplanations,
-          MAX_RECENT_EXPLANATIONS,
-        ),
-      );
-      if (typeof currentTrackSecond === "number") {
-        setBackgroundPlayheadSecond(currentTrackSecond);
-      }
-      if (nextExplanations[0]) {
-        setSelectedExplanationId((current) =>
-          resolveSelectedMonitorExplanationId(current, nextExplanations, monitor.isPlayback),
-        );
-      }
-      setRecentVoices(buildRecentMonitorVoices(routedCues, scene.mutationProfile.arrangementDepth, 12));
-    });
-
-    if (update.hasData && !replayActive) {
-      void ensureAudioReady();
-
-      const beatClockSyncPlan = resolveBeatClockLiveSync({
-        currentClock: beatClockRef.current,
-        liveBpm: update.suggestedBpm,
-        useBeatGrid: scene.preset.useBeatGrid,
-        audioCurrentTime: audioContextRef.current?.currentTime ?? null,
-      });
-      if (beatClockSyncPlan.changed) {
-        beatClockRef.current = beatClockSyncPlan.nextClock;
-        setBeatClockBpm(beatClockSyncPlan.nextDisplayBpm);
-      }
-
-      log.info(
-        "onStreamUpdate → playing %d routed cues, bpm=%s",
-        routedCues.length,
-        update.suggestedBpm,
-      );
-      if (!panelAudioProbePlayedRef.current && backgroundDeckRef.current === null) {
-        panelAudioProbePlayedRef.current = true;
-        void playPanelTestTone();
-      }
-      playWithCurrentEngine(routedCues, update.suggestedBpm);
-      applyLogModulation(update);
-    }
+  const { onStreamUpdate } = useLiveLogMonitorOrchestrator({
+    repositoryId: repository.id,
+    sessionRepoId: monitor.session?.repoId ?? null,
+    audioContextRef,
+    backgroundDeckRef,
+    beatClockRef,
+    panelAudioProbePlayedRef,
+    scene,
+    availableTracks,
+    componentOverrides,
+    replayActive,
+    knownComponentsRef,
+    setLastUpdate,
+    setRecentWarnings,
+    setError,
+    setSyncTailRows,
+    setActiveTailWindowId,
+    setIsAnomalyFlash,
+    setEmittedCueCount,
+    setRecentCues,
+    setRecentMarkers,
+    setRecentExplanations,
+    setBackgroundPlayheadSecond,
+    setSelectedExplanationId,
+    setRecentVoices,
+    setKnownComponents,
+    setBeatClockBpm,
+    monitor: {
+      isPlayback: monitor.isPlayback,
+    },
+    ensureAudioReady,
+    playWithCurrentEngine,
+    applyLogModulation,
+    playPanelTestTone,
+    logger: log,
   });
+
+  // Stream update handler is now centralized in useLiveLogMonitorOrchestrator
 
   // Subscribe to the global monitor stream while this panel is mounted
   // Use a ref so the effect runs once (monitor object changes identity every render)

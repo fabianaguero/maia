@@ -1,4 +1,6 @@
 import React from "react";
+import { BrandLockup } from "./Branding";
+import { I18nContext } from "../i18n/I18nContext";
 
 interface AppErrorBoundaryState {
   error: Error | null;
@@ -9,6 +11,9 @@ export class AppErrorBoundary extends React.Component<
   React.PropsWithChildren,
   AppErrorBoundaryState
 > {
+  static contextType = I18nContext;
+  declare context: React.ContextType<typeof I18nContext>;
+
   state: AppErrorBoundaryState = {
     error: null,
     errorInfo: null,
@@ -31,78 +36,38 @@ export class AppErrorBoundary extends React.Component<
 
   render() {
     const { error, errorInfo } = this.state;
+    const t = this.context;
     if (!error) {
       return this.props.children;
     }
 
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: "linear-gradient(180deg, #070b10 0%, #020305 100%)",
-          color: "#e5edf7",
-          padding: "32px",
-          fontFamily: "'IBM Plex Mono', monospace",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <div
-          style={{
-            width: "min(960px, 100%)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: "16px",
-            background: "rgba(9,14,19,0.92)",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              padding: "16px 20px",
-              borderBottom: "1px solid rgba(255,255,255,0.08)",
-              color: "#ff8a94",
-              fontSize: "12px",
-              letterSpacing: "0.12em",
-            }}
-          >
-            MAIA UI RUNTIME ERROR
+      <div className="app-error-boundary">
+        <div className="app-error-boundary__panel">
+          <div className="app-error-boundary__header">
+            <BrandLockup
+              className="app-error-boundary__brand"
+              wordmarkClassName="app-error-boundary__brand-wordmark"
+            />
+            <span className="app-error-boundary__eyebrow">
+              {t.simpleMode.runtime.desktopRuntime}
+            </span>
           </div>
-          <div style={{ padding: "20px" }}>
-            <div style={{ fontSize: "18px", marginBottom: "12px", color: "#ffffff" }}>
-              The desktop UI crashed while rendering.
+          <div className="app-error-boundary__banner">
+            {t.simpleMode.runtime.uiRuntimeError}
+          </div>
+          <div className="app-error-boundary__body">
+            <div className="app-error-boundary__title">
+              {t.simpleMode.runtime.crashedWhileRendering}
             </div>
-            <div
-              style={{ fontSize: "13px", color: "rgba(229,237,247,0.72)", marginBottom: "16px" }}
-            >
-              This replaces the previous black screen so the runtime error is visible.
+            <div className="app-error-boundary__copy">
+              {t.simpleMode.runtime.blackScreenReplacement}
             </div>
-            <pre
-              style={{
-                margin: 0,
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-                fontSize: "12px",
-                lineHeight: 1.5,
-                color: "#ffd7dc",
-              }}
-            >
+            <pre className="app-error-boundary__stack">
               {error.stack || error.message}
             </pre>
             {errorInfo?.componentStack ? (
-              <pre
-                style={{
-                  marginTop: "16px",
-                  paddingTop: "16px",
-                  borderTop: "1px solid rgba(255,255,255,0.08)",
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                  fontSize: "11px",
-                  lineHeight: 1.45,
-                  color: "rgba(229,237,247,0.58)",
-                }}
-              >
+              <pre className="app-error-boundary__component-stack">
                 {errorInfo.componentStack}
               </pre>
             ) : null}

@@ -1,5 +1,7 @@
 import React from "react";
 import { useT } from "../../i18n/I18nContext";
+import { buildMonitorDeckWavePanelViewModel } from "./monitorDeckWavePanelViewModel";
+import { formatAnomalyCueCode } from "./monitorDisplay";
 
 interface AnomalyBurstRegionViewModel {
   id: string;
@@ -54,8 +56,6 @@ interface MonitorDeckWavePanelProps {
   onStagePointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
   onStageClick: (event: React.MouseEvent<HTMLDivElement>) => void;
   stageHeightPx: number;
-  trackFooterText: string;
-  logFooterText: string;
 }
 
 export function MonitorDeckWavePanel({
@@ -78,10 +78,9 @@ export function MonitorDeckWavePanel({
   onStagePointerDown,
   onStageClick,
   stageHeightPx,
-  trackFooterText,
-  logFooterText,
 }: MonitorDeckWavePanelProps) {
   const t = useT();
+  const viewModel = buildMonitorDeckWavePanelViewModel({ t });
 
   return (
     <>
@@ -95,10 +94,10 @@ export function MonitorDeckWavePanel({
           >
             <canvas ref={overviewCanvasRef} className="monitor-overview-wave__canvas" />
             <span className="monitor-overview-wave__label">
-              {t.simpleMode.monitor.fullTrackMap}
+              {viewModel.overview.label}
             </span>
             <span className="monitor-overview-wave__sublabel">
-              {t.simpleMode.monitor.anomalyHeat}
+              {viewModel.overview.sublabel}
             </span>
             <div className="monitor-overview-wave__anomalies">
               {anomalyBurstRegions.map((region) => (
@@ -117,7 +116,7 @@ export function MonitorDeckWavePanel({
                   type="button"
                   className={`monitor-overview-wave__anomaly${selectedAnomalyId === marker.id ? " active" : ""}${marker.severity >= 0.9 ? " critical" : " warning"}`}
                   style={{ left: `${marker.leftPercent}%` }}
-                  title={`${marker.timestamp} · ${marker.message}`}
+                  title={`${formatAnomalyCueCode(marker.id)} · ${marker.timestamp} · ${marker.message}`}
                   onClick={(event) => onOverviewAnomalyClick(marker, event)}
                   onPointerDown={onOverviewAnomalyPointerDown}
                 />
@@ -137,10 +136,7 @@ export function MonitorDeckWavePanel({
           </div>
         </div>
 
-        <div
-          className="waveform-channel-hd monitor-deck-body monitor-deck-main"
-          style={{ height: "100%", borderBottom: "none", position: "relative" }}
-        >
+        <div className="waveform-channel-hd monitor-deck-body monitor-deck-main monitor-deck-main--wave">
           <div className="monitor-deck-timeline" aria-hidden="true">
             {deckTimelineMarkers.map((marker) => (
               <div
@@ -154,10 +150,6 @@ export function MonitorDeckWavePanel({
             ))}
           </div>
 
-          <div className="channel-label-mini" style={{ zIndex: 30 }}>
-            <span className="label-blue">{t.simpleMode.monitor.hybridMonitor}</span>
-          </div>
-
           <div
             ref={waveformStageRef}
             className="waveform-container-hd monitor-deck-stage"
@@ -166,12 +158,15 @@ export function MonitorDeckWavePanel({
           >
             <canvas ref={waveformCanvasRef} className="monitor-wave-canvas" />
             <div className="monitor-deck-lane-labels" aria-hidden="true">
-              <span className="monitor-deck-lane-label track">
-                {t.simpleMode.monitor.trackAudio}
-              </span>
-              <span className="monitor-deck-lane-label log">
-                {t.simpleMode.monitor.logReactivity}
-              </span>
+              {viewModel.laneLabels.map((lane) => (
+                <span
+                  key={lane.key}
+                  className={`monitor-deck-lane-label ${lane.tone}`}
+                  title={lane.title}
+                >
+                  {lane.label}
+                </span>
+              ))}
             </div>
             <div className="monitor-deck-beat-grid" aria-hidden="true">
               {deckBeatMarkers.map((marker) => (
@@ -187,17 +182,6 @@ export function MonitorDeckWavePanel({
               <span className="monitor-wave-guides__line base" />
               <span className="monitor-wave-guides__line mid" />
               <span className="monitor-wave-guides__line top" />
-            </div>
-          </div>
-
-          <div className="monitor-deck-footer">
-            <div className="monitor-deck-footer__lane">
-              <span className="monitor-deck-footer__tag track">{t.simpleMode.monitor.track}</span>
-              <span className="monitor-deck-footer__text">{trackFooterText}</span>
-            </div>
-            <div className="monitor-deck-footer__lane">
-              <span className="monitor-deck-footer__tag log">{t.simpleMode.monitor.logStream}</span>
-              <span className="monitor-deck-footer__text">{logFooterText}</span>
             </div>
           </div>
         </div>

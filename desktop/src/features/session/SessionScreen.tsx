@@ -1,13 +1,6 @@
-import { AlertCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type {
-  BaseTrackPlaylist,
-  LibraryTrack,
-  LiveLogStreamUpdate,
-  RepositoryAnalysis,
-  StartSessionInput,
-  StreamAdapterKind,
-} from "../../types/library";
+import type { BaseTrackPlaylist, LibraryTrack, RepositoryAnalysis } from "../../types/library";
+import type { LiveLogStreamUpdate, StartSessionInput } from "../../types/monitor";
 import type { PersistedSession, SessionBookmark, SessionEvent } from "../../api/sessions";
 import { listSessionEvents } from "../../api/sessions";
 import { useT } from "../../i18n/I18nContext";
@@ -28,18 +21,27 @@ import {
   type SessionBaseMode,
 } from "./sessionDisplay";
 import { SessionBoothPanel } from "./SessionBoothPanel";
-import { SessionSetupPanel } from "./SessionSetupPanel";
 import { buildSessionBoothViewModel } from "./sessionBoothViewModel";
+import { SessionScreenHeader } from "./SessionScreenHeader";
+import { SessionScreenNoticeStack } from "./SessionScreenNoticeStack";
+import { SessionScreenPanels } from "./SessionScreenPanels";
 import {
-  SessionSavedSessionsPanel,
+  buildSessionLabelPlaceholder,
+  createDirectSessionStartPlan,
+  createResumeSessionPlan,
+  createSessionStartPlan,
+  createSessionTimestampId,
+  resolveBookmarkContext,
+  resolvePlaybackPercent,
+  resolveReadyToRun,
+  resolveReplayBookmarkError,
+  resolveReplaySessionError,
+  resolveReplaySessionFailure,
+  resolveSelectedEntities,
+  resolveSourceOptions,
   type SessionBookmarkContext,
-} from "./SessionSavedSessionsPanel";
-
-interface SessionStartDraft {
-  sourceId?: string;
-  trackId?: string;
-  playlistId?: string;
-}
+  type SessionStartDraft,
+} from "./sessionScreenRuntime";
 
 interface SessionScreenProps {
   tracks: LibraryTrack[];
@@ -65,47 +67,6 @@ interface SessionScreenProps {
   onReplayBookmark: (session: PersistedSession, replayWindowIndex: number) => Promise<boolean>;
   onDelete: (sessionId: string) => Promise<void>;
   onSelectSession: (sessionId: string) => void;
-}
-
-function resolveBookmarkContext(
-  bookmark: SessionBookmark,
-  events: SessionEvent[],
-): SessionBookmarkContext {
-  if (!events || bookmark.eventIndex == null) {
-    return {
-      bpm: null,
-      dominantLevel: null,
-      anomalyCount: null,
-      logExcerpt: null,
-    };
-  }
-
-  const event = events[bookmark.eventIndex];
-  if (!event) {
-    return {
-      bpm: null,
-      dominantLevel: null,
-      anomalyCount: null,
-      logExcerpt: null,
-    };
-  }
-
-  let logExcerpt: string | null = null;
-  try {
-    const parsedLines = JSON.parse(event.parsedLinesJson) as string[];
-    if (parsedLines && parsedLines.length > 0) {
-      logExcerpt = parsedLines[0].slice(0, 120) || null;
-    }
-  } catch {
-    // Silent fail on JSON parse
-  }
-
-  return {
-    bpm: event.suggestedBpm,
-    dominantLevel: event.dominantLevel,
-    anomalyCount: event.anomalyCount,
-    logExcerpt,
-  };
 }
 
 export function SessionScreen({
@@ -149,19 +110,19 @@ export function SessionScreen({
   const boothBedAudioRef = useRef<HTMLAudioElement | null>(null);
   const subscribeToMonitor = monitor.subscribe;
 
-  const logSources = useMemo(
-    () => repositories.filter((entry) => entry.sourceKind === "file"),
-    [repositories],
+  const sourceOptions = useMemo(() => resolveSourceOptions(mode, repositories), [mode, repositories]);
+  const { selectedSource, selectedTrack, selectedPlaylist } = useMemo(
+    () =>
+      resolveSelectedEntities({
+        playlists,
+        repositories,
+        selectedPlaylistId,
+        selectedSourceId,
+        selectedTrackId,
+        tracks,
+      }),
+    [playlists, repositories, selectedPlaylistId, selectedSourceId, selectedTrackId, tracks],
   );
-  const repoSources = useMemo(
-    () => repositories.filter((entry) => entry.sourceKind !== "file"),
-    [repositories],
-  );
-  const sourceOptions = mode === "log" ? logSources : repoSources;
-  const selectedSource =
-    repositories.find((repository) => repository.id === selectedSourceId) ?? null;
-  const selectedTrack = tracks.find((track) => track.id === selectedTrackId) ?? null;
-  const selectedPlaylist = playlists.find((playlist) => playlist.id === selectedPlaylistId) ?? null;
   const selectedBaseDetails = resolveSelectedBaseDetails(
     baseMode,
     selectedTrack,
@@ -173,47 +134,28 @@ export function SessionScreen({
     try {
       setCreateError(null);
       setCreating(true);
+      const plan = createSessionStartPlan(
+        {
+          baseMode,
+          mode,
+          repositories,
+          selectedPlaylistId,
+          selectedSourceId,
+          selectedTrackId,
+          sessionLabel,
+        },
+        t,
+        () => createSessionTimestampId("session"),
+      );
 
-      if (!selectedSourceId) {
-        setCreateError(mode === "log" ? t.session.selectLogSource : t.session.selectRepoSource);
+      if (plan.error || !plan.input || !plan.sessionId) {
+        if (plan.error) {
+          setCreateError(plan.error);
+        }
         return;
       }
 
-      if (baseMode === "track" && !selectedTrackId) {
-        setCreateError(t.session.selectBaseTrack);
-        return;
-      }
-
-      if (baseMode === "playlist" && !selectedPlaylistId) {
-        setCreateError(t.session.selectBasePlaylist);
-        return;
-      }
-
-      const source = repositories.find((entry) => entry.id === selectedSourceId);
-      if (!source) {
-        setCreateError(t.session.sourceNotFound);
-        return;
-      }
-
-      if (source.sourceKind !== "file") {
-        setCreateError(t.session.fileOnlyLiveBooth);
-        return;
-      }
-
-      const sessionId = `session_${Date.now()}`;
-      const input: StartSessionInput = {
-        sessionId,
-        adapterKind: "file" as StreamAdapterKind,
-        source: source.sourcePath,
-        label: sessionLabel || source.title,
-        startFromBeginning: true,
-      };
-
-      const success = await onStartSession(input, sessionId, {
-        sourceId: source.id,
-        trackId: baseMode === "track" ? (selectedTrackId ?? undefined) : undefined,
-        playlistId: baseMode === "playlist" ? (selectedPlaylistId ?? undefined) : undefined,
-      });
+      const success = await onStartSession(plan.input, plan.sessionId, plan.draft);
 
       if (success) {
         setSessionLabel("");
@@ -243,19 +185,21 @@ export function SessionScreen({
     try {
       setIsDirectLoading(true);
       setCreateError(null);
+      const plan = createDirectSessionStartPlan(
+        {
+          directPath,
+          selectedPlaylistId,
+          selectedTrackId,
+        },
+        t,
+        () => createSessionTimestampId("direct"),
+      );
 
-      const input: StartSessionInput = {
-        sessionId: `direct_${Date.now()}`,
-        adapterKind: "file",
-        source: directPath.trim(),
-        label: directPath.split("/").pop() || t.session.directFeed,
-        startFromBeginning: true,
-      };
+      if (!plan.input || !plan.sessionId) {
+        return;
+      }
 
-      const success = await onStartSession(input, input.sessionId, {
-        trackId: selectedTrackId ?? undefined,
-        playlistId: selectedPlaylistId ?? undefined,
-      });
+      const success = await onStartSession(plan.input, plan.sessionId, plan.draft);
 
       if (success) {
         setDirectPath("");
@@ -271,41 +215,15 @@ export function SessionScreen({
     async (sessionId: string) => {
       try {
         setCreateError(null);
-        const session = sessions.find((entry) => entry.id === sessionId);
-        if (!session) {
+        const plan = createResumeSessionPlan(sessionId, sessions, repositories, t);
+        if (!plan.input || !plan.sessionId) {
+          if (plan.error) {
+            setCreateError(plan.error);
+          }
           return;
         }
 
-        // Resolve source: prefer by id, fall back to path match, then use stored path directly
-        const source =
-          repositories.find((r) => r.id === session.sourceId) ??
-          repositories.find(
-            (r) => session.sourcePath !== null && r.sourcePath === session.sourcePath,
-          ) ??
-          null;
-
-        const sourcePath = source?.sourcePath ?? session.sourcePath;
-        if (!sourcePath) {
-          setCreateError(t.session.noStoredSourceResume);
-          return;
-        }
-        if ((session.adapterKind || "file") !== "file") {
-          setCreateError(t.session.unsupportedAdapterResume);
-          return;
-        }
-
-        const input: StartSessionInput = {
-          sessionId: session.id,
-          adapterKind: "file",
-          source: sourcePath,
-          label: session.label || source?.title || session.sourceTitle || t.session.resumedSession,
-        };
-
-        const success = await onStartSession(input, session.id, {
-          sourceId: session.sourceId ?? undefined,
-          trackId: session.trackId ?? undefined,
-          playlistId: session.playlistId ?? undefined,
-        });
+        const success = await onStartSession(plan.input, plan.sessionId, plan.draft);
         if (success) {
           onResume(sessionId);
           onSelectSession(sessionId);
@@ -315,6 +233,41 @@ export function SessionScreen({
       }
     },
     [onResume, onSelectSession, onStartSession, repositories, sessions, t],
+  );
+
+  const handlePlaybackSession = useCallback(
+    async (session: PersistedSession) => {
+      setCreateError(null);
+      const replayError = resolveReplaySessionError(session, t);
+      if (replayError) {
+        setCreateError(replayError);
+        return;
+      }
+
+      const success = await onPlayback(session);
+      const replayFailure = resolveReplaySessionFailure(success, t);
+      if (replayFailure) {
+        setCreateError(replayFailure);
+        return;
+      }
+
+      onSelectSession(session.id);
+    },
+    [onPlayback, onSelectSession, t],
+  );
+
+  const handleReplayBookmark = useCallback(
+    async (session: PersistedSession, replayWindowIndex: number) => {
+      setCreateError(null);
+      const success = await onReplayBookmark(session, replayWindowIndex);
+      const replayError = resolveReplayBookmarkError(success, t);
+      if (replayError) {
+        setCreateError(replayError);
+        return;
+      }
+      onSelectSession(session.id);
+    },
+    [onReplayBookmark, onSelectSession, t],
   );
 
   const activeSession = sessions.find((session) => session.id === activeSessionId);
@@ -421,19 +374,20 @@ export function SessionScreen({
   const selectedTemplatePresentation = selectedTemplate
     ? resolveSourceTemplatePresentation(selectedTemplate, t)
     : null;
-  const sessionLabelPlaceholder =
-    selectedSource && selectedBaseDetails.label
-      ? `${selectedSource.title} · ${selectedBaseDetails.label} · ${selectedTemplatePresentation?.genre ?? selectedTemplate?.genre ?? ""}`
-      : (selectedTemplatePresentation?.label ??
-        selectedTemplate?.label ??
-        t.session.sessionPlaceholder);
-  const playbackPercent =
-    typeof activePlaybackProgress === "number"
-      ? Math.max(0, Math.min(100, Math.round(activePlaybackProgress * 100)))
-      : null;
-  const readyToRun =
-    Boolean(selectedSourceId) &&
-    Boolean(baseMode === "track" ? selectedTrackId : selectedPlaylistId);
+  const sessionLabelPlaceholder = buildSessionLabelPlaceholder({
+    selectedBaseLabel: selectedBaseDetails.label,
+    selectedSourceTitle: selectedSource?.title ?? null,
+    templateGenre: selectedTemplatePresentation?.genre ?? selectedTemplate?.genre ?? null,
+    templateLabel: selectedTemplatePresentation?.label ?? selectedTemplate?.label ?? null,
+    fallbackLabel: t.session.sessionPlaceholder,
+  });
+  const playbackPercent = resolvePlaybackPercent(activePlaybackProgress);
+  const readyToRun = resolveReadyToRun({
+    baseMode,
+    selectedPlaylistId,
+    selectedSourceId,
+    selectedTrackId,
+  });
   const activeBaseDetails = resolveBaseDetails(activeSession ?? null, tracks, playlists);
   const selectedSessionBaseDetails = resolveBaseDetails(selectedSession, tracks, playlists);
   const activeSourceDetails = resolveSourceDetails(activeSession ?? null, repositories);
@@ -469,57 +423,9 @@ export function SessionScreen({
 
   return (
     <section className="screen">
-      <header className="screen-header">
-        <div>
-          <p className="eyebrow">{t.session.title}</p>
-          <h2>{t.session.title}</h2>
-          <p className="support-copy">{t.session.copy}</p>
-        </div>
-        <div className="screen-summary">
-          <div className="summary-pill">
-            <span>{t.session.savedSessions}</span>
-            <strong>{sessions.length}</strong>
-          </div>
-          {activeSession && (
-            <div className="summary-pill session-pill-active">
-              <span>{t.session.active}</span>
-              <strong>{activeSession.label || "—"}</strong>
-            </div>
-          )}
-        </div>
-      </header>
+      <SessionScreenHeader sessionsCount={sessions.length} activeSession={activeSession ?? null} />
 
-      {error && (
-        <div className="notice session-notice-error">
-          <p>
-            <AlertCircle
-              size={14}
-              style={{
-                display: "inline",
-                verticalAlign: "-2px",
-                marginRight: 6,
-              }}
-            />
-            {error}
-          </p>
-        </div>
-      )}
-
-      {createError && (
-        <div className="notice session-notice-warn">
-          <p>
-            <AlertCircle
-              size={14}
-              style={{
-                display: "inline",
-                verticalAlign: "-2px",
-                marginRight: 6,
-              }}
-            />
-            {createError}
-          </p>
-        </div>
-      )}
+      <SessionScreenNoticeStack error={error} createError={createError} />
 
       <SessionBoothPanel
         booth={booth}
@@ -543,17 +449,7 @@ export function SessionScreen({
           }
         }}
         onReplaySelected={async () => {
-          setCreateError(null);
-          if (!selectedSession?.sourcePath) {
-            setCreateError(t.session.noStoredSourceReplay);
-            return;
-          }
-          const success = await onPlayback(selectedSession);
-          if (!success) {
-            setCreateError(t.session.failedReplay);
-            return;
-          }
-          onSelectSession(selectedSession.id);
+          await handlePlaybackSession(selectedSession);
         }}
         onCreateSession={handleCreateSession}
         onStepPlaybackWindow={(direction) => monitor.stepPlaybackWindow(direction)}
@@ -565,87 +461,59 @@ export function SessionScreen({
         }}
       />
 
-      <div className="session-layout">
-        <SessionSetupPanel
-          tracks={tracks}
-          playlists={playlists}
-          sourceOptions={sourceOptions}
-          mode={mode}
-          baseMode={baseMode}
-          selectedTemplateId={selectedTemplateId}
-          selectedSourceId={selectedSourceId}
-          selectedTrackId={selectedTrackId}
-          selectedPlaylistId={selectedPlaylistId}
-          selectedSource={selectedSource}
-          selectedTrack={selectedTrack}
-          selectedPlaylist={selectedPlaylist}
-          selectedBaseLabel={selectedBaseDetails.label}
-          selectedBaseDetail={selectedBaseDetails.detail}
-          sessionLabel={sessionLabel}
-          sessionLabelPlaceholder={sessionLabelPlaceholder}
-          creating={creating}
-          mutating={mutating}
-          onTemplateSelect={setSelectedTemplateId}
-          onBaseModeChange={setBaseMode}
-          onTrackSelect={setSelectedTrackId}
-          onPlaylistSelect={setSelectedPlaylistId}
-          onModeChange={(nextMode) => {
-            setMode(nextMode);
-            setSelectedSourceId(null);
-          }}
-          onSourceSelect={setSelectedSourceId}
-          onSessionLabelChange={setSessionLabel}
-          onCreateSession={handleCreateSession}
-        />
-
-        <SessionSavedSessionsPanel
-          sessions={sessions}
-          loading={loading}
-          mutating={mutating}
-          selectedSessionId={selectedSessionId}
-          selectedSession={selectedSession}
-          selectedSessionBookmarks={selectedSessionBookmarks}
-          selectedSessionReplayFeedbackRecommendation={selectedSessionReplayFeedbackRecommendation}
-          sessionBookmarksBySessionId={sessionBookmarksBySessionId}
-          bookmarkContexts={bookmarkContexts}
-          activeSessionId={activeSessionId}
-          activeSessionMode={activeSessionMode}
-          liveWindowCount={monitor.metrics.windowCount}
-          liveProcessedLines={monitor.metrics.processedLines}
-          liveTotalAnomalies={monitor.metrics.totalAnomalies}
-          onSelectSession={onSelectSession}
-          onResumeSession={(sessionId) => {
-            void handleResumeSession(sessionId);
-          }}
-          onPlaybackSession={async (session) => {
-            setCreateError(null);
-            if (!session.sourcePath) {
-              setCreateError(t.session.noStoredSourceReplay);
-              return;
-            }
-
-            const success = await onPlayback(session);
-            if (!success) {
-              setCreateError(t.session.failedReplay);
-              return;
-            }
-
-            onSelectSession(session.id);
-          }}
-          onReplayBookmark={async (session, replayWindowIndex) => {
-            setCreateError(null);
-            const success = await onReplayBookmark(session, replayWindowIndex);
-            if (!success) {
-              setCreateError(t.session.failedReplayJump);
-              return;
-            }
-            onSelectSession(session.id);
-          }}
-          onDeleteSession={(sessionId) => {
-            void onDelete(sessionId);
-          }}
-        />
-      </div>
+      <SessionScreenPanels
+        tracks={tracks}
+        playlists={playlists}
+        sessions={sessions}
+        loading={loading}
+        mutating={mutating}
+        selectedSessionId={selectedSessionId}
+        activeSessionId={activeSessionId}
+        activeSessionMode={activeSessionMode}
+        mode={mode}
+        baseMode={baseMode}
+        selectedTemplateId={selectedTemplateId}
+        selectedSourceId={selectedSourceId}
+        selectedTrackId={selectedTrackId}
+        selectedPlaylistId={selectedPlaylistId}
+        selectedSource={selectedSource}
+        selectedTrack={selectedTrack}
+        selectedPlaylist={selectedPlaylist}
+        selectedBaseLabel={selectedBaseDetails.label}
+        selectedBaseDetail={selectedBaseDetails.detail}
+        sessionLabel={sessionLabel}
+        sessionLabelPlaceholder={sessionLabelPlaceholder}
+        creating={creating}
+        sourceOptions={sourceOptions}
+        selectedSession={selectedSession}
+        selectedSessionBookmarks={selectedSessionBookmarks}
+        selectedSessionReplayFeedbackRecommendation={selectedSessionReplayFeedbackRecommendation}
+        sessionBookmarksBySessionId={sessionBookmarksBySessionId}
+        bookmarkContexts={bookmarkContexts}
+        liveWindowCount={monitor.metrics.windowCount}
+        liveProcessedLines={monitor.metrics.processedLines}
+        liveTotalAnomalies={monitor.metrics.totalAnomalies}
+        onTemplateSelect={setSelectedTemplateId}
+        onBaseModeChange={setBaseMode}
+        onTrackSelect={setSelectedTrackId}
+        onPlaylistSelect={setSelectedPlaylistId}
+        onModeChange={(nextMode) => {
+          setMode(nextMode);
+          setSelectedSourceId(null);
+        }}
+        onSourceSelect={setSelectedSourceId}
+        onSessionLabelChange={setSessionLabel}
+        onCreateSession={handleCreateSession}
+        onSelectSession={onSelectSession}
+        onResumeSession={(sessionId) => {
+          void handleResumeSession(sessionId);
+        }}
+        onPlaybackSession={handlePlaybackSession}
+        onReplayBookmark={handleReplayBookmark}
+        onDeleteSession={(sessionId) => {
+          void onDelete(sessionId);
+        }}
+      />
     </section>
   );
 }

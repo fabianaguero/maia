@@ -2,20 +2,12 @@ import { startTransition, useEffect, useState } from "react";
 
 import { importBaseAsset, listBaseAssets } from "../api/baseAssets";
 import type { BaseAssetRecord, ImportBaseAssetInput } from "../types/library";
-
-function toMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  if (typeof error === "string" && error.trim()) {
-    return error;
-  }
-  return fallback;
-}
-
-function sortBaseAssets(baseAssets: BaseAssetRecord[]): BaseAssetRecord[] {
-  return [...baseAssets].sort((left, right) => right.importedAt.localeCompare(left.importedAt));
-}
+import {
+  appendImportedBaseAsset,
+  resolveSelectedBaseAssetId,
+  sortBaseAssetsByImportedAt,
+  toBaseAssetErrorMessage,
+} from "./baseAssetsRuntime";
 
 export function useBaseAssets() {
   const [baseAssets, setBaseAssets] = useState<BaseAssetRecord[]>([]);
@@ -36,15 +28,9 @@ export function useBaseAssets() {
         }
 
         startTransition(() => {
-          const sorted = sortBaseAssets(nextBaseAssets);
+          const sorted = sortBaseAssetsByImportedAt(nextBaseAssets);
           setBaseAssets(sorted);
-          setSelectedBaseAssetId((current) => {
-            if (current && sorted.some((baseAsset) => baseAsset.id === current)) {
-              return current;
-            }
-
-            return sorted[0]?.id ?? null;
-          });
+          setSelectedBaseAssetId((current) => resolveSelectedBaseAssetId(current, sorted));
           setError(null);
           setLoading(false);
         });
@@ -54,7 +40,7 @@ export function useBaseAssets() {
         }
 
         startTransition(() => {
-          setError(toMessage(nextError, "Unexpected base asset failure."));
+          setError(toBaseAssetErrorMessage(nextError));
           setLoading(false);
         });
       }
@@ -76,12 +62,7 @@ export function useBaseAssets() {
       const nextBaseAsset = await importBaseAsset(input);
 
       startTransition(() => {
-        setBaseAssets((current) =>
-          sortBaseAssets([
-            nextBaseAsset,
-            ...current.filter((baseAsset) => baseAsset.id !== nextBaseAsset.id),
-          ]),
-        );
+        setBaseAssets((current) => appendImportedBaseAsset(current, nextBaseAsset));
         setSelectedBaseAssetId(nextBaseAsset.id);
         setError(null);
       });
@@ -89,7 +70,7 @@ export function useBaseAssets() {
       return nextBaseAsset;
     } catch (nextError) {
       startTransition(() => {
-        setError(toMessage(nextError, "Unexpected base asset failure."));
+        setError(toBaseAssetErrorMessage(nextError));
       });
       return null;
     } finally {

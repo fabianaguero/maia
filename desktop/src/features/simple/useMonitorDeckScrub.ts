@@ -2,11 +2,13 @@ import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent }
 import { useCallback, useEffect, useRef } from "react";
 
 import type { WaveformAnomalyMarker } from "./monitorDeckViewModel";
-import { MONITOR_TRACK_STRIP_MULTIPLIER } from "./monitorDeckCanvas";
-
-function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, value));
-}
+import {
+  clampMonitorProgress,
+  resolveDeckScrubProgress,
+  resolveNearestMonitorAnomalyMarker,
+  resolveOverviewScrubProgress,
+  shouldFocusMonitorAnomalyMarker,
+} from "./monitorDeckScrubRuntime";
 
 interface UseMonitorDeckScrubOptions {
   backgroundAudioRef: { current: HTMLAudioElement | null };
@@ -52,25 +54,14 @@ export function useMonitorDeckScrub({
         return;
       }
 
-      const clampedProgress = clamp01(nextProgress);
+      const clampedProgress = clampMonitorProgress(nextProgress);
       audio.currentTime = clampedProgress * duration;
       setTrackWaveProgress(clampedProgress);
       setTrackElapsedSeconds(audio.currentTime);
 
-      const nearestMarker = waveformAnomalies.reduce<WaveformAnomalyMarker | null>(
-        (closest, marker) => {
-          if (!closest) {
-            return marker;
-          }
-          return Math.abs(marker.progress - clampedProgress) <
-            Math.abs(closest.progress - clampedProgress)
-            ? marker
-            : closest;
-        },
-        null,
-      );
+      const nearestMarker = resolveNearestMonitorAnomalyMarker(waveformAnomalies, clampedProgress);
 
-      if (nearestMarker && Math.abs(nearestMarker.progress - clampedProgress) <= 0.03) {
+      if (nearestMarker && shouldFocusMonitorAnomalyMarker(nearestMarker, clampedProgress)) {
         onSelectAnomalyForFocus(nearestMarker.id);
         if (!isConsoleExpanded) {
           onToggleConsole?.();
@@ -96,11 +87,13 @@ export function useMonitorDeckScrub({
       }
 
       const rect = stage.getBoundingClientRect();
-      const pointerRatio = clamp01((clientX - rect.left) / rect.width);
-      const rawDeltaRatio = pointerRatio - deckScrubStartRatioRef.current;
-      const signedCurve = Math.sign(rawDeltaRatio) * Math.pow(Math.abs(rawDeltaRatio), 1.35);
-      const delta = signedCurve / (MONITOR_TRACK_STRIP_MULTIPLIER * 0.82);
-      const nextProgress = clamp01(deckScrubStartProgressRef.current + delta);
+      const nextProgress = resolveDeckScrubProgress({
+        clientX,
+        left: rect.left,
+        width: rect.width,
+        startRatio: deckScrubStartRatioRef.current,
+        startProgress: deckScrubStartProgressRef.current,
+      });
       seekToTrackProgress(nextProgress);
     },
     [seekToTrackProgress],
@@ -114,7 +107,11 @@ export function useMonitorDeckScrub({
       }
 
       const rect = canvas.getBoundingClientRect();
-      const nextProgress = clamp01((clientX - rect.left) / rect.width);
+      const nextProgress = resolveOverviewScrubProgress({
+        clientX,
+        left: rect.left,
+        width: rect.width,
+      });
       seekToTrackProgress(nextProgress);
     },
     [seekToTrackProgress],
@@ -202,7 +199,11 @@ export function useMonitorDeckScrub({
       isDeckScrubbingRef.current = true;
       activeDeckPointerIdRef.current = event.pointerId;
       const rect = event.currentTarget.getBoundingClientRect();
-      deckScrubStartRatioRef.current = clamp01((event.clientX - rect.left) / rect.width);
+      deckScrubStartRatioRef.current = resolveOverviewScrubProgress({
+        clientX: event.clientX,
+        left: rect.left,
+        width: rect.width,
+      });
       deckScrubStartProgressRef.current = trackWaveProgress;
       event.currentTarget.setPointerCapture?.(event.pointerId);
       seekTrackFromViewport(event.clientX);

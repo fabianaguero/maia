@@ -1,14 +1,12 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 import { CheckCircle2, AlertCircle, X } from "lucide-react";
-
-type ToastType = "success" | "error" | "info";
-
-interface Toast {
-  id: string;
-  type: ToastType;
-  title: string;
-  message?: string;
-}
+import {
+  appendToast,
+  createToast,
+  removeToastById,
+  type Toast,
+  type ToastType,
+} from "./notificationRuntime";
 
 interface NotificationContextProps {
   notify: (type: ToastType, title: string, message?: string) => void;
@@ -28,17 +26,17 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const notify = useCallback((type: ToastType, title: string, message?: string) => {
-    const id = Math.random().toString(36).substr(2, 9);
-    setToasts((current) => [...current, { id, type, title, message }]);
+    const toast = createToast({ type, title, message }, Math.random());
+    setToasts((current) => appendToast(current, toast));
 
     // Auto-remove after 5 seconds
     setTimeout(() => {
-      setToasts((current) => current.filter((t) => t.id !== id));
+      setToasts((current) => removeToastById(current, toast.id));
     }, 5000);
   }, []);
 
   const removeToast = (id: string) => {
-    setToasts((current) => current.filter((t) => t.id !== id));
+    setToasts((current) => removeToastById(current, id));
   };
 
   return (
@@ -59,6 +57,8 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
               {toast.message && <span className="toast-message">{toast.message}</span>}
             </div>
             <button
+              type="button"
+              aria-label="Dismiss notification"
               onClick={() => removeToast(toast.id)}
               style={{
                 background: "transparent",

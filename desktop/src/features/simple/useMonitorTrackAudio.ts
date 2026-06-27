@@ -3,10 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import type { LibraryTrack } from "../../types/library";
 import { resolvePreviewAudioUrl, revokePreviewAudioUrl } from "../../utils/audioPreview";
 import { resolvePlayableTrackPath } from "../../utils/track";
-
-function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, value));
-}
+import {
+  disposeMonitorAudio,
+  prepareBackgroundMonitorAudio,
+  readMonitorTrackAudioSnapshot,
+  stopMonitorAudio,
+} from "./monitorTrackAudioRuntime";
 
 function safeRevokePreviewAudioUrl(url: string | null | undefined): void {
   if (!url) {
@@ -24,9 +26,7 @@ interface UseMonitorTrackAudioOptions {
   audioContext: AudioContext | null;
   isListening: boolean;
   safeRuntime: boolean;
-  safeTracks: LibraryTrack[];
-  sessionTrackName?: string;
-  getTrackTitle: (track: LibraryTrack) => string;
+  activeTrack: LibraryTrack | null;
   ensureBackgroundGraph: (audio: HTMLAudioElement, context: AudioContext) => unknown;
   setTrackWaveProgress: (value: number) => void;
   setTrackElapsedSeconds: (value: number) => void;
@@ -37,9 +37,7 @@ export function useMonitorTrackAudio({
   audioContext,
   isListening,
   safeRuntime,
-  safeTracks,
-  sessionTrackName,
-  getTrackTitle,
+  activeTrack,
   ensureBackgroundGraph,
   setTrackWaveProgress,
   setTrackElapsedSeconds,
@@ -58,20 +56,22 @@ export function useMonitorTrackAudio({
     }
 
     if (previewTrackId === track.id && previewAudioRef.current) {
-      previewAudioRef.current.pause();
-      previewAudioRef.current.currentTime = 0;
-      previewAudioRef.current = null;
-      safeRevokePreviewAudioUrl(previewUrlRef.current);
+      previewAudioRef.current = disposeMonitorAudio(
+        previewAudioRef.current,
+        previewUrlRef.current,
+        safeRevokePreviewAudioUrl,
+      );
       previewUrlRef.current = null;
       setPreviewTrackId(null);
       return;
     }
 
     if (previewAudioRef.current) {
-      previewAudioRef.current.pause();
-      previewAudioRef.current.currentTime = 0;
-      previewAudioRef.current = null;
-      safeRevokePreviewAudioUrl(previewUrlRef.current);
+      previewAudioRef.current = disposeMonitorAudio(
+        previewAudioRef.current,
+        previewUrlRef.current,
+        safeRevokePreviewAudioUrl,
+      );
       previewUrlRef.current = null;
     }
 
@@ -115,10 +115,12 @@ export function useMonitorTrackAudio({
 
     return () => {
       if (previewAudioRef.current) {
-        previewAudioRef.current.pause();
-        previewAudioRef.current = null;
+        previewAudioRef.current = disposeMonitorAudio(
+          previewAudioRef.current,
+          previewUrlRef.current,
+          safeRevokePreviewAudioUrl,
+        );
       }
-      safeRevokePreviewAudioUrl(previewUrlRef.current);
       previewUrlRef.current = null;
     };
   }, [safeRuntime]);
@@ -127,8 +129,7 @@ export function useMonitorTrackAudio({
     if (!isListening) {
       const audio = backgroundAudioRef.current;
       if (audio) {
-        audio.pause();
-        audio.currentTime = 0;
+        stopMonitorAudio(audio);
       }
       backgroundAudioRef.current = null;
       safeRevokePreviewAudioUrl(backgroundAudioUrlRef.current);
@@ -150,11 +151,11 @@ export function useMonitorTrackAudio({
 
     let frameId = 0;
     const updateProgress = () => {
-      const audio = backgroundAudioRef.current;
-      if (audio && Number.isFinite(audio.duration) && audio.duration > 0) {
-        setTrackWaveProgress(clamp01(audio.currentTime / audio.duration));
-        setTrackElapsedSeconds(audio.currentTime);
-        setTrackDurationSeconds(audio.duration);
+      const snapshot = readMonitorTrackAudioSnapshot(backgroundAudioRef.current);
+      if (snapshot) {
+        setTrackWaveProgress(snapshot.progress);
+        setTrackElapsedSeconds(snapshot.elapsedSeconds);
+        setTrackDurationSeconds(snapshot.durationSeconds);
       }
       frameId = window.requestAnimationFrame(updateProgress);
     };
@@ -175,15 +176,14 @@ export function useMonitorTrackAudio({
     if (safeRuntime) {
       return;
     }
-    if (!isListening || !sessionTrackName) {
+    if (!isListening || !activeTrack) {
       return;
     }
 
     let cancelled = false;
 
     const bindBackgroundTrack = async () => {
-      const selectedTrack = safeTracks.find((track) => getTrackTitle(track) === sessionTrackName);
-      const playablePath = selectedTrack ? resolvePlayableTrackPath(selectedTrack) : null;
+      const playablePath = resolvePlayableTrackPath(activeTrack);
       if (!playablePath) {
         return;
       }
@@ -196,19 +196,12 @@ export function useMonitorTrackAudio({
 
       const audio = backgroundAudioRef.current ?? new Audio();
       backgroundAudioRef.current = audio;
-      audio.loop = true;
-      audio.volume = 1;
-      audio.preload = "auto";
-      audio.crossOrigin = "anonymous";
-      if (audio.src !== playbackUrl) {
-        audio.pause();
-        safeRevokePreviewAudioUrl(backgroundAudioUrlRef.current);
-        backgroundAudioUrlRef.current = playbackUrl;
-        audio.src = playbackUrl;
-        audio.currentTime = 0;
-      } else if (!backgroundAudioUrlRef.current) {
-        backgroundAudioUrlRef.current = playbackUrl;
-      }
+      backgroundAudioUrlRef.current = prepareBackgroundMonitorAudio(
+        audio,
+        playbackUrl,
+        backgroundAudioUrlRef.current,
+        safeRevokePreviewAudioUrl,
+      );
 
       if (audioContext && audioContext.state === "running") {
         ensureBackgroundGraph(audio, audioContext);
@@ -223,19 +216,13 @@ export function useMonitorTrackAudio({
 
     return () => {
       cancelled = true;
-      const audio = backgroundAudioRef.current;
-      if (audio) {
-        audio.pause();
-      }
     };
   }, [
     audioContext,
+    activeTrack,
     ensureBackgroundGraph,
-    getTrackTitle,
     isListening,
     safeRuntime,
-    safeTracks,
-    sessionTrackName,
   ]);
 
   useEffect(() => {

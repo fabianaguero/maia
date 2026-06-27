@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useT } from "../../i18n/I18nContext";
 import type { PersistedSession } from "../../api/sessions";
-import type { LiveLogStreamUpdate } from "../../types/library";
+import type { LiveLogStreamUpdate } from "../../types/monitor";
 import { formatMonitorLevel, resolveModeLabel, type QuickSessionMode } from "./sessionDisplay";
 import type { SessionBoothViewModel } from "./sessionBoothViewModel";
 

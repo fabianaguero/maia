@@ -40,12 +40,12 @@ function resolveSessionTemplateLabel(sourceTemplateId: string | null): string {
 /** Title-case a string or return "—" for null/empty */
 function formatDominantLevel(level: string | null): string {
   if (!level || !level.trim()) return "—";
-  return level
+  const words = level
     .trim()
-    .split(/[-\s]+/)
+    .split(/[-\s_]+/)
     .filter((word) => word.length > 0)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(" ");
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+  return words.length > 0 ? words.join(" ") : "—";
 }
 
 /** Truncate log line to max 120 chars, preserving original if within limit */

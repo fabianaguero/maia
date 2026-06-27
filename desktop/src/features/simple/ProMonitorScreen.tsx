@@ -2,6 +2,10 @@ import { useState } from "react";
 import { Play, Pause, SkipBack, SkipForward, AlertCircle, Plus } from "lucide-react";
 import { useT } from "../../i18n/I18nContext";
 import { buildProMonitorMockData, type ProMonitorBookmark } from "./proMonitorMockData";
+import {
+  buildProMonitorScreenViewModel,
+  createCustomProMonitorBookmark,
+} from "./proMonitorScreenRuntime";
 
 export function ProMonitorScreen() {
   const t = useT();
@@ -9,28 +13,7 @@ export function ProMonitorScreen() {
   const [isLiveMode] = useState(true);
   const mockData = buildProMonitorMockData(t);
   const [bookmarks, setBookmarks] = useState<ProMonitorBookmark[]>(mockData.bookmarks);
-
-  const resolveBookmarkTag = (bookmark: ProMonitorBookmark): string => {
-    switch (bookmark.tagKind) {
-      case "spike":
-        return t.simpleMode.proMonitor.tagSpike;
-      case "anomaly":
-        return t.simpleMode.proMonitor.tagAnomaly;
-      case "recovery":
-        return t.simpleMode.proMonitor.tagRecovery;
-      default:
-        return t.simpleMode.proMonitor.tagCustom;
-    }
-  };
-
-  const getLevelBadge = (level: string) => {
-    const levelClasses: Record<string, string> = {
-      info: "badge-info",
-      warn: "badge-warn",
-      error: "badge-error",
-    };
-    return <span className={`level-badge ${levelClasses[level]}`}>{level.toUpperCase()}</span>;
-  };
+  const viewModel = buildProMonitorScreenViewModel({ t, mockData, bookmarks });
 
   return (
     <div className="pro-monitor-screen">
@@ -57,10 +40,10 @@ export function ProMonitorScreen() {
 
         {/* Live Log Stream */}
         <div className="log-stream">
-          {mockData.logLines.map((line, idx) => (
+          {viewModel.logLines.map((line, idx) => (
             <div key={idx} className="log-line">
               <span className="log-timestamp">{line.timestamp}</span>
-              {getLevelBadge(line.level)}
+              <span className={`level-badge ${line.levelBadgeClassName}`}>{line.levelLabel}</span>
               <span className="log-service">{line.service}</span>
               <span className="log-message">{line.message}</span>
             </div>
@@ -69,13 +52,30 @@ export function ProMonitorScreen() {
 
         {/* Playback Controls */}
         <div className="playback-controls">
-          <button className="btn-playback" onClick={() => setIsPlaying(!isPlaying)}>
+          <button
+            type="button"
+            className="btn-playback"
+            onClick={() => setIsPlaying(!isPlaying)}
+            aria-pressed={isPlaying}
+            aria-label={isPlaying ? t.simpleMode.proMonitor.pause : t.simpleMode.proMonitor.play}
+            title={isPlaying ? t.simpleMode.proMonitor.pause : t.simpleMode.proMonitor.play}
+          >
             {isPlaying ? <Pause size={20} /> : <Play size={20} />}
           </button>
-          <button className="btn-playback" title={t.simpleMode.proMonitor.skipBack}>
+          <button
+            type="button"
+            className="btn-playback"
+            title={t.simpleMode.proMonitor.skipBack}
+            aria-label={t.simpleMode.proMonitor.skipBack}
+          >
             <SkipBack size={20} />
           </button>
-          <button className="btn-playback" title={t.simpleMode.proMonitor.skipForward}>
+          <button
+            type="button"
+            className="btn-playback"
+            title={t.simpleMode.proMonitor.skipForward}
+            aria-label={t.simpleMode.proMonitor.skipForward}
+          >
             <SkipForward size={20} />
           </button>
 
@@ -139,16 +139,18 @@ export function ProMonitorScreen() {
         <div className="bookmarks-panel">
           <div className="bookmarks-header">
             <h3 className="bookmarks-title">{t.simpleMode.proMonitor.bookmarks}</h3>
-            <span className="bookmark-count">{bookmarks.length}</span>
+            <span className="bookmark-count">{viewModel.bookmarks.length}</span>
           </div>
           <div className="bookmarks-list">
-            {bookmarks.map((bookmark) => (
+            {viewModel.bookmarks.map((bookmark) => (
               <div key={bookmark.id} className="bookmark-row">
                 <span className="bookmark-time">{bookmark.timestamp}</span>
-                <span className="bookmark-tag">{resolveBookmarkTag(bookmark)}</span>
+                <span className="bookmark-tag">{bookmark.tagLabel}</span>
                 <button
+                  type="button"
                   className="btn-ghost btn-small"
                   title={t.simpleMode.proMonitor.replayBookmark}
+                  aria-label={t.simpleMode.proMonitor.replayBookmark}
                 >
                   {t.simpleMode.proMonitor.replayBookmark}
                 </button>
@@ -156,14 +158,10 @@ export function ProMonitorScreen() {
             ))}
           </div>
           <button
+            type="button"
             className="btn-add-bookmark"
             onClick={() => {
-              const newBookmark: ProMonitorBookmark = {
-                id: Date.now().toString(),
-                timestamp: "09:15:00",
-                tagKind: "custom",
-              };
-              setBookmarks([...bookmarks, newBookmark]);
+              setBookmarks([...bookmarks, createCustomProMonitorBookmark()]);
             }}
           >
             <Plus size={14} />

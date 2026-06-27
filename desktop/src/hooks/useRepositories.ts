@@ -9,20 +9,19 @@ import {
 import { runAnalyzerRequest } from "../api/analyzer";
 import { createAnalyzeRepositoryRequest } from "../contracts";
 import type { ImportRepositoryInput, RepositoryAnalysis } from "../types/library";
-
-function toMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  if (typeof error === "string" && error.trim()) {
-    return error;
-  }
-  return fallback;
-}
-
-function sortRepositories(repositories: RepositoryAnalysis[]): RepositoryAnalysis[] {
-  return [...repositories].sort((left, right) => right.importedAt.localeCompare(left.importedAt));
-}
+import {
+  appendImportedRepository,
+  applyAnalyzedRepositoryMetadata,
+  clearDeletedSelectedRepositoryId,
+  removeDeletedRepository,
+  replaceReanalyzedRepository,
+  resolveReanalyzeRepositoryInput,
+  resolveRepositoryAnalysisPayload,
+  resolveSelectedRepositoryId,
+  shouldAnalyzeImportedRepository,
+  sortRepositoriesByImportedAt,
+  toRepositoryErrorMessage,
+} from "./repositoriesRuntime";
 
 export function useRepositories() {
   const [repositories, setRepositories] = useState<RepositoryAnalysis[]>([]);
@@ -43,15 +42,9 @@ export function useRepositories() {
         }
 
         startTransition(() => {
-          const sorted = sortRepositories(nextRepositories);
+          const sorted = sortRepositoriesByImportedAt(nextRepositories);
           setRepositories(sorted);
-          setSelectedRepositoryId((current) => {
-            if (current && sorted.some((repository) => repository.id === current)) {
-              return current;
-            }
-
-            return sorted[0]?.id ?? null;
-          });
+          setSelectedRepositoryId((current) => resolveSelectedRepositoryId(current, sorted));
           setError(null);
           setLoading(false);
         });
@@ -61,7 +54,7 @@ export function useRepositories() {
         }
 
         startTransition(() => {
-          setError(toMessage(nextError, "Unexpected repository failure."));
+          setError(toRepositoryErrorMessage(nextError, "Unexpected repository failure."));
           setLoading(false);
         });
       }
@@ -83,18 +76,13 @@ export function useRepositories() {
       const nextRepository = await importRepository(input);
 
       startTransition(() => {
-        setRepositories((current) =>
-          sortRepositories([
-            nextRepository,
-            ...current.filter((repository) => repository.id !== nextRepository.id),
-          ]),
-        );
+        setRepositories((current) => appendImportedRepository(current, nextRepository));
         setSelectedRepositoryId(nextRepository.id);
         setError(null);
       });
 
       // Start background analysis without blocking or error handling
-      if (nextRepository.analyzerStatus === "pending") {
+      if (shouldAnalyzeImportedRepository(nextRepository)) {
         analyzeRepositoryBackground(nextRepository).catch((err) => {
           console.debug("Background analysis error (non-blocking):", err);
         });
@@ -103,7 +91,7 @@ export function useRepositories() {
       return nextRepository;
     } catch (nextError) {
       startTransition(() => {
-        setError(toMessage(nextError, "Unexpected repository failure."));
+        setError(toRepositoryErrorMessage(nextError, "Unexpected repository failure."));
       });
       return null;
     } finally {
@@ -115,28 +103,12 @@ export function useRepositories() {
     try {
       const request = createAnalyzeRepositoryRequest(repository.sourceKind, repository.sourcePath);
       const response = await runAnalyzerRequest(request);
-
-      if (response.status === "ok" && "musicalAsset" in response.payload) {
-        const analyzed = response.payload.musicalAsset;
+      const analyzed = resolveRepositoryAnalysisPayload(response);
+      if (analyzed) {
         // Just update metadata, don't change analyzerStatus
         // Status change requires re-import from backend to persist to DB
         startTransition(() => {
-          setRepositories((current) =>
-            sortRepositories(
-              current.map((r) =>
-                r.id === repository.id
-                  ? {
-                      ...r,
-                      suggestedBpm: analyzed.suggestedBpm ?? r.suggestedBpm,
-                      confidence: analyzed.confidence ?? r.confidence,
-                      waveformBins: analyzed.artifacts?.waveformBins ?? r.waveformBins,
-                      beatGrid: analyzed.artifacts?.beatGrid ?? r.beatGrid,
-                      bpmCurve: analyzed.artifacts?.bpmCurve ?? r.bpmCurve,
-                    }
-                  : r,
-              ),
-            ),
-          );
+          setRepositories((current) => applyAnalyzedRepositoryMetadata(current, repository.id, analyzed));
         });
       }
     } catch (err) {
@@ -158,26 +130,17 @@ export function useRepositories() {
         throw new Error(`Repository source not found: ${repository.sourcePath}`);
       }
 
-      // Re-analyze using the same source path
-      const input: ImportRepositoryInput = {
-        sourceKind: repository.sourceKind,
-        sourcePath: repository.sourcePath,
-        label: repository.title,
-      };
-
-      const nextRepository = await importRepository(input);
+      const nextRepository = await importRepository(resolveReanalyzeRepositoryInput(repository));
 
       startTransition(() => {
-        setRepositories((current) =>
-          sortRepositories(current.map((r) => (r.id === repositoryId ? nextRepository : r))),
-        );
+        setRepositories((current) => replaceReanalyzedRepository(current, repositoryId, nextRepository));
         setError(null);
       });
 
       return nextRepository;
     } catch (nextError) {
       startTransition(() => {
-        setError(toMessage(nextError, "Unexpected repository failure."));
+        setError(toRepositoryErrorMessage(nextError, "Unexpected repository failure."));
       });
       return null;
     } finally {
@@ -190,17 +153,17 @@ export function useRepositories() {
       await deleteRepository(repositoryId);
 
       startTransition(() => {
-        setRepositories((current) => current.filter((r) => r.id !== repositoryId));
-        if (selectedRepositoryId === repositoryId) {
-          setSelectedRepositoryId(null);
-        }
+        setRepositories((current) => removeDeletedRepository(current, repositoryId));
+        setSelectedRepositoryId((current) =>
+          clearDeletedSelectedRepositoryId(current, repositoryId),
+        );
         setError(null);
       });
 
       return true;
     } catch (nextError) {
       startTransition(() => {
-        setError(toMessage(nextError, "Unexpected repository failure."));
+        setError(toRepositoryErrorMessage(nextError, "Unexpected repository failure."));
       });
       return false;
     }

@@ -1,20 +1,24 @@
 import type { CompositionResultRecord } from "../../../types/library";
+import { useT } from "../../../i18n/I18nContext";
 import { formatShortDateTime } from "../../../utils/date";
 
-function formatTimingSourceType(referenceType: CompositionResultRecord["referenceType"]): string {
+function formatTimingSourceType(
+  referenceType: CompositionResultRecord["referenceType"],
+  t: ReturnType<typeof useT>,
+): string {
   if (referenceType === "track") {
-    return "base track";
+    return t.compose.table.baseTrack;
   }
 
   if (referenceType === "playlist") {
-    return "base playlist";
+    return t.compose.table.basePlaylist;
   }
 
   if (referenceType === "repo") {
-    return "structure source";
+    return t.compose.table.structureSource;
   }
 
-  return "manual bpm";
+  return t.compose.table.manualBpm;
 }
 
 interface CompositionResultsTableProps {
@@ -30,18 +34,19 @@ export function CompositionResultsTable({
   onSelectComposition,
   onInspectComposition,
 }: CompositionResultsTableProps) {
+  const t = useT();
   return (
     <div className="table-shell">
       <table className="tracks-table">
         <thead>
           <tr>
-            <th>Composition</th>
-            <th>Base asset</th>
-            <th>Timing source</th>
-            <th>Target BPM</th>
-            <th>Strategy</th>
-            <th>Status</th>
-            <th>Created</th>
+            <th>{t.compose.table.composition}</th>
+            <th>{t.compose.table.baseAsset}</th>
+            <th>{t.compose.table.timingSource}</th>
+            <th>{t.compose.table.targetBpm}</th>
+            <th>{t.compose.table.strategy}</th>
+            <th>{t.compose.table.status}</th>
+            <th>{t.compose.table.created}</th>
             <th />
           </tr>
         </thead>
@@ -65,7 +70,7 @@ export function CompositionResultsTable({
                 </td>
                 <td>
                   <strong>{composition.referenceTitle}</strong>
-                  <small>{formatTimingSourceType(composition.referenceType)}</small>
+                  <small>{formatTimingSourceType(composition.referenceType, t)}</small>
                 </td>
                 <td>{composition.targetBpm.toFixed(0)}</td>
                 <td>{composition.strategy}</td>
@@ -80,7 +85,7 @@ export function CompositionResultsTable({
                       onInspectComposition(composition.id);
                     }}
                   >
-                    Open
+                    {t.compose.table.open}
                   </button>
                 </td>
               </tr>

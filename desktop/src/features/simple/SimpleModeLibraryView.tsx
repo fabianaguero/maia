@@ -12,6 +12,10 @@ import { FolderOpen, Zap, Play, Pause, FileText, Activity, Folder } from "lucide
 import { resolvePlayableTrackPath } from "../../utils/track";
 import { resolvePreviewAudioUrl, revokePreviewAudioUrl } from "../../utils/audioPreview";
 import { TrackWaveformMini } from "../../components/TrackWaveformMini";
+import {
+  buildSimpleModeImportRepositoryInput,
+  shouldShowSimpleModeStartButton,
+} from "./simpleModeLibraryRuntime";
 
 interface SimpleModeLibraryViewProps {
   tracks: LibraryTrack[];
@@ -143,11 +147,12 @@ export function SimpleModeLibraryView({
               onClick={() => {
                 const path = prompt(t.simpleMode.library.enterLogPath);
                 if (path) {
-                  onImportRepository({
-                    label: path.split("/").pop() || t.simpleMode.library.logSourceFallback,
-                    sourcePath: path,
-                    sourceKind: path.includes(".") ? "file" : "directory",
-                  });
+                  onImportRepository(
+                    buildSimpleModeImportRepositoryInput(
+                      path,
+                      t.simpleMode.library.logSourceFallback,
+                    ),
+                  );
                 }
               }}
             >
@@ -192,7 +197,11 @@ export function SimpleModeLibraryView({
                     </div>
                     <p className="simple-repo-path">{repo.sourcePath}</p>
                   </button>
-                  {isSelected && adapter.baseAssets.length > 0 && (
+                  {shouldShowSimpleModeStartButton(
+                    repo.id,
+                    adapter.selectedRepositoryId,
+                    adapter.baseAssets.length,
+                  ) && (
                     <button
                       className="simple-start-btn"
                       onClick={() =>

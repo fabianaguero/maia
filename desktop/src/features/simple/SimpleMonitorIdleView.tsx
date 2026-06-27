@@ -5,7 +5,7 @@ import { MonitorSetupPanel } from "./MonitorSetupPanel";
 import { PastSessionsPanel } from "./PastSessionsPanel";
 import { useT } from "../../i18n/I18nContext";
 
-interface SimpleMonitorIdleViewProps {
+export interface SimpleMonitorIdleViewProps {
   sourceFilter: MonitorSourceFilter;
   onSourceFilterChange: (value: MonitorSourceFilter) => void;
   filteredMonitorSourceOptions: MonitorLaunchSource[];

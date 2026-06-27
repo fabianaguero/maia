@@ -2,14 +2,12 @@ import { startTransition, useEffect, useState } from "react";
 
 import { importComposition, listCompositions } from "../api/compositions";
 import type { CompositionResultRecord, ImportCompositionInput } from "../types/library";
-
-function toMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Unexpected composition failure.";
-}
-
-function sortCompositions(compositions: CompositionResultRecord[]): CompositionResultRecord[] {
-  return [...compositions].sort((left, right) => right.importedAt.localeCompare(left.importedAt));
-}
+import {
+  appendImportedComposition,
+  resolveSelectedCompositionId,
+  sortCompositionsByImportedAt,
+  toCompositionErrorMessage,
+} from "./compositionResultsRuntime";
 
 export function useCompositionResults() {
   const [compositions, setCompositions] = useState<CompositionResultRecord[]>([]);
@@ -30,15 +28,9 @@ export function useCompositionResults() {
         }
 
         startTransition(() => {
-          const sorted = sortCompositions(nextCompositions);
+          const sorted = sortCompositionsByImportedAt(nextCompositions);
           setCompositions(sorted);
-          setSelectedCompositionId((current) => {
-            if (current && sorted.some((entry) => entry.id === current)) {
-              return current;
-            }
-
-            return sorted[0]?.id ?? null;
-          });
+          setSelectedCompositionId((current) => resolveSelectedCompositionId(current, sorted));
           setError(null);
           setLoading(false);
         });
@@ -48,7 +40,7 @@ export function useCompositionResults() {
         }
 
         startTransition(() => {
-          setError(toMessage(nextError));
+          setError(toCompositionErrorMessage(nextError));
           setLoading(false);
         });
       }
@@ -70,12 +62,7 @@ export function useCompositionResults() {
       const nextComposition = await importComposition(input);
 
       startTransition(() => {
-        setCompositions((current) =>
-          sortCompositions([
-            nextComposition,
-            ...current.filter((entry) => entry.id !== nextComposition.id),
-          ]),
-        );
+        setCompositions((current) => appendImportedComposition(current, nextComposition));
         setSelectedCompositionId(nextComposition.id);
         setError(null);
       });
@@ -83,7 +70,7 @@ export function useCompositionResults() {
       return nextComposition;
     } catch (nextError) {
       startTransition(() => {
-        setError(toMessage(nextError));
+        setError(toCompositionErrorMessage(nextError));
       });
       return null;
     } finally {

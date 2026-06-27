@@ -2,10 +2,9 @@ import React from "react";
 import { Play } from "lucide-react";
 
 import type { PersistedSession } from "../../api/sessions";
+import { BrandIcon } from "../../components/Branding";
 import { useT } from "../../i18n/I18nContext";
-import { resolveSessionStatusLabel } from "../../utils/monitorLabels";
-import { getBasename, truncateMiddle } from "./monitorDisplay";
-import { formatSessionLineCount, formatSessionUpdatedAt } from "./monitorSessions";
+import { buildPastSessionsViewModel } from "./pastSessionsViewModel";
 
 interface PastSessionsPanelProps {
   sessions: PersistedSession[];
@@ -14,62 +13,62 @@ interface PastSessionsPanelProps {
 
 export function PastSessionsPanel({ sessions, onReplaySession }: PastSessionsPanelProps) {
   const t = useT();
+  const viewModel = buildPastSessionsViewModel({ t, sessions });
 
   return (
     <div className="sessions-column">
-      <h3 className="sessions-title">{t.simpleMode.setup.pastSessions}</h3>
+      <div className="sessions-titlebar">
+        <span className="sessions-title-glyph">
+          <BrandIcon className="sessions-title-icon" />
+        </span>
+        <h3 className="sessions-title">{viewModel.title}</h3>
+      </div>
       <div className="sessions-list">
-        {sessions.length === 0 ? (
-          <p className="text-muted" style={{ padding: "1rem", fontSize: "13px" }}>
-            {t.simpleMode.setup.noPreviousSessions}
+        {viewModel.rows.length === 0 ? (
+          <p className="text-muted sessions-empty">
+            {viewModel.emptyStateLabel}
           </p>
         ) : (
-          sessions.slice(0, 5).map((session) => (
+          viewModel.rows.map((session) => (
             <div key={session.id} className="session-row">
+              <div className="session-row__glyph">
+                <BrandIcon className="session-row__icon" />
+              </div>
               <div className="session-info">
                 <div className="session-row__top">
-                  <div className="session-row__identity">
-                    <span className="session-name">
-                      {session.label || session.sourceTitle || t.simpleMode.common.untitledSession}
-                    </span>
-                    <span className="session-track-chip">
-                      {session.trackTitle || t.simpleMode.common.noTrack}
-                    </span>
-                  </div>
-                  <span className={`session-status-chip ${session.status}`}>
-                    {resolveSessionStatusLabel(session.status, t)}
-                  </span>
+                  <span className="session-name">{session.name}</span>
+                  <span className={`session-status-chip ${session.status}`}>{session.statusLabel}</span>
                 </div>
-                <span className="session-source">{truncateMiddle(session.sourcePath, 74)}</span>
+                <div className="session-row__identity">
+                  <span className="session-track-chip">{session.trackLabel}</span>
+                </div>
+                <span className="session-source">{session.sourcePathLabel}</span>
                 <div className="session-row__meta">
-                  <span className="session-meta-chip">{getBasename(session.sourcePath)}</span>
-                  <span className="session-meta-text">
-                    {t.simpleMode.common.updated} {formatSessionUpdatedAt(session.updatedAt)}
-                  </span>
+                  <span className="session-meta-chip">{session.sourceBasenameLabel}</span>
+                  <span className="session-meta-text">{session.updatedAtLabel}</span>
                 </div>
               </div>
               <div className="session-side">
                 <div className="session-stats">
-                  {session.totalAnomalies > 0 ? (
-                    <span className="badge-anomalies">{session.totalAnomalies}</span>
-                  ) : null}
-                  <span className="session-duration">
-                    {formatSessionLineCount(session.totalLines)}
-                  </span>
+                  <div className={`session-stat-card ${session.totalAnomalies > 0 ? "is-alert" : ""}`}>
+                    <span className="session-stat-card__label">{t.simpleMode.monitor.anomalies}</span>
+                    <span className="session-stat-card__value">{session.totalAnomalies}</span>
+                  </div>
+                  <div className="session-stat-card">
+                    <span className="session-stat-card__label">{t.simpleMode.common.lines}</span>
+                    <span className="session-stat-card__value">{session.lineCountLabel}</span>
+                  </div>
                 </div>
                 <div className="session-actions">
                   <button
                     className="btn-ghost"
                     title={t.simpleMode.common.replay}
                     onClick={() =>
-                      onReplaySession(
-                        session.id,
-                        session.sourcePath || "",
-                        session.sourceTitle || t.simpleMode.common.untitledSession,
-                      )
+                      onReplaySession(session.id, session.replaySourcePath, session.replaySourceTitle)
                     }
                   >
                     <Play size={14} />
+                    <span>{t.simpleMode.common.replay}</span>
                   </button>
                 </div>
               </div>

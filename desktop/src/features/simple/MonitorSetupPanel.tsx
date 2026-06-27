@@ -2,6 +2,7 @@ import React from "react";
 import { Pause, Play, RefreshCw } from "lucide-react";
 
 import type { LibraryTrack } from "../../types/library";
+import { BrandIcon } from "../../components/Branding";
 import { TrackWaveformMini } from "../../components/TrackWaveformMini";
 import { useT } from "../../i18n/I18nContext";
 import type { MonitorLaunchSource, MonitorSourceFilter } from "./monitorSourceOptions";
@@ -44,10 +45,12 @@ interface ModernSelectorProps<T> {
   items: T[];
   selectedId: string;
   onSelect: (id: string) => void;
+  headerAside?: React.ReactNode;
   renderTitle: (item: T) => string;
   renderSub: (item: T) => string;
   color: string;
   seedPrefix?: string;
+  renderLeading?: (item: T, isSelected: boolean) => React.ReactNode;
   renderAction?: (item: T, isSelected: boolean) => React.ReactNode;
   renderWave?: (item: T, isSelected: boolean) => React.ReactNode;
   renderBadge?: (item: T, isSelected: boolean) => React.ReactNode;
@@ -59,10 +62,12 @@ function ModernSelector<T extends { id: string }>({
   items,
   selectedId,
   onSelect,
+  headerAside,
   renderTitle,
   renderSub,
   color,
   seedPrefix = "item",
+  renderLeading,
   renderAction,
   renderWave,
   renderBadge,
@@ -70,7 +75,13 @@ function ModernSelector<T extends { id: string }>({
 }: ModernSelectorProps<T>) {
   return (
     <div className="modern-selector">
-      <label className="setup-label">{label}</label>
+      <div className="modern-selector__header">
+        <div className="modern-selector__header-copy">
+          <label className="setup-label">{label}</label>
+          <span className="modern-selector__count">{items.length}</span>
+        </div>
+        {headerAside ? <div className="modern-selector__header-aside">{headerAside}</div> : null}
+      </div>
       <div className="selector-grid">
         {items.length === 0 ? (
           <div className="selector-empty">
@@ -83,8 +94,19 @@ function ModernSelector<T extends { id: string }>({
               <div
                 key={item.id}
                 className={`selector-card ${isSelected ? "selected" : ""}`}
+                role="button"
+                tabIndex={0}
+                aria-pressed={isSelected}
+                aria-label={renderTitle(item)}
                 onClick={() => onSelect(item.id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onSelect(item.id);
+                  }
+                }}
               >
+                {renderLeading ? renderLeading(item, isSelected) : null}
                 <div className="card-content">
                   <div className="card-head">
                     <span className="card-title">{renderTitle(item)}</span>
@@ -192,28 +214,36 @@ export function MonitorSetupPanel({
       </div>
 
       <div className="setup-container-modern">
-        <div
-          className="source-filter-bar"
-          role="tablist"
-          aria-label={t.simpleMode.setup.filterAria}
-        >
-          {sourceFilterOptions.map((filter) => (
-            <button
-              key={filter.id}
-              type="button"
-              className={`source-filter-chip ${sourceFilter === filter.id ? "active" : ""}`}
-              onClick={() => onSourceFilterChange(filter.id)}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
-
         <ModernSelector
           label={t.simpleMode.setup.logSource}
           items={filteredMonitorSourceOptions}
           selectedId={selectedSourceId}
           onSelect={onSelectSourceId}
+          headerAside={
+            <div
+              className="source-filter-bar"
+              role="tablist"
+              aria-label={t.simpleMode.setup.filterAria}
+            >
+              {sourceFilterOptions.map((filter) => (
+                <button
+                  key={filter.id}
+                  type="button"
+                  className={`source-filter-chip ${sourceFilter === filter.id ? "active" : ""}`}
+                  onClick={() => onSourceFilterChange(filter.id)}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          }
+          renderLeading={(source, isSelected) => (
+            <span
+              className={`selector-brand-shell selector-brand-shell--${source.sourceType}${isSelected ? " active" : ""}`}
+            >
+              <BrandIcon className="selector-brand-icon" />
+            </span>
+          )}
           renderTitle={(source) => source.title}
           renderSub={(source) => source.sourcePath}
           renderBadge={(source) => (
@@ -231,6 +261,11 @@ export function MonitorSetupPanel({
           items={tracks}
           selectedId={selectedSoundId}
           onSelect={onSelectSoundId}
+          renderLeading={(_, isSelected) => (
+            <span className={`selector-brand-shell selector-brand-shell--track${isSelected ? " active" : ""}`}>
+              <BrandIcon className="selector-brand-icon" />
+            </span>
+          )}
           renderTitle={(track) => getTrackTitle(track)}
           renderSub={(track) => track.tags.musicStyleLabel || t.simpleMode.setup.ambientFallback}
           color="var(--color-accent)"

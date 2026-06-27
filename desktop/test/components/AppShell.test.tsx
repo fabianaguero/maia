@@ -53,7 +53,7 @@ describe("AppShell", () => {
 
     renderShell({ onInspect, onStopMonitoring });
 
-    await screen.findByText("Listening now");
+    await screen.findByText(en.simpleMode.monitor.systemActive);
     fireEvent.click(screen.getByRole("button", { name: "Inspect" }));
     fireEvent.click(screen.getByRole("button", { name: "Stop" }));
 

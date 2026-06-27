@@ -1,75 +1,29 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMonitor } from "../features/monitor/MonitorContext";
-import type { LiveLogCue, LiveLogStreamUpdate, LibraryTrack } from "../types/library";
+import type { LibraryTrack } from "../types/library";
 import type { SourceTemplate } from "../config/sourceTemplates";
 import { resolveSourceTemplatePresentation } from "../config/sourceTemplates";
 import { useT } from "../i18n/I18nContext";
 import { getTrackTitle, resolvePlayableTrackPath } from "../utils/track";
+import {
+  appendWaveHistory,
+  buildHudLinesForUpdate,
+  buildWaveColumn,
+  type HUDLine,
+  MONITOR_WAVEFORM_HISTORY_SIZE,
+  resolveProcessedMetrics,
+  resolveSourceMetrics,
+  type WaveColumn,
+  type WaveMetrics,
+} from "./monitorWaveformBarRuntime";
 
 // ---------------------------------------------------------------------------
 // Monitor Pro v5: Real-Time Kinetic Engine
 // Fixed "fake tail" repetition using offset tracking and burst processing.
 // ---------------------------------------------------------------------------
 
-interface WaveMetrics {
-  low: number;
-  mid: number;
-  high: number;
-}
-
-interface WaveColumn {
-  source: WaveMetrics;
-  processed: WaveMetrics;
-  anomalyHeat: number;
-  logLine: string | null;
-}
-
-interface HUDLine {
-  id: string;
-  content: string;
-  heat: number;
-  timestamp: number;
-}
-
-const HISTORY_SIZE = 400;
 const BAR_WIDTH = 2;
 const EMPTY_WAVEFORM: number[] = [];
-
-function resolveSourceMetrics(update: LiveLogStreamUpdate): WaveMetrics {
-  const total = update.lineCount;
-  if (total === 0) return { low: 0, mid: 0, high: 0 };
-
-  const lc = update.levelCounts || {};
-  // Hyper-sensitive normalization: divisor 80 + Square Root boost
-  const normalizedVolume = Math.min(1, Math.sqrt(total / 80));
-  const voiceFloor = 0.15; // Ensure CH A is never totally flat if data is flowing
-
-  const errorWeight = ((lc.error || 0) + (lc.warn || 0)) / total;
-
-  return {
-    low: Math.min(1, voiceFloor + errorWeight * 2.0 + normalizedVolume * 0.4),
-    mid: Math.min(1, voiceFloor + normalizedVolume * 0.7),
-    high: Math.min(1, voiceFloor + Math.random() * 0.1 + normalizedVolume * 0.3),
-  };
-}
-
-function resolveProcessedMetrics(cues: LiveLogCue[], update: LiveLogStreamUpdate): WaveMetrics {
-  if ((!cues || cues.length === 0) && update.anomalyMarkers.length === 0) {
-    return { low: 0, mid: 0, high: 0 };
-  }
-
-  const anomalySignal =
-    update.anomalyMarkers.length > 0 ? 0.3 + update.anomalyMarkers.length * 0.15 : 0;
-  const avgGain = (cues || []).reduce((s, c) => s + c.gain, 0) / Math.max(1, cues?.length || 0);
-  // Boost weight of normal "voice" sonification (gainFactor)
-  const gainFactor = Math.min(1, avgGain * 2.2);
-
-  return {
-    low: Math.min(1, anomalySignal * 1.2 + gainFactor * 0.4 + 0.1),
-    mid: Math.min(1, gainFactor * 0.9 + 0.15),
-    high: Math.min(1, gainFactor * 0.6 + 0.1),
-  };
-}
 
 function TemplateIndicatorChip({
   template,
@@ -122,7 +76,6 @@ export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] })
 
       const sourceMetrics = resolveSourceMetrics(update);
       const processedMetrics = resolveProcessedMetrics(update.sonificationCues || [], update);
-      const heat = Math.min(1, update.anomalyMarkers.length * 0.4);
 
       // Track the latest BPM for the template chip
       if (update.suggestedBpm != null) {
@@ -135,57 +88,21 @@ export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] })
       }
 
       // REAL TAIL LOGIC: Only add lines if offset has progressed or if it's a replay event
-      const isNewData = monitor.isPlayback || update.toOffset > lastOffsetRef.current;
+      const { hudLines: newLines, nextOffset } = buildHudLinesForUpdate(update, {
+        isPlayback: monitor.isPlayback,
+        lastOffset: lastOffsetRef.current,
+      });
 
-      if (isNewData) {
-        const newLines: HUDLine[] = [];
-
-        // Process bursts (all new parsed lines)
-        if (update.parsedLines && update.parsedLines.length > 0) {
-          update.parsedLines.forEach((content, i) => {
-            newLines.push({
-              id: `${update.toOffset}-${i}-${Math.random()}`,
-              content,
-              heat,
-              timestamp: Date.now(),
-            });
-          });
-        }
-        // Fallback for anomalies if no raw lines but new offset
-        else if (update.anomalyMarkers && update.anomalyMarkers.length > 0) {
-          update.anomalyMarkers.forEach((marker, i) => {
-            newLines.push({
-              id: `anomaly-${update.toOffset}-${i}`,
-              content: `[ANOMALY] ${marker.component}: ${marker.excerpt}`,
-              heat: 0.8,
-              timestamp: Date.now(),
-            });
-          });
-        }
-        // Fallback for buffer activity
-        else if (update.lineCount > 0 && !monitor.isPlayback) {
-          newLines.push({
-            id: `burst-${update.toOffset}`,
-            content: `>> Ingesting telemetry burst: ${update.lineCount} lines`,
-            heat: 0.2,
-            timestamp: Date.now(),
-          });
-        }
-
-        if (newLines.length > 0) {
-          setHudLines((prev) => [...newLines.reverse(), ...prev].slice(0, 8)); // Showing up to 8 real lines
-        }
-
-        lastOffsetRef.current = update.toOffset;
+      if (newLines.length > 0) {
+        setHudLines((prev) => [...newLines, ...prev].slice(0, 8));
       }
 
-      historyRef.current.push({
-        source: sourceMetrics,
-        processed: processedMetrics,
-        anomalyHeat: heat,
-        logLine: update.parsedLines?.[0] || null,
-      });
-      if (historyRef.current.length > HISTORY_SIZE) historyRef.current.shift();
+      lastOffsetRef.current = nextOffset;
+      historyRef.current = appendWaveHistory(
+        historyRef.current,
+        buildWaveColumn(update, sourceMetrics, processedMetrics),
+        MONITOR_WAVEFORM_HISTORY_SIZE,
+      );
     });
 
     return () => unsubscribe();
@@ -397,11 +314,15 @@ export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] })
         <canvas ref={canvasRef} className="monitor-waveform-canvas" />
         <div className="wave-track-labels">
           <div className="track-label-lcd">
-            <span className="lcd-tag">CH A</span>
+            <span className="lcd-tag" title={t.simpleMode.monitor.channelATitle}>
+              {t.simpleMode.monitor.channelATag}
+            </span>
             <span className="lcd-title">{t.simpleMode.monitor.rawTelemetry}</span>
           </div>
           <div className="track-label-lcd">
-            <span className="lcd-tag">CH B</span>
+            <span className="lcd-tag" title={t.simpleMode.monitor.channelBTitle}>
+              {t.simpleMode.monitor.channelBTag}
+            </span>
             <span className="lcd-title">{t.simpleMode.monitor.sonifiedMapping}</span>
           </div>
         </div>
