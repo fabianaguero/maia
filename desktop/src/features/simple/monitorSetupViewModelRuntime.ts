@@ -4,8 +4,6 @@ import type { MonitorDeckControls, MonitorDeckPresetId } from "./monitorDeckCont
 import {
   buildMonitorSetupPreferenceFieldViewModels,
   buildMonitorSetupPreferenceGroups,
-  formatMonitorSetupIdleHold,
-  formatMonitorSetupTailRows,
   type MonitorSetupPreferenceFieldViewModel,
   type MonitorSetupPreferenceGroupViewModel,
   type MonitorSetupPreferences,
@@ -15,13 +13,6 @@ import {
   buildMonitorSetupSignalChainCards,
   buildMonitorSetupSummaryCards,
   buildMonitorSetupTransportCards,
-  formatMonitorDeckAlertShape,
-  formatMonitorDeckBeatSnap,
-  formatMonitorDeckCooldown,
-  formatMonitorDeckDuckingIntensity,
-  formatMonitorDeckMasterVolume,
-  formatMonitorDeckRecoveryRelease,
-  formatMonitorDeckWaveZoom,
 } from "./monitorSetupDeckMetricsRuntime";
 import {
   buildMonitorSetupLanguageOptions,

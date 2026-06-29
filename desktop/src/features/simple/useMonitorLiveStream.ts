@@ -3,21 +3,18 @@ import { useEffect, useRef, useState } from "react";
 import type { LibraryTrack } from "../../types/library";
 import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { MonitorDeckControls } from "./monitorDeckControls";
-import { parseMonitorLogLine, type MonitorLogLine } from "./monitorLogParsing";
+import type { MonitorLogLine } from "./monitorLogParsing";
 import type { WaveformAnomalyMarker } from "./monitorDeckViewModel";
 import {
-  advanceActiveLogSignalBuffer,
-  advanceIdleLogSignalBuffer,
-  advanceSimulatedLogSignalBuffer,
+  buildMonitorLiveStreamIdleState,
+  buildMonitorLiveStreamUpdateState,
+  buildSimulatedMonitorState,
+} from "./monitorLiveStreamOrchestrationRuntime";
+import {
   buildMonitorBootstrapLine,
   buildMonitorLiveStreamHookState,
   buildMonitorLiveStreamResetState,
-  buildSimulatedMonitorLogLine,
-  buildWaveformAnomalyMarkers,
   createMonitorSignalBuffer,
-  resolveInitialSelectedAnomalyId,
-  resolveMonitorWaveContext,
-  sanitizeLiveLogStreamUpdate,
   shouldEmitMonitorCueAccent,
   type MonitorLogSignalPoint,
 } from "./monitorLiveStreamRuntime";
@@ -83,23 +80,47 @@ export function useMonitorLiveStream({
   const lastCueAccentAtRef = useRef(0);
   const lastStreamEventAtRef = useRef<number>(Date.now());
   const liveSuggestedBpmRef = useRef<number | null>(null);
+  const liveLinesRef = useRef<MonitorLogLine[]>([]);
+  const logSignalBufferRef = useRef<MonitorLogSignalPoint[]>(createMonitorSignalBuffer());
+  const waveformAnomaliesRef = useRef<WaveformAnomalyMarker[]>([]);
+  const selectedAnomalyIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     liveSuggestedBpmRef.current = liveSuggestedBpm;
   }, [liveSuggestedBpm]);
 
   useEffect(() => {
+    liveLinesRef.current = liveLines;
+  }, [liveLines]);
+
+  useEffect(() => {
+    logSignalBufferRef.current = logSignalBuffer;
+  }, [logSignalBuffer]);
+
+  useEffect(() => {
+    waveformAnomaliesRef.current = waveformAnomalies;
+  }, [waveformAnomalies]);
+
+  useEffect(() => {
+    selectedAnomalyIdRef.current = selectedAnomalyId;
+  }, [selectedAnomalyId]);
+
+  useEffect(() => {
     try {
       if (isListening) {
         lastStreamEventAtRef.current = Date.now();
-        setLiveLines([
-          buildMonitorBootstrapLine({
-            sessionSourcePath,
-            streamAdapterLabel,
-          }),
-        ]);
+        const bootstrapLine = buildMonitorBootstrapLine({
+          sessionSourcePath,
+          streamAdapterLabel,
+        });
+        liveLinesRef.current = [bootstrapLine];
+        setLiveLines(liveLinesRef.current);
       } else {
         const resetState = buildMonitorLiveStreamResetState();
+        liveLinesRef.current = resetState.liveLines;
+        logSignalBufferRef.current = resetState.logSignalBuffer;
+        waveformAnomaliesRef.current = resetState.waveformAnomalies;
+        selectedAnomalyIdRef.current = resetState.selectedAnomalyId;
         setLiveLines(resetState.liveLines);
         setLogSignalBuffer(resetState.logSignalBuffer);
         setLiveSuggestedBpm(resetState.liveSuggestedBpm);
@@ -119,18 +140,29 @@ export function useMonitorLiveStream({
     }
 
     const unsub = subscribe((update) => {
-      const normalizedUpdate = sanitizeLiveLogStreamUpdate(update);
-      const { parsedLines, cueBatch, anomalyMarkers, hasRealLines, hasMeaningfulUpdate } =
-        normalizedUpdate;
+      const currentAudio = backgroundAudioRef.current;
+      const updateState = buildMonitorLiveStreamUpdateState({
+        update,
+        currentTrack: activeTrackRef.current,
+        activeAudio: currentAudio,
+        fallbackDurationSeconds: deckDurationSecondsRef.current,
+        fallbackProgress: trackWaveProgressRef.current,
+        liveSuggestedBpm: liveSuggestedBpmRef.current,
+        selectedAnomalyId: selectedAnomalyIdRef.current,
+        controls: deckControlsRef.current,
+        maxLiveLines,
+        previousLiveLines: liveLinesRef.current,
+        previousWaveformAnomalies: waveformAnomaliesRef.current,
+        previousLogSignalBuffer: logSignalBufferRef.current,
+      });
+      const { cueBatch, hasRealLines, hasMeaningfulUpdate } = updateState.normalizedUpdate;
 
       if (hasMeaningfulUpdate) {
         lastStreamEventAtRef.current = Date.now();
       }
       const controls = deckControlsRef.current;
-      const reactivityMix = controls.reactivity / 100;
-      const anomalyMix = controls.anomalyEmphasis / 100;
 
-      setLiveSuggestedBpm(normalizedUpdate.suggestedBpm);
+      setLiveSuggestedBpm(updateState.nextLiveSuggestedBpm);
 
       const currentAudioContext = audioContextRef.current;
       if (currentAudioContext?.state === "running") {
@@ -138,9 +170,8 @@ export function useMonitorLiveStream({
           audioProbePlayedRef.current = true;
           playTestTone();
         }
-        const activeAudio = backgroundAudioRef.current;
-        if (activeAudio && hasMeaningfulUpdate) {
-          ensureBackgroundGraph(activeAudio, currentAudioContext);
+        if (currentAudio && hasMeaningfulUpdate) {
+          ensureBackgroundGraph(currentAudio, currentAudioContext);
           applyTrackMutation(update);
         }
         const hasBackgroundTrack = Boolean(
@@ -167,39 +198,14 @@ export function useMonitorLiveStream({
         return;
       }
 
-      const parsed = parsedLines.map((raw, lineIndex) => parseMonitorLogLine(raw, lineIndex));
-      const waveContext = resolveMonitorWaveContext({
-        activeAudio: backgroundAudioRef.current,
-        fallbackDurationSeconds: deckDurationSecondsRef.current,
-        fallbackProgress: trackWaveProgressRef.current,
-        liveSuggestedBpm: liveSuggestedBpmRef.current,
-        trackBpm: activeTrackRef.current?.analysis?.bpm ?? null,
-      });
-
-      setLiveLines((prev) => [...prev, ...parsed].slice(-maxLiveLines));
-      setWaveformAnomalies((prev) =>
-        buildWaveformAnomalyMarkers({
-          previous: prev,
-          parsedLines: parsed,
-          currentTrack: activeTrackRef.current,
-          durationSeconds: waveContext.durationSeconds,
-          bpm: waveContext.bpm,
-          currentProgress: waveContext.currentProgress,
-          beatSnapSubdivision: controls.beatSnapSubdivision,
-        }),
-      );
-
-      setSelectedAnomalyId((current) => resolveInitialSelectedAnomalyId(current, parsed));
-
-      setLogSignalBuffer((prev) =>
-        advanceActiveLogSignalBuffer({
-          previous: prev,
-          cueBatch,
-          anomalyMarkers,
-          reactivityMix,
-          anomalyMix,
-        }),
-      );
+      liveLinesRef.current = updateState.nextLiveLines;
+      waveformAnomaliesRef.current = updateState.nextWaveformAnomalies;
+      selectedAnomalyIdRef.current = updateState.nextSelectedAnomalyId;
+      logSignalBufferRef.current = updateState.nextLogSignalBuffer;
+      setLiveLines(updateState.nextLiveLines);
+      setWaveformAnomalies(updateState.nextWaveformAnomalies);
+      setSelectedAnomalyId(updateState.nextSelectedAnomalyId);
+      setLogSignalBuffer(updateState.nextLogSignalBuffer);
     });
 
     return unsub;
@@ -236,13 +242,17 @@ export function useMonitorLiveStream({
       const effectiveBpm = liveSuggestedBpmRef.current ?? trackBpm;
 
       setLogSignalBuffer((prev) => {
-        return advanceIdleLogSignalBuffer({
-          previous: prev,
-          nowMs: now,
-          idleMix,
-          effectiveBpm,
+          const nextBuffer = buildMonitorLiveStreamIdleState({
+            previous: prev,
+            nowMs: now,
+            idleForMs,
+            idleHoldMs,
+            idleMix,
+            effectiveBpm,
+          });
+          logSignalBufferRef.current = nextBuffer;
+          return nextBuffer;
         });
-      });
     }, 450);
 
     return () => {
@@ -251,14 +261,16 @@ export function useMonitorLiveStream({
   }, [deckControlsRef, idleHoldMs, isListening, trackBpm]);
 
   const simulateLog = () => {
-    const now = Date.now();
-    const randomValue = Math.random();
-    const mock: MonitorLogLine = buildSimulatedMonitorLogLine({
-      nowMs: now,
-      randomValue,
+    const nextState = buildSimulatedMonitorState({
+      nowMs: Date.now(),
+      previousLiveLines: liveLinesRef.current,
+      previousLogSignalBuffer: logSignalBufferRef.current,
+      randomValue: Math.random(),
     });
-    setLiveLines((prev) => [mock, ...prev].slice(0, 50));
-    setLogSignalBuffer((prev) => advanceSimulatedLogSignalBuffer(prev, mock.level));
+    liveLinesRef.current = nextState.nextLiveLines;
+    logSignalBufferRef.current = nextState.nextLogSignalBuffer;
+    setLiveLines(nextState.nextLiveLines);
+    setLogSignalBuffer(nextState.nextLogSignalBuffer);
   };
 
   return buildMonitorLiveStreamHookState({
