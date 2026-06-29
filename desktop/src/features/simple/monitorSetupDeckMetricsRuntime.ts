@@ -3,8 +3,8 @@ import type { MonitorDeckControls } from "./monitorDeckControls";
 import {
   formatMonitorSetupIdleHold,
   formatMonitorSetupTailRows,
-  type MonitorSetupPreferences,
-} from "./monitorSetupPreferences";
+} from "./monitorSetupPreferenceViewModelRuntime";
+import type { MonitorSetupPreferences } from "./monitorSetupPreferences";
 import type {
   MonitorSetupCardViewModel,
   MonitorSetupPreviewMeterViewModel,

@@ -11,8 +11,8 @@ import type { MonitorDeckControls } from "./monitorDeckControls";
 import type {
   MonitorSetupPreferenceFieldViewModel,
   MonitorSetupPreferenceGroupViewModel,
-  MonitorSetupPreferences,
-} from "./monitorSetupPreferences";
+} from "./monitorSetupPreferenceViewModelRuntime";
+import type { MonitorSetupPreferences } from "./monitorSetupPreferences";
 import type {
   MonitorSetupOptionViewModel,
   MonitorSetupPreviewMeterViewModel,

@@ -1,9 +1,9 @@
-import type { AppTranslations } from "../../i18n/en";
 import type {
   MonitorSetupPreferenceFieldViewModel,
   MonitorSetupPreferenceGroupViewModel,
-  MonitorSetupPreferences,
-} from "./monitorSetupPreferences";
+} from "./monitorSetupPreferenceViewModelRuntime";
+import type { AppTranslations } from "../../i18n/en";
+import type { MonitorSetupPreferences } from "./monitorSetupPreferences";
 import {
   coerceMonitorSetupPreferenceInputValue,
   resolveMonitorSetupRuntimeDefaultGroups,

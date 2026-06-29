@@ -1,17 +1,19 @@
 import {
   DEFAULT_MONITOR_DECK_CONTROLS,
-  loadMonitorDeckControlProfiles,
-  loadMonitorDeckControls,
   MONITOR_DECK_CONTROL_PROFILES_STORAGE_KEY,
   MONITOR_DECK_CONTROLS_STORAGE_KEY,
   MONITOR_DECK_PRESETS,
-  sanitizeMonitorDeckControls,
-  sanitizeMonitorDeckControlProfiles,
   type MonitorDeckControls,
   type MonitorDeckControlProfiles,
   type MonitorDeckPresetId,
 } from "./monitorDeckControls";
 import type { AppSkin } from "./appSkin";
+import {
+  loadMonitorDeckControlProfiles,
+  loadMonitorDeckControls,
+  sanitizeMonitorDeckControls,
+  sanitizeMonitorDeckControlProfiles,
+} from "./monitorDeckControlsContractRuntime";
 
 interface MonitorDeckControlsStorageReader {
   getItem(key: string): string | null;

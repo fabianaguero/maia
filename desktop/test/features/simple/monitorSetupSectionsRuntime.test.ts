@@ -7,7 +7,7 @@ import {
 import type {
   MonitorSetupPreferenceFieldViewModel,
   MonitorSetupPreferenceGroupViewModel,
-} from "../../../src/features/simple/monitorSetupPreferences";
+} from "../../../src/features/simple/monitorSetupPreferenceViewModelRuntime";
 
 const streamField: MonitorSetupPreferenceFieldViewModel = {
   key: "idleHoldMs",

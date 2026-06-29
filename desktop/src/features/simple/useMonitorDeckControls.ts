@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 
 import {
-  areMonitorDeckControlsEqual,
   DEFAULT_MONITOR_DECK_CONTROLS,
-  resolveActiveMonitorDeckPreset,
   type MonitorDeckControls,
   type MonitorDeckPresetId,
 } from "./monitorDeckControls";
+import {
+  areMonitorDeckControlsEqual,
+  resolveActiveMonitorDeckPreset,
+} from "./monitorDeckControlsContractRuntime";
 import {
   applyMonitorDeckPreset,
   persistMonitorDeckControls,

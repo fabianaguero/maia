@@ -6,8 +6,8 @@ import {
   buildMonitorSetupPreferenceGroups,
   type MonitorSetupPreferenceFieldViewModel,
   type MonitorSetupPreferenceGroupViewModel,
-  type MonitorSetupPreferences,
-} from "./monitorSetupPreferences";
+} from "./monitorSetupPreferenceViewModelRuntime";
+import type { MonitorSetupPreferences } from "./monitorSetupPreferences";
 import {
   buildMonitorSetupPreviewMeters,
   buildMonitorSetupSignalChainCards,
