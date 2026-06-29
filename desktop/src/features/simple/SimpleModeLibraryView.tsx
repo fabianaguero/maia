@@ -7,15 +7,13 @@ import type {
   ImportBaseAssetInput,
 } from "../../types/library";
 import { useUnifiedLibraryState } from "./useUnifiedLibraryState";
-import { useEffect, useRef, useState } from "react";
 import { FolderOpen, Zap, Play, Pause, FileText, Activity, Folder } from "lucide-react";
-import { resolvePlayableTrackPath } from "../../utils/track";
-import { resolvePreviewAudioUrl, revokePreviewAudioUrl } from "../../utils/audioPreview";
 import { TrackWaveformMini } from "../../components/TrackWaveformMini";
 import {
   buildSimpleModeImportRepositoryInput,
   shouldShowSimpleModeStartButton,
 } from "./simpleModeLibraryRuntime";
+import { useSimpleModeLibraryPreview } from "./useSimpleModeLibraryPreview";
 
 interface SimpleModeLibraryViewProps {
   tracks: LibraryTrack[];
@@ -43,9 +41,7 @@ export function SimpleModeLibraryView({
   onStartMonitoring,
 }: SimpleModeLibraryViewProps) {
   const t = useT();
-  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
-  const previewUrlRef = useRef<string | null>(null);
-  const [previewTrackId, setPreviewTrackId] = useState<string | null>(null);
+  const { previewTrackId, toggleTrackPreview } = useSimpleModeLibraryPreview();
 
   // Use unified state management (behavior-agnostic)
   const adapter = useUnifiedLibraryState({
@@ -58,74 +54,6 @@ export function SimpleModeLibraryView({
     onImportBaseAsset,
     onStartMonitoring,
   });
-
-  const toggleTrackPreview = async (track: LibraryTrack) => {
-    const playablePath = resolvePlayableTrackPath(track);
-    if (!playablePath) {
-      return;
-    }
-
-    if (previewTrackId === track.id && previewAudioRef.current) {
-      previewAudioRef.current.pause();
-      previewAudioRef.current.currentTime = 0;
-      previewAudioRef.current = null;
-      revokePreviewAudioUrl(previewUrlRef.current);
-      previewUrlRef.current = null;
-      setPreviewTrackId(null);
-      return;
-    }
-
-    if (previewAudioRef.current) {
-      previewAudioRef.current.pause();
-      previewAudioRef.current.currentTime = 0;
-      previewAudioRef.current = null;
-      revokePreviewAudioUrl(previewUrlRef.current);
-      previewUrlRef.current = null;
-    }
-
-    const previewUrl = await resolvePreviewAudioUrl(playablePath);
-    previewUrlRef.current = previewUrl;
-    const audio = new Audio(previewUrl);
-    audio.volume = 0.92;
-    audio.preload = "auto";
-    previewAudioRef.current = audio;
-    setPreviewTrackId(track.id);
-    audio.addEventListener(
-      "ended",
-      () => {
-        if (previewAudioRef.current === audio) {
-          previewAudioRef.current = null;
-          revokePreviewAudioUrl(previewUrlRef.current);
-          previewUrlRef.current = null;
-          setPreviewTrackId(null);
-        }
-      },
-      { once: true },
-    );
-
-    try {
-      await audio.play();
-    } catch (error) {
-      console.warn("Library track preview failed", error);
-      if (previewAudioRef.current === audio) {
-        previewAudioRef.current = null;
-      }
-      revokePreviewAudioUrl(previewUrlRef.current);
-      previewUrlRef.current = null;
-      setPreviewTrackId(null);
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (previewAudioRef.current) {
-        previewAudioRef.current.pause();
-        previewAudioRef.current = null;
-      }
-      revokePreviewAudioUrl(previewUrlRef.current);
-      previewUrlRef.current = null;
-    };
-  }, []);
 
   return (
     <div className="simple-library-view">

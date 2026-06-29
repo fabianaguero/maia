@@ -2,7 +2,16 @@ import { useEffect, useState } from "react";
 
 import { listLogSourceConnections } from "../../api/repositories";
 import type { BaseTrackPlaylist, LogSourceConnection, SaveBaseTrackPlaylistInput } from "../../types/library";
-import type { LibraryTab } from "./LibraryScreen";
+import type { LibraryTab } from "./libraryScreenTypes";
+import {
+  buildLibraryPlaylistEditorOpenState,
+  buildLibraryPlaylistEditorResetState,
+  buildLibraryPlaylistEditorSyncState,
+  buildLibraryPlaylistSaveInput,
+  resolveLibraryLogConnectionError,
+  resolveSelectedLibraryPlaylist,
+  toggleLibraryPlaylistTrackId,
+} from "./libraryScreenStateRuntime";
 
 interface UseLibraryScreenStateInput {
   activeTab?: LibraryTab;
@@ -41,7 +50,7 @@ export function useLibraryScreenState({
       setLogConnectionError(null);
       setLogConnections(await listLogSourceConnections());
     } catch (error) {
-      setLogConnectionError(error instanceof Error ? error.message : String(error));
+      setLogConnectionError(resolveLibraryLogConnectionError(error));
     }
   }
 
@@ -56,53 +65,51 @@ export function useLibraryScreenState({
   }, [activeTab]);
 
   useEffect(() => {
-    const selectedPlaylist =
-      playlists.find((playlist) => playlist.id === selectedPlaylistId) ?? null;
+    const nextState = buildLibraryPlaylistEditorSyncState({
+      playlistEditorOpen,
+      playlistEditorId,
+      selectedPlaylist: resolveSelectedLibraryPlaylist(playlists, selectedPlaylistId),
+    });
 
-    if (!selectedPlaylist) {
-      if (!playlistEditorOpen) {
-        setPlaylistEditorId(null);
-        setPlaylistName("");
-        setPlaylistTrackIds([]);
-      }
-      return;
-    }
-
-    if (playlistEditorOpen && playlistEditorId === selectedPlaylist.id) {
-      setPlaylistName(selectedPlaylist.name);
-      setPlaylistTrackIds(selectedPlaylist.trackIds);
+    if (nextState) {
+      setPlaylistEditorOpen(nextState.playlistEditorOpen);
+      setPlaylistEditorId(nextState.playlistEditorId);
+      setPlaylistName(nextState.playlistName);
+      setPlaylistTrackIds(nextState.playlistTrackIds);
     }
   }, [playlistEditorId, playlistEditorOpen, playlists, selectedPlaylistId]);
 
   function openPlaylistEditor(playlist?: BaseTrackPlaylist) {
-    setPlaylistEditorOpen(true);
-    setPlaylistEditorId(playlist?.id ?? null);
-    setPlaylistName(playlist?.name ?? "");
-    setPlaylistTrackIds(playlist?.trackIds ?? []);
+    const nextState = buildLibraryPlaylistEditorOpenState(playlist);
+    setPlaylistEditorOpen(nextState.playlistEditorOpen);
+    setPlaylistEditorId(nextState.playlistEditorId);
+    setPlaylistName(nextState.playlistName);
+    setPlaylistTrackIds(nextState.playlistTrackIds);
     if (playlist) {
       onSelectPlaylist(playlist.id);
     }
   }
 
   function resetPlaylistEditor() {
-    setPlaylistEditorOpen(false);
-    setPlaylistEditorId(null);
-    setPlaylistName("");
-    setPlaylistTrackIds([]);
+    const nextState = buildLibraryPlaylistEditorResetState();
+    setPlaylistEditorOpen(nextState.playlistEditorOpen);
+    setPlaylistEditorId(nextState.playlistEditorId);
+    setPlaylistName(nextState.playlistName);
+    setPlaylistTrackIds(nextState.playlistTrackIds);
   }
 
   function togglePlaylistTrack(trackId: string) {
-    setPlaylistTrackIds((current) =>
-      current.includes(trackId) ? current.filter((id) => id !== trackId) : [...current, trackId],
-    );
+    setPlaylistTrackIds((current) => toggleLibraryPlaylistTrackId(current, trackId));
   }
 
   async function handleSavePlaylist() {
-    const ok = await onSavePlaylist({
-      id: playlistEditorId ?? undefined,
-      name: playlistName,
-      trackIds: playlistTrackIds,
-    });
+    const ok = await onSavePlaylist(
+      buildLibraryPlaylistSaveInput({
+        playlistEditorId,
+        playlistName,
+        playlistTrackIds,
+      }),
+    );
 
     if (ok) {
       resetPlaylistEditor();

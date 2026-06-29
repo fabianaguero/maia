@@ -222,6 +222,24 @@ describe("simpleMonitorViewModel", () => {
         alertShape: "aggressive",
       }),
     ).toBe("alert");
+    expect(
+      resolveSimpleMonitorVisualPreset({
+        activePreset: "passive",
+        alertShape: "aggressive",
+      }),
+    ).toBe("passive");
+    expect(
+      resolveSimpleMonitorVisualPreset({
+        activePreset: "balanced",
+        alertShape: "soft",
+      }),
+    ).toBe("balanced");
+    expect(
+      resolveSimpleMonitorVisualPreset({
+        activePreset: "alert",
+        alertShape: "soft",
+      }),
+    ).toBe("alert");
   });
 
   it("builds deck state for active track and launch state", () => {
@@ -253,5 +271,28 @@ describe("simpleMonitorViewModel", () => {
     expect(deckState.isMonitorActive).toBe(true);
     expect(deckState.deckPresetLabel).toBe(en.simpleMode.deckSetup.presetCustom);
     expect(deckState.deckVisualPreset).toBe("alert");
+  });
+
+  it("falls back to track analysis duration and beat grid when no explicit deck duration is provided", () => {
+    const track = makeTrack("track-1", "Around The World");
+    track.analysis.beatGrid = [{ second: 1.5, bpm: 126, confidence: 0.9 }];
+
+    const deckState = buildSimpleMonitorDeckStateViewModel({
+      session: null,
+      isListening: false,
+      isLaunchingMonitor: false,
+      activeTrack: track,
+      trackDurationSeconds: null,
+      activePreset: "balanced",
+      alertShape: "soft",
+      t: en,
+    });
+
+    expect(deckState.deckDurationSeconds).toBe(320);
+    expect(deckState.activeBeatGrid).toEqual([{ second: 1.5, bpm: 126, confidence: 0.9 }]);
+    expect(deckState.streamAdapterLabel).toBe("FILE_TAIL");
+    expect(deckState.isMonitorActive).toBe(false);
+    expect(deckState.deckPresetLabel).toBe(en.simpleMode.deckSetup.presetBalanced);
+    expect(deckState.deckVisualPreset).toBe("balanced");
   });
 });

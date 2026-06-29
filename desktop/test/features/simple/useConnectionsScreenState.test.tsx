@@ -184,4 +184,71 @@ describe("useConnectionsScreenState", () => {
       expect(result.current.testMessageById["conn-1"]).toBe("adapter ready");
     });
   });
+
+  it("starts and stops a live tail preview through the composed tail controller", async () => {
+    apiState.pollStreamSession.mockResolvedValue({
+      session: {
+        sessionId: "conn-conn-1-1",
+        adapterKind: "file",
+        source: "/logs/visits-service.log",
+        label: "visits-service",
+        createdAt: "2026-06-26T10:00:00.000Z",
+        lastPolledAt: "2026-06-26T10:00:02.000Z",
+        totalPolls: 2,
+        fileCursor: 20,
+      },
+      hasData: true,
+      summary: "tail ready",
+      suggestedBpm: null,
+      confidence: 0.5,
+      dominantLevel: "warn",
+      lineCount: 4,
+      anomalyCount: 1,
+      levelCounts: {},
+      anomalyMarkers: [],
+      topComponents: [],
+      sonificationCues: [],
+      parsedLines: ["WARN anomaly spike"],
+      warnings: [],
+    });
+
+    const { result } = renderHook(() =>
+      useConnectionsScreenState({
+        t: en,
+        defaultCloudLookback: "30m",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.connections).toHaveLength(1);
+    });
+
+    vi.useFakeTimers();
+    try {
+      await act(async () => {
+        await result.current.handleStartTail(createConnection());
+      });
+
+      expect(result.current.activeConnectionId).toBe("conn-1");
+      expect(result.current.tailStatus).toBe(en.simpleMode.connections.waitingCloudEntries);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1500);
+      });
+
+      expect(result.current.tailPreview).toEqual(["WARN anomaly spike"]);
+      expect(result.current.tailStatus).toBe("4 lines · 1 anomalies · warn");
+
+      await act(async () => {
+        await result.current.handleStopTail();
+      });
+
+      expect(result.current.activeSessionId).toBeNull();
+      expect(result.current.activeConnectionId).toBeNull();
+      expect(result.current.tailStatus).toBeNull();
+      expect(apiState.stopStreamSession).toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

@@ -1676,6 +1676,7 @@ export const en = {
     bootingAnalyzerBridge: "Booting analyzer bridge",
     analyzerUnavailable: "Analyzer unavailable",
     nowPlaying: "Now playing",
+    upNext: "Up next",
     live: "Live",
     monitoringBackgroundTitle: "Maia is monitoring in the background",
     monitoringBackgroundBody: "Find it in the system tray to bring it back.",

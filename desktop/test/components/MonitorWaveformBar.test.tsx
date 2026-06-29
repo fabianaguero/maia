@@ -198,12 +198,14 @@ function renderBar(tracks: LibraryTrack[] = [createTrack()]) {
 
 describe("MonitorWaveformBar", () => {
   let subscribeListener: ((update: LiveLogStreamUpdate) => void) | null;
+  let unsubscribeSpy: ReturnType<typeof vi.fn>;
   let originalGetContext: typeof HTMLCanvasElement.prototype.getContext;
   let originalRequestAnimationFrame: typeof window.requestAnimationFrame;
   let originalCancelAnimationFrame: typeof window.cancelAnimationFrame;
 
   beforeEach(() => {
     subscribeListener = null;
+    unsubscribeSpy = vi.fn();
     originalGetContext = HTMLCanvasElement.prototype.getContext;
     originalRequestAnimationFrame = window.requestAnimationFrame;
     originalCancelAnimationFrame = window.cancelAnimationFrame;
@@ -253,6 +255,7 @@ describe("MonitorWaveformBar", () => {
         subscribeListener = listener;
         return () => {
           subscribeListener = null;
+          unsubscribeSpy();
         };
       }),
     });
@@ -271,5 +274,46 @@ describe("MonitorWaveformBar", () => {
     expect(chip).not.toBeNull();
     expect(chip).toHaveTextContent("House · 126 BPM");
     expect(chip).toHaveTextContent("138 live");
+  });
+
+  it("renders an idle shell without session-specific controls", () => {
+    useMonitorMock.mockReturnValue(
+      createMonitorValue({
+        session: null,
+        subscribe: vi.fn(() => () => undefined),
+      }),
+    );
+
+    renderBar();
+
+    expect(screen.queryByText(en.simpleMode.monitor.liveSignalEngine)).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(document.querySelector(".monitor-waveform-bar--active")).toBeNull();
+  });
+
+  it("does not duplicate HUD lines when the stream offset does not advance and unsubscribes on teardown", () => {
+    const monitor = createMonitorValue({
+      subscribe: vi.fn((listener) => {
+        subscribeListener = listener;
+        return () => {
+          subscribeListener = null;
+          unsubscribeSpy();
+        };
+      }),
+    });
+    useMonitorMock.mockReturnValue(monitor);
+
+    const { unmount } = renderBar();
+
+    act(() => {
+      subscribeListener?.(createUpdate({ toOffset: 128 }));
+      subscribeListener?.(createUpdate({ toOffset: 128 }));
+    });
+
+    expect(screen.getAllByText("WARN Timeout while reading upstream response")).toHaveLength(1);
+
+    unmount();
+
+    expect(unsubscribeSpy).toHaveBeenCalledTimes(1);
   });
 });

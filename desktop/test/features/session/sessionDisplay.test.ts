@@ -7,6 +7,8 @@ import {
   resolveBaseDetails,
   resolveModeLabel,
   resolveSelectedBaseDetails,
+  resolveSessionBedPath,
+  resolveSessionBedUrl,
   resolveSessionTemplateLabel,
   resolveSourceDetails,
 } from "../../../src/features/session/sessionDisplay";
@@ -175,5 +177,37 @@ describe("sessionDisplay", () => {
       label: "customers-service",
       path: "/logs/customers-service.log",
     });
+  });
+
+  it("resolves session bed paths and external urls", () => {
+    const tracks = [
+      makeTrack(),
+      makeTrack({
+        id: "track-2",
+        file: {
+          sourcePath: "https://cdn.example.com/track-b.wav",
+          storagePath: "https://cdn.example.com/track-b.wav",
+          availabilityState: "available",
+          playbackSource: "source_file",
+        } as LibraryTrack["file"],
+      }),
+    ];
+    const playlists = [makePlaylist({ trackIds: ["track-2"] })];
+
+    expect(resolveSessionBedPath(makeSession({ trackId: "track-1" }), tracks, playlists)).toBe(
+      "/music/track-a.wav",
+    );
+    expect(
+      resolveSessionBedPath(
+        makeSession({ playlistId: "playlist-1", playlistName: "Night Ops" }),
+        tracks,
+        playlists,
+      ),
+    ).toBe("https://cdn.example.com/track-b.wav");
+
+    expect(resolveSessionBedUrl("https://cdn.example.com/track-b.wav")).toBe(
+      "https://cdn.example.com/track-b.wav",
+    );
+    expect(resolveSessionBedUrl(null)).toBeNull();
   });
 });

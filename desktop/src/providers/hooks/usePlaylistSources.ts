@@ -5,8 +5,42 @@ import type {
   RemoteTrackMetadata,
   ProviderError,
 } from "../runtime/types";
-import { listSpotifyPlaylists } from "../runtime/spotify";
-import { listSoundCloudPlaylists } from "../runtime/soundcloud";
+import {
+  createEmptyPlaylistTrackMap,
+  disconnectPlaylistSourceState,
+  mergeSourcePlaylists,
+  normalizePlaylistSourceError,
+  resolvePlaylistsForSource,
+  syncPlaylistSourcePlaylists,
+} from "./playlistSourcesRuntime";
+
+interface PlaylistSourcesDependencies {
+  loadSources?: () => Promise<PlaylistSourceAuth[]>;
+  initiateOAuthFlow?: (sourceType: "spotify" | "soundcloud") => Promise<void>;
+  addLocalDirectoryEntry?: (dirPath: string) => Promise<void>;
+  disconnectSourceEntry?: (sourceId: string) => Promise<void>;
+  syncSourcePlaylists?: (input: {
+    source: PlaylistSourceAuth | undefined;
+    signal?: AbortSignal;
+  }) => Promise<PlaylistMetadata[]>;
+  createAbortController?: () => AbortController;
+}
+
+const defaultLoadSources = async (): Promise<PlaylistSourceAuth[]> => [];
+
+const defaultInitiateOAuthFlow = async (
+  sourceType: "spotify" | "soundcloud",
+): Promise<void> => {
+  console.log(`Initiating OAuth for ${sourceType}`);
+};
+
+const defaultAddLocalDirectoryEntry = async (dirPath: string): Promise<void> => {
+  console.log(`Adding local directory: ${dirPath}`);
+};
+
+const defaultDisconnectSourceEntry = async (): Promise<void> => {};
+
+const defaultCreateAbortController = (): AbortController => new AbortController();
 
 export interface UsePlaylistSourcesReturn {
   sources: PlaylistSourceAuth[];
@@ -23,22 +57,31 @@ export interface UsePlaylistSourcesReturn {
   clearError: () => void;
 }
 
-export function usePlaylistSources(): UsePlaylistSourcesReturn {
+export function usePlaylistSources(
+  dependencies: PlaylistSourcesDependencies = {},
+): UsePlaylistSourcesReturn {
   const [sources, setSources] = useState<PlaylistSourceAuth[]>([]);
   const [playlists, setPlaylists] = useState<PlaylistMetadata[]>([]);
-  const [tracks] = useState<Map<string, RemoteTrackMetadata[]>>(new Map());
+  const [tracks] = useState<Map<string, RemoteTrackMetadata[]>>(createEmptyPlaylistTrackMap);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ProviderError | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const {
+    loadSources = defaultLoadSources,
+    initiateOAuthFlow = defaultInitiateOAuthFlow,
+    addLocalDirectoryEntry = defaultAddLocalDirectoryEntry,
+    disconnectSourceEntry = defaultDisconnectSourceEntry,
+    syncSourcePlaylists = syncPlaylistSourcePlaylists,
+    createAbortController = defaultCreateAbortController,
+  } = dependencies;
 
   // Load sources from DB on mount
   useEffect(() => {
     (async () => {
       setLoading(true);
       try {
-        // TODO: Call Tauri invoke to load from DB
-        // const dbSources = await listProviderSourcesFromDB();
-        // setSources(dbSources);
+        const dbSources = await loadSources();
+        setSources(dbSources);
         setError(null);
       } catch (err) {
         console.error("Error loading sources:", err);
@@ -50,15 +93,14 @@ export function usePlaylistSources(): UsePlaylistSourcesReturn {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [loadSources]);
 
   const initiateOAuth = useCallback(
     async (sourceType: "spotify" | "soundcloud") => {
       setLoading(true);
       setError(null);
       try {
-        // TODO: Implement OAuth flow (will need Tauri invoke)
-        console.log(`Initiating OAuth for ${sourceType}`);
+        await initiateOAuthFlow(sourceType);
       } catch (err) {
         console.error("OAuth error:", err);
         setError({
@@ -69,15 +111,14 @@ export function usePlaylistSources(): UsePlaylistSourcesReturn {
         setLoading(false);
       }
     },
-    [],
+    [initiateOAuthFlow],
   );
 
   const addLocalDirectory = useCallback(async (dirPath: string) => {
     setLoading(true);
     setError(null);
     try {
-      // TODO: Implement local directory addition
-      console.log(`Adding local directory: ${dirPath}`);
+      await addLocalDirectoryEntry(dirPath);
     } catch (err) {
       console.error("Error adding local directory:", err);
       setError({
@@ -87,12 +128,12 @@ export function usePlaylistSources(): UsePlaylistSourcesReturn {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [addLocalDirectoryEntry]);
 
   const syncSource = useCallback(async (sourceId: string) => {
     setLoading(true);
     setError(null);
-    abortControllerRef.current = new AbortController();
+    abortControllerRef.current = createAbortController();
 
     try {
       const source = sources.find((s) => s.id === sourceId);
@@ -100,47 +141,28 @@ export function usePlaylistSources(): UsePlaylistSourcesReturn {
         throw { kind: "not_found", resourceId: sourceId } as ProviderError;
       }
 
-      // Route to appropriate runtime based on source type
-      let newPlaylists: PlaylistMetadata[] = [];
-
-      if (source.sourceType === "spotify" && source.oauthToken) {
-        newPlaylists = await listSpotifyPlaylists({
-          auth: source,
-          signal: abortControllerRef.current.signal,
-        });
-      } else if (source.sourceType === "soundcloud" && source.oauthToken) {
-        newPlaylists = await listSoundCloudPlaylists({
-          auth: source,
-          signal: abortControllerRef.current.signal,
-        });
-      }
+      const newPlaylists = await syncSourcePlaylists({
+        source,
+        signal: abortControllerRef.current.signal,
+      });
 
       setPlaylists((prev) => {
-        // Remove old playlists from this source, add new ones
-        const filtered = prev.filter((p) => p.sourceId !== sourceId);
-        return [...filtered, ...newPlaylists];
+        return mergeSourcePlaylists(prev, sourceId, newPlaylists);
       });
 
       // TODO: Save to DB
       setError(null);
     } catch (err) {
       console.error("Sync error:", err);
-      if (err && typeof err === "object" && "kind" in err) {
-        setError(err as ProviderError);
-      } else {
-        setError({
-          kind: "unknown",
-          message: "Unknown sync error",
-        });
-      }
+      setError(normalizePlaylistSourceError(err, "Unknown sync error"));
     } finally {
       setLoading(false);
     }
-  }, [sources]);
+  }, [createAbortController, sources, syncSourcePlaylists]);
 
   const listPlaylistsForSource = useCallback(
     async (sourceId: string): Promise<PlaylistMetadata[]> => {
-      return playlists.filter((p) => p.sourceId === sourceId);
+      return resolvePlaylistsForSource(playlists, sourceId);
     },
     [playlists],
   );
@@ -148,9 +170,9 @@ export function usePlaylistSources(): UsePlaylistSourcesReturn {
   const disconnectSource = useCallback(async (sourceId: string) => {
     setLoading(true);
     try {
-      // TODO: Delete from DB
-      setSources((prev) => prev.filter((s) => s.id !== sourceId));
-      setPlaylists((prev) => prev.filter((p) => p.sourceId !== sourceId));
+      await disconnectSourceEntry(sourceId);
+      setSources((prev) => disconnectPlaylistSourceState(prev, [], sourceId).sources);
+      setPlaylists((prev) => disconnectPlaylistSourceState([], prev, sourceId).playlists);
       setError(null);
     } catch (err) {
       console.error("Disconnect error:", err);
@@ -161,7 +183,7 @@ export function usePlaylistSources(): UsePlaylistSourcesReturn {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [disconnectSourceEntry]);
 
   const clearError = useCallback(() => {
     setError(null);

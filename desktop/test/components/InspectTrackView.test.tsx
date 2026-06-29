@@ -7,6 +7,10 @@ import { InspectTrackView } from "../../src/features/inspect/InspectTrackView";
 import type { LibraryTrack } from "../../src/types/library";
 
 const seekGuideTrack = vi.fn();
+const state = vi.hoisted(() => ({
+  lastCueRequest: null as { id: number; second: number; autoplay: boolean } | null,
+  lastAuditionLabel: null as string | null,
+}));
 
 vi.mock("../../src/features/monitor/MonitorContext", () => ({
   useMonitor: () => ({
@@ -16,15 +20,74 @@ vi.mock("../../src/features/monitor/MonitorContext", () => ({
 }));
 
 vi.mock("../../src/features/analyzer/components/WaveformPlaceholder", () => ({
-  WaveformPlaceholder: () => <div data-testid="waveform-placeholder">waveform</div>,
+  WaveformPlaceholder: (props: {
+    onSetDownbeatAtSecond?: (second: number) => void;
+    onMoveCue?: (
+      cue: { id: string; second: number; label: string; kind: "main" | "hot" | "memory" },
+      second: number,
+    ) => void;
+  }) => (
+    <div data-testid="waveform-placeholder">
+      waveform
+      <button type="button" onClick={() => props.onSetDownbeatAtSecond?.(8)}>
+        set-downbeat
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          props.onMoveCue?.({ id: "main-cue", second: 12.5, label: "Main", kind: "main" }, 16)
+        }
+      >
+        move-main-cue
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          props.onMoveCue?.({ id: "hot-1", second: 24.25, label: "Drop", kind: "hot" }, 32)
+        }
+      >
+        move-hot-cue
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock("../../src/features/analyzer/components/TrackOriginalComparePanel", () => ({
-  TrackOriginalComparePanel: () => <div data-testid="compare-panel">compare</div>,
+  TrackOriginalComparePanel: (props: {
+    onAudition?: (point: { id: string; label: string; second: number }) => void;
+    activeAuditionId?: string | null;
+  }) => (
+    <div data-testid="compare-panel">
+      compare:{props.activeAuditionId ?? "none"}
+      <button
+        type="button"
+        onClick={() => props.onAudition?.({ id: "compare-1", label: "Intro", second: 32 })}
+      >
+        audition-compare
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock("../../src/features/analyzer/components/TrackPlaybackPanel", () => ({
-  TrackPlaybackPanel: () => <div data-testid="playback-panel">playback</div>,
+  TrackPlaybackPanel: (props: {
+    onTimeUpdate: (second: number) => void;
+    cueRequest?: { id: number; second: number; autoplay: boolean } | null;
+    auditionLabel?: string | null;
+  }) => {
+    state.lastCueRequest = props.cueRequest ?? null;
+    state.lastAuditionLabel = props.auditionLabel ?? null;
+    return (
+      <div data-testid="playback-panel">
+        playback
+        <button type="button" onClick={() => props.onTimeUpdate(48)}>
+          set-current-time
+        </button>
+        <span data-testid="cue-second">{props.cueRequest?.second ?? "none"}</span>
+        <span data-testid="audition-label">{props.auditionLabel ?? "none"}</span>
+      </div>
+    );
+  },
 }));
 
 vi.mock("../../src/features/analyzer/components/BpmCurvePanel", () => ({
@@ -40,11 +103,25 @@ vi.mock("../../src/features/analyzer/components/RepoStatusPanel", () => ({
 }));
 
 vi.mock("../../src/features/analyzer/components/BeatGridEditorPanel", () => ({
-  BeatGridEditorPanel: () => <div data-testid="beat-grid-editor">grid</div>,
+  BeatGridEditorPanel: (props: { onUpdateAnalysis: (input: { bpm: number }) => void }) => (
+    <div data-testid="beat-grid-editor">
+      grid
+      <button type="button" onClick={() => props.onUpdateAnalysis({ bpm: 128 })}>
+        update-grid
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock("../../src/features/analyzer/components/TrackPerformancePanel", () => ({
-  TrackPerformancePanel: () => <div data-testid="track-performance-panel">performance</div>,
+  TrackPerformancePanel: (props: { onUpdatePerformance: (input: { rating: number }) => void }) => (
+    <div data-testid="track-performance-panel">
+      performance
+      <button type="button" onClick={() => props.onUpdatePerformance({ rating: 5 })}>
+        update-performance
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock("../../src/features/analyzer/components/SongMetadataPanel", () => ({
@@ -171,19 +248,31 @@ function createTrack(): LibraryTrack {
   };
 }
 
-function renderInspectTrackView() {
+function renderInspectTrackView(overrides?: {
+  track?: LibraryTrack;
+  trackMutating?: boolean;
+  onGoCompose?: ReturnType<typeof vi.fn>;
+  onUpdateTrackPerformance?: ReturnType<typeof vi.fn>;
+  onUpdateTrackAnalysis?: ReturnType<typeof vi.fn>;
+}) {
+  const onGoCompose = overrides?.onGoCompose ?? vi.fn();
+  const onUpdateTrackPerformance =
+    overrides?.onUpdateTrackPerformance ?? vi.fn().mockResolvedValue(undefined);
+  const onUpdateTrackAnalysis =
+    overrides?.onUpdateTrackAnalysis ?? vi.fn().mockResolvedValue(undefined);
+
   return render(
     <I18nContext.Provider value={en}>
       <InspectTrackView
-        track={createTrack()}
+        track={overrides?.track ?? createTrack()}
         analyzerLabel="Maia Analyzer"
-        trackMutating={false}
+        trackMutating={overrides?.trackMutating ?? false}
         contextBar={<div data-testid="context-bar">context</div>}
-        onGoCompose={vi.fn()}
-        onUpdateTrackPerformance={vi.fn().mockResolvedValue(undefined)}
-        onUpdateTrackAnalysis={vi.fn().mockResolvedValue(undefined)}
+        onGoCompose={onGoCompose}
+        onUpdateTrackPerformance={onUpdateTrackPerformance}
+        onUpdateTrackAnalysis={onUpdateTrackAnalysis}
       />
-    </I18nContext.Provider>,
+    </I18nContext.Provider>
   );
 }
 
@@ -191,6 +280,8 @@ describe("InspectTrackView", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    state.lastCueRequest = null;
+    state.lastAuditionLabel = null;
   });
 
   it("renders the track deck with extracted context", () => {
@@ -217,5 +308,103 @@ describe("InspectTrackView", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Details" }));
     expect(screen.getByTestId("song-metadata-panel")).toBeInTheDocument();
+  });
+
+  it("wires compare audition, compose CTA, and update callbacks", () => {
+    const onGoCompose = vi.fn();
+    const onUpdateTrackPerformance = vi.fn().mockResolvedValue(undefined);
+    const onUpdateTrackAnalysis = vi.fn().mockResolvedValue(undefined);
+
+    renderInspectTrackView({
+      onGoCompose,
+      onUpdateTrackPerformance,
+      onUpdateTrackAnalysis,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "audition-compare" }));
+    fireEvent.click(screen.getByRole("button", { name: "set-current-time" }));
+    fireEvent.click(screen.getByRole("button", { name: "set-downbeat" }));
+    fireEvent.click(screen.getByRole("button", { name: "move-main-cue" }));
+    fireEvent.click(screen.getByRole("button", { name: "move-hot-cue" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Beat Grid" }));
+    fireEvent.click(screen.getByRole("button", { name: "update-grid" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Performance" }));
+    fireEvent.click(screen.getByRole("button", { name: "update-performance" }));
+    fireEvent.click(screen.getByRole("button", { name: en.inspect.composeCta }));
+
+    expect(seekGuideTrack).toHaveBeenCalledWith(32);
+    expect(screen.getByTestId("cue-second")).toHaveTextContent("32");
+    expect(screen.getByTestId("audition-label")).toHaveTextContent("Intro");
+    expect(onUpdateTrackAnalysis).toHaveBeenCalledWith(
+      "track-1",
+      expect.objectContaining({
+        bpm: 126,
+      }),
+    );
+    expect(onUpdateTrackAnalysis).toHaveBeenCalledWith("track-1", { bpm: 128 });
+    expect(onUpdateTrackPerformance).toHaveBeenCalledWith(
+      "track-1",
+      expect.objectContaining({ mainCueSecond: expect.any(Number) }),
+    );
+    expect(onUpdateTrackPerformance).toHaveBeenCalledWith(
+      "track-1",
+      expect.objectContaining({ hotCues: expect.any(Array) }),
+    );
+    expect(onUpdateTrackPerformance).toHaveBeenCalledWith("track-1", { rating: 5 });
+    expect(onGoCompose).toHaveBeenCalledTimes(1);
+  });
+
+  it("resets compare state when the active track changes and renders metadata details", () => {
+    const track = createTrack();
+    const nextTrack = {
+      ...createTrack(),
+      id: "track-2",
+      tags: {
+        ...createTrack().tags,
+        title: "Night Driver",
+      },
+      analysis: {
+        ...createTrack().analysis,
+        notes: [],
+        analysisMode: "manual-grid",
+      },
+      file: {
+        ...createTrack().file,
+        storagePath: null,
+      },
+      storagePath: null,
+    };
+
+    const { rerender } = renderInspectTrackView({ track });
+
+    fireEvent.click(screen.getByRole("button", { name: "audition-compare" }));
+    expect(screen.getByTestId("cue-second")).toHaveTextContent("32");
+    expect(screen.getByTestId("audition-label")).toHaveTextContent("Intro");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Details" }));
+    expect(screen.getByText("Notes & analysis")).toBeInTheDocument();
+    expect(screen.getByText("Librosa Dsp")).toBeInTheDocument();
+    expect(screen.getByText("/music/source.wav")).toBeInTheDocument();
+    expect(screen.getByText("/managed/source.wav")).toBeInTheDocument();
+
+    rerender(
+      <I18nContext.Provider value={en}>
+        <InspectTrackView
+          track={nextTrack}
+          analyzerLabel="Maia Analyzer"
+          trackMutating={false}
+          contextBar={<div data-testid="context-bar">context</div>}
+          onGoCompose={vi.fn()}
+          onUpdateTrackPerformance={vi.fn().mockResolvedValue(undefined)}
+          onUpdateTrackAnalysis={vi.fn().mockResolvedValue(undefined)}
+        />
+      </I18nContext.Provider>,
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "Details" }));
+    expect(screen.getByText("Manual Grid")).toBeInTheDocument();
+    expect(screen.getByText(en.inspect.noSnapshot)).toBeInTheDocument();
+    expect(screen.getByTestId("cue-second")).toHaveTextContent("none");
+    expect(screen.getByTestId("audition-label")).toHaveTextContent("none");
   });
 });

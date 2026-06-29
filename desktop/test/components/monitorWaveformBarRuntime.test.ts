@@ -1,13 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { LiveLogStreamUpdate } from "../../src/types/monitor";
 import {
   appendWaveHistory,
   buildHudLinesForUpdate,
+  drawMonitorWaveformFrame,
   buildWaveColumn,
   MONITOR_WAVEFORM_HISTORY_SIZE,
   resolveProcessedMetrics,
   resolveSourceMetrics,
+  syncMonitorWaveformCanvasSize,
 } from "../../src/components/monitorWaveformBarRuntime";
 
 function createUpdate(
@@ -161,5 +163,108 @@ describe("monitorWaveformBarRuntime", () => {
     const nextHistory = appendWaveHistory(history, column);
     expect(nextHistory).toHaveLength(MONITOR_WAVEFORM_HISTORY_SIZE);
     expect(nextHistory.at(-1)).toEqual(column);
+  });
+
+  it("syncs canvas dimensions only when the surface is measurable", () => {
+    const setTransform = vi.fn();
+    const canvas = {
+      clientWidth: 320,
+      clientHeight: 120,
+      width: 0,
+      height: 0,
+    } as HTMLCanvasElement;
+    const ctx = {
+      setTransform,
+    } as unknown as CanvasRenderingContext2D;
+
+    expect(syncMonitorWaveformCanvasSize(canvas, ctx, 2)).toEqual({
+      width: 320,
+      height: 120,
+    });
+    expect(canvas.width).toBe(640);
+    expect(canvas.height).toBe(240);
+    expect(setTransform).toHaveBeenCalledWith(2, 0, 0, 2, 0, 0);
+
+    canvas.clientWidth = 0;
+    expect(syncMonitorWaveformCanvasSize(canvas, ctx, 2)).toBeNull();
+  });
+
+  it("draws an empty frame background and reports that no signal is present", () => {
+    const gradient = {
+      addColorStop: vi.fn(),
+    };
+    const ctx = {
+      clearRect: vi.fn(),
+      fillRect: vi.fn(),
+      createLinearGradient: vi.fn(() => gradient),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      fillStyle: "",
+      strokeStyle: "",
+      shadowColor: "",
+      shadowBlur: 0,
+      lineWidth: 0,
+    } as unknown as CanvasRenderingContext2D;
+
+    expect(
+      drawMonitorWaveformFrame({
+        ctx,
+        width: 300,
+        height: 120,
+        history: [],
+        guideWaveform: [],
+        barWidth: 2,
+        nowMs: 1000,
+      }),
+    ).toBe(false);
+    expect(ctx.clearRect).toHaveBeenCalledWith(0, 0, 300, 120);
+    expect(ctx.fillRect).toHaveBeenCalledWith(0, 0, 300, 120);
+    expect(ctx.createLinearGradient).not.toHaveBeenCalled();
+  });
+
+  it("draws waveform beds, rekordbox bars, anomaly glow, scanline and playhead when signal is present", () => {
+    const gradient = {
+      addColorStop: vi.fn(),
+    };
+    const ctx = {
+      clearRect: vi.fn(),
+      fillRect: vi.fn(),
+      createLinearGradient: vi.fn(() => gradient),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      fillStyle: "",
+      strokeStyle: "",
+      shadowColor: "",
+      shadowBlur: 0,
+      lineWidth: 0,
+    } as unknown as CanvasRenderingContext2D;
+    const update = createUpdate();
+    const source = resolveSourceMetrics(update, 0.25);
+    const processed = resolveProcessedMetrics(update.sonificationCues, update);
+    const history = [buildWaveColumn(update, source, processed)];
+
+    expect(
+      drawMonitorWaveformFrame({
+        ctx,
+        width: 320,
+        height: 120,
+        history,
+        guideWaveform: [0.2, 0.5, 0.3],
+        barWidth: 2,
+        nowMs: 1200,
+      }),
+    ).toBe(true);
+
+    expect(ctx.createLinearGradient).toHaveBeenCalledTimes(1);
+    expect(gradient.addColorStop).toHaveBeenCalledTimes(3);
+    expect(ctx.beginPath).toHaveBeenCalledTimes(1);
+    expect(ctx.moveTo).toHaveBeenCalledWith(319, 0);
+    expect(ctx.lineTo).toHaveBeenCalledWith(319, 120);
+    expect(ctx.stroke).toHaveBeenCalledTimes(1);
+    expect((ctx.fillRect as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(10);
   });
 });

@@ -11,19 +11,20 @@ import type {
   StreamAdapterKind,
 } from "../../../types/library";
 import type { MutationProfileOption, StyleProfileOption } from "../../../types/music";
-import { resolvePlaylistTracks } from "../../../utils/playlist";
 import type { LiveMutationExplanation } from "../../../utils/liveMutationExplainability";
-import { toLiveMutationVisualizationCues } from "../../../utils/liveMutationExplainability";
 import type { PlaylistTransitionPlan } from "../../../utils/playlistTransition";
-import { getStreamAdapterDescription, getStreamAdapterLabel } from "../../../utils/streamAdapter";
-import { getTrackTitle, resolvePlayableTrackPath } from "../../../utils/track";
 import type { LiveMutationState } from "./liveLogMonitorAudioRuntime";
 import {
-  blendAnchors,
-  deriveReferenceAnchor,
-  resolveLiveSonificationScene,
   type ReferenceAnchor,
+  resolveLiveSonificationScene,
 } from "./liveSonificationScene";
+import {
+  buildLiveLogMonitorAdapterState,
+  buildLiveLogMonitorExplanationState,
+  buildLiveLogMonitorTrackSelectionState,
+  resolveCueEnginePreviewLabel,
+  resolveLiveMutationStateLabel,
+} from "./liveLogMonitorViewModelRuntime";
 
 export type AudioEngineStatus = "idle" | "ready" | "unsupported" | "error";
 export type SampleEngineStatus = "unavailable" | "loading" | "ready" | "error";
@@ -83,56 +84,6 @@ export function audioLabel(
   return labels.idle;
 }
 
-function resolveReferenceAnchor(
-  basePlaylist: BaseTrackPlaylist | null,
-  availableTracks: LibraryTrack[],
-): ReferenceAnchor | null {
-  const anchors = (basePlaylist?.trackIds ?? [])
-    .map((id) => availableTracks.find((track) => track.id === id))
-    .filter((track): track is LibraryTrack => track !== undefined)
-    .map(deriveReferenceAnchor);
-
-  return anchors.length > 0 ? blendAnchors(anchors) : null;
-}
-
-function resolveLiveMutationStateLabel(state: LiveMutationState): string {
-  switch (state) {
-    case "critical":
-      return "Critical tension";
-    case "warning":
-      return "Warning pressure";
-    default:
-      return "Normal drift";
-  }
-}
-
-function resolveCueEnginePreviewLabel(input: {
-  hasBaseListeningBed: boolean;
-  sampleStatus: SampleEngineStatus;
-  liveMutationStateLabel: string;
-  sampleSourceCount: number;
-}): string {
-  const { hasBaseListeningBed, sampleStatus, liveMutationStateLabel, sampleSourceCount } = input;
-
-  if (hasBaseListeningBed) {
-    return sampleStatus === "ready"
-      ? `Guide-track modulation + samples · ${liveMutationStateLabel}`
-      : `Guide-track modulation · ${liveMutationStateLabel}`;
-  }
-
-  if (sampleStatus === "ready") {
-    return sampleSourceCount > 1
-      ? `Base sample pack · ${liveMutationStateLabel}`
-      : `Base sample · ${liveMutationStateLabel}`;
-  }
-
-  if (sampleStatus === "loading") {
-    return `Loading sample · ${liveMutationStateLabel}`;
-  }
-
-  return `Internal synth · ${liveMutationStateLabel}`;
-}
-
 export interface LiveLogMonitorViewModelInput {
   repository: RepositoryAnalysis;
   repositoryId: string;
@@ -171,7 +122,7 @@ export interface LiveLogMonitorViewModel {
   traceWaveformTrack: LibraryTrack | null;
   traceWaveformExplanations: LiveMutationExplanation[];
   selectedTraceExplanation: LiveMutationExplanation | null;
-  traceWaveformCues: ReturnType<typeof toLiveMutationVisualizationCues>;
+  traceWaveformCues: ReturnType<typeof buildLiveLogMonitorExplanationState>["traceWaveformCues"];
   currentReplayExplanation: LiveMutationExplanation | null;
   referenceAnchor: ReferenceAnchor | null;
   scene: ReturnType<typeof resolveLiveSonificationScene>;
@@ -195,63 +146,33 @@ export function buildLiveLogMonitorViewModel(
     input.availableCompositions.find((entry) => entry.id === input.sceneCompositionId) ?? null;
   const selectedStyleProfile = resolveStyleProfile(input.selectedStyleProfileId);
   const selectedMutationProfile = resolveMutationProfile(input.selectedMutationProfileId);
-  const playableBaseTracks = resolvePlaylistTracks(input.basePlaylist, input.availableTracks).filter(
-    (track) => Boolean(resolvePlayableTrackPath(track)),
-  );
-  const availableBaseTrackOptions = input.availableTracks
-    .filter((track) => !(input.basePlaylist?.trackIds ?? []).includes(track.id))
-    .sort((left, right) => {
-      const leftMissing = left.file.availabilityState === "missing" ? 1 : 0;
-      const rightMissing = right.file.availabilityState === "missing" ? 1 : 0;
-      if (leftMissing !== rightMissing) {
-        return leftMissing - rightMissing;
-      }
-
-      return getTrackTitle(left).localeCompare(getTrackTitle(right));
-    });
-  const playableBaseTrackIdsKey = playableBaseTracks.map((track) => track.id).join("|");
-  const backgroundNowPlayingTrack = input.backgroundNowPlayingId
-    ? (input.availableTracks.find((track) => track.id === input.backgroundNowPlayingId) ?? null)
-    : null;
-  const backgroundTransitionNextTrack = input.backgroundTransitionPlan?.nextTrackId
-    ? (input.availableTracks.find(
-        (track) => track.id === input.backgroundTransitionPlan?.nextTrackId,
-      ) ?? null)
-    : null;
-  const traceWaveformTrack = backgroundNowPlayingTrack ?? playableBaseTracks[0] ?? null;
-  const traceWaveformExplanations = traceWaveformTrack
-    ? input.recentExplanations.filter(
-        (explanation) =>
-          explanation.trackId === traceWaveformTrack.id &&
-          typeof explanation.trackSecond === "number",
-      )
-    : [];
-  const selectedTraceExplanation =
-    traceWaveformExplanations.find((explanation) => explanation.id === input.selectedExplanationId) ??
-    null;
-  const traceWaveformCues = toLiveMutationVisualizationCues(traceWaveformExplanations);
-  const currentReplayExplanation =
-    input.replayActive && input.playbackEventIndex !== null
-      ? ((selectedTraceExplanation?.replayWindowIndex === input.playbackEventIndex
-          ? selectedTraceExplanation
-          : input.recentExplanations.find(
-              (explanation) => explanation.replayWindowIndex === input.playbackEventIndex,
-            )) ?? null)
-      : null;
-  const referenceAnchor = resolveReferenceAnchor(input.basePlaylist, input.availableTracks);
+  const trackSelectionState = buildLiveLogMonitorTrackSelectionState({
+    basePlaylist: input.basePlaylist,
+    availableTracks: input.availableTracks,
+    backgroundNowPlayingId: input.backgroundNowPlayingId,
+    backgroundTransitionPlan: input.backgroundTransitionPlan,
+  });
+  const explanationState = buildLiveLogMonitorExplanationState({
+    recentExplanations: input.recentExplanations,
+    selectedExplanationId: input.selectedExplanationId,
+    traceWaveformTrack: trackSelectionState.traceWaveformTrack,
+    replayActive: input.replayActive,
+    playbackEventIndex: input.playbackEventIndex,
+  });
   const scene = resolveLiveSonificationScene(
     selectedSceneBaseAsset,
     selectedSceneComposition,
     input.selectedStyleProfileId,
     input.selectedMutationProfileId,
-    referenceAnchor,
+    trackSelectionState.referenceAnchor,
   );
-  const baseTrackCount = input.basePlaylist?.trackIds.length ?? 0;
-  const hasBaseListeningBed = baseTrackCount > 0;
-  const activeAdapterKind =
-    input.sessionRepoId === input.repositoryId
-      ? (input.sessionAdapterKind ?? input.adapterKind)
-      : input.adapterKind;
+  const adapterState = buildLiveLogMonitorAdapterState({
+    repository: input.repository,
+    repositoryId: input.repositoryId,
+    adapterKind: input.adapterKind,
+    sessionRepoId: input.sessionRepoId,
+    sessionAdapterKind: input.sessionAdapterKind,
+  });
   const effectiveLiveMutationState =
     input.forcedLiveMutationState === "auto"
       ? input.liveMutationState
@@ -263,28 +184,14 @@ export function buildLiveLogMonitorViewModel(
     selectedSceneComposition,
     selectedStyleProfile,
     selectedMutationProfile,
-    playableBaseTracks,
-    playableBaseTrackIdsKey,
-    availableBaseTrackOptions,
-    backgroundNowPlayingTrack,
-    backgroundTransitionNextTrack,
-    traceWaveformTrack,
-    traceWaveformExplanations,
-    selectedTraceExplanation,
-    traceWaveformCues,
-    currentReplayExplanation,
-    referenceAnchor,
+    ...trackSelectionState,
+    ...explanationState,
     scene,
-    baseTrackCount,
-    hasBaseListeningBed,
-    activeAdapterKind,
-    activeAdapterLabel: getStreamAdapterLabel(activeAdapterKind),
-    adapterDescription: getStreamAdapterDescription(input.adapterKind),
-    adapterTarget: input.repository.sourcePath,
+    ...adapterState,
     effectiveLiveMutationState,
     liveMutationStateLabel,
     cueEnginePreviewLabel: resolveCueEnginePreviewLabel({
-      hasBaseListeningBed,
+      hasBaseListeningBed: trackSelectionState.hasBaseListeningBed,
       sampleStatus: input.sampleStatus,
       liveMutationStateLabel,
       sampleSourceCount: scene.sampleSourceCount,

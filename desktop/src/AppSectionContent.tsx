@@ -1,5 +1,7 @@
 import { lazy } from "react";
 
+import { AppCurateSection } from "./AppCurateSection";
+import { AppSessionSection } from "./AppSessionSection";
 import type { PersistedSession, SessionBookmark } from "./api/sessions";
 import type { BootstrapManifest } from "./contracts";
 import type { BaseAssetCategoryOption } from "./types/baseAsset";
@@ -22,7 +24,7 @@ import type {
   UpdateTrackPerformanceInput,
 } from "./types/library";
 import type { StartSessionInput } from "./types/monitor";
-import type { LibraryTab } from "./features/library/LibraryScreen";
+import type { LibraryTab } from "./features/library/libraryScreenTypes";
 import type { ActiveMonitorSession } from "./features/monitor/monitorContextTypes";
 import type { SessionStartDraft } from "./features/session/sessionScreenRuntime";
 import { buildAppSectionContentState } from "./appSectionContentRuntime";
@@ -35,26 +37,6 @@ const ComposeScreen = lazy(() =>
 const InspectScreen = lazy(() =>
   import("./features/inspect/InspectScreen").then((module) => ({
     default: module.InspectScreen,
-  })),
-);
-const LibraryScreen = lazy(() =>
-  import("./features/library/LibraryScreen").then((module) => ({
-    default: module.LibraryScreen,
-  })),
-);
-const SessionScreen = lazy(() =>
-  import("./features/session/SessionScreen").then((module) => ({
-    default: module.SessionScreen,
-  })),
-);
-const SimpleModeWizard = lazy(() =>
-  import("./features/simple/SimpleModeWizard").then((module) => ({
-    default: module.SimpleModeWizard,
-  })),
-);
-const SimpleModeLibraryView = lazy(() =>
-  import("./features/simple/SimpleModeLibraryView").then((module) => ({
-    default: module.SimpleModeLibraryView,
   })),
 );
 
@@ -171,93 +153,68 @@ export function AppSectionContent(props: AppSectionContentProps) {
 
   return (
     <>
-      {state.showSimpleWizard ? (
-        <SimpleModeWizard
-          busyRepository={props.repositoryBusy}
-          busyBaseAsset={props.baseAssetBusy}
-          onImportRepository={props.onImportRepository}
-          onImportBaseAsset={props.onImportBaseAsset}
-          onStartSession={async (repoId, presetId) => {
-            props.onStartSimpleWizardSession(repoId, presetId);
-          }}
-          repositoryCount={props.repositories.length}
-          baseAssetCount={props.baseAssets.length}
-          baseAssetCategories={props.manifest?.baseAssetCategories ?? []}
-          defaultCategoryId={props.manifest?.defaultBaseAssetCategoryId}
-        />
-      ) : null}
-
-      {state.showSimpleLibrary ? (
-        <SimpleModeLibraryView
-          tracks={props.tracks}
-          repositories={props.repositories}
-          baseAssets={props.baseAssets}
-          selectedRepositoryId={props.selectedRepositoryId}
-          selectedTrackId={props.selectedTrackId}
-          onSelectRepository={props.onSelectSimpleRepository}
-          onSelectTrack={props.onSelectSimpleTrack}
-          onImportRepository={props.onImportRepository}
-          onImportBaseAsset={props.onImportBaseAsset}
-          onStartMonitoring={props.onStartSimpleMonitoring}
-        />
-      ) : null}
-
-      {state.showExpertLibrary ? (
-        <LibraryScreen
-          tracks={props.tracks}
-          playlists={props.playlists}
-          repositories={props.repositories}
-          baseAssets={props.baseAssets}
-          compositions={props.compositions}
-          newlyImportedId={props.newlyImportedId}
-          selectedTrackId={props.selectedTrackId}
-          selectedPlaylistId={props.selectedPlaylistId}
-          selectedRepositoryId={props.selectedRepositoryId}
-          selectedBaseAssetId={props.selectedBaseAssetId}
-          selectedCompositionId={props.selectedCompositionId}
-          activeTab={props.libraryTab}
-          onTabChange={props.onTabChange}
-          manifest={props.manifest}
-          musicStyles={props.musicStyles}
-          baseAssetCategories={props.baseAssetCategories}
-          defaultTrackMusicStyleId={props.defaultTrackMusicStyleId}
-          defaultBaseAssetCategoryId={props.defaultBaseAssetCategoryId}
-          trackLoading={props.trackLoading}
-          repositoryLoading={props.repositoryLoading}
-          baseAssetLoading={props.baseAssetLoading}
-          compositionLoading={props.compositionLoading}
-          trackBusy={props.trackBusy}
-          repositoryBusy={props.repositoryBusy}
-          baseAssetBusy={props.baseAssetBusy}
-          compositionBusy={props.compositionBusy}
-          trackError={props.trackError}
-          repositoryError={props.repositoryError}
-          baseAssetError={props.baseAssetError}
-          compositionError={props.compositionError}
-          onImportTrack={props.onImportTrack}
-          onImportRepository={props.onImportRepository}
-          onImportBaseAsset={props.onImportBaseAsset}
-          onImportComposition={props.onImportComposition}
-          onReanalyzeTrack={props.onReanalyzeTrack}
-          onRelinkTrack={props.onRelinkTrack}
-          onRelinkMissingTracks={props.onRelinkMissingTracks}
-          onReanalyzeRepository={props.onReanalyzeRepository}
-          onDeleteTrack={props.onDeleteTrack}
-          onDeleteRepository={props.onDeleteRepository}
-          onSeedDemo={props.onSeedDemo}
-          onSavePlaylist={props.onSavePlaylist}
-          onDeletePlaylist={props.onDeletePlaylist}
-          onSelectTrack={props.onSelectTrack}
-          onSelectPlaylist={props.onSelectPlaylist}
-          onSelectRepository={props.onSelectRepository}
-          onSelectBaseAsset={props.onSelectBaseAsset}
-          onSelectComposition={props.onSelectComposition}
-          onInspectTrack={props.onInspectTrack}
-          onInspectRepository={props.onInspectRepository}
-          onInspectBaseAsset={props.onInspectBaseAsset}
-          onInspectComposition={props.onInspectComposition}
-        />
-      ) : null}
+      <AppCurateSection
+        userMode={props.userMode}
+        showSimpleWizard={state.showSimpleWizard}
+        showSimpleLibrary={state.showSimpleLibrary}
+        showExpertLibrary={state.showExpertLibrary}
+        manifest={props.manifest}
+        musicStyles={props.musicStyles}
+        baseAssetCategories={props.baseAssetCategories}
+        defaultTrackMusicStyleId={props.defaultTrackMusicStyleId}
+        defaultBaseAssetCategoryId={props.defaultBaseAssetCategoryId}
+        libraryTab={props.libraryTab}
+        tracks={props.tracks}
+        playlists={props.playlists}
+        repositories={props.repositories}
+        baseAssets={props.baseAssets}
+        compositions={props.compositions}
+        newlyImportedId={props.newlyImportedId}
+        selectedTrackId={props.selectedTrackId}
+        selectedPlaylistId={props.selectedPlaylistId}
+        selectedRepositoryId={props.selectedRepositoryId}
+        selectedBaseAssetId={props.selectedBaseAssetId}
+        selectedCompositionId={props.selectedCompositionId}
+        trackLoading={props.trackLoading}
+        repositoryLoading={props.repositoryLoading}
+        baseAssetLoading={props.baseAssetLoading}
+        compositionLoading={props.compositionLoading}
+        trackBusy={props.trackBusy}
+        repositoryBusy={props.repositoryBusy}
+        baseAssetBusy={props.baseAssetBusy}
+        compositionBusy={props.compositionBusy}
+        trackError={props.trackError}
+        repositoryError={props.repositoryError}
+        baseAssetError={props.baseAssetError}
+        compositionError={props.compositionError}
+        onImportTrack={props.onImportTrack}
+        onImportRepository={props.onImportRepository}
+        onImportBaseAsset={props.onImportBaseAsset}
+        onImportComposition={props.onImportComposition}
+        onReanalyzeTrack={props.onReanalyzeTrack}
+        onRelinkTrack={props.onRelinkTrack}
+        onRelinkMissingTracks={props.onRelinkMissingTracks}
+        onReanalyzeRepository={props.onReanalyzeRepository}
+        onDeleteTrack={props.onDeleteTrack}
+        onDeleteRepository={props.onDeleteRepository}
+        onSeedDemo={props.onSeedDemo}
+        onSavePlaylist={props.onSavePlaylist}
+        onDeletePlaylist={props.onDeletePlaylist}
+        onSelectSimpleTrack={props.onSelectSimpleTrack}
+        onSelectSimpleRepository={props.onSelectSimpleRepository}
+        onSelectTrack={props.onSelectTrack}
+        onSelectPlaylist={props.onSelectPlaylist}
+        onSelectRepository={props.onSelectRepository}
+        onSelectBaseAsset={props.onSelectBaseAsset}
+        onSelectComposition={props.onSelectComposition}
+        onInspectTrack={props.onInspectTrack}
+        onInspectRepository={props.onInspectRepository}
+        onInspectBaseAsset={props.onInspectBaseAsset}
+        onInspectComposition={props.onInspectComposition}
+        onStartSimpleMonitoring={props.onStartSimpleMonitoring}
+        onStartSimpleWizardSession={props.onStartSimpleWizardSession}
+        onTabChange={props.onTabChange}
+      />
 
       {state.showInspect ? (
         <InspectScreen
@@ -299,29 +256,25 @@ export function AppSectionContent(props: AppSectionContentProps) {
       ) : null}
 
       {state.showSession ? (
-        <SessionScreen
+        <AppSessionSection
+          monitorSession={props.monitorSession}
+          monitorIsPlayback={props.monitorIsPlayback}
+          monitorPlaybackProgress={props.monitorPlaybackProgress}
           tracks={props.tracks}
           playlists={props.playlists}
           repositories={props.repositories}
           sessions={props.sessions}
           sessionBookmarksBySessionId={props.sessionBookmarksBySessionId}
           selectedSessionId={props.selectedSessionId}
-          loading={props.sessionsLoading}
-          mutating={props.sessionsMutating}
-          error={props.sessionsError}
-          activeSessionId={
-            props.monitorSession?.persistedSessionId ?? props.monitorSession?.sessionId ?? null
-          }
-          activeSessionMode={
-            props.monitorSession ? (props.monitorIsPlayback ? "playback" : "live") : null
-          }
-          activePlaybackProgress={props.monitorIsPlayback ? props.monitorPlaybackProgress : null}
+          sessionsLoading={props.sessionsLoading}
+          sessionsMutating={props.sessionsMutating}
+          sessionsError={props.sessionsError}
           onStartSession={props.onStartSession}
           onStopSession={props.onStopSession}
-          onResume={props.onResumeSession}
-          onPlayback={props.onPlaybackSession}
+          onResumeSession={props.onResumeSession}
+          onPlaybackSession={props.onPlaybackSession}
           onReplayBookmark={props.onReplayBookmark}
-          onDelete={props.onDeleteSession}
+          onDeleteSession={props.onDeleteSession}
           onSelectSession={props.onSelectSession}
         />
       ) : null}

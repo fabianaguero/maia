@@ -9,7 +9,7 @@ import type { MonitorSetupPreferences } from "./monitorSetupPreferences";
 import type { MonitorLaunchSource } from "./monitorSourceOptions";
 import type { useSimpleMonitorDeckRuntime } from "./useSimpleMonitorDeckRuntime";
 import type { useSimpleMonitorLaunchState } from "./useSimpleMonitorLaunchState";
-import type { UseSimpleMonitorDeckRuntimeInput } from "./useSimpleMonitorDeckRuntime";
+import type { UseSimpleMonitorDeckRuntimeInput } from "./simpleMonitorDeckRuntimeTypes";
 import type { UseSimpleMonitorLaunchStateInput } from "./useSimpleMonitorLaunchState";
 import type { SimpleMonitorCollectionsState } from "./simpleMonitorScreenStateRuntime";
 import type { BuildSimpleMonitorScreenHookStateArgs } from "./simpleMonitorScreenRuntime";

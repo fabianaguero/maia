@@ -1,20 +1,14 @@
 import React from "react";
-import { Activity, AlertTriangle, RadioTower, SlidersHorizontal, Waves } from "lucide-react";
 
 import { useT } from "../../i18n/I18nContext";
 import type { AppSkin } from "./appSkin";
-import { MonitorDeckControlPanel } from "./MonitorDeckControlPanel";
+import { MonitorSetupHeroPanel } from "./MonitorSetupHeroPanel";
+import { MonitorSetupRackSection } from "./MonitorSetupRackSection";
 import {
-  MonitorSetupHeroIdentityBank,
-  MonitorSetupPreviewBank,
-  MonitorSetupPresetCards,
-  MonitorSetupRuntimeDefaultsBank,
   MonitorSetupSignalBank,
-  MonitorSetupSummaryBank,
 } from "./MonitorSetupSections";
 import type { MonitorSetupPreferences } from "./monitorSetupPreferences";
-import { useMonitorDeckControls } from "./useMonitorDeckControls";
-import { buildMonitorSetupScreenViewModel } from "./monitorSetupViewModel";
+import { useMonitorSetupScreenModel } from "./useMonitorSetupScreenModel";
 
 interface MonitorSetupScreenProps {
   lang: "en" | "es";
@@ -38,65 +32,30 @@ export function MonitorSetupScreen({
 }: MonitorSetupScreenProps) {
   const t = useT();
   const {
-    deckControls,
+    profile,
+    viewModel,
+    screenModel,
     updateDeckControl,
     resetDeckControls,
     applyDeckPreset,
-    activePreset,
-    isDirty,
-  } = useMonitorDeckControls();
-  const viewModel = buildMonitorSetupScreenViewModel({
-    controls: deckControls,
+  } = useMonitorSetupScreenModel({
     lang,
     skin,
-    activePreset,
-    isDirty,
     setupPreferences,
     t,
   });
-  const presetCards = viewModel.presetCards.filter(
-    (
-      preset,
-    ): preset is (typeof viewModel.presetCards)[number] & {
-      id: "passive" | "balanced" | "alert";
-    } => preset.id !== "custom",
-  );
-  const customPresetCard =
-    viewModel.presetCards.find(
-      (
-        preset,
-      ): preset is (typeof viewModel.presetCards)[number] & {
-        id: "custom";
-      } => preset.id === "custom",
-    ) ?? null;
-  const setupIcons = {
-    "reactive-mix": <Activity size={16} />,
-    "anomaly-emphasis": <AlertTriangle size={16} />,
-    "idle-motion": <Waves size={16} />,
-    "monitor-level": <SlidersHorizontal size={16} />,
-    "ducking-intensity": <RadioTower size={16} />,
-    "recovery-release": <Waves size={16} />,
-    "alert-shape": <RadioTower size={16} />,
-  } as const;
 
   return (
     <div className="monitor-setup-screen">
-      <div className="monitor-setup-screen__hero">
-        <div className="monitor-setup-screen__headline">
-          <span className="monitor-setup-screen__eyebrow">{t.simpleMode.deckSetup.eyebrow}</span>
-          <h1>{t.simpleMode.deckSetup.title}</h1>
-          <p>{t.simpleMode.deckSetup.description}</p>
-          <MonitorSetupHeroIdentityBank
-            t={t}
-            languageOptions={viewModel.languageOptions}
-            skinCards={viewModel.skinCards}
-            onChangeLanguage={onChangeLanguage}
-            onChangeSkin={onChangeSkin}
-          />
-        </div>
-
-        <MonitorSetupSummaryBank summaryCards={viewModel.summaryCards} icons={setupIcons} />
-      </div>
+      <MonitorSetupHeroPanel
+        t={t}
+        languageOptions={viewModel.languageOptions}
+        skinCards={viewModel.skinCards}
+        summaryCards={viewModel.summaryCards}
+        summaryIcons={screenModel.setupIcons}
+        onChangeLanguage={onChangeLanguage}
+        onChangeSkin={onChangeSkin}
+      />
 
       <MonitorSetupSignalBank
         kicker={t.simpleMode.deckSetup.signalChain}
@@ -115,44 +74,21 @@ export function MonitorSetupScreen({
         role="list"
       />
 
-      <div className="monitor-setup-screen__rack">
-        <div className="monitor-setup-screen__rack-header">
-          <div>
-            <span className="monitor-setup-screen__rack-kicker">
-              {t.simpleMode.deckSetup.deckParameterBank}
-            </span>
-            <h2>{t.simpleMode.deckSetup.editableControls}</h2>
-          </div>
-          <div className="monitor-setup-screen__rack-badge">
-            <SlidersHorizontal size={14} />
-            {t.simpleMode.deckSetup.persistentProfile}
-          </div>
-        </div>
-
-        <MonitorSetupPresetCards
-          t={t}
-          presetCards={presetCards}
-          customPresetCard={customPresetCard}
-          activePreset={activePreset}
-          applyDeckPreset={applyDeckPreset}
-        />
-
-        <MonitorSetupPreviewBank t={t} meters={viewModel.previewMeters} />
-
-        <MonitorSetupRuntimeDefaultsBank
-          t={t}
-          setupPreferences={setupPreferences}
-          runtimeDefaultFields={viewModel.runtimeDefaultFields}
-          runtimeDefaultGroups={viewModel.runtimeDefaultGroups}
-          onUpdateSetupPreference={onUpdateSetupPreference}
-        />
-
-        <MonitorDeckControlPanel
-          controls={deckControls}
-          onChange={updateDeckControl}
-          onReset={resetDeckControls}
-        />
-      </div>
+      <MonitorSetupRackSection
+        t={t}
+        activePreset={profile.activePreset}
+        presetCards={screenModel.presetCards}
+        customPresetCard={screenModel.customPresetCard}
+        applyDeckPreset={applyDeckPreset}
+        previewMeters={viewModel.previewMeters}
+        setupPreferences={setupPreferences}
+        runtimeDefaultFields={viewModel.runtimeDefaultFields}
+        runtimeDefaultGroups={viewModel.runtimeDefaultGroups}
+        onUpdateSetupPreference={onUpdateSetupPreference}
+        controls={profile.deckControls}
+        onChangeDeckControl={updateDeckControl}
+        onResetDeckControls={resetDeckControls}
+      />
     </div>
   );
 }

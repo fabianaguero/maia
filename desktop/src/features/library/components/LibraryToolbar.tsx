@@ -1,12 +1,4 @@
-import type { ReactNode } from "react";
-
-interface LibraryToolbarAction {
-  id: string;
-  label: string;
-  icon: ReactNode;
-  className: string;
-  onClick: () => void | Promise<void>;
-}
+import type { LibraryToolbarAction } from "../libraryScreenControllerTypes";
 
 interface LibraryToolbarProps {
   eyebrow: string;

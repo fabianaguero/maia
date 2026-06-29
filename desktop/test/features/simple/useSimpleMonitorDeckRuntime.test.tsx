@@ -10,9 +10,7 @@ import type { LibraryTrack } from "../../../src/types/library";
 const mockedModules = vi.hoisted(() => ({
   useMonitorDeckControls: vi.fn(),
   useSimpleMonitorPlaybackState: vi.fn(),
-  useSimpleMonitorReactiveAudio: vi.fn(),
-  useMonitorTrackAudio: vi.fn(),
-  useMonitorLiveStream: vi.fn(),
+  useSimpleMonitorDeckLiveController: vi.fn(),
   useSimpleMonitorDeckPresentationState: vi.fn(),
 }));
 
@@ -24,16 +22,8 @@ vi.mock("../../../src/features/simple/useSimpleMonitorPlaybackState", () => ({
   useSimpleMonitorPlaybackState: mockedModules.useSimpleMonitorPlaybackState,
 }));
 
-vi.mock("../../../src/features/simple/useSimpleMonitorReactiveAudio", () => ({
-  useSimpleMonitorReactiveAudio: mockedModules.useSimpleMonitorReactiveAudio,
-}));
-
-vi.mock("../../../src/features/simple/useMonitorTrackAudio", () => ({
-  useMonitorTrackAudio: mockedModules.useMonitorTrackAudio,
-}));
-
-vi.mock("../../../src/features/simple/useMonitorLiveStream", () => ({
-  useMonitorLiveStream: mockedModules.useMonitorLiveStream,
+vi.mock("../../../src/features/simple/useSimpleMonitorDeckLiveController", () => ({
+  useSimpleMonitorDeckLiveController: mockedModules.useSimpleMonitorDeckLiveController,
 }));
 
 vi.mock("../../../src/features/simple/useSimpleMonitorDeckPresentationState", () => ({
@@ -141,21 +131,9 @@ describe("useSimpleMonitorDeckRuntime", () => {
       setTrackDurationSeconds: vi.fn(),
       trackWaveProgressRef: { current: 0.25 },
     });
-    mockedModules.useSimpleMonitorReactiveAudio.mockReturnValue({
-      backgroundGraphRef: { current: null },
-      audioContextRef: { current: null },
-      deckControlsRef: { current: {} },
-      ensureBackgroundGraph: vi.fn(),
-      applyTrackMutation: vi.fn(),
-      playTestTone: vi.fn(),
-      playCueBatch: vi.fn(),
-    });
-    mockedModules.useMonitorTrackAudio.mockReturnValue({
-      backgroundAudioRef: { current: null },
+    mockedModules.useSimpleMonitorDeckLiveController.mockReturnValue({
       previewTrackId: "track-1",
       toggleTrackPreview: vi.fn(),
-    });
-    mockedModules.useMonitorLiveStream.mockReturnValue({
       liveLines: [{ id: "line-1", anomalyId: "anomaly-1" }],
       logSignalBuffer: [{ val: 24, heat: 0.2 }],
       liveSuggestedBpm: 132,
@@ -228,7 +206,7 @@ describe("useSimpleMonitorDeckRuntime", () => {
     expect(result.current.streamAdapterLabel).toBe("FILE_TAIL");
     expect(result.current.waveformScale).toBe(1.4);
     expect(result.current.liveLines[0]?.id).toBe("line-1");
-    expect(mockedModules.useMonitorLiveStream).toHaveBeenCalledTimes(1);
+    expect(mockedModules.useSimpleMonitorDeckLiveController).toHaveBeenCalledTimes(1);
     expect(mockedModules.useSimpleMonitorDeckPresentationState).toHaveBeenCalledTimes(1);
   });
 });

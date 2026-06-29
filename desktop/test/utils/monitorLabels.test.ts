@@ -49,6 +49,8 @@ describe("monitorLabels", () => {
     expect(formatMonitorShortUptime(118_000)).toBe("2s");
     expect(formatMonitorShortUptime(10_000)).toBe("1m 50s");
     expect(formatMonitorShortUptime(null)).toBe("00:00");
+    expect(formatMonitorShortUptime(0)).toBe("00:00");
+    expect(formatMonitorShortUptime(Number.NaN)).toBe("00:00");
     nowSpy.mockRestore();
   });
 

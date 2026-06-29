@@ -1708,6 +1708,7 @@ export const es: AppTranslations = {
     bootingAnalyzerBridge: "Iniciando puente del analizador",
     analyzerUnavailable: "Analizador no disponible",
     nowPlaying: "Ahora sonando",
+    upNext: "Siguiente",
     live: "En vivo",
     monitoringBackgroundTitle: "Maia sigue monitoreando en segundo plano",
     monitoringBackgroundBody: "Buscala en la bandeja del sistema para volver a abrirla.",

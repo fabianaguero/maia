@@ -8,13 +8,14 @@ import { getTrackTitle, resolvePlayableTrackPath } from "../utils/track";
 import {
   appendWaveHistory,
   buildHudLinesForUpdate,
+  drawMonitorWaveformFrame,
   buildWaveColumn,
   type HUDLine,
   MONITOR_WAVEFORM_HISTORY_SIZE,
   resolveProcessedMetrics,
   resolveSourceMetrics,
+  syncMonitorWaveformCanvasSize,
   type WaveColumn,
-  type WaveMetrics,
 } from "./monitorWaveformBarRuntime";
 
 // ---------------------------------------------------------------------------
@@ -114,141 +115,24 @@ export function MonitorWaveformBar({ tracks = [] }: { tracks?: LibraryTrack[] })
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    if (w <= 0 || h <= 0) return;
-
-    const dpr = window.devicePixelRatio || 1;
-    if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(h * dpr)) {
-      canvas.width = Math.floor(w * dpr);
-      canvas.height = Math.floor(h * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
-
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = "#010204";
-    ctx.fillRect(0, 0, w, h);
-
-    const halfH = h / 2;
-    const trackH = halfH * 0.85;
-    const history = historyRef.current;
-    if (history.length === 0 && guideWaveform.length === 0) {
-      animRef.current = requestAnimationFrame(draw);
+    const dimensions = syncMonitorWaveformCanvasSize(canvas, ctx);
+    if (!dimensions) {
       return;
     }
 
-    const colW = BAR_WIDTH;
-    const maxCols = Math.floor(w / colW);
-    const startIdx = Math.max(0, history.length - maxCols);
-
-    const drawOverviewBed = (
-      bins: number[],
-      centerY: number,
-      colors: { low: string; mid: string; high: string },
-    ) => {
-      if (bins.length === 0) {
-        return;
-      }
-
-      const usable = Math.min(bins.length, Math.max(64, Math.floor(w / 2)));
-      for (let i = 0; i < usable; i++) {
-        const sourceIndex = Math.floor((i / usable) * bins.length);
-        const amplitude = Math.max(0.03, bins[sourceIndex] ?? 0);
-        const x = (i / usable) * w;
-        const lowH = amplitude * (trackH * 0.52);
-        const midH = amplitude * (trackH * 0.34);
-        const highH = amplitude * (trackH * 0.16);
-
-        ctx.fillStyle = colors.low;
-        ctx.fillRect(x, centerY - lowH, 1.25, lowH * 2);
-        ctx.fillStyle = colors.mid;
-        ctx.fillRect(x, centerY - midH, 1.25, midH * 2);
-        ctx.fillStyle = colors.high;
-        ctx.fillRect(x, centerY - highH, 1.25, highH * 2);
-      }
-    };
-
-    const drawRekordboxWave = (
-      metricsKey: "source" | "processed",
-      centerY: number,
-      colors: { low: string; mid: string; high: string },
-    ) => {
-      // 1. ANOMALY GLOW
-      for (let i = startIdx; i < history.length; i++) {
-        const col = history[i];
-        if (col.anomalyHeat > 0.05) {
-          const x = w - (history.length - i) * colW;
-          ctx.fillStyle = `rgba(255, 30, 80, ${col.anomalyHeat * 0.15})`;
-          ctx.fillRect(x, centerY - halfH / 2, colW, halfH);
-        }
-      }
-
-      // 2. REKORDBOX STYLE RGB BARS
-      for (let i = startIdx; i < history.length; i++) {
-        const col = history[i];
-        const x = w - (history.length - i) * colW;
-        const m = col[metricsKey] as WaveMetrics;
-
-        // Calculate heights with a little bit of jitter to make it look "alive"
-        const jitterFreq = Date.now() / 60;
-        const jitter = Math.sin(jitterFreq + i) * 0.1;
-
-        const bands = [
-          { h: Math.max(1, (m.low + jitter) * (trackH / 2)), c: colors.low },
-          { h: Math.max(1, (m.mid - jitter) * (trackH / 2)), c: colors.mid },
-          { h: Math.max(1, (m.high + jitter * 0.5) * (trackH / 2)), c: colors.high },
-        ].sort((a, b) => b.h - a.h); // Draw tallest first so smaller ones are visible
-
-        bands.forEach((b) => {
-          ctx.fillStyle = b.c;
-          // Draw thin vertical bars for the striated waveform look
-          ctx.fillRect(x, centerY - b.h, Math.max(1, colW - 0.5), b.h * 2);
-        });
-      }
-    };
-
-    drawOverviewBed(guideWaveform, halfH / 2, {
-      low: "rgba(0, 85, 255, 0.22)",
-      mid: "rgba(255, 145, 32, 0.18)",
-      high: "rgba(255, 255, 255, 0.14)",
-    });
-    drawOverviewBed(guideWaveform, halfH + halfH / 2, {
-      low: "rgba(0, 220, 255, 0.18)",
-      mid: "rgba(255, 70, 125, 0.14)",
-      high: "rgba(255, 255, 255, 0.1)",
+    const hasSignal = drawMonitorWaveformFrame({
+      ctx,
+      width: dimensions.width,
+      height: dimensions.height,
+      history: historyRef.current,
+      guideWaveform,
+      barWidth: BAR_WIDTH,
     });
 
-    drawRekordboxWave("source", halfH / 2, {
-      low: "rgba(0, 80, 255, 0.9)", // Deep blue for kicks/lows
-      mid: "rgba(255, 120, 0, 0.8)", // Orange for mids/vocals
-      high: "rgba(255, 255, 255, 0.9)", // White for highs/hats
-    });
-    drawRekordboxWave("processed", halfH + halfH / 2, {
-      low: "rgba(0, 200, 255, 0.9)", // Cyan for lows
-      mid: "rgba(255, 50, 120, 0.8)", // Pink/Magenta for mids
-      high: "rgba(255, 255, 255, 0.9)", // White for highs
-    });
-
-    // SCANLINE
-    const scanX = ((Date.now() / 20) % (w * 1.2)) - w / 5;
-    const grad = ctx.createLinearGradient(scanX, 0, scanX + 60, 0);
-    grad.addColorStop(0, "rgba(255, 255, 255, 0)");
-    grad.addColorStop(0.5, "rgba(255, 255, 255, 0.03)");
-    grad.addColorStop(1, "rgba(255, 255, 255, 0)");
-    ctx.fillStyle = grad;
-    ctx.fillRect(scanX, 0, 60, h);
-
-    // PLAYHEAD
-    const playX = w - 1;
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
-    ctx.shadowColor = "rgba(100, 200, 255, 0.5)";
-    ctx.shadowBlur = 8;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(playX, 0);
-    ctx.lineTo(playX, h);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
+    if (!hasSignal) {
+      animRef.current = requestAnimationFrame(draw);
+      return;
+    }
 
     animRef.current = requestAnimationFrame(draw);
   }, [guideWaveform]);

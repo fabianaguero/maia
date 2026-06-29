@@ -7,7 +7,6 @@ import type {
   VisualizationRegionPoint,
 } from "../../../types/library";
 import {
-  deriveBeatGridGuideMarkers,
   selectBeatGridPhrase,
   type BeatGridPhraseRange,
 } from "../../../utils/beatGrid";
@@ -16,32 +15,18 @@ import {
   nudgeTrackSecond,
   resolveTrackPlacementSecond,
 } from "../../../utils/track";
-
-interface WaveformEditableCuePoint {
-  id: string;
-  second: number;
-  label: string;
-  kind: "main" | "hot" | "memory";
-  color?: string | null;
-}
-
-type DragTarget =
-  | {
-      type: "cue";
-      cue: WaveformEditableCuePoint;
-    }
-  | {
-      type: "loop";
-      loopId: string;
-      startSecond: number;
-      endSecond: number;
-      pointerOffsetSecond: number;
-    }
-  | {
-      type: "loop-boundary";
-      loopId: string;
-      boundary: "start" | "end";
-    };
+import {
+  buildRenderedCueMarkers,
+  buildRenderedRegions,
+  formatDuration,
+  resolveAnchorPosition,
+  resolveDisplayBins,
+  resolveVisibleBeats,
+  resolveWaveformCursor,
+  resolveWaveformSummaryFlags,
+  type DragTarget,
+  type WaveformEditableCuePoint,
+} from "./waveformPlaceholderRuntime";
 
 interface WaveformPlaceholderProps {
   bins: number[];
@@ -66,17 +51,6 @@ interface WaveformPlaceholderProps {
   onNudgeCue?: (cue: WaveformEditableCuePoint, second: number) => void;
   onMoveLoopBoundary?: (loopId: string, boundary: "start" | "end", second: number) => void;
   onMoveLoop?: (loopId: string, startSecond: number) => void;
-}
-
-function formatDuration(durationSeconds: number | null): string {
-  if (!durationSeconds) {
-    return "--:--";
-  }
-
-  const totalSeconds = Math.round(durationSeconds);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
 export function WaveformPlaceholder({
@@ -294,94 +268,30 @@ export function WaveformPlaceholder({
 
     onSeek?.(seekTime);
   };
-  // Use bins as-is; if empty, create a fallback with more detail
-  const normalizedBins =
-    bins.length > 0
-      ? bins
-      : Array.from({ length: 128 }, (_, index) => {
-          const cycle = (index % 16) / 16;
-          return Number((0.3 + Math.sin(cycle * Math.PI) * 0.6).toFixed(3));
-        });
-
-  // Ensure we have enough bins for hi-res display (at least 128, up to 512)
-  const displayBins =
-    normalizedBins.length < 128
-      ? Array.from(
-          { length: 128 },
-          (_, i) => normalizedBins[Math.floor((i / 128) * normalizedBins.length)] || 0.3,
-        )
-      : normalizedBins;
-
-  const visibleBeats =
-    durationSeconds && durationSeconds > 0
-      ? deriveBeatGridGuideMarkers(beatGrid, durationSeconds)
-      : [];
-  const anchorSecond = dragAnchorSecond ?? visibleBeats[0]?.second ?? null;
-  const anchorPosition =
-    anchorSecond !== null && durationSeconds && durationSeconds > 0
-      ? Math.min(100, (anchorSecond / durationSeconds) * 100)
-      : null;
-  const showRegionSummary = regions.length > 0 || selectedPhraseRange !== null;
-  const showPhraseSummary = Boolean(onSelectPhraseRange || selectedPhraseRange);
-  const renderedCueMarkers =
-    editableCues.length > 0
-      ? editableCues.map((cue) => ({
-          key: cue.id,
-          second:
-            dragTarget?.type === "cue" && dragTarget.cue.id === cue.id && dragEditSecond !== null
-              ? dragEditSecond
-              : cue.second,
-          label: cue.label,
-          type: cue.kind,
-          excerpt: cue.kind === "main" ? "Main cue" : undefined,
-          interactiveCue: cue,
-        }))
-      : hotCues.map((cue, index) => ({
-          key: `${index}-${cue.second}`,
-          second: cue.second,
-          label: cue.label,
-          type: cue.type,
-          excerpt: cue.excerpt,
-          interactiveCue: null,
-        }));
-  const renderedRegions = regions.map((region) => {
-    const editableLoop = editableLoops.find((loop) => loop.id === region.id);
-    const loopSpan = editableLoop
-      ? editableLoop.endSecond - editableLoop.startSecond
-      : region.endSecond - region.startSecond;
-    const previewLoopStart =
-      dragTarget?.type === "loop" && dragTarget.loopId === region.id && dragEditSecond !== null
-        ? durationSeconds && durationSeconds > 0
-          ? Math.min(dragEditSecond, Math.max(0, durationSeconds - loopSpan))
-          : dragEditSecond
-        : null;
-    const startSecond =
-      previewLoopStart !== null
-        ? previewLoopStart
-        : dragTarget?.type === "loop-boundary" &&
-            dragTarget.loopId === region.id &&
-            dragTarget.boundary === "start" &&
-            dragEditSecond !== null
-          ? Math.min(dragEditSecond, region.endSecond)
-          : region.startSecond;
-    const endSecond =
-      previewLoopStart !== null
-        ? durationSeconds && durationSeconds > 0
-          ? Math.min(durationSeconds, previewLoopStart + loopSpan)
-          : previewLoopStart + loopSpan
-        : dragTarget?.type === "loop-boundary" &&
-            dragTarget.loopId === region.id &&
-            dragTarget.boundary === "end" &&
-            dragEditSecond !== null
-          ? Math.max(dragEditSecond, region.startSecond)
-          : region.endSecond;
-
-    return {
-      ...region,
-      startSecond,
-      endSecond,
-      editableLoop,
-    };
+  const displayBins = resolveDisplayBins(bins);
+  const visibleBeats = resolveVisibleBeats(beatGrid, durationSeconds);
+  const { anchorSecond, anchorPosition } = resolveAnchorPosition({
+    dragAnchorSecond,
+    durationSeconds,
+    visibleBeats,
+  });
+  const { showRegionSummary, showPhraseSummary } = resolveWaveformSummaryFlags(
+    regions,
+    selectedPhraseRange,
+    onSelectPhraseRange,
+  );
+  const renderedCueMarkers = buildRenderedCueMarkers({
+    editableCues,
+    hotCues,
+    dragTarget,
+    dragEditSecond,
+  });
+  const renderedRegions = buildRenderedRegions({
+    regions,
+    editableLoops,
+    dragTarget,
+    dragEditSecond,
+    durationSeconds,
   });
 
   return (
@@ -429,17 +339,15 @@ export function WaveformPlaceholder({
         onClick={handleWaveformClick}
         aria-label={t.inspect.waveformStage}
         style={{
-          cursor: gridAnchorDragging
-            ? "grabbing"
-            : dragTarget
-              ? "grabbing"
-              : phraseSelectArmed && canSelectPhrase
-                ? "cell"
-                : gridClickArmed && canEditBeatGrid
-                  ? "crosshair"
-                  : onSeek
-                    ? "pointer"
-                    : "default",
+          cursor: resolveWaveformCursor({
+            gridAnchorDragging,
+            dragTarget,
+            phraseSelectArmed,
+            canSelectPhrase,
+            gridClickArmed,
+            canEditBeatGrid,
+            onSeek,
+          }),
         }}
       >
         {gridClickArmed ? (
@@ -720,9 +628,6 @@ export function WaveformPlaceholder({
             aria-label={t.inspect.dragBeatGridAnchor}
             disabled={!canEditBeatGrid}
             onMouseDown={(event) => {
-              if (!canEditBeatGrid) {
-                return;
-              }
               event.preventDefault();
               event.stopPropagation();
               setGridClickArmed(false);

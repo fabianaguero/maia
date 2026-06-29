@@ -6,13 +6,9 @@ import { useSessions } from "./useSessions";
 import { useAppV0PreferencesState } from "./useAppV0PreferencesState";
 import { useAppV0ShellState } from "./useAppV0ShellState";
 import { useAppV0MonitorScreenState } from "./useAppV0MonitorScreenState";
+import { useAppV0ScreenModel } from "./useAppV0ScreenModel";
 import { useMonitor } from "../features/monitor/MonitorContext";
 import { useUserMode } from "../features/simple/UserModeContext";
-import {
-  buildAppV0ContentActions,
-  buildAppV0ScreenModel,
-  buildAppV0SectionContentInput,
-} from "../appV0ViewModel";
 
 export function useAppV0ContentModel() {
   const { userMode } = useUserMode();
@@ -60,69 +56,52 @@ export function useAppV0ContentModel() {
     playbackSession: monitor.playbackSession,
   });
 
-  const contentActions = buildAppV0ContentActions({
-    setCurrentSection,
-    stopSession: monitor.stopSession,
-    importRepositorySource: repositories.importRepositorySource,
-    importLibraryBaseAsset: baseAssets.importLibraryBaseAsset,
-    startLibraryMonitoring: monitorOrchestrator.startLibraryMonitoring,
-    startSourceMonitoring: monitorOrchestrator.startSourceMonitoring,
-    reportMonitorLaunchFailure,
-    resumeAudio: monitor.resumeAudio,
-    replaySession: monitorOrchestrator.replaySession,
-  });
-  const sectionContentInput = buildAppV0SectionContentInput({
-    currentSection,
+  const { screenModel } = useAppV0ScreenModel({
     userMode,
-    fallbackViewModel,
-    setupPreferences,
     lang,
     skin,
-    onChangeLanguage: setLang,
-    onChangeSkin: setSkin,
-    onUpdateSetupPreference: updateSetupPreference,
-    monitorSession: monitor.session,
-    monitorMetrics: monitor.metrics,
-    pastSessions: pastSessions.sessions,
-    repositories: repositories.repositories,
-    tracks: library.tracks,
-    baseAssets: baseAssets.baseAssets,
-    selectedRepositoryId: repositories.selectedRepositoryId,
-    onSelectRepository: repositories.setSelectedRepositoryId,
-    onImportRepository: contentActions.onImportRepository,
-    onImportBaseAsset: contentActions.onImportBaseAsset,
-    selectedTrackId: library.selectedTrackId,
-    onSelectTrack: library.setSelectedTrackId,
-    onStartLibraryMonitoring: contentActions.onStartLibraryMonitoring,
-    onStopMonitor: contentActions.onStopMonitor,
-    onResumeAudio: contentActions.onResumeAudio,
-    audioStatus: monitor.audioContext?.state || "closed",
-    audioContext: monitor.audioContext,
-    monitorTrackName: monitor.session?.trackName,
-    waveformBins,
-    onStartMonitoring: contentActions.onStartMonitoring,
-    onReplaySession: contentActions.onReplaySession,
-    subscribe: monitor.subscribe,
-    isConsoleExpanded,
-    onToggleConsole: toggleConsoleExpanded,
-  });
-  const screenModel = buildAppV0ScreenModel({
-    shell: {
-      currentSection,
-      isSidebarCollapsed,
-      toggleSidebarCollapsed,
-      isConsoleExpanded,
-      toggleConsoleExpanded,
-      openMonitorInspector,
-    },
-    contentActions,
-    shellViewModel,
+    setupPreferences,
+    updateSetupPreference,
+    setLang,
+    setSkin,
     currentSection,
+    setCurrentSection,
+    isSidebarCollapsed,
+    toggleSidebarCollapsed,
+    isConsoleExpanded,
+    toggleConsoleExpanded,
+    openMonitorInspector,
+    fallbackViewModel,
+    shellViewModel,
     isMonitoring,
-    trackCount: library.tracks.length,
-    repositoryCount: repositories.repositories.length,
-    baseAssetCount: baseAssets.baseAssets.length,
-    sectionContentInput,
+    reportMonitorLaunchFailure,
+    waveformBins,
+    monitor: {
+      session: monitor.session,
+      metrics: monitor.metrics,
+      stopSession: monitor.stopSession,
+      resumeAudio: monitor.resumeAudio,
+      subscribe: monitor.subscribe,
+      audioContext: monitor.audioContext,
+    },
+    library: {
+      tracks: library.tracks,
+      selectedTrackId: library.selectedTrackId,
+      selectedTrack: library.selectedTrack ?? null,
+      setSelectedTrackId: library.setSelectedTrackId,
+    },
+    repositories: {
+      repositories: repositories.repositories,
+      selectedRepositoryId: repositories.selectedRepositoryId,
+      setSelectedRepositoryId: repositories.setSelectedRepositoryId,
+      importRepositorySource: repositories.importRepositorySource,
+    },
+    baseAssets: {
+      baseAssets: baseAssets.baseAssets,
+      importLibraryBaseAsset: baseAssets.importLibraryBaseAsset,
+    },
+    pastSessions,
+    monitorOrchestrator,
   });
 
   return { screenModel, t };

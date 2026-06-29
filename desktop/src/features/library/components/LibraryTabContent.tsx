@@ -7,7 +7,7 @@ import type {
   LogSourceConnection,
   RepositoryAnalysis,
 } from "../../../types/library";
-import type { LibraryTab } from "../LibraryScreen";
+import type { LibraryTab } from "../libraryScreenTypes";
 import { LibraryBaseAssetsListPanel } from "./LibraryBaseAssetsListPanel";
 import { LibraryConnectionsListPanel } from "./LibraryConnectionsListPanel";
 import { LibraryEmptyState } from "./LibraryEmptyState";

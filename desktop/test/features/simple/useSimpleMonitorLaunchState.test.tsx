@@ -38,6 +38,7 @@ vi.mock("../../../src/features/simple/simpleMonitorInteractionRuntime", () => ({
 describe("useSimpleMonitorLaunchState", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    state.executeSimpleMonitorStartRequest.mockResolvedValue(true);
   });
 
   it("exposes selector state and delegates monitoring start", async () => {
@@ -71,5 +72,44 @@ describe("useSimpleMonitorLaunchState", () => {
         }),
       );
     });
+  });
+
+  it("logs an error when the monitor start request fails after launch setup", async () => {
+    const onResumeAudio = vi.fn(async () => undefined);
+    const onStartMonitoring = vi.fn();
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const originalRequestAnimationFrame = window.requestAnimationFrame;
+    window.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    }) as typeof window.requestAnimationFrame;
+
+    state.executeSimpleMonitorStartRequest.mockImplementationOnce(async (input) => {
+      input.setLaunchingImmediate();
+      await input.waitForNextFrame();
+      input.resetLaunchingOnFailure();
+      return false;
+    });
+
+    const { result } = renderHook(() =>
+      useSimpleMonitorLaunchState({
+        repositories: [],
+        isListening: false,
+        t: en,
+        onResumeAudio,
+        onStartMonitoring,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleStartMonitoringRequest();
+    });
+
+    expect(state.sourceSelector.setIsLaunchingMonitor).toHaveBeenNthCalledWith(1, true);
+    expect(state.sourceSelector.setIsLaunchingMonitor).toHaveBeenNthCalledWith(2, false);
+    expect(consoleError).toHaveBeenCalledWith("Failed to start monitor from selector");
+
+    window.requestAnimationFrame = originalRequestAnimationFrame;
+    consoleError.mockRestore();
   });
 });

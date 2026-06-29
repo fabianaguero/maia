@@ -11,7 +11,7 @@ import type {
   LibraryTrack,
   RepositoryAnalysis,
 } from "./types/library";
-import type { LibraryTab } from "./features/library/LibraryScreen";
+import type { LibraryTab } from "./features/library/libraryScreenTypes";
 import type { StreamAdapterKind } from "./types/monitor";
 
 type UserMode = "simple" | "expert";

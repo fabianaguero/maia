@@ -3,14 +3,16 @@ import { useEffect, useState } from "react";
 import {
   areMonitorDeckControlsEqual,
   DEFAULT_MONITOR_DECK_CONTROLS,
-  loadMonitorDeckControls,
-  MONITOR_DECK_PRESETS,
-  MONITOR_DECK_CONTROLS_STORAGE_KEY,
   resolveActiveMonitorDeckPreset,
-  sanitizeMonitorDeckControls,
   type MonitorDeckControls,
   type MonitorDeckPresetId,
 } from "./monitorDeckControls";
+import {
+  applyMonitorDeckPreset,
+  persistMonitorDeckControls,
+  readMonitorDeckControls,
+  updateMonitorDeckControls,
+} from "./monitorDeckControlsRuntime";
 
 export function useMonitorDeckControls() {
   const [deckControls, setDeckControls] = useState<MonitorDeckControls>(
@@ -21,31 +23,25 @@ export function useMonitorDeckControls() {
     if (typeof window === "undefined") {
       return;
     }
-    const saved = window.localStorage.getItem(MONITOR_DECK_CONTROLS_STORAGE_KEY);
-    setDeckControls(loadMonitorDeckControls(saved));
+    setDeckControls(readMonitorDeckControls(window.localStorage));
   }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
-    window.localStorage.setItem(MONITOR_DECK_CONTROLS_STORAGE_KEY, JSON.stringify(deckControls));
+    persistMonitorDeckControls(window.localStorage, deckControls);
   }, [deckControls]);
 
   const updateDeckControl = <K extends keyof MonitorDeckControls>(
     key: K,
     value: MonitorDeckControls[K],
   ) => {
-    setDeckControls((current) =>
-      sanitizeMonitorDeckControls({
-        ...current,
-        [key]: value,
-      }),
-    );
+    setDeckControls((current) => updateMonitorDeckControls({ current, key, value }));
   };
 
   const applyDeckPreset = (presetId: MonitorDeckPresetId) => {
-    setDeckControls(MONITOR_DECK_PRESETS[presetId]);
+    setDeckControls(applyMonitorDeckPreset(presetId));
   };
 
   const activePreset = resolveActiveMonitorDeckPreset(deckControls);

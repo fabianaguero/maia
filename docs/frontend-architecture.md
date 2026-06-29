@@ -19,6 +19,35 @@ section routing to `desktop/src/AppSectionContent.tsx` plus
 `desktop/src/appSectionContentRuntime.ts`. It is not the mounted shell today, but it remains
 an important compatibility path and test target.
 
+Its shell-level visual responsibilities are now also split across:
+
+- `desktop/src/components/AppTopbar.tsx`
+- `desktop/src/components/AppMonitorOverview.tsx`
+- `desktop/src/appShellRuntime.ts`
+- `desktop/src/AppCurateSection.tsx`
+- `desktop/src/AppSessionSection.tsx`
+
+```mermaid
+flowchart TD
+  Main[main.tsx] --> Provider[MonitorProvider]
+  Provider --> Shell[App-v0.tsx]
+  Shell --> ShellModel[useAppV0ContentModel]
+  ShellModel --> MonitorSimple[SimpleMonitorScreen]
+  ShellModel --> MonitorSetup[MonitorSetupScreen]
+  ShellModel --> Connections[ConnectionsScreen]
+  ShellModel --> Library[LibraryScreen]
+  MonitorSimple --> MonitorRuntime[simpleMonitor* runtimes]
+  Library --> LibraryController[useLibraryScreenController]
+  LibraryController --> LibraryState[useLibraryScreenState]
+  LibraryState --> LibraryStateRuntime[libraryScreenStateRuntime]
+  LibraryController --> LibraryVM[libraryScreenViewModel]
+  MonitorSimple --> MonitorProviderRuntime[monitor provider runtimes]
+  MonitorProviderRuntime --> LivePanel[LiveLogMonitorPanel]
+  LivePanel --> LiveController[useLiveLogMonitorPanelController]
+  LiveController --> LiveRuntime[useLiveLogMonitorPanelRuntime]
+  LiveRuntime --> DeckRuntime[useLiveLogMonitorPanelDeckRuntime]
+```
+
 ## Frontend responsibilities
 
 The frontend owns:
@@ -61,14 +90,32 @@ Current emphasis for the next iterations:
 - `desktop/src/AppV0SectionContent.tsx`
 - `desktop/src/App.tsx`
 - `desktop/src/AppSectionContent.tsx`
+- `desktop/src/AppCurateSection.tsx`
+- `desktop/src/AppSessionSection.tsx`
+- `desktop/src/components/AppTopbar.tsx`
+- `desktop/src/components/AppMonitorOverview.tsx`
+- `desktop/src/appShellRuntime.ts`
+- `desktop/src/hooks/useAppContentController.ts`
+- `desktop/src/hooks/useAppContentShellState.ts`
+- `desktop/src/hooks/useAppContentBootstrap.ts`
+- `desktop/src/hooks/useAppContentNavigationActions.ts`
+- `desktop/src/hooks/useAppContentSessionEffects.ts`
 - `desktop/src/hooks/useAppCatalogActions.ts`
+- `desktop/src/hooks/useAppCatalogImportActions.ts`
+- `desktop/src/hooks/useAppCatalogLibraryActions.ts`
+- `desktop/src/hooks/appCatalogActionsRuntime.ts`
+- `desktop/src/hooks/appCatalogActionsTypes.ts`
 - `desktop/src/hooks/useAppMonitorActions.ts`
+- `desktop/src/hooks/useAppMonitorGuideActions.ts`
+- `desktop/src/hooks/useAppMonitorSessionActions.ts`
+- `desktop/src/hooks/appMonitorActionsTypes.ts`
 - `desktop/src/hooks/useAppSelectionActions.ts`
 - `desktop/src/appMonitorActionsRuntime.ts`
 - `desktop/src/appSectionContentRuntime.ts`
 - `desktop/src/hooks/useAppV0ShellState.ts`
 - `desktop/src/hooks/useAppV0PreferencesState.ts`
 - `desktop/src/hooks/useAppV0MonitorScreenState.ts`
+- `desktop/src/hooks/useAppV0ScreenModel.ts`
 - `desktop/src/hooks/appV0MonitorScreenStateRuntime.ts`
 - `desktop/src/appV0MonitorOrchestration.ts`
 - `desktop/src/appV0Preferences.ts`
@@ -81,11 +128,31 @@ Current emphasis for the next iterations:
 ### Monitor surface
 
 - `desktop/src/features/analyzer/components/LiveLogMonitorPanel.tsx`
+- `desktop/src/features/analyzer/components/useLiveLogMonitorPanelController.tsx`
+- `desktop/src/features/analyzer/components/useLiveLogMonitorPanelRuntime.tsx`
+- `desktop/src/features/analyzer/components/liveLogMonitorPanelRuntimeBridge.ts`
+- `desktop/src/features/analyzer/components/useLiveLogMonitorPanelRuntimeState.tsx`
+- `desktop/src/features/analyzer/components/liveLogMonitorPanelRuntimeStateBridge.ts`
+- `desktop/src/features/analyzer/components/useLiveLogMonitorPanelDeckRuntime.tsx`
+- `desktop/src/features/analyzer/components/liveLogMonitorPanelDeckRuntimeBridge.ts`
+- `desktop/src/features/analyzer/components/liveLogMonitorPanelDeckCallbacksRuntime.ts`
+- `desktop/src/features/analyzer/components/useLiveLogMonitorDeckModel.tsx`
+- `desktop/src/features/analyzer/components/liveLogMonitorDeckModelBridge.ts`
+- `desktop/src/features/analyzer/components/liveLogMonitorPanelViewModelRuntime.ts`
+- `desktop/src/features/analyzer/components/liveLogMonitorPanelRenderStateRuntime.ts`
+- `desktop/src/features/analyzer/components/useLiveLogMonitorPanelAudioRuntime.ts`
+- `desktop/src/features/analyzer/components/useLiveLogMonitorPanelAudioCore.ts`
+- `desktop/src/features/analyzer/components/useLiveLogMonitorPanelAudioEffects.ts`
+- `desktop/src/features/analyzer/components/liveLogMonitorPanelAudioInputRuntime.ts`
+- `desktop/src/features/analyzer/components/liveLogMonitorPanelAudioTypes.ts`
+- `desktop/src/features/analyzer/components/liveLogMonitorPanelAudioFeedbackRuntime.ts`
 - `desktop/src/features/analyzer/components/LiveLogMonitorDeckSection.tsx`
 - `desktop/src/features/analyzer/components/LiveLogMonitorLiveDeck.tsx`
 - `desktop/src/features/analyzer/components/LiveWaveformCanvas.tsx`
+- `desktop/src/features/analyzer/components/liveWaveformCanvasRuntime.ts`
 - `desktop/src/features/analyzer/components/liveLogMonitorPlaylistEditorRuntime.ts`
 - `desktop/src/features/analyzer/components/liveLogMonitorPlaylistViewState.ts`
+- `desktop/src/features/analyzer/components/liveLogMonitorViewModelRuntime.ts`
 - `desktop/src/features/analyzer/components/liveLogMonitorInteractionRuntime.ts`
 - `desktop/src/features/analyzer/components/liveLogMonitorControlRuntime.ts`
 - `desktop/src/features/analyzer/components/liveLogMonitorAudioCleanupRuntime.ts`
@@ -117,19 +184,36 @@ Current emphasis for the next iterations:
 - `desktop/src/features/analyzer/components/useLiveLogMonitorSurfaceSync.ts`
 - `desktop/src/features/simple/SimpleMonitorScreen.tsx`
 - `desktop/src/features/simple/SimpleMonitorActiveView.tsx`
+- `desktop/src/features/simple/ConnectionsScreen.tsx`
+- `desktop/src/features/simple/ConnectionsHeroPanel.tsx`
 - `desktop/src/features/simple/MonitorActiveDeckSection.tsx`
 - `desktop/src/features/simple/MonitorActiveFooter.tsx`
 - `desktop/src/features/simple/simpleMonitorActiveViewRuntime.ts`
 - `desktop/src/features/simple/useSimpleMonitorScreenState.ts`
+- `desktop/src/features/simple/useSimpleMonitorScreenController.ts`
+- `desktop/src/features/simple/useSimpleMonitorAnomalyFilterState.ts`
+- `desktop/src/features/simple/useConnectionsFormController.ts`
 - `desktop/src/features/simple/simpleMonitorScreenOrchestrationRuntime.ts`
+- `desktop/src/features/simple/simpleMonitorScreenHookArgsRuntime.ts`
+- `desktop/src/features/simple/simpleMonitorScreenSectionsRuntime.ts`
 - `desktop/src/features/simple/simpleMonitorScreenStateRuntime.ts`
+- `desktop/src/features/simple/simpleMonitorScreenSlicesRuntime.ts`
 - `desktop/src/features/simple/useSimpleMonitorDeckRuntime.ts`
+- `desktop/src/features/simple/useSimpleMonitorDeckController.ts`
+- `desktop/src/features/simple/useSimpleMonitorDeckLiveController.ts`
+- `desktop/src/features/simple/simpleMonitorDeckRuntimeTypes.ts`
 - `desktop/src/features/simple/simpleMonitorDeckRuntime.ts`
 - `desktop/src/features/simple/useSimpleMonitorSourceSelector.ts`
 - `desktop/src/features/simple/useSimpleMonitorDeckVisualState.ts`
+- `desktop/src/features/simple/monitorDeckCanvas.ts`
+- `desktop/src/features/simple/monitorDeckOverviewCanvas.ts`
+- `desktop/src/features/simple/monitorDeckMainCanvas.ts`
+- `desktop/src/features/simple/monitorDeckMainCanvasRuntime.ts`
 - `desktop/src/features/simple/useSimpleMonitorReactiveAudio.ts`
 - `desktop/src/features/simple/simpleMonitorReactiveAudioRuntime.ts`
 - `desktop/src/features/simple/useMonitorLiveStream.ts`
+- `desktop/src/features/simple/monitorLiveStreamSignalRuntime.ts`
+- `desktop/src/features/simple/monitorLiveStreamStateRuntime.ts`
 - `desktop/src/features/simple/useMonitorTrackAudio.ts`
 - `desktop/src/features/simple/simpleMonitorInteractionRuntime.ts`
 - `desktop/src/features/simple/simpleMonitorScreenRuntime.ts`
@@ -146,8 +230,15 @@ Current emphasis for the next iterations:
 - `desktop/src/features/monitor/monitorProviderLiveRuntime.ts`
 - `desktop/src/features/monitor/monitorProviderSessionRuntime.ts`
 - `desktop/src/features/monitor/monitorProviderPlaybackSessionRuntime.ts`
+- `desktop/src/features/monitor/monitorReplayTickRuntime.ts`
+- `desktop/src/features/monitor/monitorReplayHydrationRuntime.ts`
 - `desktop/src/features/monitor/monitorProviderStartRuntime.ts`
 - `desktop/src/features/monitor/monitorProviderPlaybackControlsRuntime.ts`
+- `desktop/src/features/monitor/useMonitorProviderGuideTrack.ts`
+- `desktop/src/features/monitor/useMonitorProviderPlaybackControls.ts`
+- `desktop/src/features/monitor/useMonitorProviderContextValue.ts`
+- `desktop/src/features/monitor/useMonitorProviderController.ts`
+- `desktop/src/features/monitor/useMonitorProviderState.ts`
 - `desktop/src/features/monitor/monitorSessionRuntime.ts`
 - `desktop/src/features/monitor/monitorReplayRuntime.ts`
 - `desktop/src/features/monitor/monitorPlaybackRuntime.ts`
@@ -169,17 +260,29 @@ type re-exports while the monitor flow gradually migrates to the dedicated contr
 - `desktop/src/features/simple/monitorSetupViewModel.ts`
 - `desktop/src/features/simple/monitorSetupPreferences.ts`
 - `desktop/src/features/simple/useMonitorDeckControls.ts`
+- `desktop/src/features/simple/useMonitorSetupProfile.ts`
+- `desktop/src/features/simple/useMonitorSetupScreenModel.ts`
+- `desktop/src/features/simple/MonitorSetupHeroPanel.tsx`
+- `desktop/src/features/simple/MonitorSetupRackSection.tsx`
+- `desktop/src/features/simple/useSimpleModeLibraryPreview.ts`
+- `desktop/src/features/simple/monitorSetupProfileRuntime.ts`
+- `desktop/src/features/simple/monitorSetupScreenRuntime.tsx`
+- `desktop/src/features/simple/monitorDeckControlsRuntime.ts`
 
 ### Connections
 
 - `desktop/src/features/simple/ConnectionsScreen.tsx`
 - `desktop/src/features/simple/useConnectionsScreenState.ts`
+- `desktop/src/features/simple/useConnectionTailController.ts`
+- `desktop/src/features/simple/useConnectionTestController.ts`
 - `desktop/src/features/simple/ConnectionsFormPanel.tsx`
 - `desktop/src/features/simple/ConnectionsSavedListPanel.tsx`
 - `desktop/src/features/simple/ConnectionsSavedRow.tsx`
 - `desktop/src/features/simple/ConnectionsTailConsole.tsx`
 - `desktop/src/features/simple/connectionsViewModel.ts`
 - `desktop/src/features/simple/connectionsRuntime.ts`
+- `desktop/src/features/simple/connectionsProbeRuntime.ts`
+- `desktop/src/features/simple/connectionsScreenHookRuntime.ts`
 - `desktop/src/features/simple/connectionsScreenStateRuntime.ts`
 - `desktop/src/features/simple/connectionsSavedListViewModel.ts`
 - `desktop/src/features/simple/connectionProbeMarkers.ts`
@@ -187,7 +290,15 @@ type re-exports while the monitor flow gradually migrates to the dedicated contr
 ### Library
 
 - `desktop/src/features/library/LibraryScreen.tsx`
+- `desktop/src/features/library/useLibraryScreenController.tsx`
+- `desktop/src/features/library/useLibraryScreenImportActions.ts`
+- `desktop/src/features/library/useLibraryScreenToolbarActions.tsx`
+- `desktop/src/features/library/LibraryTabStrip.tsx`
+- `desktop/src/features/library/libraryScreenStateRuntime.ts`
+- `desktop/src/features/library/libraryScreenControllerTypes.ts`
+- `desktop/src/features/library/libraryScreenTypes.ts`
 - `desktop/src/features/library/libraryScreenViewModel.ts`
+- `desktop/src/features/library/libraryScreenToolbarRuntime.ts`
 - `desktop/src/features/library/libraryPlaylistsViewModel.ts`
 - `desktop/src/features/library/libraryConnectionsViewModel.ts`
 - `desktop/src/features/library/libraryBaseAssetsViewModel.ts`
@@ -200,6 +311,11 @@ type re-exports while the monitor flow gradually migrates to the dedicated contr
 - `desktop/src/features/library/components/LibrarySourcesListPanel.tsx`
 - `desktop/src/features/library/components/LibraryTracksListPanel.tsx`
 - `desktop/src/hooks/libraryRuntime.ts`
+- `desktop/src/hooks/useLibraryBootstrap.ts`
+- `desktop/src/hooks/useLibraryMutationActions.ts`
+- `desktop/src/hooks/useLibraryTrackMutationActions.ts`
+- `desktop/src/hooks/useLibraryPlaylistMutationActions.ts`
+- `desktop/src/hooks/libraryMutationActionsTypes.ts`
 - `desktop/src/features/library/components/ImportTrackForm.tsx`
 - `desktop/src/features/library/components/ImportRepositoryForm.tsx`
 - `desktop/src/features/library/components/ImportBaseAssetForm.tsx`
@@ -208,12 +324,25 @@ type re-exports while the monitor flow gradually migrates to the dedicated contr
 ### Sessions
 
 - `desktop/src/features/session/SessionScreen.tsx`
+- `desktop/src/features/session/useSessionScreenController.ts`
+- `desktop/src/features/session/useSessionScreenActions.ts`
+- `desktop/src/features/session/useSessionScreenEffects.ts`
+- `desktop/src/features/session/sessionScreenViewModel.ts`
+- `desktop/src/features/session/sessionDisplayFormatting.ts`
+- `desktop/src/features/session/sessionDisplayBaseRuntime.ts`
+- `desktop/src/features/session/sessionDisplaySourceRuntime.ts`
 - `desktop/src/features/session/SessionScreenHeader.tsx`
 - `desktop/src/features/session/SessionScreenNoticeStack.tsx`
 - `desktop/src/features/session/SessionScreenPanels.tsx`
 - `desktop/src/features/session/SessionBoothPanel.tsx`
 - `desktop/src/features/session/SessionSetupPanel.tsx`
 - `desktop/src/features/session/SessionSavedSessionsPanel.tsx`
+- `desktop/src/features/session/SessionTemplatePresetStrip.tsx`
+- `desktop/src/features/session/SessionWorkflowStrip.tsx`
+- `desktop/src/features/session/SessionSetupSelectionGrid.tsx`
+- `desktop/src/features/session/SessionCreateFooter.tsx`
+- `desktop/src/features/session/SessionSavedSessionCard.tsx`
+- `desktop/src/features/session/SessionReplayBookmarkPanel.tsx`
 - `desktop/src/features/session/sessionScreenRuntime.ts`
 - `desktop/src/features/session/sessionBoothViewModel.ts`
 - `desktop/src/features/session/sessionDisplay.ts`
@@ -225,6 +354,22 @@ type re-exports while the monitor flow gradually migrates to the dedicated contr
 - `desktop/src/features/inspect/InspectRepositoryView.tsx`
 - `desktop/src/features/inspect/InspectBaseAssetView.tsx`
 - `desktop/src/features/inspect/InspectContextBar.tsx`
+
+## Recent refactor notes
+
+- `desktop/src/features/analyzer/components/LiveWaveformCanvas.tsx` is now a thinner React shell. Canvas resize, analyser sampling, and frame drawing moved to `liveWaveformCanvasRuntime.ts`.
+- `desktop/src/features/simple/monitorDeckCanvas.ts` is now only a public facade. The overview strip and the main deck renderer live in `monitorDeckOverviewCanvas.ts` and `monitorDeckMainCanvas.ts`.
+- `desktop/src/features/session/sessionDisplay.ts` is now also a facade. Formatting, base-track lookup, and source/bed-url resolution live in dedicated runtimes.
+- `desktop/src/features/simple/useConnectionsScreenState.ts` now focuses on form/list orchestration. Live tail polling moved to `useConnectionTailController.ts`, and adapter probe feedback moved to `useConnectionTestController.ts`.
+- `desktop/src/features/monitor/MonitorContext.tsx` now uses `useMonitorProviderState.ts` as the shared state/ref scaffold, leaving provider composition closer to orchestration-only code.
+- `desktop/src/features/analyzer/components/useLiveLogMonitorPanelRuntime.tsx` is now mostly a composition shell. Orchestrator, lifecycle, and deck-runtime input assembly moved to `liveLogMonitorPanelRuntimeBridge.ts`.
+- `desktop/src/features/analyzer/components/useLiveLogMonitorPanelRuntimeState.tsx` is now a thin assembler over `buildLiveLogMonitorViewModel`, `useLiveLogMonitorPanelAudioRuntime`, and `useLiveLogMonitorReplayState`, with pure input/output shaping in `liveLogMonitorPanelRuntimeStateBridge.ts`.
+- `desktop/src/features/analyzer/components/useLiveLogMonitorPanelDeckRuntime.tsx` is now a lighter shell over session actions, operator actions, deck model, and final render-state assembly, with callback shaping split into `liveLogMonitorPanelDeckCallbacksRuntime.ts` and the remaining prop wiring in `liveLogMonitorPanelDeckRuntimeBridge.ts`.
+- `desktop/src/features/analyzer/components/useLiveLogMonitorDeckModel.tsx` now delegates panel/deck/scene/routing/live-props input shaping to `liveLogMonitorDeckModelBridge.ts`, leaving the hook focused on memoized composition.
+- `desktop/src/features/analyzer/components/useLiveLogMonitorPanelAudioRuntime.ts` is now a thin composition layer over `useLiveLogMonitorPanelAudioCore.ts` and `useLiveLogMonitorPanelAudioEffects.ts`, while `liveLogMonitorPanelAudioInputRuntime.ts` and `liveLogMonitorPanelAudioFeedbackRuntime.ts` keep the pure shaping/warning behavior testable outside React.
+- `desktop/src/features/session/SessionScreen.tsx` now delegates prop assembly for its header, notice stack, booth, and panel surfaces to `sessionScreenViewModel.ts`.
+- `desktop/src/features/session/SessionSetupPanel.tsx` and `SessionSavedSessionsPanel.tsx` now delegate their large visual sections to dedicated subcomponents, making session setup and replay surfaces easier to maintain and test in isolation.
+- This keeps the visual monitor path closer to the same architecture already used in library, session, and live-monitor audio: shell + controller/runtime + focused tests.
 - `desktop/src/features/inspect/InspectEmptyState.tsx`
 
 ## Section ownership
@@ -253,10 +398,47 @@ This is the core rule contributors should preserve: avoid re-growing screen file
 Recent examples of that direction:
 
 - `useAppV0ContentModel.ts` now owns the section/model assembly used by `App-v0.tsx`, leaving the mounted shell as provider composition plus final render
+- `useAppV0ScreenModel.ts` now owns the final App-v0 shell/content model assembly, leaving `useAppV0ContentModel.ts` closer to dependency orchestration than view-model construction
 - `appSectionContentRuntime.ts` now owns the pure visibility rules for the legacy `App.tsx` section selector, while `AppSectionContent.tsx` keeps the actual lazy surface composition
 - `useAppCatalogActions.ts` now owns the legacy shell catalog/import/update/delete handlers so `App.tsx` no longer mixes section composition with track/repository mutation flows
-- `useAppMonitorActions.ts` now owns replay/live-session launch behavior for the legacy shell while `appMonitorActionsRuntime.ts` keeps pure replay/session persistence derivations testable outside React
+- `useAppContentController.ts` now keeps its public shell contract while delegating analyzer/bootstrap state to `useAppContentBootstrap.ts`, UI shell preferences/state to `useAppContentShellState.ts`, navigation/background actions to `useAppContentNavigationActions.ts`, and session-bookmark refresh side effects to `useAppContentSessionEffects.ts`
+- `useAppMonitorActions.ts` is now a thin composition hook over `useAppMonitorGuideActions.ts` and `useAppMonitorSessionActions.ts`, while `appMonitorActionsRuntime.ts` keeps pure replay/session persistence derivations testable outside React
+- `SimpleMonitorScreen.tsx` is now a thin surface selector. The orchestration, launch-state, and deck-state responsibilities live in `useSimpleMonitorScreenState.ts` plus dedicated simple-monitor runtimes
+- `useSimpleMonitorScreenState.ts` now delegates anomaly-filter state to `useSimpleMonitorAnomalyFilterState.ts` and explicit launch/deck slice shaping to `simpleMonitorScreenSlicesRuntime.ts`, keeping the monitor shell hook closer to orchestration than object assembly
+- `useSimpleMonitorScreenController.ts` now owns the launch/deck/anomaly composition beneath `useSimpleMonitorScreenState.ts`, so the public simple-monitor hook mostly assembles the final active/idle view state
+- `useSimpleMonitorDeckController.ts` now owns the sub-hook composition beneath `useSimpleMonitorDeckRuntime.ts`, leaving the deck runtime as a stable facade over the assembled deck state
+- `useMonitorSetupProfile.ts`, `monitorSetupProfileRuntime.ts`, and `monitorDeckControlsRuntime.ts` now isolate setup-profile composition plus persisted deck-control IO from the setup screen shell
+- `LibraryScreen.tsx` now delegates state orchestration, toolbar actions, import/delete side effects, and connection refresh behavior to `useLibraryScreenController.tsx`, while `LibraryTabStrip.tsx` owns tab rendering
+- `useLibraryScreenController.tsx` is now a lighter composition hook over `useLibraryScreenState.ts`, `useLibraryScreenImportActions.ts`, `useLibraryScreenToolbarActions.tsx`, and `libraryScreenToolbarRuntime.ts`
+- `LiveLogMonitorPanel.tsx` is now a thin composition shell over `useLiveLogMonitorPanelController.tsx` and `useLiveLogMonitorPanelRuntime.tsx`, making monitor runtime wiring directly unit-testable
+- `useLibrary.ts` now acts as a thin composition hook over `useLibraryBootstrap.ts` and `useLibraryMutationActions.ts`, while the mutation facade delegates track flows to `useLibraryTrackMutationActions.ts` and playlist flows to `useLibraryPlaylistMutationActions.ts`
+- `useSessionScreenController.ts` now delegates command handlers to `useSessionScreenActions.ts` and monitor/audio/event side effects to `useSessionScreenEffects.ts`
+- `useLiveLogMonitorPanelRuntimeState.tsx` now delegates the audio/background/reset/sample/sync stack to `useLiveLogMonitorPanelAudioRuntime.ts`, whose core/effects split keeps the panel state hook free from deeper audio wiring details
+
+## Current refactor status
+
+Areas that are now structurally healthy:
+
+- mounted shell routing and section selection
+- monitor provider runtime/orchestration
+- simple monitor launch/deck/view-model layer
+- live monitor panel controller/runtime shell
+- session screen composition
+- library screen controller and tab shell
+
+Areas that still carry the most debt:
+
+- `desktop/src/features/analyzer/components/useLiveLogMonitorPanelRuntimeState.tsx`
+- `desktop/src/features/analyzer/components/WaveformPlaceholder.tsx`
+- `desktop/src/features/analyzer/components/LiveWaveformCanvas.tsx`
+- `desktop/src/features/session/useSessionScreenController.ts`
+- `desktop/src/hooks/useLibrary.ts`
+- `desktop/src/features/simple/monitorDeckCanvas.ts`
+
+Those modules should be the next extraction targets before broad visual redesign work or public contributor onboarding expands.
 - `useAppSelectionActions.ts` now owns legacy shell selection, inspection, and simple-monitor navigation callbacks so `App.tsx` passes stable feature actions instead of large inline closures
+- `AppTopbar.tsx`, `AppMonitorOverview.tsx`, and `appShellRuntime.ts` now isolate legacy shell branding/control rendering plus now-playing visibility from `App.tsx`
+- `AppCurateSection.tsx` and `AppSessionSection.tsx` now isolate library/session screen wiring from `AppSectionContent.tsx`, leaving the compatibility router closer to pure section selection
 - `monitorLiveStreamRuntime.ts` now owns reset-state and hook-state snapshot builders for live tail state
 - `liveLogMonitorSessionRuntime.ts` now also owns live-monitor start reset defaults and beat-clock / beat-looper boot planning so `handleStart` keeps less session-start policy inline
 - `connectionsRuntime.ts` now owns the final hook-state snapshot returned by `useConnectionsScreenState`
@@ -301,6 +483,14 @@ Recent examples of that direction:
 - `useLiveLogMonitorAuxPlayback.ts` now owns rendered-blob playback fallback plus panel test-tone playback so the panel keeps less one-shot cue-output wiring inline
 - `useLiveLogMonitorSampleBank.ts` now owns the sample-bank loading lifecycle so `LiveLogMonitorPanel.tsx` keeps less async resource-loading code inline
 - `useLiveLogMonitorSurfaceSync.ts` now owns monitor preference persistence plus volume/scroll/style synchronization effects so the panel keeps less surface-only effect wiring inline
+- `useLiveLogMonitorSurfaceState.ts` now owns the local refs/state scaffold for the live monitor so `LiveLogMonitorPanel.tsx` keeps less declaration noise inline
+- `useLiveLogMonitorReplayState.ts` now owns replay bookmark + feedback wiring so `LiveLogMonitorPanel.tsx` keeps less replay interaction state inline
+- `useLiveLogMonitorDeckModel.tsx` now owns the deck presentation assembly so `LiveLogMonitorPanel.tsx` keeps less `useMemo`-driven prop composition inline
+- `useLiveLogMonitorLifecycle.ts` now owns repo-reset, guide-track seed, blob cleanup, and stream subscription effects so `LiveLogMonitorPanel.tsx` keeps less lifecycle/orchestration wiring inline
+- `useLiveLogMonitorSessionActions.ts` now owns live start/stop/bounce operator actions so `LiveLogMonitorPanel.tsx` keeps less transport-startup and teardown policy inline
+- `useLiveLogMonitorOperatorActions.ts` now owns volume mute/restore, replay feedback application, bookmark jumps, and trace explanation selection so the panel keeps less operator-interaction policy inline
+- `useMonitorProviderGuideTrack.ts` now owns guide-track template, queue, seek, and deferred reload wiring so `MonitorContext.tsx` keeps less decode/playlist orchestration inline
+- `useMonitorProviderPlaybackControls.ts` now owns replay pause/resume/seek/step wiring so `MonitorContext.tsx` keeps less playback-control plumbing inline
 - `LiveLogMonitorDeckSection.tsx` now owns active-deck composition, mutation trace, and sequencer wiring for the analyzer live monitor
 - `LiveLogMonitorLiveDeck.tsx` now owns the live deck composition block so `LiveLogMonitorPanel.tsx` no longer renders every live subsection inline
 - `LiveWaveformCanvas.tsx` now isolates the analyser-driven waveform rendering loop from the broader live monitor orchestration

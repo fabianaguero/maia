@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AppContentV0 } from "../src/App-v0";
+import App, { AppContentV0 } from "../src/App-v0";
 
 const hooksMock = vi.hoisted(() => {
   const selectedTrack = {
@@ -365,5 +365,16 @@ describe("AppContentV0", () => {
     });
 
     consoleError.mockRestore();
+  });
+});
+
+describe("App", () => {
+  it("mounts the provider-wrapped v0 content shell", async () => {
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("shell-section")).toHaveTextContent("monitor");
+    });
+    expect(screen.getByTestId("content-section")).toHaveTextContent("monitor");
   });
 });

@@ -84,12 +84,11 @@ describe("useReplayBookmarks", () => {
     const { result } = renderReplayBookmarksHook();
 
     await waitFor(() => {
-      expect(result.current.bookmarkBusy).toBe(false);
+      expect(result.current.bookmarkLabelDraft).toBe("Window 2 saved");
     });
 
     expect(result.current.sortedSessionBookmarks.map((entry) => entry.id)).toEqual([1, 2]);
     expect(result.current.activeReplayBookmark?.id).toBe(2);
-    expect(result.current.bookmarkLabelDraft).toBe("Window 2 saved");
     expect(result.current.bookmarkNoteDraft).toBe("note");
     expect(result.current.bookmarkTagDraft).toBe("alert");
   });

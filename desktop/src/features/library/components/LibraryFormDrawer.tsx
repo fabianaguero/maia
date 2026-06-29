@@ -6,7 +6,7 @@ import type {
   ImportRepositoryInput,
   ImportTrackInput,
 } from "../../../types/library";
-import type { LibraryTab } from "../LibraryScreen";
+import type { LibraryTab } from "../libraryScreenTypes";
 import { ImportBaseAssetForm } from "./ImportBaseAssetForm";
 import { ImportRepositoryForm } from "./ImportRepositoryForm";
 import { ImportTrackForm } from "./ImportTrackForm";

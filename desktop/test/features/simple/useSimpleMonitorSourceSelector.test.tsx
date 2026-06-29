@@ -79,6 +79,46 @@ describe("useSimpleMonitorSourceSelector", () => {
     ).toBe(true);
   });
 
+  it("falls back to an empty persistent connection list when the API returns a non-array value", async () => {
+    repositoriesMock.listLogSourceConnections.mockResolvedValue({ invalid: true });
+
+    const { result } = renderHook(() =>
+      useSimpleMonitorSourceSelector({
+        repositories: [fileRepository],
+        selectedSoundId: "track-1",
+        isListening: false,
+        copy: buildMonitorSourceCopy(en),
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.persistentConnections).toEqual([]);
+    });
+
+    expect(result.current.cloudConnectionCount).toBe(0);
+    expect(result.current.allMonitorSourceOptions).toHaveLength(1);
+  });
+
+  it("recovers with an empty persistent connection list when loading connections fails", async () => {
+    repositoriesMock.listLogSourceConnections.mockRejectedValue(new Error("offline"));
+
+    const { result } = renderHook(() =>
+      useSimpleMonitorSourceSelector({
+        repositories: [fileRepository],
+        selectedSoundId: "track-1",
+        isListening: false,
+        copy: buildMonitorSourceCopy(en),
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.persistentConnections).toEqual([]);
+    });
+
+    expect(result.current.allMonitorSourceOptions).toHaveLength(1);
+    expect(result.current.sourceEmptyMessage).toBe(en.simpleMode.setup.emptyDefault);
+  });
+
   it("clears launching state once monitoring becomes active", async () => {
     const { result, rerender } = renderHook(
       ({ isListening }) =>

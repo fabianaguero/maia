@@ -279,6 +279,92 @@ describe("WaveformPlaceholder", () => {
     expect(onSeek).not.toHaveBeenCalled();
   });
 
+  it("ignores residual cue clicks after a drag and skips keyboard nudging for non-editable cues", () => {
+    vi.useFakeTimers();
+    const onSeek = vi.fn();
+    const onMoveCue = vi.fn();
+    const onNudgeCue = vi.fn();
+    const { container } = render(
+      <WaveformPlaceholder
+        bins={[0.1, 0.3, 0.6]}
+        beatGrid={Array.from({ length: 65 }, (_, index) => ({
+          index,
+          second: index * 0.5,
+        }))}
+        durationSeconds={40}
+        onSeek={onSeek}
+        canEditPerformance
+        editableCues={[
+          {
+            id: "hot-1",
+            second: 4,
+            label: "Drop",
+            kind: "hot",
+          },
+        ]}
+        hotCues={[
+          {
+            second: 4,
+            label: "Drop",
+            type: "hot",
+          },
+        ]}
+        onMoveCue={onMoveCue}
+        onNudgeCue={onNudgeCue}
+      />,
+    );
+
+    const stage = container.querySelector(".waveform-stage") as HTMLDivElement;
+    mockStageRect(stage);
+
+    const editableCue = screen.getByRole("button", { name: "Seek to cue Drop" });
+    fireEvent.mouseDown(editableCue, { clientX: 20 });
+    fireEvent.mouseMove(window, { clientX: 60 });
+    fireEvent.mouseUp(window);
+    fireEvent.click(editableCue);
+
+    expect(onMoveCue).toHaveBeenCalledWith(
+      {
+        id: "hot-1",
+        second: 4,
+        label: "Drop",
+        kind: "hot",
+      },
+      12,
+    );
+    expect(onSeek).not.toHaveBeenCalled();
+
+    vi.runAllTimers();
+
+    cleanup();
+
+    render(
+      <WaveformPlaceholder
+        bins={[0.1, 0.3, 0.6]}
+        beatGrid={Array.from({ length: 65 }, (_, index) => ({
+          index,
+          second: index * 0.5,
+        }))}
+        durationSeconds={40}
+        onSeek={onSeek}
+        canEditPerformance
+        hotCues={[
+          {
+            second: 10,
+            label: "Marker",
+            type: "memory",
+          },
+        ]}
+        onNudgeCue={onNudgeCue}
+      />,
+    );
+
+    const nonInteractiveCue = screen.getByRole("button", { name: "Seek to cue Marker" });
+    fireEvent.keyDown(nonInteractiveCue, { key: "ArrowRight" });
+
+    expect(onNudgeCue).not.toHaveBeenCalled();
+  });
+
   it("supports keyboard nudge and slip on cue markers", () => {
     const onSeek = vi.fn();
     const onNudgeCue = vi.fn();
@@ -314,10 +400,12 @@ describe("WaveformPlaceholder", () => {
 
     const cueButton = screen.getByRole("button", { name: "Seek to cue Drop" });
 
+    fireEvent.keyDown(cueButton, { key: "Enter" });
     fireEvent.keyDown(cueButton, { key: "ArrowRight" });
     fireEvent.keyDown(cueButton, { key: "ArrowRight", shiftKey: true });
     fireEvent.keyDown(cueButton, { key: "ArrowLeft", altKey: true });
 
+    expect(onNudgeCue).toHaveBeenCalledTimes(3);
     expect(onNudgeCue).toHaveBeenCalledWith(
       {
         id: "hot-1",
@@ -400,5 +488,137 @@ describe("WaveformPlaceholder", () => {
     expect(onMoveLoopBoundary).toHaveBeenCalledWith("loop-1", "start", 7.98);
     expect(onMoveLoopBoundary).toHaveBeenCalledWith("loop-1", "end", 14);
     expect(onSeek).not.toHaveBeenCalled();
+  });
+
+  it("renders selected phrase summaries and omits playhead overlays without a duration", () => {
+    const { container } = render(
+      <WaveformPlaceholder
+        bins={[0.1, 0.3, 0.6]}
+        beatGrid={[]}
+        durationSeconds={null}
+        currentTime={5}
+        canSelectPhrase
+        onSelectPhraseRange={vi.fn()}
+        selectedPhraseRange={{
+          startSecond: 4,
+          endSecond: 12,
+          startBeatIndex: 8,
+          endBeatIndex: 24,
+          beatCount: 16,
+          label: "Phrase 2",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Phrase 2 · 16 beats")).toBeInTheDocument();
+    expect(container.querySelector(".waveform-progress-mask")).toBeNull();
+    expect(container.querySelector(".waveform-playhead")).toBeNull();
+  });
+
+  it("renders pending grid state, empty phrase state, and the analysis completion marker", () => {
+    const { container } = render(
+      <WaveformPlaceholder
+        bins={[0.1, 0.3, 0.6]}
+        beatGrid={[]}
+        durationSeconds={20}
+        analysisProgress={0.42}
+        canSelectPhrase
+        onSelectPhraseRange={vi.fn()}
+      />,
+    );
+
+    const analysisMarker = container.querySelector(".waveform-analysis-end");
+    expect(analysisMarker).not.toBeNull();
+    expect(analysisMarker).toHaveAttribute("title", "Analysis complete up to this point (42%)");
+    expect(screen.getByText("Pending")).toBeInTheDocument();
+    expect(screen.getByText("None")).toBeInTheDocument();
+  });
+
+  it("renders non-seekable loop and cue overlays without interactive editing affordances", () => {
+    const onMoveCue = vi.fn();
+    render(
+      <WaveformPlaceholder
+        bins={[0.1, 0.3, 0.6]}
+        beatGrid={[]}
+        durationSeconds={null}
+        canEditPerformance
+        hotCues={[
+          {
+            second: 10,
+            label: "Marker",
+            type: "memory",
+          },
+        ]}
+        editableLoops={[
+          {
+            id: "loop-1",
+            slot: 1,
+            startSecond: 4,
+            endSecond: 8,
+            label: "Loop A",
+            color: null,
+            locked: false,
+          },
+        ]}
+        regions={[
+          {
+            id: "loop-1",
+            startSecond: 4,
+            endSecond: 8,
+            label: "Loop A",
+            type: "loop",
+          },
+        ]}
+        onMoveCue={onMoveCue}
+      />,
+    );
+
+    const loopRegion = screen.getByRole("button", { name: "Seek to Loop A" });
+    const cueButton = screen.getByRole("button", { name: "Seek to cue Marker" });
+
+    expect(loopRegion).toHaveAttribute("tabindex", "0");
+    expect(loopRegion).toHaveAttribute("aria-disabled", "true");
+    expect(cueButton).toBeDisabled();
+
+    fireEvent.mouseDown(cueButton, { clientX: 20 });
+
+    expect(onMoveCue).not.toHaveBeenCalled();
+  });
+
+  it("does not start cue dragging when seeking is allowed but cue editing is disabled", () => {
+    const onSeek = vi.fn();
+    const onMoveCue = vi.fn();
+
+    render(
+      <WaveformPlaceholder
+        bins={[0.1, 0.3, 0.6]}
+        beatGrid={[]}
+        durationSeconds={20}
+        onSeek={onSeek}
+        editableCues={[
+          {
+            id: "hot-1",
+            second: 5,
+            label: "Drop",
+            kind: "hot",
+          },
+        ]}
+        hotCues={[
+          {
+            second: 5,
+            label: "Drop",
+            type: "hot",
+          },
+        ]}
+        onMoveCue={onMoveCue}
+      />,
+    );
+
+    const cueButton = screen.getByRole("button", { name: "Seek to cue Drop" });
+    fireEvent.mouseDown(cueButton, { clientX: 40 });
+    fireEvent.click(cueButton);
+
+    expect(onMoveCue).not.toHaveBeenCalled();
+    expect(onSeek).toHaveBeenCalledWith(5);
   });
 });

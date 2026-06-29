@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  buildPlaylistSourcesViewModel,
-  type SourceCardViewModel,
-} from "../../../src/providers/viewmodels/playlistSourcesViewModel";
+import { buildPlaylistSourcesViewModel } from "../../../src/providers/viewmodels/playlistSourcesViewModel";
 
 describe("playlistSourcesViewModel", () => {
   it("builds SourceCard for each connected source", () => {

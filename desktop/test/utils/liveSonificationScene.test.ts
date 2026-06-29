@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { LiveLogCue } from "../../src/types/library";
+import type { BaseAssetRecord, LiveLogCue } from "../../src/types/library";
 import {
   resolveArrangementVoices,
   resolveLiveSonificationScene,
@@ -68,5 +68,55 @@ describe("live sonification profiles", () => {
     expect(minimalVoices).toHaveLength(1);
     expect(fullVoices.length).toBeGreaterThan(minimalVoices.length);
     expect(stackedVoices.length).toBeGreaterThan(fullVoices.length);
+  });
+
+  it("uses playable managed directory entries as live sample sources", () => {
+    const baseAsset: BaseAssetRecord = {
+      id: "asset-1",
+      title: "Managed kit",
+      sourcePath: "/tmp/kit",
+      storagePath: "/tmp/kit",
+      sourceKind: "directory",
+      importedAt: "2026-06-27T00:00:00Z",
+      categoryId: "drum-kit",
+      categoryLabel: "Drum Kit",
+      reusable: true,
+      entryCount: 3,
+      checksum: null,
+      confidence: 0.9,
+      summary: "kit",
+      analyzerStatus: "ready",
+      notes: [],
+      tags: [],
+      metrics: {
+        playableAudioEntries: ["kick.wav", "snare.wav", "notes.txt"],
+        previewEntries: ["snare.wav", "hat.ogg"],
+      },
+    };
+
+    const scene = resolveLiveSonificationScene(baseAsset, null, "steady-house", "balanced", null);
+
+    expect(scene.sampleSourceMode).toBe("multi-sample");
+    expect(scene.sampleSourceCount).toBe(3);
+    expect(scene.sampleSources.map((source) => source.path)).toEqual([
+      "/tmp/kit/kick.wav",
+      "/tmp/kit/snare.wav",
+      "/tmp/kit/hat.ogg",
+    ]);
+  });
+
+  it("lets the reference anchor override genre and preset when style stays on default", () => {
+    const scene = resolveLiveSonificationScene(null, null, "steady-house", "balanced", {
+      trackId: "anchor-1",
+      trackTitle: "Anchor Track",
+      musicStyleId: "techno",
+      bpm: 132,
+      energyLevel: 0.82,
+      suggestedPresetId: "beat-locked",
+    });
+
+    expect(scene.genreId).toBe("techno");
+    expect(scene.presetId).toBe("beat-locked");
+    expect(scene.summary).toContain("Anchor Track");
   });
 });

@@ -46,6 +46,25 @@ describe("connectionsScreenStateRuntime", () => {
     expect(setLoading).toHaveBeenLastCalledWith(false);
   });
 
+  it("surfaces refresh failures and still clears loading state", async () => {
+    const setLoading = vi.fn();
+    const setError = vi.fn();
+    const setConnections = vi.fn();
+
+    await refreshConnectionsState({
+      setLoading,
+      setError,
+      setConnections,
+      listLogSourceConnections: async () => {
+        throw new Error("list failed");
+      },
+    });
+
+    expect(setConnections).not.toHaveBeenCalled();
+    expect(setError).toHaveBeenLastCalledWith("list failed");
+    expect(setLoading).toHaveBeenLastCalledWith(false);
+  });
+
   it("browses and injects the picked file path into the draft", async () => {
     const setPickerBusy = vi.fn();
     const setError = vi.fn();
@@ -71,6 +90,27 @@ describe("connectionsScreenStateRuntime", () => {
       sourcePath: "/logs/picked.log",
       label: "x",
     });
+    expect(setPickerBusy).toHaveBeenLastCalledWith(false);
+  });
+
+  it("handles browse failures and non-error fallbacks", async () => {
+    const setPickerBusy = vi.fn();
+    const setError = vi.fn();
+    const setDraft = vi.fn();
+
+    await browseConnectionFileState({
+      sourcePath: "/logs/current.log",
+      setPickerBusy,
+      setError,
+      setDraft,
+      pickRepositoryFile: async () => {
+        throw "picker exploded";
+      },
+      fallbackErrorMessage: "picker failed",
+    });
+
+    expect(setDraft).not.toHaveBeenCalled();
+    expect(setError).toHaveBeenLastCalledWith("picker failed");
     expect(setPickerBusy).toHaveBeenLastCalledWith(false);
   });
 
@@ -110,6 +150,64 @@ describe("connectionsScreenStateRuntime", () => {
     expect(setSaving).toHaveBeenLastCalledWith(false);
   });
 
+  it("stops save flow on invalid draft and reports persistence errors", async () => {
+    const invalidSetSaving = vi.fn();
+    const invalidSetError = vi.fn();
+    const invalidUpsert = vi.fn(async () => undefined);
+    const invalidAfterSave = vi.fn(async () => undefined);
+
+    await saveConnectionState({
+      draft: {
+        kind: "file_log",
+        label: "",
+        sourcePath: "",
+        gcpProjectId: "",
+        gcpServiceName: "",
+        gcpRegion: "",
+        gcpBackfillFreshness: "10m",
+      },
+      editingConnectionId: null,
+      t: en,
+      setSaving: invalidSetSaving,
+      setError: invalidSetError,
+      upsertLogSourceConnection: invalidUpsert,
+      onAfterSave: invalidAfterSave,
+    });
+
+    expect(invalidUpsert).not.toHaveBeenCalled();
+    expect(invalidAfterSave).not.toHaveBeenCalled();
+    expect(invalidSetError).toHaveBeenLastCalledWith(
+      en.simpleMode.connections.chooseLogFileError,
+    );
+    expect(invalidSetSaving).toHaveBeenLastCalledWith(false);
+
+    const errorSetSaving = vi.fn();
+    const errorSetError = vi.fn();
+
+    await saveConnectionState({
+      draft: {
+        kind: "file_log",
+        label: "new-log",
+        sourcePath: "/logs/new.log",
+        gcpProjectId: "",
+        gcpServiceName: "",
+        gcpRegion: "",
+        gcpBackfillFreshness: "10m",
+      },
+      editingConnectionId: null,
+      t: en,
+      setSaving: errorSetSaving,
+      setError: errorSetError,
+      upsertLogSourceConnection: async () => {
+        throw new Error("save failed");
+      },
+      onAfterSave: async () => undefined,
+    });
+
+    expect(errorSetError).toHaveBeenLastCalledWith("save failed");
+    expect(errorSetSaving).toHaveBeenLastCalledWith(false);
+  });
+
   it("deletes a connection, resets the form when editing it, and refreshes the list", async () => {
     const setError = vi.fn();
     const deleteLogSourceConnection = vi.fn(async () => undefined);
@@ -129,6 +227,28 @@ describe("connectionsScreenStateRuntime", () => {
     expect(deleteLogSourceConnection).toHaveBeenCalledWith("conn-1");
     expect(resetForm).toHaveBeenCalledTimes(1);
     expect(refreshConnections).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports delete failures without resetting unrelated form state", async () => {
+    const setError = vi.fn();
+    const deleteLogSourceConnection = vi.fn(async () => {
+      throw new Error("delete failed");
+    });
+    const resetForm = vi.fn();
+    const refreshConnections = vi.fn(async () => undefined);
+
+    await deleteConnectionState({
+      id: "conn-1",
+      editingConnectionId: "other",
+      setError,
+      deleteLogSourceConnection,
+      resetForm,
+      refreshConnections,
+    });
+
+    expect(resetForm).not.toHaveBeenCalled();
+    expect(refreshConnections).not.toHaveBeenCalled();
+    expect(setError).toHaveBeenLastCalledWith("delete failed");
   });
 
   it("tests a connection, updates probe state, and stops the ephemeral session", async () => {
@@ -191,6 +311,40 @@ describe("connectionsScreenStateRuntime", () => {
     expect(setTestStatusById).toHaveBeenLastCalledWith({ "conn-1": "success" });
     expect(setTestMessageById).toHaveBeenLastCalledWith({
       "conn-1": "2 lines available from the tail",
+    });
+    expect(stopStreamSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("marks connection tests as failed when startup or cleanup breaks", async () => {
+    const setError = vi.fn();
+    const setTestStatusById = vi.fn();
+    const setTestMessageById = vi.fn();
+    const stopStreamSession = vi.fn(async () => {
+      throw new Error("cleanup failed");
+    });
+
+    await testConnectionState({
+      connection: createConnection({ kind: "gcp_cloud_run", adapterKind: "process" }),
+      t: en,
+      setError,
+      currentStatusById: {},
+      currentMessageById: {},
+      setTestStatusById,
+      setTestMessageById,
+      startLogSourceConnection: async () => {
+        throw new Error("startup failed");
+      },
+      pollStreamSession: async () => {
+        throw new Error("should not poll");
+      },
+      sleep: async () => undefined,
+      stopStreamSession,
+    });
+
+    expect(setError).toHaveBeenNthCalledWith(1, null);
+    expect(setTestStatusById).toHaveBeenLastCalledWith({ "conn-1": "error" });
+    expect(setTestMessageById).toHaveBeenLastCalledWith({
+      "conn-1": "startup failed",
     });
     expect(stopStreamSession).toHaveBeenCalledTimes(1);
   });

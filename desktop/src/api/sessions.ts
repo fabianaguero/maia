@@ -74,7 +74,7 @@ export async function listPersistedSessions(): Promise<PersistedSession[]> {
 
 export async function getPersistedSession(id: string): Promise<PersistedSession> {
   try {
-    return invoke<PersistedSession>("get_persisted_session", { id });
+    return await invoke<PersistedSession>("get_persisted_session", { id });
   } catch (error) {
     if (isTauriUnavailable(error)) return null as any;
     throw error;
@@ -86,7 +86,7 @@ export async function updatePersistedSessionStatus(
   status: "active" | "paused" | "stopped",
 ): Promise<void> {
   try {
-    return invoke("update_persisted_session_status", { id, status });
+    return await invoke("update_persisted_session_status", { id, status });
   } catch (error) {
     if (isTauriUnavailable(error)) return;
     throw error;
@@ -101,7 +101,7 @@ export async function updatePersistedSessionCursor(
   lastBpm: number | null,
 ): Promise<void> {
   try {
-    return invoke("update_persisted_session_cursor", {
+    return await invoke("update_persisted_session_cursor", {
       id,
       cursor,
       linesDelta,
@@ -116,7 +116,7 @@ export async function updatePersistedSessionCursor(
 
 export async function deletePersistedSession(id: string): Promise<boolean> {
   try {
-    return invoke<boolean>("delete_persisted_session", { id });
+    return await invoke<boolean>("delete_persisted_session", { id });
   } catch (error) {
     if (isTauriUnavailable(error)) return false;
     throw error;
@@ -207,7 +207,7 @@ export async function insertSessionEvent(input: InsertSessionEventInput): Promis
       input.lineCount,
       input.sonificationCuesJson.length,
     );
-    return invoke<number>("insert_session_event", { input });
+    return await invoke<number>("insert_session_event", { input });
   } catch (error) {
     if (isTauriUnavailable(error)) return -1;
     throw error;

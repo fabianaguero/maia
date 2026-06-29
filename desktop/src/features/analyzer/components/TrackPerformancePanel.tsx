@@ -1,32 +1,20 @@
 import { useEffect, useState } from "react";
 import { useT } from "../../../i18n/I18nContext";
-import type {
-  LibraryTrack,
-  TrackCuePoint,
-  TrackSavedLoop,
-  UpdateTrackPerformanceInput,
-} from "../../../types/library";
+import type { LibraryTrack, UpdateTrackPerformanceInput } from "../../../types/library";
 import type { BeatGridPhraseRange } from "../../../utils/beatGrid";
 import { formatShortDateTime } from "../../../utils/date";
-import {
-  canCreateBeatLoop,
-  canCreateHotCue,
-  canCreateSavedLoop,
-  createTrackCuePoint,
-  createTrackSavedLoop,
-  createTrackSavedLoopFromRange,
-  formatTrackTime,
-  hasUsableBeatGrid,
-  removeTrackCuePoint,
-  removeTrackSavedLoop,
-  resolveTrackPlacementSecond,
-  setTrackSavedLoopBoundary,
-  snapTrackSecond,
-  updateTrackCuePoint,
-  updateTrackSavedLoop,
-} from "../../../utils/track";
+import { formatTrackTime } from "../../../utils/track";
 import { TrackCueList } from "./TrackCueList";
 import { TrackSavedLoopList } from "./TrackSavedLoopList";
+import {
+  buildQuantizedPlacementHint,
+  buildTrackColorOptions,
+  buildTrackPerformancePanelState,
+  createTrackPerformanceActions,
+  LOOP_BEAT_PRESETS,
+  renderCueLabel,
+  renderLoopLabel,
+} from "./trackPerformancePanelRuntime";
 
 interface TrackPerformancePanelProps {
   track: LibraryTrack;
@@ -34,26 +22,6 @@ interface TrackPerformancePanelProps {
   currentTime?: number;
   selectedPhraseRange?: BeatGridPhraseRange | null;
   onUpdatePerformance?: (input: UpdateTrackPerformanceInput) => Promise<void>;
-}
-
-const LOOP_BEAT_PRESETS = [4, 8, 16];
-
-function renderCueLabel(cue: TrackCuePoint, slotTemplate: string): string {
-  const slotLabel = cue.slot !== null ? slotTemplate.replace("{slot}", String(cue.slot)) : cue.kind;
-  return `${cue.label} · ${formatTrackTime(cue.second)} · ${slotLabel}`;
-}
-
-function renderLoopLabel(
-  loop: TrackSavedLoop,
-  slotTemplate: string,
-  loopWord: string,
-  lockedLabel: string,
-  editableLabel: string,
-): string {
-  const slotLabel =
-    loop.slot !== null ? slotTemplate.replace("{slot}", String(loop.slot)) : loopWord;
-  const lockLabel = loop.locked ? lockedLabel : editableLabel;
-  return `${loop.label} · ${formatTrackTime(loop.startSecond)} -> ${formatTrackTime(loop.endSecond)} · ${slotLabel} · ${lockLabel}`;
 }
 
 export function TrackPerformancePanel({
@@ -65,125 +33,41 @@ export function TrackPerformancePanel({
 }: TrackPerformancePanelProps) {
   const t = useT();
   const { performance } = track;
-  const TRACK_COLOR_OPTIONS = [
-    { value: "", label: t.inspect.none },
-    { value: "#f59e0b", label: t.inspect.amber },
-    { value: "#22d3ee", label: t.inspect.cyan },
-    { value: "#ef4444", label: t.inspect.red },
-    { value: "#8b5cf6", label: t.inspect.violet },
-    { value: "#84cc16", label: t.inspect.lime },
-  ];
-  const durationSeconds = track.analysis.durationSeconds;
-  const bpm = track.analysis.bpm;
-  const beatGrid = track.analysis.beatGrid;
-  const canEditPerformance = !busy && !!onUpdatePerformance;
-  const canAddHot = canCreateHotCue(performance.hotCues);
-  const canAddLoop = canCreateSavedLoop(performance.savedLoops);
-  const quantizeAvailable = hasUsableBeatGrid(beatGrid);
+  const TRACK_COLOR_OPTIONS = buildTrackColorOptions(t);
+  const { durationSeconds, bpm, canEditPerformance, canAddHot, canAddLoop, quantizeAvailable } =
+    buildTrackPerformancePanelState({
+      track,
+      busy,
+      currentTime,
+      onUpdatePerformance,
+    });
   const [quantizeEnabled, setQuantizeEnabled] = useState(quantizeAvailable);
 
   useEffect(() => {
     setQuantizeEnabled(quantizeAvailable);
   }, [track.id, quantizeAvailable]);
 
-  const placementSecond = resolveTrackPlacementSecond(
+  const {
+    placementSecond,
+    updatePerformance,
+    addCue,
+    removeCue,
+    addSavedLoop,
+    addSelectedPhraseLoop,
+    removeSavedLoop,
+    patchCue,
+    patchSavedLoop,
+    setSavedLoopBoundary,
+    addPhraseMemoryCue,
+    canCreateBeatLoopAtPlacement,
+  } = createTrackPerformanceActions({
+    track,
     currentTime,
-    durationSeconds,
-    beatGrid,
+    selectedPhraseRange,
+    canEditPerformance,
     quantizeEnabled,
-  );
-
-  const updatePerformance = (input: UpdateTrackPerformanceInput) => {
-    if (!canEditPerformance) {
-      return;
-    }
-
-    return onUpdatePerformance(input);
-  };
-
-  const addCue = (kind: "hot" | "memory") => {
-    const existingCues = kind === "hot" ? performance.hotCues : performance.memoryCues;
-    const nextCue = createTrackCuePoint(kind, placementSecond, existingCues, durationSeconds);
-
-    return updatePerformance({
-      [kind === "hot" ? "hotCues" : "memoryCues"]: [...existingCues, nextCue],
-    });
-  };
-
-  const removeCue = (kind: "hot" | "memory", cueId: string) => {
-    const existingCues = kind === "hot" ? performance.hotCues : performance.memoryCues;
-
-    return updatePerformance({
-      [kind === "hot" ? "hotCues" : "memoryCues"]: removeTrackCuePoint(existingCues, cueId),
-    });
-  };
-
-  const addSavedLoop = (beatCount: number) => {
-    const nextLoop = createTrackSavedLoop(
-      placementSecond,
-      beatCount,
-      bpm,
-      performance.savedLoops,
-      durationSeconds,
-    );
-
-    return updatePerformance({
-      savedLoops: [...performance.savedLoops, nextLoop],
-    });
-  };
-
-  const addSelectedPhraseLoop = () => {
-    if (!selectedPhraseRange) {
-      return;
-    }
-
-    const nextLoop = createTrackSavedLoopFromRange(
-      selectedPhraseRange.startSecond,
-      selectedPhraseRange.endSecond,
-      performance.savedLoops,
-      durationSeconds,
-      selectedPhraseRange.label,
-    );
-
-    return updatePerformance({
-      savedLoops: [...performance.savedLoops, nextLoop],
-    });
-  };
-
-  const removeSavedLoop = (loopId: string) =>
-    updatePerformance({
-      savedLoops: removeTrackSavedLoop(performance.savedLoops, loopId),
-    });
-
-  const patchCue = (
-    kind: "hot" | "memory",
-    cueId: string,
-    patch: Partial<Pick<TrackCuePoint, "label" | "color">>,
-  ) => {
-    const existingCues = kind === "hot" ? performance.hotCues : performance.memoryCues;
-
-    return updatePerformance({
-      [kind === "hot" ? "hotCues" : "memoryCues"]: updateTrackCuePoint(existingCues, cueId, patch),
-    });
-  };
-
-  const patchSavedLoop = (
-    loopId: string,
-    patch: Partial<Pick<TrackSavedLoop, "label" | "color" | "locked">>,
-  ) =>
-    updatePerformance({
-      savedLoops: updateTrackSavedLoop(performance.savedLoops, loopId, patch),
-    });
-
-  const setSavedLoopBoundary = (loopId: string, boundary: "start" | "end") =>
-    updatePerformance({
-      savedLoops: setTrackSavedLoopBoundary(performance.savedLoops, loopId, boundary, currentTime, {
-        bpm,
-        durationSeconds,
-        beatGrid,
-        quantizeEnabled,
-      }),
-    });
+    onUpdatePerformance,
+  });
 
   return (
     <section className="panel metric-panel">
@@ -351,9 +235,12 @@ export function TrackPerformancePanel({
 
           <p className="support-copy top-spaced">
             {t.inspect.playheadCueToolsAt.replace("{time}", formatTrackTime(currentTime))}
-            {placementSecond !== snapTrackSecond(currentTime, durationSeconds)
-              ? ` ${t.inspect.quantizedTo.replace("{time}", formatTrackTime(placementSecond))}`
-              : ""}
+            {buildQuantizedPlacementHint({
+              currentTime,
+              placementSecond,
+              durationSeconds,
+              quantizedToTemplate: t.inspect.quantizedTo,
+            })}
           </p>
           <div className="pill-strip top-spaced">
             <span>
@@ -434,7 +321,7 @@ export function TrackPerformancePanel({
                   disabled={
                     !canEditPerformance ||
                     !canAddLoop ||
-                    !canCreateBeatLoop(bpm, placementSecond, beatCount, durationSeconds)
+                    !canCreateBeatLoopAtPlacement(beatCount)
                   }
                   onClick={() => void addSavedLoop(beatCount)}
                 >
@@ -472,19 +359,7 @@ export function TrackPerformancePanel({
                     type="button"
                     className="compact-action"
                     disabled={!canEditPerformance}
-                    onClick={() =>
-                      void updatePerformance({
-                        memoryCues: [
-                          ...performance.memoryCues,
-                          createTrackCuePoint(
-                            "memory",
-                            selectedPhraseRange.startSecond,
-                            performance.memoryCues,
-                            durationSeconds,
-                          ),
-                        ],
-                      })
-                    }
+                    onClick={() => void addPhraseMemoryCue()}
                   >
                     {t.inspect.addPhraseMemoryCue}
                   </button>

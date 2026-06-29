@@ -1,5 +1,5 @@
 import type { AppTranslations } from "../../i18n/en";
-import type { LibraryTab } from "./LibraryScreen";
+import type { LibraryTab } from "./libraryScreenTypes";
 
 export interface LibraryScreenCounts {
   tracks: number;
