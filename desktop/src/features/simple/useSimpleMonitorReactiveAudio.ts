@@ -6,6 +6,12 @@ import {
   buildAdjustedMonitorTrackMutationPlan,
   createDriveCurve,
 } from "./monitorTrackMutationRuntime";
+import {
+  buildSimpleMonitorCueBatchPlan,
+  buildSimpleMonitorTestTonePlan,
+  hasRunningSimpleMonitorAudioContext,
+  shouldReuseSimpleMonitorBackgroundGraph,
+} from "./simpleMonitorReactiveAudioOrchestrationRuntime";
 import type { LiveLogMarker } from "../../types/monitor";
 import {
   applyMonitorReactiveAudioPlan,
@@ -46,26 +52,25 @@ export function useSimpleMonitorReactiveAudio({
 
   const playTestTone = useEffectEvent(() => {
     const currentAudioContext = audioContextRef.current;
-    if (!currentAudioContext || currentAudioContext.state !== "running") {
+    if (!hasRunningSimpleMonitorAudioContext(currentAudioContext)) {
       return;
     }
 
-    const masterVolume = deckControlsRef.current.masterVolume;
-    const accentLevel = Math.max(0.03, Math.min(0.22, masterVolume * 0.35));
-    const now = currentAudioContext.currentTime + 0.02;
-    [164.81, 220, 329.63].forEach((frequency, index) => {
+    buildSimpleMonitorTestTonePlan({
+      masterVolume: deckControlsRef.current.masterVolume,
+      now: currentAudioContext.currentTime,
+    }).forEach((voice) => {
       const osc = currentAudioContext.createOscillator();
       const gain = currentAudioContext.createGain();
-      const startAt = now + index * 0.16;
-      osc.type = index === 2 ? "triangle" : "sawtooth";
-      osc.frequency.setValueAtTime(frequency, startAt);
-      gain.gain.setValueAtTime(0.0001, startAt);
-      gain.gain.linearRampToValueAtTime(accentLevel, startAt + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.22);
+      osc.type = voice.type;
+      osc.frequency.setValueAtTime(voice.frequency, voice.startAt);
+      gain.gain.setValueAtTime(0.0001, voice.startAt);
+      gain.gain.linearRampToValueAtTime(voice.peakGain, voice.startAt + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, voice.releaseAt);
       osc.connect(gain);
       gain.connect(currentAudioContext.destination);
-      osc.start(startAt);
-      osc.stop(startAt + 0.24);
+      osc.start(voice.startAt);
+      osc.stop(voice.stopAt);
     });
   });
 
@@ -80,30 +85,27 @@ export function useSimpleMonitorReactiveAudio({
       }>,
     ) => {
       const currentAudioContext = audioContextRef.current;
-      if (!currentAudioContext || currentAudioContext.state !== "running") {
+      if (!hasRunningSimpleMonitorAudioContext(currentAudioContext)) {
         return;
       }
 
-      const masterVolume = deckControlsRef.current.masterVolume;
-      const now = currentAudioContext.currentTime + 0.03;
-      cues.slice(0, 2).forEach((cue, index) => {
+      buildSimpleMonitorCueBatchPlan({
+        cues,
+        masterVolume: deckControlsRef.current.masterVolume,
+        hasBackgroundGraph: Boolean(backgroundGraphRef.current),
+        now: currentAudioContext.currentTime,
+      }).forEach((voice) => {
         const osc = currentAudioContext.createOscillator();
         const gain = currentAudioContext.createGain();
-        const startAt = now + index * 0.05;
-        const noteHz = typeof cue.noteHz === "number" ? cue.noteHz : 180 + index * 30;
-        const duration = Math.max(0.12, (cue.durationMs ?? 140) / 1000);
-        const level = backgroundGraphRef.current
-          ? Math.max(0.0012, Math.min(0.01, (cue.gain ?? 0.04) * 0.05 * (0.35 + masterVolume)))
-          : Math.max(0.01, Math.min(0.08, (cue.gain ?? 0.08) * 0.72 * (0.45 + masterVolume)));
-        osc.type = cue.waveform ?? (index === 0 ? "triangle" : "sine");
-        osc.frequency.setValueAtTime(noteHz, startAt);
-        gain.gain.setValueAtTime(0.0001, startAt);
-        gain.gain.linearRampToValueAtTime(level, startAt + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+        osc.type = voice.type;
+        osc.frequency.setValueAtTime(voice.frequency, voice.startAt);
+        gain.gain.setValueAtTime(0.0001, voice.startAt);
+        gain.gain.linearRampToValueAtTime(voice.peakGain, voice.startAt + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, voice.releaseAt);
         osc.connect(gain);
         gain.connect(currentAudioContext.destination);
-        osc.start(startAt);
-        osc.stop(startAt + duration + 0.03);
+        osc.start(voice.startAt);
+        osc.stop(voice.stopAt);
       });
     },
   );
@@ -111,7 +113,13 @@ export function useSimpleMonitorReactiveAudio({
   const ensureBackgroundGraph = useEffectEvent(
     (audio: HTMLAudioElement, context: AudioContext): BackgroundTrackGraph | null => {
       const existing = backgroundGraphRef.current;
-      if (existing && existing.context === context && existing.audio === audio) {
+      if (
+        shouldReuseSimpleMonitorBackgroundGraph({
+          existing,
+          context,
+          audio,
+        })
+      ) {
         return existing;
       }
 

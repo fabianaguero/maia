@@ -4,6 +4,10 @@ import type { BeatGridPoint } from "../../types/library";
 import { renderMonitorDeckCanvas, renderMonitorOverviewCanvas } from "./monitorDeckCanvas";
 import { type WaveformAnomalyMarker } from "./monitorDeckViewModel";
 import {
+  buildMonitorOverviewRenderPlan,
+  buildMonitorWaveformRenderPlan,
+} from "./simpleMonitorDeckVisualStateRuntime";
+import {
   buildMonitorDeckScrubHookInput,
   buildSimpleMonitorDeckVisualDerivedState,
 } from "./simpleMonitorDeckVisualRuntime";
@@ -64,6 +68,13 @@ export function useSimpleMonitorDeckVisualState({
     logSignalBuffer,
     selectedAnomalyId,
   });
+  const {
+    overviewWaveSamples,
+    overviewAnomalyDensity,
+    anomalyBurstRegions,
+    selectedDeckMarker,
+    logWaveOverlay,
+  } = derivedDeckState;
   const scrub = useMonitorDeckScrub(
     buildMonitorDeckScrubHookInput({
       backgroundAudioRef,
@@ -78,60 +89,59 @@ export function useSimpleMonitorDeckVisualState({
   );
 
   useEffect(() => {
-    if (safeRuntime) {
-      return;
-    }
-    const canvas = scrub.overviewCanvasRef.current;
-    if (!canvas) {
+    const renderPlan = buildMonitorOverviewRenderPlan({
+      safeRuntime,
+      canvas: scrub.overviewCanvasRef.current,
+      derivedDeckState: {
+        overviewWaveSamples,
+        overviewAnomalyDensity,
+        anomalyBurstRegions,
+        selectedDeckMarker,
+      } as typeof derivedDeckState,
+      waveformAnomalies,
+      deckVisualPreset,
+    });
+    if (!renderPlan) {
       return;
     }
 
-    renderMonitorOverviewCanvas({
-      canvas,
-      overviewWaveSamples: derivedDeckState.overviewWaveSamples,
-      overviewAnomalyDensity: derivedDeckState.overviewAnomalyDensity,
-      anomalyBurstRegions: derivedDeckState.anomalyBurstRegions,
-      waveformAnomalies,
-      selectedDeckMarker: derivedDeckState.selectedDeckMarker,
-      visualPreset: deckVisualPreset,
-    });
+    renderMonitorOverviewCanvas(renderPlan);
   }, [
     deckVisualPreset,
-    derivedDeckState.anomalyBurstRegions,
-    derivedDeckState.overviewAnomalyDensity,
-    derivedDeckState.overviewWaveSamples,
-    derivedDeckState.selectedDeckMarker,
+    anomalyBurstRegions,
+    overviewAnomalyDensity,
+    overviewWaveSamples,
+    selectedDeckMarker,
     scrub.overviewCanvasRef,
     safeRuntime,
     waveformAnomalies,
   ]);
 
   useEffect(() => {
-    if (safeRuntime) {
-      return;
-    }
-    const canvas = scrub.waveformCanvasRef.current;
-    const stage = scrub.waveformStageRef.current;
-    if (!canvas || !stage) {
+    const renderPlan = buildMonitorWaveformRenderPlan({
+      safeRuntime,
+      canvas: scrub.waveformCanvasRef.current,
+      stage: scrub.waveformStageRef.current,
+      trackWaveSamples,
+      derivedDeckState: {
+        logWaveOverlay,
+        anomalyBurstRegions,
+        selectedDeckMarker,
+      } as typeof derivedDeckState,
+      waveformAnomalies,
+      trackWaveProgress,
+      deckVisualPreset,
+    });
+    if (!renderPlan) {
       return;
     }
 
-    renderMonitorDeckCanvas({
-      canvas,
-      stage,
-      trackWaveSamples,
-      logWaveOverlay: derivedDeckState.logWaveOverlay,
-      anomalyBurstRegions: derivedDeckState.anomalyBurstRegions,
-      selectedDeckMarker: derivedDeckState.selectedDeckMarker,
-      waveformAnomalies,
-      trackWaveProgress,
-      visualPreset: deckVisualPreset,
-    });
+    renderMonitorDeckCanvas(renderPlan);
   }, [
     deckVisualPreset,
-    derivedDeckState.anomalyBurstRegions,
-    derivedDeckState.logWaveOverlay,
-    derivedDeckState.selectedDeckMarker,
+    anomalyBurstRegions,
+    logWaveOverlay,
+    selectedDeckMarker,
     safeRuntime,
     scrub.waveformCanvasRef,
     scrub.waveformStageRef,

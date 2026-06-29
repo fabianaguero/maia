@@ -4,10 +4,12 @@ import { useSimpleMonitorDeckPresentationState } from "./useSimpleMonitorDeckPre
 import { useSimpleMonitorDeckLiveController } from "./useSimpleMonitorDeckLiveController";
 import {
   buildSimpleMonitorDeckHookState,
-  buildMonitorDeckPresentationHookInput,
-  buildSimpleMonitorDeckRuntimeState,
 } from "./simpleMonitorDeckRuntime";
-import type { WaveformAnomalyMarker } from "./monitorDeckViewModel";
+import {
+  buildSimpleMonitorDeckControllerBaseState,
+  buildSimpleMonitorDeckControllerPresentationInput,
+  resolveSimpleMonitorDeckControllerBpm,
+} from "./simpleMonitorDeckControllerRuntime";
 import type { UseSimpleMonitorDeckRuntimeInput } from "./simpleMonitorDeckRuntimeTypes";
 
 const SAFE_MONITOR_RUNTIME = false;
@@ -39,7 +41,7 @@ export function useSimpleMonitorDeckController({
   } = useSimpleMonitorPlaybackState({
     isListening,
   });
-  const baseDeckState = buildSimpleMonitorDeckRuntimeState({
+  const baseDeckState = buildSimpleMonitorDeckControllerBaseState({
     session,
     isListening,
     isLaunchingMonitor,
@@ -48,7 +50,6 @@ export function useSimpleMonitorDeckController({
     trackDurationSeconds,
     activePreset,
     alertShape: deckControls.alertShape,
-    liveSuggestedBpm: null,
     t,
   });
   const {
@@ -86,17 +87,9 @@ export function useSimpleMonitorDeckController({
     setTrackDurationSeconds,
     liveSettings,
   });
-  const { deckBpm } = buildSimpleMonitorDeckRuntimeState({
-    session,
-    isListening,
-    isLaunchingMonitor,
-    tracks: safeTracks,
-    trackName,
-    trackDurationSeconds,
-    activePreset,
-    alertShape: deckControls.alertShape,
+  const deckBpm = resolveSimpleMonitorDeckControllerBpm({
     liveSuggestedBpm,
-    t,
+    activeTrack,
   });
   const {
     terminalLinesRef,
@@ -122,10 +115,10 @@ export function useSimpleMonitorDeckController({
     deckTimelineMarkers,
     deckBeatMarkers,
   } = useSimpleMonitorDeckPresentationState(
-    buildMonitorDeckPresentationHookInput({
+    buildSimpleMonitorDeckControllerPresentationInput({
       backgroundAudioRef,
       waveformBins,
-      waveformAnomalies: waveformAnomalies as WaveformAnomalyMarker[],
+      waveformAnomalies,
       trackWaveProgress,
       setTrackWaveProgress,
       setTrackElapsedSeconds,

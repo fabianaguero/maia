@@ -3,12 +3,16 @@ import { useCallback, useEffect, useRef } from "react";
 
 import type { WaveformAnomalyMarker } from "./monitorDeckViewModel";
 import {
-  clampMonitorProgress,
   resolveDeckScrubProgress,
-  resolveNearestMonitorAnomalyMarker,
   resolveOverviewScrubProgress,
-  shouldFocusMonitorAnomalyMarker,
 } from "./monitorDeckScrubRuntime";
+import {
+  buildDeckScrubPointerState,
+  buildOverviewScrubPointerState,
+  resolveMonitorDeckSeekState,
+  resolveStoppedMonitorScrubPointerState,
+  shouldProcessMonitorScrubPointer,
+} from "./monitorDeckScrubOrchestrationRuntime";
 
 interface UseMonitorDeckScrubOptions {
   backgroundAudioRef: { current: HTMLAudioElement | null };
@@ -48,24 +52,29 @@ export function useMonitorDeckScrub({
 
   const seekToTrackProgress = useCallback(
     (nextProgress: number) => {
-      const audio = backgroundAudioRef.current;
-      const duration = audio?.duration;
-      if (!audio || !duration || !Number.isFinite(duration) || duration <= 0) {
+      const seekState = resolveMonitorDeckSeekState({
+        audio: backgroundAudioRef.current,
+        nextProgress,
+        waveformAnomalies,
+        isConsoleExpanded,
+      });
+      if (!seekState) {
         return;
       }
 
-      const clampedProgress = clampMonitorProgress(nextProgress);
-      audio.currentTime = clampedProgress * duration;
-      setTrackWaveProgress(clampedProgress);
-      setTrackElapsedSeconds(audio.currentTime);
+      const audio = backgroundAudioRef.current;
+      if (!audio) {
+        return;
+      }
+      audio.currentTime = seekState.currentTime;
+      setTrackWaveProgress(seekState.clampedProgress);
+      setTrackElapsedSeconds(seekState.currentTime);
 
-      const nearestMarker = resolveNearestMonitorAnomalyMarker(waveformAnomalies, clampedProgress);
-
-      if (nearestMarker && shouldFocusMonitorAnomalyMarker(nearestMarker, clampedProgress)) {
-        onSelectAnomalyForFocus(nearestMarker.id);
-        if (!isConsoleExpanded) {
-          onToggleConsole?.();
-        }
+      if (seekState.focusedAnomalyId) {
+        onSelectAnomalyForFocus(seekState.focusedAnomalyId);
+      }
+      if (seekState.shouldOpenConsole) {
+        onToggleConsole?.();
       }
     },
     [
@@ -120,38 +129,40 @@ export function useMonitorDeckScrub({
   useEffect(() => {
     const handlePointerMove = (event: globalThis.PointerEvent) => {
       if (
-        isOverviewScrubbingRef.current &&
-        activeOverviewPointerIdRef.current !== null &&
-        event.pointerId === activeOverviewPointerIdRef.current
+        shouldProcessMonitorScrubPointer({
+          isScrubbing: isOverviewScrubbingRef.current,
+          activePointerId: activeOverviewPointerIdRef.current,
+          eventPointerId: event.pointerId,
+        })
       ) {
         seekTrackFromOverviewViewport(event.clientX);
       }
 
       if (
-        isDeckScrubbingRef.current &&
-        activeDeckPointerIdRef.current !== null &&
-        event.pointerId === activeDeckPointerIdRef.current
+        shouldProcessMonitorScrubPointer({
+          isScrubbing: isDeckScrubbingRef.current,
+          activePointerId: activeDeckPointerIdRef.current,
+          eventPointerId: event.pointerId,
+        })
       ) {
         seekTrackFromViewport(event.clientX);
       }
     };
 
     const stopScrubbing = (event: globalThis.PointerEvent) => {
-      if (
-        activeOverviewPointerIdRef.current !== null &&
-        event.pointerId === activeOverviewPointerIdRef.current
-      ) {
-        isOverviewScrubbingRef.current = false;
-        activeOverviewPointerIdRef.current = null;
-      }
+      const overviewState = resolveStoppedMonitorScrubPointerState({
+        activePointerId: activeOverviewPointerIdRef.current,
+        eventPointerId: event.pointerId,
+      });
+      isOverviewScrubbingRef.current = overviewState.isScrubbing;
+      activeOverviewPointerIdRef.current = overviewState.activePointerId;
 
-      if (
-        activeDeckPointerIdRef.current !== null &&
-        event.pointerId === activeDeckPointerIdRef.current
-      ) {
-        isDeckScrubbingRef.current = false;
-        activeDeckPointerIdRef.current = null;
-      }
+      const deckState = resolveStoppedMonitorScrubPointerState({
+        activePointerId: activeDeckPointerIdRef.current,
+        eventPointerId: event.pointerId,
+      });
+      isDeckScrubbingRef.current = deckState.isScrubbing;
+      activeDeckPointerIdRef.current = deckState.activePointerId;
     };
 
     window.addEventListener("pointermove", handlePointerMove);
@@ -173,8 +184,9 @@ export function useMonitorDeckScrub({
     seekTrackFromOverviewViewport,
     seekTrackFromViewport,
     handleOverviewPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => {
-      isOverviewScrubbingRef.current = true;
-      activeOverviewPointerIdRef.current = event.pointerId;
+      const nextState = buildOverviewScrubPointerState(event.pointerId);
+      isOverviewScrubbingRef.current = nextState.isScrubbing;
+      activeOverviewPointerIdRef.current = nextState.activePointerId;
       event.currentTarget.setPointerCapture?.(event.pointerId);
       seekTrackFromOverviewViewport(event.clientX);
     },
@@ -196,15 +208,18 @@ export function useMonitorDeckScrub({
       event.stopPropagation();
     },
     handleStagePointerDown: (event: ReactPointerEvent<HTMLDivElement>) => {
-      isDeckScrubbingRef.current = true;
-      activeDeckPointerIdRef.current = event.pointerId;
       const rect = event.currentTarget.getBoundingClientRect();
-      deckScrubStartRatioRef.current = resolveOverviewScrubProgress({
+      const nextState = buildDeckScrubPointerState({
+        pointerId: event.pointerId,
         clientX: event.clientX,
         left: rect.left,
         width: rect.width,
+        trackWaveProgress,
       });
-      deckScrubStartProgressRef.current = trackWaveProgress;
+      isDeckScrubbingRef.current = nextState.isScrubbing;
+      activeDeckPointerIdRef.current = nextState.activePointerId;
+      deckScrubStartRatioRef.current = nextState.startRatio;
+      deckScrubStartProgressRef.current = nextState.startProgress;
       event.currentTarget.setPointerCapture?.(event.pointerId);
       seekTrackFromViewport(event.clientX);
     },

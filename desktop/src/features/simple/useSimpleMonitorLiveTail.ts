@@ -1,7 +1,11 @@
 import { useEffect, useRef, type UIEvent } from "react";
 
 import type { MonitorLogLine } from "./monitorLogParsing";
-import { buildMonitorTailSyncPlan, shouldPinMonitorTail } from "./simpleMonitorInteractionRuntime";
+import {
+  buildSimpleMonitorLiveTailEffectState,
+  buildSimpleMonitorLiveTailFocusState,
+  buildSimpleMonitorLiveTailScrollState,
+} from "./simpleMonitorLiveTailRuntime";
 
 function safeElementScrollTo(element: HTMLDivElement, top: number, behavior: ScrollBehavior): void {
   if (typeof element.scrollTo === "function") {
@@ -34,7 +38,7 @@ export function useSimpleMonitorLiveTail({
       return;
     }
 
-    const syncPlan = buildMonitorTailSyncPlan({
+    const syncPlan = buildSimpleMonitorLiveTailEffectState({
       liveLines,
       selectedAnomalyId,
       shouldFocusSelectedLog: focusSelectedLogRef.current,
@@ -60,7 +64,9 @@ export function useSimpleMonitorLiveTail({
     onTerminalScroll: (event: UIEvent<HTMLDivElement>) => {
       const target = event.currentTarget;
       const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
-      isTailPinnedRef.current = shouldPinMonitorTail(distanceFromBottom);
+      isTailPinnedRef.current = buildSimpleMonitorLiveTailScrollState({
+        distanceFromBottom,
+      }).isTailPinned;
     },
     registerLineRef: (lineId: string, node: HTMLDivElement | null) => {
       if (node) {
@@ -70,8 +76,9 @@ export function useSimpleMonitorLiveTail({
       }
     },
     focusAnomaly: (anomalyId: string) => {
-      focusSelectedLogRef.current = true;
-      onSelectAnomalyId(anomalyId);
+      const focusState = buildSimpleMonitorLiveTailFocusState(anomalyId);
+      focusSelectedLogRef.current = focusState.shouldFocusSelectedLog;
+      onSelectAnomalyId(focusState.anomalyId);
     },
   };
 }
