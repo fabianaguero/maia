@@ -42,16 +42,22 @@ Current CI expectations:
 
 As of June 29, 2026, the desktop Vitest coverage baseline is:
 
-- statements / lines: `95.23%`
-- branches: `77.47%`
-- functions: `90.78%`
-- suite size: `374` test files, `1144` passing tests, `3` skipped
+- statements / lines: `96.25%`
+- branches: `81.35%`
+- functions: `92.20%`
+- suite size: `391` test files, `1252` passing tests, `3` skipped
 
 Current hotspots with the largest remaining risk or debt:
 
-- `desktop/src/features/analyzer/components/WaveformPlaceholder.tsx`
+- `desktop/src/features/analyzer/components/WaveformRegionOverlay.tsx`
+- `desktop/src/utils/streamAdapter.ts`
+- `desktop/src/hooks/useAppSelectionActions.ts`
+- `desktop/src/hooks/useRepositories.ts`
+- `desktop/src/features/session/useSessionScreenEffects.ts`
+- `desktop/src/features/simple/MonitorDeckHeader.tsx`
 
 Recently reduced hotspots:
+- `desktop/src/features/analyzer/components/useLiveLogMonitorResetActions.ts` now has direct hook coverage for repository resets, start resets, and stop resets, removing the last `0%` coverage hole from the active desktop monitor loop
 - `desktop/src/hooks/useLibraryBootstrap.ts` now has direct hook coverage for sorted hydration, selection resolver callbacks, bootstrap failure normalization, and late success/error cancellation after unmount
 - `desktop/src/features/library/components/LibraryTabContent.tsx` now has full direct component coverage for loading, empty-state, and populated tab branches across tracks, sources, connections, and base assets
 - `desktop/src/api/mockLibrary.ts` now has direct API coverage for legacy track snapshot normalization, playlist storage recovery, malformed browser-storage fallbacks, fallback title derivation, cue/loop sorting, and source relink edge cases, bringing the focused file coverage to `93.73%` statements / lines, `82.95%` branches, and `100%` functions
@@ -249,6 +255,7 @@ Current strengths:
 - live monitor controller/runtime composition
 - i18n parity checks
 - audio/session property-based coverage
+- App-v0 shell and section-model composition
 
 ## Local commands
 
