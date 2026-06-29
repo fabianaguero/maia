@@ -5,7 +5,7 @@ import {
   createAppV0SessionId,
   formatAppV0Uptime,
   resolveAppV0MonitorWaveformBins,
-} from "../appV0ViewModel";
+} from "../appV0MonitorViewModelRuntime";
 import { buildAppV0ShellViewModel } from "../appV0ShellViewModel";
 import { en } from "../i18n/en";
 import { es } from "../i18n/es";

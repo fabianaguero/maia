@@ -4,7 +4,7 @@ import {
   buildAppV0ScreenModel,
   buildAppV0SectionContentInput,
   type AppV0ContentActions,
-} from "../appV0ViewModel";
+} from "../appV0ScreenCompositionRuntime";
 import type { AppSection } from "../features/simple/appSections";
 import type { AppSkin } from "../features/simple/appSkin";
 import type { ActiveMonitorSession, MonitorMetrics } from "../features/monitor/monitorContextTypes";
@@ -12,7 +12,7 @@ import type { MonitorLaunchSource } from "../features/simple/monitorSourceOption
 import type { MonitorSetupPreferences } from "../features/simple/monitorSetupPreferences";
 import type { UserMode } from "../features/simple/UserModeContext";
 import type { AppV0Language } from "../appV0Preferences";
-import type { AppV0FallbackViewModel } from "../appV0ViewModel";
+import type { AppV0FallbackViewModel } from "../appV0MonitorViewModelRuntime";
 import type { AppV0ShellViewModel } from "../appV0ShellViewModel";
 import type {
   BaseAssetRecord,
