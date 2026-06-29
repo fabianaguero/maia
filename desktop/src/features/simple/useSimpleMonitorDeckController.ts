@@ -13,6 +13,7 @@ import type { UseSimpleMonitorDeckRuntimeInput } from "./simpleMonitorDeckRuntim
 const SAFE_MONITOR_RUNTIME = false;
 
 export function useSimpleMonitorDeckController({
+  skin,
   session,
   isListening,
   isLaunchingMonitor,
@@ -26,7 +27,7 @@ export function useSimpleMonitorDeckController({
   liveSettings,
   t,
 }: UseSimpleMonitorDeckRuntimeInput) {
-  const { deckControls, activePreset } = useMonitorDeckControls();
+  const { deckControls, activePreset } = useMonitorDeckControls({ skin });
   const {
     trackWaveProgress,
     setTrackWaveProgress,

@@ -2,6 +2,7 @@ import type { AppTranslations } from "../../i18n/en";
 import type { ActiveMonitorSession, MonitorMetrics } from "../monitor/monitorContextTypes";
 import type { LibraryTrack, RepositoryAnalysis } from "../../types/library";
 import type { LiveLogStreamUpdate } from "../../types/monitor";
+import type { AppSkin } from "./appSkin";
 import type { MonitorSetupPreferences } from "./monitorSetupPreferences";
 import type { MonitorLaunchSource } from "./monitorSourceOptions";
 import type { useSimpleMonitorDeckRuntime } from "./useSimpleMonitorDeckRuntime";
@@ -32,6 +33,7 @@ export function buildSimpleMonitorLaunchStateInput(input: {
 }
 
 export function buildSimpleMonitorDeckRuntimeInput(input: {
+  skin?: AppSkin;
   session: ActiveMonitorSession | null;
   isListening: boolean;
   isLaunchingMonitor: boolean;
@@ -46,6 +48,7 @@ export function buildSimpleMonitorDeckRuntimeInput(input: {
   t: AppTranslations;
 }): UseSimpleMonitorDeckRuntimeInput {
   return {
+    skin: input.skin,
     session: input.session,
     isListening: input.isListening,
     isLaunchingMonitor: input.isLaunchingMonitor,

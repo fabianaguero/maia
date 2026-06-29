@@ -234,6 +234,7 @@ describe("useSimpleMonitorScreenState", () => {
     const { result } = renderHook(
       () =>
         useSimpleMonitorScreenState({
+          skin: "arctic",
           session: null,
           metrics,
           pastSessions: sessions,

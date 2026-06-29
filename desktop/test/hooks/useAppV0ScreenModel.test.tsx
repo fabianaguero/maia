@@ -203,6 +203,7 @@ describe("useAppV0ScreenModel", () => {
     );
 
     expect(result.result.current.sectionContentInput.currentSection).toBe("monitor");
+    expect(result.result.current.sectionContentInput.skin).toBe("nightfall");
     expect(result.result.current.sectionContentInput.isConsoleExpanded).toBe(true);
     expect(result.result.current.screenModel.appShellProps.currentSection).toBe("monitor");
     expect(result.result.current.screenModel.floatingWaveformBarProps).toMatchObject({

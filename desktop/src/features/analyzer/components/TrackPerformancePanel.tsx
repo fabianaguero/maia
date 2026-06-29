@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { useT } from "../../../i18n/I18nContext";
 import type { LibraryTrack, UpdateTrackPerformanceInput } from "../../../types/library";
 import type { BeatGridPhraseRange } from "../../../utils/beatGrid";
-import { formatShortDateTime } from "../../../utils/date";
 import { formatTrackTime } from "../../../utils/track";
 import { TrackCueList } from "./TrackCueList";
 import { TrackSavedLoopList } from "./TrackSavedLoopList";
+import { TrackPerformanceSummaryGrid } from "./TrackPerformanceSummaryGrid";
 import {
+  buildTrackPerformanceMetrics,
   buildQuantizedPlacementHint,
   buildTrackColorOptions,
   buildTrackPerformancePanelState,
@@ -34,6 +35,7 @@ export function TrackPerformancePanel({
   const t = useT();
   const { performance } = track;
   const TRACK_COLOR_OPTIONS = buildTrackColorOptions(t);
+  const summaryMetrics = buildTrackPerformanceMetrics({ track, t });
   const { durationSeconds, bpm, canEditPerformance, canAddHot, canAddLoop, quantizeAvailable } =
     buildTrackPerformancePanelState({
       track,
@@ -78,54 +80,7 @@ export function TrackPerformancePanel({
         </div>
       </div>
 
-      <div className="metric-grid">
-        <div>
-          <span>{t.inspect.availability}</span>
-          <strong>
-            {track.file.availabilityState === "missing" ? t.inspect.missing : t.inspect.available}
-          </strong>
-        </div>
-        <div>
-          <span>{t.inspect.mainCue}</span>
-          <strong>{formatTrackTime(performance.mainCueSecond)}</strong>
-        </div>
-        <div>
-          <span>{t.inspect.hotCues}</span>
-          <strong>{performance.hotCues.length}</strong>
-        </div>
-        <div>
-          <span>{t.inspect.memoryCues}</span>
-          <strong>{performance.memoryCues.length}</strong>
-        </div>
-        <div>
-          <span>{t.inspect.savedLoops}</span>
-          <strong>{performance.savedLoops.length}</strong>
-        </div>
-        <div>
-          <span>{t.inspect.rating}</span>
-          <strong>{performance.rating}/5</strong>
-        </div>
-        <div>
-          <span>{t.inspect.playCount}</span>
-          <strong>{performance.playCount}</strong>
-        </div>
-        <div>
-          <span>{t.inspect.lastPlayed}</span>
-          <strong>
-            {performance.lastPlayedAt
-              ? formatShortDateTime(performance.lastPlayedAt)
-              : t.inspect.never}
-          </strong>
-        </div>
-        <div>
-          <span>{t.inspect.bpmLockLabel}</span>
-          <strong>{performance.bpmLock ? t.inspect.locked : t.inspect.open}</strong>
-        </div>
-        <div>
-          <span>{t.inspect.gridLockLabel}</span>
-          <strong>{performance.gridLock ? t.inspect.locked : t.inspect.open}</strong>
-        </div>
-      </div>
+      <TrackPerformanceSummaryGrid metrics={summaryMetrics} />
 
       <div className="top-spaced">
         <p className="support-copy">{t.inspect.performanceControls}</p>

@@ -2,6 +2,7 @@ import { useSimpleMonitorDeckController } from "./useSimpleMonitorDeckController
 import type { UseSimpleMonitorDeckRuntimeInput } from "./simpleMonitorDeckRuntimeTypes";
 
 export function useSimpleMonitorDeckRuntime({
+  skin,
   session,
   isListening,
   isLaunchingMonitor,
@@ -16,6 +17,7 @@ export function useSimpleMonitorDeckRuntime({
   t,
 }: UseSimpleMonitorDeckRuntimeInput) {
   return useSimpleMonitorDeckController({
+    skin,
     session,
     isListening,
     isLaunchingMonitor,

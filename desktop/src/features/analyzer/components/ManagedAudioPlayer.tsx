@@ -1,9 +1,16 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { invokeOrFallback } from "../../../api/tauri";
-import { useT } from "../../../i18n/I18nContext";
-
-type PlaybackState = "idle" | "loading" | "ready" | "playing" | "error" | "unavailable";
+import {
+  canManagedAudioAttemptPlayback,
+  mimeTypeFromPath,
+  resolveManagedAudioInitialState,
+  resolveManagedAudioNote,
+  resolveManagedAudioScrubberRange,
+  resolveManagedAudioShownDuration,
+  type ManagedAudioPlaybackState,
+} from "./managedAudioPlayerRuntime";
+import { ManagedAudioPlayerControls } from "./ManagedAudioPlayerControls";
 
 export interface ManagedAudioCueRequest {
   id: number;
@@ -27,53 +34,6 @@ interface ManagedAudioPlayerProps {
   cueRequest?: ManagedAudioCueRequest | null;
 }
 
-function formatDuration(durationSeconds: number | null): string {
-  if (!durationSeconds || durationSeconds <= 0) {
-    return "--:--";
-  }
-
-  const totalSeconds = Math.round(durationSeconds);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
-}
-
-function canAttemptPlayback(audioPath: string | null): boolean {
-  return Boolean(audioPath && isTauri() && !audioPath.startsWith("browser-fallback://"));
-}
-
-function mimeTypeFromPath(audioPath: string): string {
-  const ext = audioPath.split(".").pop()?.toLowerCase() ?? "";
-  const map: Record<string, string> = {
-    mp3: "audio/mpeg",
-    wav: "audio/wav",
-    ogg: "audio/ogg",
-    flac: "audio/flac",
-    m4a: "audio/mp4",
-    aac: "audio/mp4",
-    opus: "audio/ogg",
-    webm: "audio/webm",
-  };
-  return map[ext] ?? "audio/mpeg";
-}
-
-function describeState(state: PlaybackState, t: ReturnType<typeof useT>): string {
-  switch (state) {
-    case "loading":
-      return t.inspect.playbackLoading;
-    case "ready":
-      return t.inspect.playbackReady;
-    case "playing":
-      return t.inspect.playbackPlaying;
-    case "error":
-      return t.inspect.playbackErrorState;
-    case "unavailable":
-      return t.inspect.desktopPlaybackOnly;
-    default:
-      return t.inspect.playbackPending;
-  }
-}
-
 export function ManagedAudioPlayer({
   title,
   description,
@@ -89,13 +49,15 @@ export function ManagedAudioPlayer({
   onTimeUpdate,
   cueRequest,
 }: ManagedAudioPlayerProps) {
-  const t = useT();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
   const lastCueRequestIdRef = useRef<number | null>(null);
   const [blobReady, setBlobReady] = useState(false);
-  const [playbackState, setPlaybackState] = useState<PlaybackState>(
-    canAttemptPlayback(audioPath) ? "loading" : audioPath ? "unavailable" : "idle",
+  const [playbackState, setPlaybackState] = useState<ManagedAudioPlaybackState>(
+    resolveManagedAudioInitialState({
+      audioPath,
+      isDesktopShell: isTauri(),
+    }),
   );
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [currentTimeSeconds, setCurrentTimeSeconds] = useState(0);
@@ -133,7 +95,7 @@ export function ManagedAudioPlayer({
       return;
     }
 
-    if (!canAttemptPlayback(audioPath) || !audio) {
+    if (!canManagedAudioAttemptPlayback(audioPath, isTauri()) || !audio) {
       setPlaybackState("unavailable");
       return;
     }
@@ -316,16 +278,24 @@ export function ManagedAudioPlayer({
     setVolume(next);
   }
 
-  const shownDurationSeconds =
-    resolvedDurationSeconds > 0 ? resolvedDurationSeconds : (durationSeconds ?? null);
+  const shownDurationSeconds = resolveManagedAudioShownDuration(
+    resolvedDurationSeconds,
+    durationSeconds ?? null,
+  );
+  const scrubberRange = resolveManagedAudioScrubberRange({
+    currentTimeSeconds,
+    shownDurationSeconds,
+  });
   const canPlayAudio = blobReady;
-  const note = !audioPath
-    ? missingNote
-    : audioPath.startsWith("browser-fallback://")
-      ? browserFallbackNote
-      : !blobReady && playbackState === "unavailable"
-        ? desktopOnlyNote
-        : availableNote;
+  const note = resolveManagedAudioNote({
+    audioPath,
+    blobReady,
+    playbackState,
+    missingNote,
+    browserFallbackNote,
+    desktopOnlyNote,
+    availableNote,
+  });
 
   return (
     <div className="render-audio-player top-spaced">
@@ -338,61 +308,26 @@ export function ManagedAudioPlayer({
 
       <audio ref={audioRef} preload="metadata" />
 
-      <div className="render-audio-controls">
-        <button
-          type="button"
-          className={playbackState === "playing" ? "secondary-action" : "action"}
-          onClick={() => void handleTogglePlayback()}
-          disabled={!canPlayAudio || playbackState === "loading"}
-        >
-          {playbackState === "playing" ? pauseLabel : playLabel}
-        </button>
-        <div className="render-audio-status">
-          <span>{t.inspect.transportStatus}</span>
-          <strong>{describeState(playbackState, t)}</strong>
-        </div>
-        <div className="render-audio-status">
-          <span>{t.inspect.transportPosition}</span>
-          <strong>
-            {formatDuration(currentTimeSeconds)} / {formatDuration(shownDurationSeconds)}
-          </strong>
-        </div>
-        <div className="render-audio-volume">
-          <span>{t.inspect.transportVolume}</span>
-          <div className="volume-bars">
-            {Array.from({ length: 10 }, (_, i) => (
-              <div
-                key={i}
-                className={`volume-bar${volume > i / 10 ? " active" : ""}`}
-                style={{ opacity: volume > i / 10 ? 1 : 0.2 }}
-                aria-hidden="true"
-              />
-            ))}
-          </div>
-          <input
-            type="range"
-            className="volume-slider"
-            min={0}
-            max={1}
-            step={0.01}
-            value={volume}
-            onChange={handleVolumeChange}
-            aria-label={`${title} volume`}
-          />
-          <strong>{Math.round(volume * 100)}%</strong>
-        </div>
-      </div>
+      <ManagedAudioPlayerControls
+        title={title}
+        playbackState={playbackState}
+        currentTimeSeconds={currentTimeSeconds}
+        shownDurationSeconds={shownDurationSeconds}
+        volume={volume}
+        playLabel={playLabel}
+        pauseLabel={pauseLabel}
+        toggleDisabled={!canPlayAudio || playbackState === "loading"}
+        onTogglePlayback={handleTogglePlayback}
+        onVolumeChange={handleVolumeChange}
+      />
 
       <input
         type="range"
         className="render-audio-scrubber"
         min={0}
-        max={shownDurationSeconds && shownDurationSeconds > 0 ? shownDurationSeconds : 1}
+        max={scrubberRange.max}
         step={0.01}
-        value={Math.min(
-          currentTimeSeconds,
-          shownDurationSeconds && shownDurationSeconds > 0 ? shownDurationSeconds : 1,
-        )}
+        value={scrubberRange.value}
         onChange={handleSeek}
         disabled={!canPlayAudio || !shownDurationSeconds}
         aria-label={`${title} scrubber`}

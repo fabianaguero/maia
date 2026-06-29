@@ -1,3 +1,5 @@
+import type { AppSkin } from "./appSkin";
+
 export type MonitorAlertShape = "soft" | "tight" | "aggressive";
 export type MonitorDeckPresetId = "passive" | "balanced" | "alert";
 
@@ -15,6 +17,12 @@ export interface MonitorDeckControls {
 }
 
 export const MONITOR_DECK_CONTROLS_STORAGE_KEY = "maia.monitor-deck-controls.v1";
+export const MONITOR_DECK_CONTROL_PROFILES_STORAGE_KEY = "maia.monitor-deck-controls.v2";
+
+export interface MonitorDeckControlProfiles {
+  activeSkin: AppSkin;
+  profiles: Partial<Record<AppSkin, MonitorDeckControls>>;
+}
 
 export const DEFAULT_MONITOR_DECK_CONTROLS: MonitorDeckControls = {
   waveformScale: 1,
@@ -128,6 +136,37 @@ export function loadMonitorDeckControls(raw: string | null | undefined): Monitor
     return sanitizeMonitorDeckControls(parsed);
   } catch {
     return DEFAULT_MONITOR_DECK_CONTROLS;
+  }
+}
+
+export function sanitizeMonitorDeckControlProfiles(
+  value: Partial<MonitorDeckControlProfiles> | null | undefined,
+): MonitorDeckControlProfiles {
+  const profiles = value?.profiles ?? {};
+
+  return {
+    activeSkin: value?.activeSkin ?? "nightfall",
+    profiles: {
+      nightfall: profiles.nightfall ? sanitizeMonitorDeckControls(profiles.nightfall) : undefined,
+      arctic: profiles.arctic ? sanitizeMonitorDeckControls(profiles.arctic) : undefined,
+      copper: profiles.copper ? sanitizeMonitorDeckControls(profiles.copper) : undefined,
+    },
+  };
+}
+
+export function loadMonitorDeckControlProfiles(
+  raw: string | null | undefined,
+): MonitorDeckControlProfiles | null {
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return sanitizeMonitorDeckControlProfiles(
+      JSON.parse(raw) as Partial<MonitorDeckControlProfiles>,
+    );
+  } catch {
+    return null;
   }
 }
 

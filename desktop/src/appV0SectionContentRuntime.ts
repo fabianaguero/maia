@@ -65,6 +65,7 @@ export interface AppV0SectionContentInput {
 }
 
 export interface AppV0SimpleMonitorSectionProps {
+  skin: AppSkin;
   session: ActiveMonitorSession | null;
   metrics: MonitorMetrics;
   pastSessions: PersistedSession[];
@@ -134,6 +135,7 @@ export function buildAppV0SectionRenderModel(
       userMode: input.userMode,
     }),
     simpleMonitorProps: {
+      skin: input.skin,
       session: input.monitorSession,
       metrics: input.monitorMetrics,
       pastSessions: input.pastSessions,

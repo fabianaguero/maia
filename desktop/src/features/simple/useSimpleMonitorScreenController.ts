@@ -15,6 +15,7 @@ import { useSimpleMonitorLaunchState } from "./useSimpleMonitorLaunchState";
 import type { SimpleMonitorScreenStateInput } from "./useSimpleMonitorScreenState";
 
 export function useSimpleMonitorScreenController({
+  skin,
   session,
   metrics,
   pastSessions,
@@ -53,6 +54,7 @@ export function useSimpleMonitorScreenController({
 
   const deckRuntime = useSimpleMonitorDeckRuntime(
     buildSimpleMonitorDeckRuntimeInput({
+      skin,
       session,
       isListening,
       isLaunchingMonitor: launchState.isLaunchingMonitor,

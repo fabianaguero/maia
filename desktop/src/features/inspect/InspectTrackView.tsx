@@ -5,15 +5,12 @@ import type {
   UpdateTrackAnalysisInput,
   UpdateTrackPerformanceInput,
 } from "../../types/library";
-import { formatShortDate } from "../../utils/date";
 import {
   createAnchoredBeatGridUpdate,
   isEditableBpm,
   type BeatGridPhraseRange,
 } from "../../utils/beatGrid";
 import {
-  getTrackSourcePath,
-  getTrackStoragePath,
   getTrackWaveformCues,
   getTrackWaveformRegions,
   hasUsableBeatGrid,
@@ -35,14 +32,15 @@ import { TrackOriginalComparePanel } from "../analyzer/components/TrackOriginalC
 import { TrackPerformancePanel } from "../analyzer/components/TrackPerformancePanel";
 import { TrackPlaybackPanel } from "../analyzer/components/TrackPlaybackPanel";
 import { WaveformPlaceholder } from "../analyzer/components/WaveformPlaceholder";
-
-function formatAnalysisMode(analysisMode: string): string {
-  return analysisMode
-    .split("-")
-    .filter(Boolean)
-    .map((segment) => segment[0]?.toUpperCase() + segment.slice(1))
-    .join(" ");
-}
+import { InspectTrackHeader } from "./InspectTrackHeader";
+import { InspectTrackMetadataPanel } from "./InspectTrackMetadataPanel";
+import { InspectTrackSidebarTabs } from "./InspectTrackSidebarTabs";
+import {
+  buildInspectTrackMetadataDetails,
+  buildInspectTrackSummaryPills,
+  buildInspectTrackTabViewModel,
+  type InspectTrackTabId,
+} from "./inspectTrackViewRuntime";
 
 interface InspectTrackViewProps {
   track: LibraryTrack;
@@ -72,13 +70,14 @@ export function InspectTrackView({
     TrackCompareAuditionPoint["id"] | null
   >(null);
   const [activeCompareAuditionLabel, setActiveCompareAuditionLabel] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"overview" | "grid" | "performance" | "metadata">(
-    "overview",
-  );
+  const [activeTab, setActiveTab] = useState<InspectTrackTabId>("overview");
   const activeTrackId = track.id;
   const activeBeatGridLength = track.analysis.beatGrid.length;
   const activeFirstBeatSecond = track.analysis.beatGrid[0]?.second ?? null;
   const activeTrackDurationSeconds = track.analysis.durationSeconds ?? null;
+  const tabs = buildInspectTrackTabViewModel(t);
+  const summaryPills = buildInspectTrackSummaryPills(track, t);
+  const metadataDetails = buildInspectTrackMetadataDetails(track, t);
 
   useEffect(() => {
     setSelectedPhraseRange(null);
@@ -164,28 +163,13 @@ export function InspectTrackView({
 
   return (
     <section className="screen">
-      <header className="screen-header">
-        <div>
-          <p className="eyebrow">{t.inspect.title}</p>
-          <h2>{track.tags.title}</h2>
-          <p className="support-copy">{t.inspect.copy}</p>
-        </div>
-        <div className="screen-summary">
-          <div className="summary-pill">
-            <span>{t.inspect.status}</span>
-            <strong>{track.analysis.analyzerStatus}</strong>
-          </div>
-          <div className="summary-pill">
-            <span>{t.inspect.style}</span>
-            <strong>{track.tags.musicStyleLabel}</strong>
-          </div>
-          <div className="summary-pill">
-            <span>{t.inspect.imported}</span>
-            <strong>{formatShortDate(track.analysis.importedAt)}</strong>
-          </div>
-        </div>
-      </header>
-      {contextBar}
+      <InspectTrackHeader
+        eyebrow={t.inspect.title}
+        title={track.tags.title}
+        description={t.inspect.copy}
+        summaryPills={summaryPills}
+        contextBar={contextBar}
+      />
 
       <div className="analyzer-deck">
         <WaveformPlaceholder
@@ -274,139 +258,47 @@ export function InspectTrackView({
             durationSeconds={track.analysis.durationSeconds}
           />
         </div>
-        <div className="analyzer-sidebar">
-          <div className="inspect-tabs">
-            <ul className="inspect-tab-list" role="tablist">
-              <li role="presentation">
-                <button
-                  role="tab"
-                  aria-selected={activeTab === "overview"}
-                  aria-controls="tab-overview"
-                  className="inspect-tab-button"
-                  onClick={() => setActiveTab("overview")}
-                >
-                  {t.inspect.overview}
-                </button>
-              </li>
-              <li role="presentation">
-                <button
-                  role="tab"
-                  aria-selected={activeTab === "grid"}
-                  aria-controls="tab-grid"
-                  className="inspect-tab-button"
-                  onClick={() => setActiveTab("grid")}
-                >
-                  {t.inspect.beatGrid}
-                </button>
-              </li>
-              <li role="presentation">
-                <button
-                  role="tab"
-                  aria-selected={activeTab === "performance"}
-                  aria-controls="tab-performance"
-                  className="inspect-tab-button"
-                  onClick={() => setActiveTab("performance")}
-                >
-                  {t.inspect.performance}
-                </button>
-              </li>
-              <li role="presentation">
-                <button
-                  role="tab"
-                  aria-selected={activeTab === "metadata"}
-                  aria-controls="tab-metadata"
-                  className="inspect-tab-button"
-                  onClick={() => setActiveTab("metadata")}
-                >
-                  {t.inspect.details}
-                </button>
-              </li>
-            </ul>
-
-            <section
-              id="tab-overview"
-              role="tabpanel"
-              aria-hidden={activeTab !== "overview"}
-              className="inspect-tab-content"
-            >
+        <InspectTrackSidebarTabs
+          tabs={tabs}
+          activeTab={activeTab}
+          onChangeTab={setActiveTab}
+          overviewPanel={
+            <>
               <BpmPanel track={track} />
               <RepoStatusPanel track={track} analyzerLabel={analyzerLabel} />
-            </section>
-
-            <section
-              id="tab-grid"
-              role="tabpanel"
-              aria-hidden={activeTab !== "grid"}
-              className="inspect-tab-content"
-            >
-              <BeatGridEditorPanel
-                track={track}
-                busy={trackMutating}
-                currentTime={currentTime}
-                onUpdateAnalysis={(input) => onUpdateTrackAnalysis(track.id, input)}
-              />
-            </section>
-
-            <section
-              id="tab-performance"
-              role="tabpanel"
-              aria-hidden={activeTab !== "performance"}
-              className="inspect-tab-content"
-            >
-              <TrackPerformancePanel
-                track={track}
-                busy={trackMutating}
-                currentTime={currentTime}
-                selectedPhraseRange={selectedPhraseRange}
-                onUpdatePerformance={(input) => onUpdateTrackPerformance(track.id, input)}
-              />
-            </section>
-
-            <section
-              id="tab-metadata"
-              role="tabpanel"
-              aria-hidden={activeTab !== "metadata"}
-              className="inspect-tab-content"
-            >
+            </>
+          }
+          gridPanel={
+            <BeatGridEditorPanel
+              track={track}
+              busy={trackMutating}
+              currentTime={currentTime}
+              onUpdateAnalysis={(input) => onUpdateTrackAnalysis(track.id, input)}
+            />
+          }
+          performancePanel={
+            <TrackPerformancePanel
+              track={track}
+              busy={trackMutating}
+              currentTime={currentTime}
+              selectedPhraseRange={selectedPhraseRange}
+              onUpdatePerformance={(input) => onUpdateTrackPerformance(track.id, input)}
+            />
+          }
+          metadataPanel={
+            <>
               <SongMetadataPanel track={track} />
-              <section className="panel metric-panel">
-                <details className="panel-collapsible">
-                  <summary className="panel-collapsible-summary">{t.inspect.notesAnalysis}</summary>
-                  <div className="panel-collapsible-body">
-                    {track.analysis.notes.length > 0 && (
-                      <ul className="stack-list note-list">
-                        {track.analysis.notes.map((note) => (
-                          <li key={note}>{note}</li>
-                        ))}
-                      </ul>
-                    )}
-                    <dl className="meta-list compact-meta">
-                      <div>
-                        <dt>{t.inspect.analysisMode}</dt>
-                        <dd>{formatAnalysisMode(track.analysis.analysisMode)}</dd>
-                      </div>
-                      <div>
-                        <dt>{t.inspect.sourcePath}</dt>
-                        <dd>{getTrackSourcePath(track)}</dd>
-                      </div>
-                      <div>
-                        <dt>{t.inspect.storagePath}</dt>
-                        <dd>{getTrackStoragePath(track) ?? t.inspect.noSnapshot}</dd>
-                      </div>
-                    </dl>
-                  </div>
-                </details>
-              </section>
-            </section>
-          </div>
-
-          <div className="inspect-compose-cta">
-            <p className="support-copy">{t.inspect.buildCompositionTrack}</p>
-            <button type="button" className="action" onClick={onGoCompose}>
-              {t.inspect.composeCta}
-            </button>
-          </div>
-        </div>
+              <InspectTrackMetadataPanel
+                notesSummaryLabel={t.inspect.notesAnalysis}
+                noteItems={track.analysis.notes}
+                details={metadataDetails}
+              />
+            </>
+          }
+          composeCopy={t.inspect.buildCompositionTrack}
+          composeLabel={t.inspect.composeCta}
+          onGoCompose={onGoCompose}
+        />
       </div>
     </section>
   );

@@ -1,12 +1,17 @@
 import {
   DEFAULT_MONITOR_DECK_CONTROLS,
+  loadMonitorDeckControlProfiles,
   loadMonitorDeckControls,
+  MONITOR_DECK_CONTROL_PROFILES_STORAGE_KEY,
   MONITOR_DECK_CONTROLS_STORAGE_KEY,
   MONITOR_DECK_PRESETS,
   sanitizeMonitorDeckControls,
+  sanitizeMonitorDeckControlProfiles,
   type MonitorDeckControls,
+  type MonitorDeckControlProfiles,
   type MonitorDeckPresetId,
 } from "./monitorDeckControls";
+import type { AppSkin } from "./appSkin";
 
 interface MonitorDeckControlsStorageReader {
   getItem(key: string): string | null;
@@ -18,17 +23,56 @@ interface MonitorDeckControlsStorageWriter {
 
 export function readMonitorDeckControls(
   storage: MonitorDeckControlsStorageReader | null | undefined,
+  skin: AppSkin = "nightfall",
 ): MonitorDeckControls {
-  return storage
-    ? loadMonitorDeckControls(storage.getItem(MONITOR_DECK_CONTROLS_STORAGE_KEY))
-    : DEFAULT_MONITOR_DECK_CONTROLS;
+  if (!storage) {
+    return DEFAULT_MONITOR_DECK_CONTROLS;
+  }
+
+  const persistedProfiles = loadMonitorDeckControlProfiles(
+    storage.getItem(MONITOR_DECK_CONTROL_PROFILES_STORAGE_KEY),
+  );
+  const skinProfile = persistedProfiles?.profiles[skin];
+  if (skinProfile) {
+    return skinProfile;
+  }
+
+  return loadMonitorDeckControls(storage.getItem(MONITOR_DECK_CONTROLS_STORAGE_KEY));
+}
+
+export function readMonitorDeckControlProfiles(
+  storage: MonitorDeckControlsStorageReader | null | undefined,
+): MonitorDeckControlProfiles {
+  return (
+    (storage &&
+      loadMonitorDeckControlProfiles(storage.getItem(MONITOR_DECK_CONTROL_PROFILES_STORAGE_KEY))) ||
+    sanitizeMonitorDeckControlProfiles(null)
+  );
 }
 
 export function persistMonitorDeckControls(
-  storage: MonitorDeckControlsStorageWriter | null | undefined,
-  deckControls: MonitorDeckControls,
+  storage: (MonitorDeckControlsStorageReader & MonitorDeckControlsStorageWriter) | null | undefined,
+  input: {
+    skin: AppSkin;
+    deckControls: MonitorDeckControls;
+  },
 ): void {
-  storage?.setItem(MONITOR_DECK_CONTROLS_STORAGE_KEY, JSON.stringify(deckControls));
+  if (!storage) {
+    return;
+  }
+
+  const currentProfiles = readMonitorDeckControlProfiles(storage);
+  const nextProfiles = sanitizeMonitorDeckControlProfiles({
+    ...currentProfiles,
+    activeSkin: input.skin,
+    profiles: {
+      ...currentProfiles.profiles,
+      [input.skin]: input.deckControls,
+    },
+  });
+
+  storage.setItem(MONITOR_DECK_CONTROL_PROFILES_STORAGE_KEY, JSON.stringify(nextProfiles));
+  storage.setItem(MONITOR_DECK_CONTROLS_STORAGE_KEY, JSON.stringify(input.deckControls));
 }
 
 export function updateMonitorDeckControls<K extends keyof MonitorDeckControls>(input: {

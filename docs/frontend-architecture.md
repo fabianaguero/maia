@@ -408,6 +408,7 @@ Recent examples of that direction:
 - `useSimpleMonitorScreenController.ts` now owns the launch/deck/anomaly composition beneath `useSimpleMonitorScreenState.ts`, so the public simple-monitor hook mostly assembles the final active/idle view state
 - `useSimpleMonitorDeckController.ts` now owns the sub-hook composition beneath `useSimpleMonitorDeckRuntime.ts`, leaving the deck runtime as a stable facade over the assembled deck state
 - `useMonitorSetupProfile.ts`, `monitorSetupProfileRuntime.ts`, and `monitorDeckControlsRuntime.ts` now isolate setup-profile composition plus persisted deck-control IO from the setup screen shell
+- `useMonitorDeckControls.ts` now persists operator deck controls by skin, so Setup and live Monitoring recover the same profile for the currently selected booth theme
 - `LibraryScreen.tsx` now delegates state orchestration, toolbar actions, import/delete side effects, and connection refresh behavior to `useLibraryScreenController.tsx`, while `LibraryTabStrip.tsx` owns tab rendering
 - `useLibraryScreenController.tsx` is now a lighter composition hook over `useLibraryScreenState.ts`, `useLibraryScreenImportActions.ts`, `useLibraryScreenToolbarActions.tsx`, and `libraryScreenToolbarRuntime.ts`
 - `LiveLogMonitorPanel.tsx` is now a thin composition shell over `useLiveLogMonitorPanelController.tsx` and `useLiveLogMonitorPanelRuntime.tsx`, making monitor runtime wiring directly unit-testable
@@ -670,3 +671,4 @@ Areas that still deserve more integration coverage:
 - create connection → test connection → attach session → open live monitor
 - stop / replay / re-attach monitor loops
 - setup preference edits across skins and language changes
+- skin-specific deck profile persistence between Setup and active Monitoring

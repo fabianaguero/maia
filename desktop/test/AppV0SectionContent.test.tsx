@@ -5,9 +5,14 @@ import { AppV0SectionContent } from "../src/AppV0SectionContent";
 import { DEFAULT_MONITOR_SETUP_PREFERENCES } from "../src/features/simple/monitorSetupPreferences";
 
 vi.mock("../src/features/simple/SimpleMonitorScreen", () => ({
-  SimpleMonitorScreen: (props: { trackName?: string; isConsoleExpanded: boolean }) => (
+  SimpleMonitorScreen: (props: {
+    trackName?: string;
+    isConsoleExpanded: boolean;
+    skin?: string;
+  }) => (
     <div data-testid="simple-monitor">
-      simple-monitor::{props.trackName ?? "none"}::{String(props.isConsoleExpanded)}
+      simple-monitor::{props.trackName ?? "none"}::{String(props.isConsoleExpanded)}::
+      {props.skin ?? "no-skin"}
     </div>
   ),
 }));
@@ -97,10 +102,11 @@ describe("AppV0SectionContent", () => {
       currentSection: "monitor",
       userMode: "simple",
       isConsoleExpanded: true,
+      skin: "copper",
     });
 
     expect(screen.getByTestId("simple-monitor")).toHaveTextContent(
-      "simple-monitor::Donna Summer::true",
+      "simple-monitor::Donna Summer::true::copper",
     );
   });
 

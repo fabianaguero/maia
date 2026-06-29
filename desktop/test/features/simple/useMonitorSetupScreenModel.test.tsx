@@ -20,5 +20,6 @@ describe("useMonitorSetupScreenModel", () => {
     expect(result.current.viewModel.summaryCards.length).toBeGreaterThan(0);
     expect(result.current.screenModel.presetCards.length).toBe(3);
     expect(result.current.screenModel.customPresetCard?.id).toBe("custom");
+    expect(result.current.screenModel.signalBanks).toHaveLength(2);
   });
 });

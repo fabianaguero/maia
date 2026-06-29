@@ -227,6 +227,7 @@ describe("useSimpleMonitorScreenController", () => {
     const { result } = renderHook(
       () =>
         useSimpleMonitorScreenController({
+          skin: "copper",
           session: null,
           metrics,
           pastSessions: sessions,
@@ -251,5 +252,10 @@ describe("useSimpleMonitorScreenController", () => {
     expect(result.current.hookStateArgs.sessions[0]?.id).toBe("session-1");
     expect(result.current.hookStateArgs.monitorTrackTitle).toBe("Base Pulse");
     expect(result.current.hookStateArgs.audioStatus).toBe("running");
+    expect(mockedDeckRuntime).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skin: "copper",
+      }),
+    );
   });
 });

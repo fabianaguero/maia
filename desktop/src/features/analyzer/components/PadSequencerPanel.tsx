@@ -1,171 +1,20 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useT } from "../../../i18n/I18nContext";
 import type { ArrangementTrack, ArrangementVoice } from "./liveSonificationScene";
-
-const STEPS = 16;
-const TRACKS: ArrangementTrack[] = ["foundation", "motion", "accent"];
-
-// Probability cycle values for right-click (%)
-const PROB_CYCLE = [100, 75, 50, 25] as const;
-type ProbValue = (typeof PROB_CYCLE)[number];
-
-// Grid of probabilities per [track][step], default 100 = always fire
-type ProbGrid = ProbValue[][];
-
-// Default 16-step seed patterns per severity, derived from ARRANGEMENT_VOICE_MAP.
-// info  → foundation on downbeats (steps 0,4,8,12)
-// warn  → foundation + motion on off-beats
-// error → all 3 tracks sparse strum
-const SEED_PATTERNS: Record<string, boolean[][]> = {
-  info: [
-    // foundation
-    [
-      true,
-      false,
-      false,
-      false,
-      true,
-      false,
-      false,
-      false,
-      true,
-      false,
-      false,
-      false,
-      true,
-      false,
-      false,
-      false,
-    ],
-    // motion
-    Array(STEPS).fill(false),
-    // accent
-    Array(STEPS).fill(false),
-  ],
-  warn: [
-    // foundation
-    [
-      true,
-      false,
-      false,
-      false,
-      true,
-      false,
-      false,
-      false,
-      true,
-      false,
-      false,
-      false,
-      true,
-      false,
-      false,
-      false,
-    ],
-    // motion
-    [
-      false,
-      false,
-      true,
-      false,
-      false,
-      false,
-      true,
-      false,
-      false,
-      false,
-      true,
-      false,
-      false,
-      false,
-      true,
-      false,
-    ],
-    // accent
-    Array(STEPS).fill(false),
-  ],
-  error: [
-    // foundation
-    [
-      true,
-      false,
-      true,
-      false,
-      true,
-      false,
-      true,
-      false,
-      true,
-      false,
-      true,
-      false,
-      true,
-      false,
-      true,
-      false,
-    ],
-    // motion
-    [
-      false,
-      true,
-      false,
-      false,
-      false,
-      true,
-      false,
-      false,
-      false,
-      true,
-      false,
-      false,
-      false,
-      true,
-      false,
-      false,
-    ],
-    // accent
-    [
-      false,
-      false,
-      false,
-      true,
-      false,
-      false,
-      false,
-      true,
-      false,
-      false,
-      false,
-      true,
-      false,
-      false,
-      false,
-      true,
-    ],
-  ],
-};
-
-type PatternGrid = boolean[][];
-
-function emptyGrid(): PatternGrid {
-  return TRACKS.map(() => Array<boolean>(STEPS).fill(false));
-}
-
-function emptyProbGrid(): ProbGrid {
-  return TRACKS.map(() => Array<ProbValue>(STEPS).fill(100));
-}
-
-function seedFromVoices(voices: ArrangementVoice[]): PatternGrid {
-  // Build a hot set of tracks from the last N voices and fill the dominant seed
-  const trackHits = new Set(voices.map((v) => v.cue.routeKey));
-  if (trackHits.has("error") || trackHits.has("anomaly")) {
-    return SEED_PATTERNS.error.map((row) => [...row]);
-  }
-  if (trackHits.has("warn")) {
-    return SEED_PATTERNS.warn.map((row) => [...row]);
-  }
-  return SEED_PATTERNS.info.map((row) => [...row]);
-}
+import {
+  buildPadSequencerRulerCells,
+  buildPadSequencerTrackRows,
+  createEmptyPadSequencerGrid,
+  createEmptyPadSequencerProbGrid,
+  cyclePadSequencerProbability,
+  resolvePadSequencerEffectiveBpm,
+  resolvePadSequencerStepMs,
+  seedPadSequencerFromVoices,
+  PAD_SEQUENCER_STEPS,
+  PAD_SEQUENCER_TRACKS,
+  type PadSequencerPatternGrid,
+  type PadSequencerProbGrid,
+} from "./padSequencerPanelRuntime";
 
 interface PadSequencerPanelProps {
   bpm: number;
@@ -177,18 +26,18 @@ interface PadSequencerPanelProps {
 
 export function PadSequencerPanel({ bpm, recentVoices, onStepFire }: PadSequencerPanelProps) {
   const t = useT();
-  const [grid, setGrid] = useState<PatternGrid>(emptyGrid);
-  const [probGrid, setProbGrid] = useState<ProbGrid>(emptyProbGrid);
+  const [grid, setGrid] = useState<PadSequencerPatternGrid>(createEmptyPadSequencerGrid);
+  const [probGrid, setProbGrid] = useState<PadSequencerProbGrid>(createEmptyPadSequencerProbGrid);
   const [humanizeMs, setHumanizeMs] = useState(0);
   const [activeStep, setActiveStep] = useState<number>(-1);
   const [playing, setPlaying] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Keep a ref to the current grid so the setInterval closure always reads fresh data
-  const gridRef = useRef<PatternGrid>(grid);
+  const gridRef = useRef<PadSequencerPatternGrid>(grid);
   useEffect(() => {
     gridRef.current = grid;
   }, [grid]);
-  const probGridRef = useRef<ProbGrid>(probGrid);
+  const probGridRef = useRef<PadSequencerProbGrid>(probGrid);
   useEffect(() => {
     probGridRef.current = probGrid;
   }, [probGrid]);
@@ -202,7 +51,7 @@ export function PadSequencerPanel({ bpm, recentVoices, onStepFire }: PadSequence
     stepFireRef.current = onStepFire;
   }, [onStepFire]);
 
-  const stepMs = bpm > 0 ? 60_000 / bpm / 4 : 150; // 16th note duration in ms
+  const stepMs = resolvePadSequencerStepMs(bpm);
 
   // Advance playhead and fire audio callback on active steps
   useEffect(() => {
@@ -217,7 +66,7 @@ export function PadSequencerPanel({ bpm, recentVoices, onStepFire }: PadSequence
 
     let step = 0;
     intervalRef.current = setInterval(() => {
-      const currentStep = step % STEPS;
+      const currentStep = step % PAD_SEQUENCER_STEPS;
       setActiveStep(currentStep);
       const fire = stepFireRef.current;
       if (fire) {
@@ -226,12 +75,16 @@ export function PadSequencerPanel({ bpm, recentVoices, onStepFire }: PadSequence
         const currentGrid = gridRef.current;
         const currentProb = probGridRef.current;
         const hms = humanizeMsRef.current;
-        for (let i = 0; i < TRACKS.length; i++) {
+        for (let i = 0; i < PAD_SEQUENCER_TRACKS.length; i++) {
           if (currentGrid[i]?.[currentStep]) {
             const prob = currentProb[i]?.[currentStep] ?? 100;
             if (Math.random() * 100 < prob) {
               const offset = hms > 0 ? (Math.random() * 2 - 1) * hms : 0;
-              firings.push({ track: TRACKS[i], step: currentStep, humanizeOffsetMs: offset });
+              firings.push({
+                track: PAD_SEQUENCER_TRACKS[i],
+                step: currentStep,
+                humanizeOffsetMs: offset,
+              });
             }
           }
         }
@@ -260,26 +113,30 @@ export function PadSequencerPanel({ bpm, recentVoices, onStepFire }: PadSequence
 
   const cycleProbability = useCallback((trackIdx: number, stepIdx: number) => {
     setProbGrid((prev) => {
-      const next = prev.map((row) => [...row]) as ProbGrid;
+      const next = prev.map((row) => [...row]) as PadSequencerProbGrid;
       const current = next[trackIdx]?.[stepIdx] ?? 100;
-      const currentIndex = PROB_CYCLE.indexOf(current as ProbValue);
-      const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % PROB_CYCLE.length;
-      next[trackIdx][stepIdx] = PROB_CYCLE[nextIndex] ?? 100;
+      next[trackIdx][stepIdx] = cyclePadSequencerProbability(current);
       return next;
     });
   }, []);
 
   const handleFillFromScene = useCallback(() => {
-    setGrid(seedFromVoices(recentVoices));
-    setProbGrid(emptyProbGrid());
+    setGrid(seedPadSequencerFromVoices(recentVoices));
+    setProbGrid(createEmptyPadSequencerProbGrid());
   }, [recentVoices]);
 
   const handleClear = useCallback(() => {
-    setGrid(emptyGrid());
-    setProbGrid(emptyProbGrid());
+    setGrid(createEmptyPadSequencerGrid());
+    setProbGrid(createEmptyPadSequencerProbGrid());
   }, []);
 
-  const effectiveBpm = bpm > 0 ? bpm : 120;
+  const effectiveBpm = resolvePadSequencerEffectiveBpm(bpm);
+  const rulerCells = buildPadSequencerRulerCells(activeStep);
+  const trackRows = buildPadSequencerTrackRows({
+    grid,
+    probGrid,
+    activeStep,
+  });
 
   return (
     <div className="pad-sequencer-panel">
@@ -334,65 +191,56 @@ export function PadSequencerPanel({ bpm, recentVoices, onStepFire }: PadSequence
         {/* Step index ruler */}
         <div className="pad-seq-row pad-seq-ruler-row">
           <span className="pad-seq-track-label" aria-hidden="true" />
-          {Array.from({ length: STEPS }, (_, i) => (
+          {rulerCells.map((cell) => (
             <span
-              key={i}
-              className={`pad-seq-ruler-cell ${i % 4 === 0 ? "pad-seq-ruler-cell--beat" : ""} ${activeStep === i ? "pad-seq-ruler-cell--active" : ""}`}
+              key={cell.key}
+              className={`pad-seq-ruler-cell ${cell.isBeat ? "pad-seq-ruler-cell--beat" : ""} ${cell.isActive ? "pad-seq-ruler-cell--active" : ""}`}
             >
-              {i % 4 === 0 ? i / 4 + 1 : "·"}
+              {cell.label}
             </span>
           ))}
         </div>
 
         {/* Track rows */}
-        {TRACKS.map((track, trackIdx) => (
-          <div key={track} className={`pad-seq-row pad-seq-track-row pad-seq-track--${track}`}>
-            <span className="pad-seq-track-label">{track}</span>
-            {Array.from({ length: STEPS }, (_, stepIdx) => {
-              const isOn = grid[trackIdx][stepIdx];
-              const isCurrent = activeStep === stepIdx;
-              const prob = probGrid[trackIdx]?.[stepIdx] ?? 100;
-              const isDimmed = isOn && prob < 100;
-              return (
-                <button
-                  key={stepIdx}
-                  className={[
-                    "pad-seq-step",
-                    isOn ? "pad-seq-step--on" : "",
-                    isCurrent ? "pad-seq-step--current" : "",
-                    stepIdx % 4 === 0 ? "pad-seq-step--beat" : "",
-                    isDimmed ? `pad-seq-step--prob${prob}` : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  style={isDimmed ? { opacity: prob / 100 } : undefined}
-                  onClick={() => toggleStep(trackIdx, stepIdx)}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    if (isOn) cycleProbability(trackIdx, stepIdx);
-                  }}
-                  aria-pressed={isOn}
-                  aria-label={t.inspect.trackStepAria
-                    .replace("{track}", track)
-                    .replace("{step}", String(stepIdx + 1))
-                    .replace(
-                      "{probability}",
-                      isOn && prob < 100
-                        ? t.inspect.probabilitySuffix.replace("{prob}", String(prob))
-                        : "",
-                    )}
-                  title={
-                    isOn
-                      ? prob < 100
-                        ? t.inspect.rightClickCycleProbability.replace("{prob}", String(prob))
-                        : t.inspect.rightClickSetProbability
-                      : t.inspect.leftClickEnable
-                  }
-                >
-                  {isOn && prob < 100 ? <span className="pad-seq-step-prob">{prob}</span> : null}
-                </button>
-              );
-            })}
+        {trackRows.map((row) => (
+          <div key={row.track} className={row.className}>
+            <span className="pad-seq-track-label">{row.track}</span>
+            {row.steps.map((step) => (
+              <button
+                key={step.key}
+                className={step.className}
+                style={step.style}
+                onClick={() => toggleStep(row.trackIndex, step.step)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  if (step.isOn) cycleProbability(row.trackIndex, step.step);
+                }}
+                aria-pressed={step.isOn}
+                aria-label={t.inspect.trackStepAria
+                  .replace("{track}", row.track)
+                  .replace("{step}", String(step.step + 1))
+                  .replace(
+                    "{probability}",
+                    step.isOn && step.probability < 100
+                      ? t.inspect.probabilitySuffix.replace("{prob}", String(step.probability))
+                      : "",
+                  )}
+                title={
+                  step.isOn
+                    ? step.probability < 100
+                      ? t.inspect.rightClickCycleProbability.replace(
+                          "{prob}",
+                          String(step.probability),
+                        )
+                      : t.inspect.rightClickSetProbability
+                    : t.inspect.leftClickEnable
+                }
+              >
+                {step.isOn && step.probability < 100 ? (
+                  <span className="pad-seq-step-prob">{step.probability}</span>
+                ) : null}
+              </button>
+            ))}
           </div>
         ))}
       </div>

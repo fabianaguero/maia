@@ -9,7 +9,7 @@ import { en } from "../../../src/i18n/en";
 const mockedUseMonitorDeckControls = vi.fn();
 
 vi.mock("../../../src/features/simple/useMonitorDeckControls", () => ({
-  useMonitorDeckControls: () => mockedUseMonitorDeckControls(),
+  useMonitorDeckControls: (input: unknown) => mockedUseMonitorDeckControls(input),
 }));
 
 describe("useMonitorSetupProfile", () => {
@@ -47,6 +47,7 @@ describe("useMonitorSetupProfile", () => {
       "cloud-defaults",
       "stream-runtime",
     ]);
+    expect(mockedUseMonitorDeckControls).toHaveBeenCalledWith({ skin: "nightfall" });
     expect(result.current.updateDeckControl).toBe(updateDeckControl);
     expect(result.current.resetDeckControls).toBe(resetDeckControls);
     expect(result.current.applyDeckPreset).toBe(applyDeckPreset);

@@ -7,23 +7,24 @@ import type {
   VisualizationRegionPoint,
 } from "../../../types/library";
 import { selectBeatGridPhrase, type BeatGridPhraseRange } from "../../../utils/beatGrid";
+import { hasUsableBeatGrid, resolveTrackPlacementSecond } from "../../../utils/track";
 import {
-  hasUsableBeatGrid,
-  nudgeTrackSecond,
-  resolveTrackPlacementSecond,
-} from "../../../utils/track";
-import {
+  buildWaveformSummaryPills,
   buildRenderedCueMarkers,
   buildRenderedRegions,
   formatDuration,
   resolveAnchorPosition,
   resolveDisplayBins,
+  resolveWaveformInteractionHints,
+  resolveWaveformPlayheadOverlayState,
   resolveVisibleBeats,
   resolveWaveformCursor,
   resolveWaveformSummaryFlags,
   type DragTarget,
   type WaveformEditableCuePoint,
 } from "./waveformPlaceholderRuntime";
+import { WaveformCueOverlay } from "./WaveformCueOverlay";
+import { WaveformRegionOverlay } from "./WaveformRegionOverlay";
 
 interface WaveformPlaceholderProps {
   bins: number[];
@@ -265,6 +266,76 @@ export function WaveformPlaceholder({
 
     onSeek?.(seekTime);
   };
+
+  const beginPerformanceDrag = useCallback((clientX: number) => {
+    dragMovedRef.current = false;
+    dragStartClientXRef.current = clientX;
+    setGridClickArmed(false);
+    setPhraseSelectArmed(false);
+  }, []);
+
+  const handleBeginCueDrag = useCallback(
+    (input: { eventClientX: number; cue: WaveformEditableCuePoint; second: number }) => {
+      beginPerformanceDrag(input.eventClientX);
+      setDragTarget({
+        type: "cue",
+        cue: input.cue,
+      });
+      dragEditSecondRef.current = input.second;
+      setDragEditSecond(input.second);
+    },
+    [beginPerformanceDrag],
+  );
+
+  const handleBeginLoopDrag = useCallback(
+    (input: {
+      eventClientX: number;
+      loopId: string;
+      startSecond: number;
+      endSecond: number;
+      pointerOffsetSecond: number;
+    }) => {
+      beginPerformanceDrag(input.eventClientX);
+      setDragTarget({
+        type: "loop",
+        loopId: input.loopId,
+        startSecond: input.startSecond,
+        endSecond: input.endSecond,
+        pointerOffsetSecond: input.pointerOffsetSecond,
+      });
+      dragEditSecondRef.current = input.startSecond;
+      setDragEditSecond(input.startSecond);
+    },
+    [beginPerformanceDrag],
+  );
+
+  const handleBeginLoopBoundaryDrag = useCallback(
+    (input: {
+      eventClientX: number;
+      loopId: string;
+      boundary: "start" | "end";
+      second: number;
+    }) => {
+      beginPerformanceDrag(input.eventClientX);
+      setDragTarget({
+        type: "loop-boundary",
+        loopId: input.loopId,
+        boundary: input.boundary,
+      });
+      dragEditSecondRef.current = input.second;
+      setDragEditSecond(input.second);
+    },
+    [beginPerformanceDrag],
+  );
+
+  const consumeDraggedClick = useCallback(() => {
+    if (!dragMovedRef.current) {
+      return false;
+    }
+    dragMovedRef.current = false;
+    return true;
+  }, []);
+
   const displayBins = resolveDisplayBins(bins);
   const visibleBeats = resolveVisibleBeats(beatGrid, durationSeconds);
   const { anchorSecond, anchorPosition } = resolveAnchorPosition({
@@ -289,6 +360,31 @@ export function WaveformPlaceholder({
     dragTarget,
     dragEditSecond,
     durationSeconds,
+  });
+  const interactionHints = resolveWaveformInteractionHints({
+    gridClickArmed,
+    phraseSelectArmed,
+    gridAnchorDragging,
+    phraseBeatCount,
+    t,
+  });
+  const playheadOverlay = resolveWaveformPlayheadOverlayState({
+    currentTime,
+    durationSeconds,
+    analysisProgress,
+    t,
+  });
+  const summaryPills = buildWaveformSummaryPills({
+    visibleBeatsCount: visibleBeats.length,
+    showRegionSummary,
+    regionsCount: regions.length,
+    selectedPhraseRange,
+    displayBinsCount: displayBins.length,
+    gridAnchorDragging,
+    gridClickArmed,
+    phraseSelectArmed,
+    showPhraseSummary,
+    t,
   });
 
   return (
@@ -347,17 +443,17 @@ export function WaveformPlaceholder({
           }),
         }}
       >
-        {gridClickArmed ? (
-          <div className="waveform-grid-edit-hint">{t.inspect.clickPlaceDownbeat}</div>
+        {interactionHints.gridHint ? (
+          <div className="waveform-grid-edit-hint">{interactionHints.gridHint}</div>
         ) : null}
-        {phraseSelectArmed ? (
+        {interactionHints.phraseHint ? (
           <div className="waveform-grid-edit-hint waveform-grid-edit-hint--phrase">
-            {t.inspect.clickCapturePhrase.replace("{count}", String(phraseBeatCount))}
+            {interactionHints.phraseHint}
           </div>
         ) : null}
-        {gridAnchorDragging ? (
+        {interactionHints.dragHint ? (
           <div className="waveform-grid-edit-hint waveform-grid-edit-hint--drag">
-            {t.inspect.draggingDownbeat}
+            {interactionHints.dragHint}
           </div>
         ) : null}
         <div
@@ -403,218 +499,20 @@ export function WaveformPlaceholder({
         </div>
 
         {regions.length > 0 || selectedPhraseRange ? (
-          <div className="waveform-region-overlay" aria-label={t.inspect.loopPhraseRegions}>
-            {renderedRegions.map((region) => {
-              const startPosition =
-                durationSeconds && durationSeconds > 0
-                  ? Math.min(100, (region.startSecond / durationSeconds) * 100)
-                  : 0;
-              const endPosition =
-                durationSeconds && durationSeconds > 0
-                  ? Math.min(100, (region.endSecond / durationSeconds) * 100)
-                  : startPosition;
-
-              return (
-                <div
-                  key={region.id}
-                  className={`waveform-region waveform-region--${region.type}`}
-                  style={
-                    {
-                      "--region-start": `${startPosition}%`,
-                      "--region-width": `${Math.max(0.8, endPosition - startPosition)}%`,
-                      "--region-color": region.color ?? "rgba(72, 215, 255, 0.28)",
-                    } as CSSProperties
-                  }
-                  title={region.excerpt ? `${region.label} · ${region.excerpt}` : region.label}
-                  role="button"
-                  tabIndex={onSeek || (canEditPerformance && region.editableLoop) ? 0 : -1}
-                  aria-label={t.inspect.seekTo.replace("{label}", region.label)}
-                  aria-disabled={!onSeek}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    if (dragMovedRef.current) {
-                      dragMovedRef.current = false;
-                      return;
-                    }
-                    onSeek?.(region.startSecond);
-                  }}
-                  onKeyDown={(event) => {
-                    if (
-                      canEditPerformance &&
-                      region.editableLoop &&
-                      (event.key === "ArrowLeft" || event.key === "ArrowRight")
-                    ) {
-                      event.preventDefault();
-                      event.stopPropagation();
-
-                      const direction = event.key === "ArrowLeft" ? -1 : 1;
-                      const nextSecond = nudgeTrackSecond(region.startSecond, direction, {
-                        durationSeconds,
-                        beatGrid,
-                        coarse: event.shiftKey,
-                        freeSlip: event.altKey,
-                      });
-
-                      onMoveLoop?.(region.id, nextSecond);
-                      return;
-                    }
-
-                    if (!onSeek) {
-                      return;
-                    }
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      onSeek(region.startSecond);
-                    }
-                  }}
-                  onMouseDown={(event) => {
-                    if (!canEditPerformance || !region.editableLoop) {
-                      return;
-                    }
-                    const clickedSecond = resolveSecondFromClientX(event.clientX);
-                    const pointerOffsetSecond =
-                      clickedSecond === null ? 0 : clickedSecond - region.startSecond;
-                    event.preventDefault();
-                    event.stopPropagation();
-                    dragMovedRef.current = false;
-                    dragStartClientXRef.current = event.clientX;
-                    setGridClickArmed(false);
-                    setPhraseSelectArmed(false);
-                    setDragTarget({
-                      type: "loop",
-                      loopId: region.id,
-                      startSecond: region.startSecond,
-                      endSecond: region.endSecond,
-                      pointerOffsetSecond,
-                    });
-                    dragEditSecondRef.current = region.startSecond;
-                    setDragEditSecond(region.startSecond);
-                  }}
-                >
-                  <span className="waveform-region-label">{region.label}</span>
-                  {canEditPerformance && region.editableLoop ? (
-                    <>
-                      <button
-                        type="button"
-                        className="waveform-region-handle waveform-region-handle--start"
-                        aria-label={t.inspect.dragStartOf.replace("{label}", region.label)}
-                        onKeyDown={(event) => {
-                          if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
-                            return;
-                          }
-
-                          event.preventDefault();
-                          event.stopPropagation();
-
-                          const direction = event.key === "ArrowLeft" ? -1 : 1;
-                          const nextSecond = nudgeTrackSecond(region.startSecond, direction, {
-                            durationSeconds,
-                            beatGrid,
-                            coarse: event.shiftKey,
-                            freeSlip: event.altKey,
-                          });
-
-                          onMoveLoopBoundary?.(region.id, "start", nextSecond);
-                        }}
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          dragMovedRef.current = false;
-                          dragStartClientXRef.current = event.clientX;
-                          setGridClickArmed(false);
-                          setPhraseSelectArmed(false);
-                          setDragTarget({
-                            type: "loop-boundary",
-                            loopId: region.id,
-                            boundary: "start",
-                          });
-                          dragEditSecondRef.current = region.startSecond;
-                          setDragEditSecond(region.startSecond);
-                        }}
-                      />
-                      <button
-                        type="button"
-                        className="waveform-region-handle waveform-region-handle--end"
-                        aria-label={t.inspect.dragEndOf.replace("{label}", region.label)}
-                        onKeyDown={(event) => {
-                          if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
-                            return;
-                          }
-
-                          event.preventDefault();
-                          event.stopPropagation();
-
-                          const direction = event.key === "ArrowLeft" ? -1 : 1;
-                          const nextSecond = nudgeTrackSecond(region.endSecond, direction, {
-                            durationSeconds,
-                            beatGrid,
-                            coarse: event.shiftKey,
-                            freeSlip: event.altKey,
-                          });
-
-                          onMoveLoopBoundary?.(region.id, "end", nextSecond);
-                        }}
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          dragMovedRef.current = false;
-                          dragStartClientXRef.current = event.clientX;
-                          setGridClickArmed(false);
-                          setPhraseSelectArmed(false);
-                          setDragTarget({
-                            type: "loop-boundary",
-                            loopId: region.id,
-                            boundary: "end",
-                          });
-                          dragEditSecondRef.current = region.endSecond;
-                          setDragEditSecond(region.endSecond);
-                        }}
-                      />
-                    </>
-                  ) : null}
-                </div>
-              );
-            })}
-            {selectedPhraseRange && durationSeconds && durationSeconds > 0 ? (
-              <div
-                className="waveform-region waveform-region--phrase waveform-region--selected"
-                style={
-                  {
-                    "--region-start": `${Math.min(100, (selectedPhraseRange.startSecond / durationSeconds) * 100)}%`,
-                    "--region-width": `${Math.max(
-                      0.8,
-                      ((selectedPhraseRange.endSecond - selectedPhraseRange.startSecond) /
-                        durationSeconds) *
-                        100,
-                    )}%`,
-                    "--region-color": "rgba(244, 184, 94, 0.28)",
-                  } as CSSProperties
-                }
-                title={`${selectedPhraseRange.label} · ${selectedPhraseRange.beatCount} beats`}
-                role="button"
-                tabIndex={onSeek ? 0 : -1}
-                aria-label={t.inspect.seekTo.replace("{label}", selectedPhraseRange.label)}
-                aria-disabled={!onSeek}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onSeek?.(selectedPhraseRange.startSecond);
-                }}
-                onKeyDown={(event) => {
-                  if (!onSeek) {
-                    return;
-                  }
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    onSeek(selectedPhraseRange.startSecond);
-                  }
-                }}
-              >
-                <span className="waveform-region-label">{selectedPhraseRange.label}</span>
-              </div>
-            ) : null}
-          </div>
+          <WaveformRegionOverlay
+            renderedRegions={renderedRegions}
+            selectedPhraseRange={selectedPhraseRange}
+            durationSeconds={durationSeconds}
+            canEditPerformance={canEditPerformance}
+            beatGrid={beatGrid}
+            onSeek={onSeek}
+            onMoveLoop={onMoveLoop}
+            onMoveLoopBoundary={onMoveLoopBoundary}
+            onBeginLoopDrag={handleBeginLoopDrag}
+            onBeginLoopBoundaryDrag={handleBeginLoopBoundaryDrag}
+            resolveSecondFromClientX={resolveSecondFromClientX}
+            dragMovedRef={dragMovedRef}
+          />
         ) : null}
 
         {anchorPosition !== null && onSetDownbeatAtSecond ? (
@@ -637,154 +535,60 @@ export function WaveformPlaceholder({
           </button>
         ) : null}
 
-        <div className="hot-cue-overlay" aria-label={t.inspect.anomalyMarkersAria}>
-          {renderedCueMarkers.map((cue) => {
-            const position =
-              durationSeconds && durationSeconds > 0
-                ? Math.min(100, (cue.second / durationSeconds) * 100)
-                : 0;
-
-            return (
-              <button
-                key={cue.key}
-                type="button"
-                className={`hot-cue-marker ${cue.type.toLowerCase()}${dragTarget?.type === "cue" && dragTarget.cue.id === cue.key ? " is-dragging" : ""}`}
-                style={{ "--cue-position": `${position}%` } as CSSProperties}
-                title={cue.excerpt ? `${cue.label}: ${cue.excerpt}` : cue.label}
-                aria-label={t.inspect.seekToCue.replace("{label}", cue.label)}
-                disabled={!onSeek}
-                onMouseDown={(event) => {
-                  if (!canEditPerformance || !cue.interactiveCue) {
-                    return;
-                  }
-                  event.preventDefault();
-                  event.stopPropagation();
-                  dragMovedRef.current = false;
-                  dragStartClientXRef.current = event.clientX;
-                  setGridClickArmed(false);
-                  setPhraseSelectArmed(false);
-                  setDragTarget({
-                    type: "cue",
-                    cue: cue.interactiveCue,
-                  });
-                  dragEditSecondRef.current = cue.second;
-                  setDragEditSecond(cue.second);
-                }}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  if (dragMovedRef.current) {
-                    dragMovedRef.current = false;
-                    return;
-                  }
-                  onSeek?.(cue.second);
-                }}
-                onKeyDown={(event) => {
-                  if (!canEditPerformance || !cue.interactiveCue) {
-                    return;
-                  }
-
-                  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
-                    return;
-                  }
-
-                  event.preventDefault();
-                  event.stopPropagation();
-
-                  const direction = event.key === "ArrowLeft" ? -1 : 1;
-                  const nextSecond = nudgeTrackSecond(cue.second, direction, {
-                    durationSeconds,
-                    beatGrid,
-                    coarse: event.shiftKey,
-                    freeSlip: event.altKey,
-                  });
-
-                  onNudgeCue?.(cue.interactiveCue, nextSecond);
-                }}
-              >
-                <span className="hot-cue-label">{cue.label}</span>
-              </button>
-            );
-          })}
-        </div>
+        <WaveformCueOverlay
+          renderedCueMarkers={renderedCueMarkers}
+          dragTarget={dragTarget}
+          durationSeconds={durationSeconds}
+          canEditPerformance={canEditPerformance}
+          beatGrid={beatGrid}
+          onSeek={onSeek}
+          onNudgeCue={onNudgeCue}
+          onBeginCueDrag={handleBeginCueDrag}
+          consumeDraggedClick={consumeDraggedClick}
+        />
 
         <div className="waveform-playhead-overlay" aria-hidden="true">
-          {durationSeconds && durationSeconds > 0 ? (
+          {playheadOverlay.progressPercent !== null ? (
             <div
               className="waveform-progress-mask"
               style={
                 {
-                  width: `${Math.min(100, (currentTime / durationSeconds) * 100)}%`,
+                  width: `${playheadOverlay.progressPercent}%`,
                 } as CSSProperties
               }
             />
           ) : null}
-          {durationSeconds && durationSeconds > 0 ? (
+          {playheadOverlay.progressPercent !== null ? (
             <div
               className="waveform-playhead"
               style={
                 {
-                  left: `${Math.min(100, (currentTime / durationSeconds) * 100)}%`,
+                  left: `${playheadOverlay.progressPercent}%`,
                 } as CSSProperties
               }
             />
           ) : null}
-          {analysisProgress !== null &&
-          analysisProgress < 1 &&
-          durationSeconds &&
-          durationSeconds > 0 ? (
+          {playheadOverlay.analysisEndPercent !== null ? (
             <div
               className="waveform-analysis-end"
               style={
                 {
-                  left: `${Math.min(100, analysisProgress * 100)}%`,
+                  left: `${playheadOverlay.analysisEndPercent}%`,
                 } as CSSProperties
               }
-              title={t.inspect.analysisCompletePoint.replace(
-                "{progress}",
-                String(Math.round(analysisProgress * 100)),
-              )}
+              title={playheadOverlay.analysisEndTitle ?? undefined}
             />
           ) : null}
         </div>
       </div>
 
       <div className="waveform-summary">
-        <div className="waveform-meta-pill">
-          <span>{t.inspect.visibleBeats}</span>
-          <strong>{visibleBeats.length}</strong>
-        </div>
-        <div className="waveform-meta-pill">
-          <span>{showRegionSummary ? t.inspect.regions : t.inspect.resolution}</span>
-          <strong>
-            {showRegionSummary
-              ? regions.length + (selectedPhraseRange ? 1 : 0)
-              : `${displayBins.length} bins`}
-          </strong>
-        </div>
-        <div className="waveform-meta-pill">
-          <span>{t.inspect.gridState}</span>
-          <strong>
-            {gridAnchorDragging
-              ? t.inspect.dragging
-              : gridClickArmed
-                ? t.inspect.armed
-                : visibleBeats.length > 0
-                  ? t.inspect.aligned
-                  : t.inspect.pending}
-          </strong>
-        </div>
-        {showPhraseSummary ? (
-          <div className="waveform-meta-pill">
-            <span>{t.inspect.phrase}</span>
-            <strong>
-              {selectedPhraseRange
-                ? `${selectedPhraseRange.label} · ${selectedPhraseRange.beatCount} beats`
-                : phraseSelectArmed
-                  ? t.inspect.armed
-                  : t.inspect.none}
-            </strong>
+        {summaryPills.map((pill) => (
+          <div key={pill.key} className="waveform-meta-pill">
+            <span>{pill.label}</span>
+            <strong>{pill.value}</strong>
           </div>
-        ) : null}
+        ))}
       </div>
 
       <div className="waveform-footer">

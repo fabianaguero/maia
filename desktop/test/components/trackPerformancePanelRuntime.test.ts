@@ -2,12 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { LibraryTrack } from "../../src/types/library";
 import {
+  buildTrackPerformanceMetrics,
   buildQuantizedPlacementHint,
   buildTrackPerformancePanelState,
   createTrackPerformanceActions,
   renderCueLabel,
   renderLoopLabel,
 } from "../../src/features/analyzer/components/trackPerformancePanelRuntime";
+import { en } from "../../src/i18n/en";
 
 function createTrack(): LibraryTrack {
   const importedAt = "2026-04-08T12:00:00.000Z";
@@ -153,6 +155,33 @@ describe("trackPerformancePanelRuntime", () => {
         "Editable",
       ),
     ).toBe("Loop A · 1:04.00 -> 1:12.00 · Slot 1 · Locked");
+  });
+
+  it("builds the summary metrics shown by the performance panel", () => {
+    expect(buildTrackPerformanceMetrics({ track: createTrack(), t: en })).toEqual(
+      expect.arrayContaining([
+        {
+          key: "availability",
+          label: en.inspect.availability,
+          value: en.inspect.available,
+        },
+        {
+          key: "main-cue",
+          label: en.inspect.mainCue,
+          value: "0:12.50",
+        },
+        {
+          key: "hot-cues",
+          label: en.inspect.hotCues,
+          value: "1",
+        },
+        {
+          key: "grid-lock",
+          label: en.inspect.gridLockLabel,
+          value: en.inspect.open,
+        },
+      ]),
+    );
   });
 
   it("creates performance actions that emit cue and loop updates", () => {

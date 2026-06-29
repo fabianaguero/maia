@@ -50,6 +50,7 @@ describe("appV0SectionContentRuntime", () => {
     });
 
     expect(model.kind).toBe("simple-monitor");
+    expect(model.simpleMonitorProps.skin).toBe("nightfall");
     expect(model.simpleMonitorProps.trackName).toBe("Donna Summer");
     expect(model.simpleMonitorProps.liveSettings).toBe(DEFAULT_MONITOR_SETUP_PREFERENCES);
     expect(model.simpleMonitorProps.isConsoleExpanded).toBe(true);

@@ -150,6 +150,7 @@ describe("simpleMonitorScreenOrchestrationRuntime", () => {
       onStartMonitoring: vi.fn(),
     });
     const deckInput = buildSimpleMonitorDeckRuntimeInput({
+      skin: "copper",
       session: null,
       isListening: false,
       isLaunchingMonitor: true,
@@ -166,6 +167,7 @@ describe("simpleMonitorScreenOrchestrationRuntime", () => {
 
     expect(launchInput.repositories).toHaveLength(1);
     expect(launchInput.isListening).toBe(false);
+    expect(deckInput.skin).toBe("copper");
     expect(deckInput.safeTracks[0]?.id).toBe("track-1");
     expect(deckInput.isLaunchingMonitor).toBe(true);
   });

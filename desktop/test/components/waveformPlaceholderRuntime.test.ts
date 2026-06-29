@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildWaveformSummaryPills,
   buildRenderedCueMarkers,
   buildRenderedRegions,
   resolveAnchorPosition,
   resolveDisplayBins,
+  resolveWaveformInteractionHints,
+  resolveWaveformPlayheadOverlayState,
   resolveWaveformSummaryFlags,
   resolveWaveformCursor,
 } from "../../src/features/analyzer/components/waveformPlaceholderRuntime";
+import { en } from "../../src/i18n/en";
 
 describe("waveformPlaceholderRuntime", () => {
   it("builds fallback display bins when no waveform bins are present", () => {
@@ -233,5 +237,77 @@ describe("waveformPlaceholderRuntime", () => {
         canEditBeatGrid: true,
       }),
     ).toBe("grabbing");
+  });
+
+  it("derives interaction hints, playhead overlay, and summary pills from stage state", () => {
+    expect(
+      resolveWaveformInteractionHints({
+        gridClickArmed: true,
+        phraseSelectArmed: false,
+        gridAnchorDragging: false,
+        phraseBeatCount: 16,
+        t: en,
+      }),
+    ).toEqual({
+      gridHint: en.inspect.clickPlaceDownbeat,
+      phraseHint: null,
+      dragHint: null,
+    });
+
+    expect(
+      resolveWaveformPlayheadOverlayState({
+        currentTime: 10,
+        durationSeconds: 20,
+        analysisProgress: 0.42,
+        t: en,
+      }),
+    ).toEqual({
+      progressPercent: 50,
+      analysisEndPercent: 42,
+      analysisEndTitle: "Analysis complete up to this point (42%)",
+    });
+
+    expect(
+      buildWaveformSummaryPills({
+        visibleBeatsCount: 8,
+        showRegionSummary: true,
+        regionsCount: 2,
+        selectedPhraseRange: {
+          startSecond: 0,
+          endSecond: 8,
+          startBeatIndex: 0,
+          endBeatIndex: 16,
+          beatCount: 16,
+          label: "Phrase 1",
+        },
+        displayBinsCount: 128,
+        gridAnchorDragging: false,
+        gridClickArmed: false,
+        phraseSelectArmed: false,
+        showPhraseSummary: true,
+        t: en,
+      }),
+    ).toEqual([
+      {
+        key: "visible-beats",
+        label: en.inspect.visibleBeats,
+        value: "8",
+      },
+      {
+        key: "regions",
+        label: en.inspect.regions,
+        value: "3",
+      },
+      {
+        key: "grid-state",
+        label: en.inspect.gridState,
+        value: en.inspect.aligned,
+      },
+      {
+        key: "phrase",
+        label: en.inspect.phrase,
+        value: "Phrase 1 · 16 beats",
+      },
+    ]);
   });
 });

@@ -28,10 +28,18 @@ describe("monitorSetupScreenRuntime", () => {
       t: en,
     });
 
-    const model = buildMonitorSetupScreenModel(viewModel);
+    const model = buildMonitorSetupScreenModel({
+      t: en,
+      viewModel,
+    });
 
     expect(model.presetCards.map((preset) => preset.id)).toEqual(["passive", "balanced", "alert"]);
     expect(model.customPresetCard?.id).toBe("custom");
+    expect(model.signalBanks.map((bank) => bank.key)).toEqual(["signal-chain", "transport"]);
+    expect(model.signalBanks[1]).toMatchObject({
+      role: "list",
+      title: en.simpleMode.deckSetup.transportTitle,
+    });
     expect(Object.keys(model.setupIcons)).toEqual([
       "reactive-mix",
       "anomaly-emphasis",

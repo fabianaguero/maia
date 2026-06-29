@@ -13,35 +13,63 @@ import {
   readMonitorDeckControls,
   updateMonitorDeckControls,
 } from "./monitorDeckControlsRuntime";
+import type { AppSkin } from "./appSkin";
 
-export function useMonitorDeckControls() {
-  const [deckControls, setDeckControls] = useState<MonitorDeckControls>(
-    DEFAULT_MONITOR_DECK_CONTROLS,
-  );
+interface UseMonitorDeckControlsInput {
+  skin?: AppSkin;
+}
+
+interface MonitorDeckControlsState {
+  skin: AppSkin;
+  controls: MonitorDeckControls;
+}
+
+export function useMonitorDeckControls({ skin = "nightfall" }: UseMonitorDeckControlsInput) {
+  const [deckState, setDeckState] = useState<MonitorDeckControlsState>({
+    skin,
+    controls: DEFAULT_MONITOR_DECK_CONTROLS,
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
-    setDeckControls(readMonitorDeckControls(window.localStorage));
-  }, []);
+    setDeckState({
+      skin,
+      controls: readMonitorDeckControls(window.localStorage, skin),
+    });
+  }, [skin]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
-    persistMonitorDeckControls(window.localStorage, deckControls);
-  }, [deckControls]);
+    if (deckState.skin !== skin) {
+      return;
+    }
+    persistMonitorDeckControls(window.localStorage, {
+      skin,
+      deckControls: deckState.controls,
+    });
+  }, [deckState, skin]);
+
+  const deckControls = deckState.skin === skin ? deckState.controls : DEFAULT_MONITOR_DECK_CONTROLS;
 
   const updateDeckControl = <K extends keyof MonitorDeckControls>(
     key: K,
     value: MonitorDeckControls[K],
   ) => {
-    setDeckControls((current) => updateMonitorDeckControls({ current, key, value }));
+    setDeckState((current) => ({
+      ...current,
+      controls: updateMonitorDeckControls({ current: current.controls, key, value }),
+    }));
   };
 
   const applyDeckPreset = (presetId: MonitorDeckPresetId) => {
-    setDeckControls(applyMonitorDeckPreset(presetId));
+    setDeckState((current) => ({
+      ...current,
+      controls: applyMonitorDeckPreset(presetId),
+    }));
   };
 
   const activePreset = resolveActiveMonitorDeckPreset(deckControls);
@@ -49,11 +77,13 @@ export function useMonitorDeckControls() {
 
   return {
     deckControls,
-    setDeckControls,
+    setDeckControls: (controls: MonitorDeckControls) =>
+      setDeckState((current) => ({ ...current, controls })),
     updateDeckControl,
     applyDeckPreset,
     activePreset,
     isDirty,
-    resetDeckControls: () => setDeckControls(DEFAULT_MONITOR_DECK_CONTROLS),
+    resetDeckControls: () =>
+      setDeckState((current) => ({ ...current, controls: DEFAULT_MONITOR_DECK_CONTROLS })),
   };
 }

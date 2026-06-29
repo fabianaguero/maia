@@ -5,6 +5,7 @@ import type {
   UpdateTrackPerformanceInput,
 } from "../../../types/library";
 import type { BeatGridPhraseRange } from "../../../utils/beatGrid";
+import { formatShortDateTime } from "../../../utils/date";
 import {
   canCreateBeatLoop,
   canCreateHotCue,
@@ -28,6 +29,22 @@ export const LOOP_BEAT_PRESETS = [4, 8, 16];
 export interface TrackColorOption {
   value: string;
   label: string;
+}
+
+export interface TrackPerformanceMetricViewModel {
+  key:
+    | "availability"
+    | "main-cue"
+    | "hot-cues"
+    | "memory-cues"
+    | "saved-loops"
+    | "rating"
+    | "play-count"
+    | "last-played"
+    | "bpm-lock"
+    | "grid-lock";
+  label: string;
+  value: string;
 }
 
 export function buildTrackColorOptions(t: {
@@ -92,6 +109,87 @@ export function buildTrackPerformancePanelState(input: {
     canAddLoop: canCreateSavedLoop(track.performance.savedLoops),
     quantizeAvailable: hasUsableBeatGrid(track.analysis.beatGrid),
   };
+}
+
+export function buildTrackPerformanceMetrics(input: {
+  track: LibraryTrack;
+  t: {
+    inspect: {
+      availability: string;
+      missing: string;
+      available: string;
+      mainCue: string;
+      hotCues: string;
+      memoryCues: string;
+      savedLoops: string;
+      rating: string;
+      playCount: string;
+      lastPlayed: string;
+      never: string;
+      bpmLockLabel: string;
+      gridLockLabel: string;
+      locked: string;
+      open: string;
+    };
+  };
+}): TrackPerformanceMetricViewModel[] {
+  const { performance, file } = input.track;
+
+  return [
+    {
+      key: "availability",
+      label: input.t.inspect.availability,
+      value:
+        file.availabilityState === "missing" ? input.t.inspect.missing : input.t.inspect.available,
+    },
+    {
+      key: "main-cue",
+      label: input.t.inspect.mainCue,
+      value: formatTrackTime(performance.mainCueSecond),
+    },
+    {
+      key: "hot-cues",
+      label: input.t.inspect.hotCues,
+      value: String(performance.hotCues.length),
+    },
+    {
+      key: "memory-cues",
+      label: input.t.inspect.memoryCues,
+      value: String(performance.memoryCues.length),
+    },
+    {
+      key: "saved-loops",
+      label: input.t.inspect.savedLoops,
+      value: String(performance.savedLoops.length),
+    },
+    {
+      key: "rating",
+      label: input.t.inspect.rating,
+      value: `${performance.rating}/5`,
+    },
+    {
+      key: "play-count",
+      label: input.t.inspect.playCount,
+      value: String(performance.playCount),
+    },
+    {
+      key: "last-played",
+      label: input.t.inspect.lastPlayed,
+      value: performance.lastPlayedAt
+        ? formatShortDateTime(performance.lastPlayedAt)
+        : input.t.inspect.never,
+    },
+    {
+      key: "bpm-lock",
+      label: input.t.inspect.bpmLockLabel,
+      value: performance.bpmLock ? input.t.inspect.locked : input.t.inspect.open,
+    },
+    {
+      key: "grid-lock",
+      label: input.t.inspect.gridLockLabel,
+      value: performance.gridLock ? input.t.inspect.locked : input.t.inspect.open,
+    },
+  ];
 }
 
 export function resolveTrackPerformancePlacement(input: {

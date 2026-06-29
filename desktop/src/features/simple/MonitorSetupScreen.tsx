@@ -49,22 +49,17 @@ export function MonitorSetupScreen({
         onChangeSkin={onChangeSkin}
       />
 
-      <MonitorSetupSignalBank
-        kicker={t.simpleMode.deckSetup.signalChain}
-        title={t.simpleMode.deckSetup.signalChainTitle}
-        hint={t.simpleMode.deckSetup.signalChainHint}
-        description={t.simpleMode.deckSetup.signalChainDescription}
-        cards={viewModel.signalChainCards}
-      />
-
-      <MonitorSetupSignalBank
-        kicker={t.simpleMode.deckSetup.transportBank}
-        title={t.simpleMode.deckSetup.transportTitle}
-        hint={t.simpleMode.deckSetup.transportHint}
-        description={t.simpleMode.deckSetup.transportDescription}
-        cards={viewModel.transportCards}
-        role="list"
-      />
+      {screenModel.signalBanks.map((bank) => (
+        <MonitorSetupSignalBank
+          key={bank.key}
+          kicker={bank.kicker}
+          title={bank.title}
+          hint={bank.hint}
+          description={bank.description}
+          cards={bank.cards}
+          role={bank.role}
+        />
+      ))}
 
       <MonitorSetupRackSection
         t={t}

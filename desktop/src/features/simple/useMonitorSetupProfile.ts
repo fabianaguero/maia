@@ -25,7 +25,7 @@ export function useMonitorSetupProfile({
     applyDeckPreset,
     activePreset,
     isDirty,
-  } = useMonitorDeckControls();
+  } = useMonitorDeckControls({ skin });
 
   const profile = buildMonitorSetupProfile({
     deckControls,

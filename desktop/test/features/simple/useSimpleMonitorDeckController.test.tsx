@@ -185,6 +185,7 @@ describe("useSimpleMonitorDeckController", () => {
 
     const { result } = renderHook(() =>
       useSimpleMonitorDeckController({
+        skin: "copper",
         session,
         isListening: true,
         isLaunchingMonitor: false,
@@ -207,5 +208,6 @@ describe("useSimpleMonitorDeckController", () => {
     expect(result.current.waveformScale).toBe(1.4);
     expect(result.current.liveLines[0]?.id).toBe("line-1");
     expect(mockedModules.useSimpleMonitorDeckLiveController).toHaveBeenCalledTimes(1);
+    expect(mockedModules.useMonitorDeckControls).toHaveBeenCalledWith({ skin: "copper" });
   });
 });

@@ -4,10 +4,12 @@ import type { LibraryTrack, RepositoryAnalysis } from "../../types/library";
 import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { MonitorLaunchSource } from "./monitorSourceOptions";
 import type { MonitorSetupPreferences } from "./monitorSetupPreferences";
+import type { AppSkin } from "./appSkin";
 import { buildSimpleMonitorScreenHookState } from "./simpleMonitorScreenRuntime";
 import { useSimpleMonitorScreenController } from "./useSimpleMonitorScreenController";
 
 export interface SimpleMonitorScreenStateInput {
+  skin?: AppSkin;
   session: ActiveMonitorSession | null;
   metrics: MonitorMetrics;
   pastSessions: PersistedSession[];
@@ -28,6 +30,7 @@ export interface SimpleMonitorScreenStateInput {
 }
 
 export function useSimpleMonitorScreenState({
+  skin = "nightfall",
   session,
   metrics,
   pastSessions,
@@ -47,6 +50,7 @@ export function useSimpleMonitorScreenState({
   liveSettings,
 }: SimpleMonitorScreenStateInput) {
   const { hookStateArgs } = useSimpleMonitorScreenController({
+    skin,
     session,
     metrics,
     pastSessions,
