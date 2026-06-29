@@ -10,9 +10,7 @@ import {
 describe("simpleMonitorReactiveAudioOrchestrationRuntime", () => {
   it("recognizes running audio contexts", () => {
     expect(hasRunningSimpleMonitorAudioContext(null)).toBe(false);
-    expect(
-      hasRunningSimpleMonitorAudioContext({ state: "suspended" } as AudioContext),
-    ).toBe(false);
+    expect(hasRunningSimpleMonitorAudioContext({ state: "suspended" } as AudioContext)).toBe(false);
     expect(hasRunningSimpleMonitorAudioContext({ state: "running" } as AudioContext)).toBe(true);
   });
 

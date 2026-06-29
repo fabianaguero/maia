@@ -1,7 +1,9 @@
 import type { WaveformAnomalyMarker } from "./monitorDeckViewModel";
 import type { buildSimpleMonitorDeckVisualDerivedState } from "./simpleMonitorDeckVisualRuntime";
 
-type DerivedDeckState = ReturnType<typeof buildSimpleMonitorDeckVisualDerivedState>["derivedDeckState"];
+type DerivedDeckState = ReturnType<
+  typeof buildSimpleMonitorDeckVisualDerivedState
+>["derivedDeckState"];
 
 export function buildMonitorOverviewRenderPlan(input: {
   safeRuntime: boolean;

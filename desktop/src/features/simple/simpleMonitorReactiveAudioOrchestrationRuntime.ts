@@ -71,8 +71,7 @@ export function shouldReuseSimpleMonitorBackgroundGraph(input: {
 }): boolean {
   return Boolean(
     input.existing &&
-      input.existing.context === input.context &&
-      input.existing.audio === input.audio,
+    input.existing.context === input.context &&
+    input.existing.audio === input.audio,
   );
 }
-

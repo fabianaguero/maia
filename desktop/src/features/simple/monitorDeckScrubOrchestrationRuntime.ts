@@ -26,7 +26,10 @@ export function resolveMonitorDeckSeekState(input: {
 
   const clampedProgress = clampMonitorProgress(input.nextProgress);
   const currentTime = clampedProgress * duration;
-  const nearestMarker = resolveNearestMonitorAnomalyMarker(input.waveformAnomalies, clampedProgress);
+  const nearestMarker = resolveNearestMonitorAnomalyMarker(
+    input.waveformAnomalies,
+    clampedProgress,
+  );
   const focusedAnomalyId =
     nearestMarker && shouldFocusMonitorAnomalyMarker(nearestMarker, clampedProgress)
       ? nearestMarker.id
@@ -45,7 +48,11 @@ export function shouldProcessMonitorScrubPointer(input: {
   activePointerId: number | null;
   eventPointerId: number;
 }): boolean {
-  return input.isScrubbing && input.activePointerId !== null && input.activePointerId === input.eventPointerId;
+  return (
+    input.isScrubbing &&
+    input.activePointerId !== null &&
+    input.activePointerId === input.eventPointerId
+  );
 }
 
 export function buildOverviewScrubPointerState(pointerId: number) {

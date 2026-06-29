@@ -2,9 +2,7 @@ import { useMonitorDeckControls } from "./useMonitorDeckControls";
 import { useSimpleMonitorPlaybackState } from "./useSimpleMonitorPlaybackState";
 import { useSimpleMonitorDeckPresentationState } from "./useSimpleMonitorDeckPresentationState";
 import { useSimpleMonitorDeckLiveController } from "./useSimpleMonitorDeckLiveController";
-import {
-  buildSimpleMonitorDeckHookState,
-} from "./simpleMonitorDeckRuntime";
+import { buildSimpleMonitorDeckHookState } from "./simpleMonitorDeckRuntime";
 import {
   buildSimpleMonitorDeckControllerBaseState,
   buildSimpleMonitorDeckControllerPresentationInput,

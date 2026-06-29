@@ -2,10 +2,7 @@ import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent }
 import { useCallback, useEffect, useRef } from "react";
 
 import type { WaveformAnomalyMarker } from "./monitorDeckViewModel";
-import {
-  resolveDeckScrubProgress,
-  resolveOverviewScrubProgress,
-} from "./monitorDeckScrubRuntime";
+import { resolveDeckScrubProgress, resolveOverviewScrubProgress } from "./monitorDeckScrubRuntime";
 import {
   buildDeckScrubPointerState,
   buildOverviewScrubPointerState,

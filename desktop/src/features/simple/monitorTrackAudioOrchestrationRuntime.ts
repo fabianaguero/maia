@@ -67,4 +67,3 @@ export function buildMonitorTrackProgressState(snapshot: MonitorTrackAudioSnapsh
     trackDurationSeconds: snapshot.durationSeconds,
   };
 }
-

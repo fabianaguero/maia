@@ -28,8 +28,10 @@ export function resolveSimpleMonitorDeckControllerBpm(input: {
   return resolveSimpleMonitorDeckBpm(input.liveSuggestedBpm, input.activeTrack);
 }
 
-export interface BuildSimpleMonitorDeckControllerPresentationInputArgs
-  extends Omit<BuildMonitorDeckPresentationHookInputArgs, "waveformAnomalies"> {
+export interface BuildSimpleMonitorDeckControllerPresentationInputArgs extends Omit<
+  BuildMonitorDeckPresentationHookInputArgs,
+  "waveformAnomalies"
+> {
   waveformAnomalies: WaveformAnomalyMarker[];
 }
 

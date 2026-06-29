@@ -10,9 +10,7 @@ export function buildSimpleMonitorLiveTailEffectState(input: {
   return buildMonitorTailSyncPlan(input);
 }
 
-export function buildSimpleMonitorLiveTailScrollState(input: {
-  distanceFromBottom: number;
-}) {
+export function buildSimpleMonitorLiveTailScrollState(input: { distanceFromBottom: number }) {
   return {
     isTailPinned: shouldPinMonitorTail(input.distanceFromBottom),
   };
