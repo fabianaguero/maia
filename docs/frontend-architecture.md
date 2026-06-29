@@ -259,6 +259,7 @@ type re-exports while the monitor flow gradually migrates to the dedicated contr
 - `desktop/src/features/simple/MonitorSetupScreen.tsx`
 - `desktop/src/features/simple/monitorSetupViewModel.ts`
 - `desktop/src/features/simple/monitorSetupPreferences.ts`
+- `desktop/src/features/simple/monitorSetupPreferenceViewModelRuntime.ts`
 - `desktop/src/features/simple/useMonitorDeckControls.ts`
 - `desktop/src/features/simple/useMonitorSetupProfile.ts`
 - `desktop/src/features/simple/useMonitorSetupScreenModel.ts`
@@ -267,7 +268,29 @@ type re-exports while the monitor flow gradually migrates to the dedicated contr
 - `desktop/src/features/simple/useSimpleModeLibraryPreview.ts`
 - `desktop/src/features/simple/monitorSetupProfileRuntime.ts`
 - `desktop/src/features/simple/monitorSetupScreenRuntime.tsx`
+- `desktop/src/features/simple/monitorDeckControlsContractRuntime.ts`
 - `desktop/src/features/simple/monitorDeckControlsRuntime.ts`
+
+The setup flow now follows a clearer split:
+
+- `monitorSetupPreferences.ts` keeps the persisted setup contract, defaults, limits, and sanitization.
+- `monitorSetupPreferenceViewModelRuntime.ts` shapes UI-facing labels, groups, and formatted values for the setup rack.
+- `monitorDeckControls.ts` keeps deck-control contract data such as types, storage keys, defaults, and presets.
+- `monitorDeckControlsContractRuntime.ts` owns pure deck-control sanitization, preset matching, and persisted payload loading.
+- `monitorDeckControlsRuntime.ts` owns storage IO and patch-style deck-control updates.
+
+```mermaid
+flowchart LR
+  A[MonitorSetupScreen] --> B[useMonitorSetupScreenModel]
+  B --> C[useMonitorSetupProfile]
+  C --> D[monitorSetupProfileRuntime]
+  C --> E[useMonitorDeckControls]
+  E --> F[monitorDeckControlsRuntime]
+  F --> G[monitorDeckControlsContractRuntime]
+  B --> H[monitorSetupViewModelRuntime]
+  H --> I[monitorSetupPreferenceViewModelRuntime]
+  I --> J[monitorSetupPreferences]
+```
 
 ### Connections
 
@@ -407,7 +430,8 @@ Recent examples of that direction:
 - `useSimpleMonitorScreenState.ts` now delegates anomaly-filter state to `useSimpleMonitorAnomalyFilterState.ts` and explicit launch/deck slice shaping to `simpleMonitorScreenSlicesRuntime.ts`, keeping the monitor shell hook closer to orchestration than object assembly
 - `useSimpleMonitorScreenController.ts` now owns the launch/deck/anomaly composition beneath `useSimpleMonitorScreenState.ts`, so the public simple-monitor hook mostly assembles the final active/idle view state
 - `useSimpleMonitorDeckController.ts` now owns the sub-hook composition beneath `useSimpleMonitorDeckRuntime.ts`, leaving the deck runtime as a stable facade over the assembled deck state
-- `useMonitorSetupProfile.ts`, `monitorSetupProfileRuntime.ts`, and `monitorDeckControlsRuntime.ts` now isolate setup-profile composition plus persisted deck-control IO from the setup screen shell
+- `useMonitorSetupProfile.ts`, `monitorSetupProfileRuntime.ts`, `monitorDeckControlsRuntime.ts`, and `monitorDeckControlsContractRuntime.ts` now isolate setup-profile composition, deck-control storage, and pure deck-control contract rules from the setup screen shell
+- `monitorSetupPreferences.ts` now stays focused on persisted setup defaults and sanitization, while `monitorSetupPreferenceViewModelRuntime.ts` owns the UI-facing setup field/group metadata used by the deck-style preferences rack
 - `useMonitorDeckControls.ts` now persists operator deck controls by skin, so Setup and live Monitoring recover the same profile for the currently selected booth theme
 - `LibraryScreen.tsx` now delegates state orchestration, toolbar actions, import/delete side effects, and connection refresh behavior to `useLibraryScreenController.tsx`, while `LibraryTabStrip.tsx` owns tab rendering
 - `useLibraryScreenController.tsx` is now a lighter composition hook over `useLibraryScreenState.ts`, `useLibraryScreenImportActions.ts`, `useLibraryScreenToolbarActions.tsx`, and `libraryScreenToolbarRuntime.ts`
