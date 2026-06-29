@@ -1,4 +1,5 @@
 """Small fixture log used across repository tests."""
+
 SAMPLE_LOG = """\
 2024-01-15 10:00:01 INFO  [AuthService] User login successful user=alice
 2024-01-15 10:00:02 DEBUG [PaymentService] Fetching payment method id=42

@@ -1,0 +1,500 @@
+10.3.99.132 - - [14/Feb/2026:00:01:35 +0000] "GET /api/v1/repos HTTP/1.1" 200 19246 "-" "Mozilla/5.0 (X11; Linux x86_64)" 92ms
+10.4.84.169 - - [14/Feb/2026:00:05:30 +0000] "POST /api/v1/analyze HTTP/1.1" 204 26431 "-" "PostmanRuntime/7.36" 57ms
+10.5.225.182 - - [14/Feb/2026:00:07:04 +0000] "GET /api/v1/repos HTTP/1.1" 200 14213 "-" "python-httpx/0.27" 137ms
+10.1.72.195 - - [14/Feb/2026:00:11:38 +0000] "POST /api/v1/analyze HTTP/1.1" 200 3746 "-" "python-httpx/0.27" 195ms
+10.5.190.51 - - [14/Feb/2026:00:12:49 +0000] "GET /api/v1/repos HTTP/1.1" 404 14452 "-" "curl/8.1" 17ms
+10.5.184.157 - - [14/Feb/2026:00:16:07 +0000] "GET /auth/token HTTP/1.1" 400 24579 "-" "Mozilla/5.0 (X11; Linux x86_64)" 304ms
+10.2.142.91 - - [14/Feb/2026:00:18:04 +0000] "GET /api/v1/health HTTP/1.1" 200 27456 "-" "MaiaDesktop/1.0" 14ms
+10.0.189.45 - - [14/Feb/2026:00:23:40 +0000] "GET /auth/token HTTP/1.1" 201 10098 "-" "Mozilla/5.0 (X11; Linux x86_64)" 364ms
+10.2.27.220 - - [14/Feb/2026:00:26:56 +0000] "GET /api/v1/users HTTP/1.1" 404 14991 "-" "Mozilla/5.0 (X11; Linux x86_64)" 731ms
+10.2.121.230 - - [14/Feb/2026:00:27:39 +0000] "GET /metrics HTTP/1.1" 404 2791 "-" "PostmanRuntime/7.36" 498ms
+10.2.64.169 - - [14/Feb/2026:00:30:32 +0000] "GET /auth/token HTTP/1.1" 201 12823 "-" "curl/8.1" 521ms
+10.1.207.230 - - [14/Feb/2026:00:33:05 +0000] "GET /api/v1/repos HTTP/1.1" 200 14391 "-" "python-httpx/0.27" 532ms
+10.4.97.8 - - [14/Feb/2026:00:37:51 +0000] "GET /api/v1/analyze HTTP/1.1" 200 23931 "-" "MaiaDesktop/1.0" 220ms
+10.4.233.19 - - [14/Feb/2026:00:39:02 +0000] "GET /api/v1/users HTTP/1.1" 400 29211 "-" "MaiaDesktop/1.0" 209ms
+10.0.62.53 - - [14/Feb/2026:00:43:22 +0000] "GET /auth/token HTTP/1.1" 200 15957 "-" "curl/8.1" 473ms
+10.3.116.147 - - [14/Feb/2026:00:46:30 +0000] "POST /api/v1/tracks HTTP/1.1" 200 31039 "-" "curl/8.1" 130ms
+10.4.185.185 - - [14/Feb/2026:00:50:29 +0000] "DELETE /api/v1/repos HTTP/1.1" 301 25039 "-" "Mozilla/5.0 (X11; Linux x86_64)" 451ms
+10.5.166.121 - - [14/Feb/2026:00:51:13 +0000] "POST /api/v1/analyze HTTP/1.1" 200 28322 "-" "curl/8.1" 690ms
+10.0.179.62 - - [14/Feb/2026:00:56:57 +0000] "POST /auth/token HTTP/1.1" 200 19710 "-" "python-httpx/0.27" 510ms
+10.5.189.190 - - [14/Feb/2026:00:57:58 +0000] "GET /api/v1/users HTTP/1.1" 201 27075 "-" "curl/8.1" 764ms
+10.0.119.13 - - [14/Feb/2026:01:02:45 +0000] "GET /api/v1/analyze HTTP/1.1" 200 26383 "-" "Mozilla/5.0 (X11; Linux x86_64)" 205ms
+10.5.147.236 - - [14/Feb/2026:01:04:42 +0000] "GET /api/v1/analyze HTTP/1.1" 400 30565 "-" "MaiaDesktop/1.0" 46ms
+10.5.24.48 - - [14/Feb/2026:01:07:45 +0000] "GET /api/v1/tracks HTTP/1.1" 200 15770 "-" "Mozilla/5.0 (X11; Linux x86_64)" 19ms
+10.3.234.226 - - [14/Feb/2026:01:09:36 +0000] "PUT /api/v1/analyze HTTP/1.1" 201 3546 "-" "MaiaDesktop/1.0" 332ms
+10.4.143.159 - - [14/Feb/2026:01:12:00 +0000] "GET /metrics HTTP/1.1" 200 26994 "-" "Mozilla/5.0 (X11; Linux x86_64)" 664ms
+10.5.139.158 - - [14/Feb/2026:01:17:36 +0000] "PUT /metrics HTTP/1.1" 400 23211 "-" "Mozilla/5.0 (X11; Linux x86_64)" 80ms
+10.0.47.213 - - [14/Feb/2026:01:19:14 +0000] "POST /api/v1/users HTTP/1.1" 204 24492 "-" "curl/8.1" 574ms
+10.5.109.252 - - [14/Feb/2026:01:23:09 +0000] "POST /api/v1/analyze HTTP/1.1" 200 24182 "-" "curl/8.1" 666ms
+10.0.186.62 - - [14/Feb/2026:01:24:28 +0000] "PUT /api/v1/tracks HTTP/1.1" 200 22285 "-" "Mozilla/5.0 (X11; Linux x86_64)" 361ms
+10.1.126.156 - - [14/Feb/2026:01:27:25 +0000] "GET /api/v1/health HTTP/1.1" 200 25062 "-" "PostmanRuntime/7.36" 317ms
+10.0.174.178 - - [14/Feb/2026:01:32:27 +0000] "GET /metrics HTTP/1.1" 200 2537 "-" "Mozilla/5.0 (X11; Linux x86_64)" 81ms
+10.4.166.54 - - [14/Feb/2026:01:35:33 +0000] "GET /auth/token HTTP/1.1" 200 30350 "-" "MaiaDesktop/1.0" 418ms
+10.3.205.225 - - [14/Feb/2026:01:36:20 +0000] "GET /metrics HTTP/1.1" 200 1083 "-" "curl/8.1" 747ms
+10.2.201.77 - - [14/Feb/2026:01:39:14 +0000] "GET /auth/token HTTP/1.1" 429 8450 "-" "curl/8.1" 453ms
+10.5.167.239 - - [14/Feb/2026:01:43:29 +0000] "GET /api/v1/health HTTP/1.1" 200 14592 "-" "curl/8.1" 167ms
+10.2.205.64 - - [14/Feb/2026:01:47:01 +0000] "PUT /metrics HTTP/1.1" 400 24744 "-" "PostmanRuntime/7.36" 769ms
+10.2.0.198 - - [14/Feb/2026:01:48:03 +0000] "POST /auth/token HTTP/1.1" 200 17904 "-" "PostmanRuntime/7.36" 237ms
+10.2.108.161 - - [14/Feb/2026:01:52:01 +0000] "GET /metrics HTTP/1.1" 200 3515 "-" "Mozilla/5.0 (X11; Linux x86_64)" 166ms
+10.4.13.167 - - [14/Feb/2026:01:55:26 +0000] "GET /api/v1/tracks HTTP/1.1" 200 5359 "-" "curl/8.1" 470ms
+10.5.198.248 - - [14/Feb/2026:01:59:49 +0000] "PUT /api/v1/analyze HTTP/1.1" 429 30599 "-" "MaiaDesktop/1.0" 418ms
+10.5.66.111 - - [14/Feb/2026:02:02:41 +0000] "GET /api/v1/repos HTTP/1.1" 200 24822 "-" "Mozilla/5.0 (X11; Linux x86_64)" 295ms
+10.3.63.88 - - [14/Feb/2026:02:03:30 +0000] "GET /auth/token HTTP/1.1" 200 5533 "-" "PostmanRuntime/7.36" 704ms
+10.4.246.168 - - [14/Feb/2026:02:07:05 +0000] "GET /api/v1/tracks HTTP/1.1" 204 21088 "-" "PostmanRuntime/7.36" 215ms
+10.5.100.78 - - [14/Feb/2026:02:11:44 +0000] "DELETE /auth/token HTTP/1.1" 200 19670 "-" "Mozilla/5.0 (X11; Linux x86_64)" 72ms
+10.0.36.143 - - [14/Feb/2026:02:12:19 +0000] "GET /api/v1/repos HTTP/1.1" 200 2486 "-" "PostmanRuntime/7.36" 15ms
+10.3.45.231 - - [14/Feb/2026:02:15:28 +0000] "DELETE /api/v1/users HTTP/1.1" 201 22609 "-" "PostmanRuntime/7.36" 523ms
+10.3.253.187 - - [14/Feb/2026:02:18:25 +0000] "GET /api/v1/health HTTP/1.1" 200 22674 "-" "curl/8.1" 714ms
+10.1.27.219 - - [14/Feb/2026:02:21:24 +0000] "POST /api/v1/health HTTP/1.1" 200 1085 "-" "python-httpx/0.27" 211ms
+10.0.231.23 - - [14/Feb/2026:02:24:53 +0000] "GET /api/v1/repos HTTP/1.1" 200 401 "-" "curl/8.1" 640ms
+10.0.36.124 - - [14/Feb/2026:02:27:40 +0000] "DELETE /api/v1/repos HTTP/1.1" 201 8699 "-" "curl/8.1" 678ms
+10.1.15.17 - - [14/Feb/2026:02:30:24 +0000] "GET /api/v1/users HTTP/1.1" 200 18745 "-" "MaiaDesktop/1.0" 92ms
+10.2.138.185 - - [14/Feb/2026:02:34:15 +0000] "GET /api/v1/health HTTP/1.1" 401 30752 "-" "PostmanRuntime/7.36" 134ms
+10.1.133.170 - - [14/Feb/2026:02:36:45 +0000] "GET /api/v1/health HTTP/1.1" 400 12219 "-" "PostmanRuntime/7.36" 258ms
+10.1.166.50 - - [14/Feb/2026:02:39:28 +0000] "GET /metrics HTTP/1.1" 200 12557 "-" "Mozilla/5.0 (X11; Linux x86_64)" 780ms
+10.2.222.2 - - [14/Feb/2026:02:42:56 +0000] "POST /metrics HTTP/1.1" 200 29337 "-" "python-httpx/0.27" 657ms
+10.0.120.113 - - [14/Feb/2026:02:45:12 +0000] "GET /api/v1/repos HTTP/1.1" 200 7774 "-" "PostmanRuntime/7.36" 379ms
+10.3.30.125 - - [14/Feb/2026:02:50:04 +0000] "GET /api/v1/tracks HTTP/1.1" 200 16206 "-" "Mozilla/5.0 (X11; Linux x86_64)" 729ms
+10.0.68.93 - - [14/Feb/2026:02:53:02 +0000] "GET /api/v1/analyze HTTP/1.1" 200 3956 "-" "curl/8.1" 63ms
+10.4.56.124 - - [14/Feb/2026:02:55:53 +0000] "POST /api/v1/analyze HTTP/1.1" 429 1957 "-" "Mozilla/5.0 (X11; Linux x86_64)" 569ms
+10.3.134.15 - - [14/Feb/2026:02:57:55 +0000] "PUT /auth/token HTTP/1.1" 403 3686 "-" "Mozilla/5.0 (X11; Linux x86_64)" 386ms
+10.0.122.68 - - [14/Feb/2026:03:01:01 +0000] "PUT /api/v1/analyze HTTP/1.1" 200 7039 "-" "Mozilla/5.0 (X11; Linux x86_64)" 324ms
+10.5.81.26 - - [14/Feb/2026:03:04:59 +0000] "POST /metrics HTTP/1.1" 304 26515 "-" "python-httpx/0.27" 77ms
+10.3.65.47 - - [14/Feb/2026:03:06:52 +0000] "GET /api/v1/repos HTTP/1.1" 400 4002 "-" "python-httpx/0.27" 70ms
+10.5.120.176 - - [14/Feb/2026:03:11:10 +0000] "GET /api/v1/repos HTTP/1.1" 204 29658 "-" "Mozilla/5.0 (X11; Linux x86_64)" 528ms
+10.1.166.94 - - [14/Feb/2026:03:12:08 +0000] "PUT /api/v1/repos HTTP/1.1" 200 21852 "-" "MaiaDesktop/1.0" 511ms
+10.2.168.232 - - [14/Feb/2026:03:15:37 +0000] "POST /metrics HTTP/1.1" 404 24340 "-" "Mozilla/5.0 (X11; Linux x86_64)" 330ms
+10.3.55.218 - - [14/Feb/2026:03:20:46 +0000] "GET /api/v1/repos HTTP/1.1" 200 15103 "-" "Mozilla/5.0 (X11; Linux x86_64)" 613ms
+10.4.51.241 - - [14/Feb/2026:03:21:09 +0000] "GET /api/v1/users HTTP/1.1" 500 10056 "-" "PostmanRuntime/7.36" 197ms
+10.1.16.123 - - [14/Feb/2026:03:24:16 +0000] "POST /api/v1/tracks HTTP/1.1" 204 11873 "-" "python-httpx/0.27" 13ms
+10.4.231.56 - - [14/Feb/2026:03:28:35 +0000] "PUT /metrics HTTP/1.1" 429 22119 "-" "curl/8.1" 504ms
+10.2.8.105 - - [14/Feb/2026:03:30:49 +0000] "POST /api/v1/analyze HTTP/1.1" 200 8959 "-" "curl/8.1" 468ms
+10.1.61.212 - - [14/Feb/2026:03:33:45 +0000] "GET /api/v1/users HTTP/1.1" 204 18711 "-" "PostmanRuntime/7.36" 24ms
+10.4.140.183 - - [14/Feb/2026:03:36:00 +0000] "GET /auth/token HTTP/1.1" 401 14961 "-" "python-httpx/0.27" 622ms
+10.1.233.36 - - [14/Feb/2026:03:40:38 +0000] "GET /api/v1/health HTTP/1.1" 200 9054 "-" "python-httpx/0.27" 124ms
+10.1.108.43 - - [14/Feb/2026:03:44:13 +0000] "GET /auth/token HTTP/1.1" 200 1945 "-" "curl/8.1" 772ms
+10.5.57.221 - - [14/Feb/2026:03:45:20 +0000] "PUT /metrics HTTP/1.1" 200 8376 "-" "MaiaDesktop/1.0" 419ms
+10.0.111.235 - - [14/Feb/2026:03:48:38 +0000] "DELETE /api/v1/health HTTP/1.1" 500 13441 "-" "Mozilla/5.0 (X11; Linux x86_64)" 730ms
+10.1.107.19 - - [14/Feb/2026:03:51:26 +0000] "GET /api/v1/health HTTP/1.1" 200 31763 "-" "curl/8.1" 772ms
+10.4.29.115 - - [14/Feb/2026:03:56:15 +0000] "POST /metrics HTTP/1.1" 200 21491 "-" "MaiaDesktop/1.0" 680ms
+10.4.246.143 - - [14/Feb/2026:03:58:02 +0000] "POST /api/v1/repos HTTP/1.1" 200 26329 "-" "PostmanRuntime/7.36" 697ms
+10.1.220.178 - - [14/Feb/2026:04:00:49 +0000] "POST /api/v1/tracks HTTP/1.1" 201 18768 "-" "python-httpx/0.27" 260ms
+10.5.189.15 - - [14/Feb/2026:04:04:05 +0000] "DELETE /api/v1/analyze HTTP/1.1" 200 8515 "-" "Mozilla/5.0 (X11; Linux x86_64)" 537ms
+10.3.121.88 - - [14/Feb/2026:04:08:39 +0000] "DELETE /api/v1/users HTTP/1.1" 200 26281 "-" "Mozilla/5.0 (X11; Linux x86_64)" 336ms
+10.1.250.111 - - [14/Feb/2026:04:11:53 +0000] "DELETE /api/v1/repos HTTP/1.1" 404 31487 "-" "PostmanRuntime/7.36" 477ms
+10.2.188.182 - - [14/Feb/2026:04:12:22 +0000] "GET /auth/token HTTP/1.1" 200 29574 "-" "curl/8.1" 138ms
+10.5.55.226 - - [14/Feb/2026:04:16:32 +0000] "POST /api/v1/repos HTTP/1.1" 200 4260 "-" "curl/8.1" 374ms
+10.5.19.121 - - [14/Feb/2026:04:19:08 +0000] "GET /api/v1/tracks HTTP/1.1" 200 20264 "-" "python-httpx/0.27" 416ms
+10.2.44.208 - - [14/Feb/2026:04:23:29 +0000] "POST /api/v1/health HTTP/1.1" 201 11388 "-" "python-httpx/0.27" 365ms
+10.2.29.247 - - [14/Feb/2026:04:26:03 +0000] "DELETE /api/v1/tracks HTTP/1.1" 204 5353 "-" "python-httpx/0.27" 800ms
+10.5.151.248 - - [14/Feb/2026:04:29:41 +0000] "GET /metrics HTTP/1.1" 200 20874 "-" "curl/8.1" 209ms
+10.0.153.117 - - [14/Feb/2026:04:30:50 +0000] "GET /metrics HTTP/1.1" 401 8460 "-" "curl/8.1" 665ms
+10.3.185.144 - - [14/Feb/2026:04:35:50 +0000] "PUT /api/v1/tracks HTTP/1.1" 200 19593 "-" "MaiaDesktop/1.0" 16ms
+10.0.44.59 - - [14/Feb/2026:04:37:09 +0000] "GET /api/v1/tracks HTTP/1.1" 400 2890 "-" "curl/8.1" 178ms
+10.0.21.240 - - [14/Feb/2026:04:39:44 +0000] "GET /api/v1/repos HTTP/1.1" 400 712 "-" "Mozilla/5.0 (X11; Linux x86_64)" 243ms
+10.2.74.107 - - [14/Feb/2026:04:42:22 +0000] "GET /api/v1/analyze HTTP/1.1" 200 17195 "-" "PostmanRuntime/7.36" 76ms
+10.2.23.17 - - [14/Feb/2026:04:47:02 +0000] "GET /api/v1/health HTTP/1.1" 200 8730 "-" "curl/8.1" 86ms
+10.2.128.126 - - [14/Feb/2026:04:50:39 +0000] "GET /api/v1/repos HTTP/1.1" 500 26023 "-" "PostmanRuntime/7.36" 135ms
+10.1.214.178 - - [14/Feb/2026:04:51:36 +0000] "GET /auth/token HTTP/1.1" 404 26463 "-" "Mozilla/5.0 (X11; Linux x86_64)" 574ms
+10.3.24.17 - - [14/Feb/2026:04:55:48 +0000] "POST /api/v1/health HTTP/1.1" 301 10283 "-" "Mozilla/5.0 (X11; Linux x86_64)" 235ms
+10.1.159.24 - - [14/Feb/2026:04:59:30 +0000] "GET /api/v1/analyze HTTP/1.1" 400 26425 "-" "python-httpx/0.27" 464ms
+10.1.27.216 - - [14/Feb/2026:05:02:49 +0000] "POST /auth/token HTTP/1.1" 200 6395 "-" "MaiaDesktop/1.0" 14ms
+10.4.84.186 - - [14/Feb/2026:05:05:42 +0000] "POST /api/v1/analyze HTTP/1.1" 304 13956 "-" "MaiaDesktop/1.0" 514ms
+10.1.163.184 - - [14/Feb/2026:05:06:14 +0000] "GET /api/v1/analyze HTTP/1.1" 304 16883 "-" "PostmanRuntime/7.36" 227ms
+10.5.230.67 - - [14/Feb/2026:05:11:56 +0000] "POST /auth/token HTTP/1.1" 200 6785 "-" "PostmanRuntime/7.36" 189ms
+10.3.80.134 - - [14/Feb/2026:05:12:33 +0000] "GET /api/v1/tracks HTTP/1.1" 200 11184 "-" "PostmanRuntime/7.36" 790ms
+10.2.131.61 - - [14/Feb/2026:05:16:18 +0000] "GET /metrics HTTP/1.1" 201 9696 "-" "Mozilla/5.0 (X11; Linux x86_64)" 92ms
+10.2.30.201 - - [14/Feb/2026:05:18:38 +0000] "GET /api/v1/repos HTTP/1.1" 404 1070 "-" "curl/8.1" 473ms
+10.4.79.199 - - [14/Feb/2026:05:23:09 +0000] "DELETE /auth/token HTTP/1.1" 403 23552 "-" "python-httpx/0.27" 703ms
+10.0.64.206 - - [14/Feb/2026:05:24:19 +0000] "GET /api/v1/repos HTTP/1.1" 200 14409 "-" "python-httpx/0.27" 397ms
+10.5.95.137 - - [14/Feb/2026:05:29:51 +0000] "PUT /api/v1/analyze HTTP/1.1" 200 30818 "-" "python-httpx/0.27" 489ms
+10.0.163.237 - - [14/Feb/2026:05:31:54 +0000] "DELETE /api/v1/health HTTP/1.1" 201 25283 "-" "python-httpx/0.27" 108ms
+10.3.175.159 - - [14/Feb/2026:05:34:11 +0000] "GET /api/v1/tracks HTTP/1.1" 403 4305 "-" "Mozilla/5.0 (X11; Linux x86_64)" 571ms
+10.3.133.22 - - [14/Feb/2026:05:36:08 +0000] "GET /api/v1/repos HTTP/1.1" 200 21724 "-" "PostmanRuntime/7.36" 769ms
+10.2.232.197 - - [14/Feb/2026:05:39:37 +0000] "POST /api/v1/repos HTTP/1.1" 200 1758 "-" "Mozilla/5.0 (X11; Linux x86_64)" 754ms
+10.4.154.214 - - [14/Feb/2026:05:44:51 +0000] "GET /auth/token HTTP/1.1" 200 10434 "-" "curl/8.1" 73ms
+10.5.86.93 - - [14/Feb/2026:05:46:44 +0000] "GET /api/v1/analyze HTTP/1.1" 200 26520 "-" "python-httpx/0.27" 784ms
+10.5.240.229 - - [14/Feb/2026:05:48:31 +0000] "GET /api/v1/users HTTP/1.1" 500 3084 "-" "PostmanRuntime/7.36" 120ms
+10.3.100.184 - - [14/Feb/2026:05:52:38 +0000] "POST /api/v1/analyze HTTP/1.1" 500 26650 "-" "PostmanRuntime/7.36" 619ms
+10.0.222.209 - - [14/Feb/2026:05:54:51 +0000] "DELETE /metrics HTTP/1.1" 200 30079 "-" "python-httpx/0.27" 199ms
+10.5.38.250 - - [14/Feb/2026:05:59:11 +0000] "GET /metrics HTTP/1.1" 200 16884 "-" "python-httpx/0.27" 262ms
+10.5.48.169 - - [14/Feb/2026:06:02:37 +0000] "GET /api/v1/health HTTP/1.1" 200 27889 "-" "PostmanRuntime/7.36" 763ms
+10.0.201.196 - - [14/Feb/2026:06:04:47 +0000] "GET /metrics HTTP/1.1" 200 18918 "-" "PostmanRuntime/7.36" 238ms
+10.2.243.94 - - [14/Feb/2026:06:07:05 +0000] "PUT /api/v1/tracks HTTP/1.1" 404 7548 "-" "PostmanRuntime/7.36" 335ms
+10.1.3.233 - - [14/Feb/2026:06:10:17 +0000] "GET /auth/token HTTP/1.1" 200 9384 "-" "Mozilla/5.0 (X11; Linux x86_64)" 388ms
+10.5.205.14 - - [14/Feb/2026:06:14:53 +0000] "POST /metrics HTTP/1.1" 201 24839 "-" "curl/8.1" 581ms
+10.3.111.215 - - [14/Feb/2026:06:15:43 +0000] "GET /metrics HTTP/1.1" 200 21573 "-" "PostmanRuntime/7.36" 517ms
+10.2.229.217 - - [14/Feb/2026:06:19:18 +0000] "GET /api/v1/analyze HTTP/1.1" 200 22063 "-" "Mozilla/5.0 (X11; Linux x86_64)" 345ms
+10.5.233.13 - - [14/Feb/2026:06:21:44 +0000] "GET /metrics HTTP/1.1" 200 28691 "-" "MaiaDesktop/1.0" 763ms
+10.5.87.93 - - [14/Feb/2026:06:26:20 +0000] "POST /api/v1/health HTTP/1.1" 200 25712 "-" "curl/8.1" 473ms
+10.1.94.19 - - [14/Feb/2026:06:28:03 +0000] "GET /api/v1/tracks HTTP/1.1" 200 29670 "-" "Mozilla/5.0 (X11; Linux x86_64)" 27ms
+10.5.102.80 - - [14/Feb/2026:06:32:37 +0000] "GET /api/v1/users HTTP/1.1" 304 28257 "-" "python-httpx/0.27" 204ms
+10.2.187.215 - - [14/Feb/2026:06:35:02 +0000] "POST /api/v1/health HTTP/1.1" 201 15496 "-" "PostmanRuntime/7.36" 591ms
+10.4.17.124 - - [14/Feb/2026:06:37:19 +0000] "DELETE /metrics HTTP/1.1" 200 19736 "-" "MaiaDesktop/1.0" 109ms
+10.1.92.139 - - [14/Feb/2026:06:40:54 +0000] "POST /api/v1/tracks HTTP/1.1" 404 7521 "-" "curl/8.1" 682ms
+10.0.118.152 - - [14/Feb/2026:06:43:32 +0000] "DELETE /api/v1/repos HTTP/1.1" 403 30040 "-" "MaiaDesktop/1.0" 671ms
+10.4.74.211 - - [14/Feb/2026:06:47:25 +0000] "POST /api/v1/tracks HTTP/1.1" 301 3105 "-" "curl/8.1" 440ms
+10.1.93.227 - - [14/Feb/2026:06:50:11 +0000] "DELETE /api/v1/health HTTP/1.1" 200 19864 "-" "Mozilla/5.0 (X11; Linux x86_64)" 763ms
+10.1.83.78 - - [14/Feb/2026:06:52:50 +0000] "GET /api/v1/users HTTP/1.1" 201 30546 "-" "python-httpx/0.27" 79ms
+10.0.171.224 - - [14/Feb/2026:06:55:24 +0000] "PUT /api/v1/repos HTTP/1.1" 500 17999 "-" "MaiaDesktop/1.0" 504ms
+10.1.4.234 - - [14/Feb/2026:06:57:36 +0000] "PUT /api/v1/users HTTP/1.1" 503 29571 "-" "curl/8.1" 575ms
+10.0.53.130 - - [14/Feb/2026:07:02:46 +0000] "PUT /metrics HTTP/1.1" 200 11932 "-" "Mozilla/5.0 (X11; Linux x86_64)" 583ms
+10.4.118.239 - - [14/Feb/2026:07:03:05 +0000] "PUT /metrics HTTP/1.1" 404 31372 "-" "curl/8.1" 730ms
+10.3.34.155 - - [14/Feb/2026:07:06:39 +0000] "PUT /api/v1/analyze HTTP/1.1" 200 14441 "-" "Mozilla/5.0 (X11; Linux x86_64)" 647ms
+10.5.119.14 - - [14/Feb/2026:07:11:56 +0000] "GET /auth/token HTTP/1.1" 200 7172 "-" "MaiaDesktop/1.0" 431ms
+10.4.65.60 - - [14/Feb/2026:07:12:23 +0000] "GET /metrics HTTP/1.1" 200 5500 "-" "curl/8.1" 735ms
+10.5.118.183 - - [14/Feb/2026:07:17:12 +0000] "GET /api/v1/analyze HTTP/1.1" 201 19266 "-" "Mozilla/5.0 (X11; Linux x86_64)" 207ms
+10.0.125.242 - - [14/Feb/2026:07:20:32 +0000] "DELETE /api/v1/analyze HTTP/1.1" 200 30393 "-" "MaiaDesktop/1.0" 435ms
+10.5.106.37 - - [14/Feb/2026:07:21:00 +0000] "POST /metrics HTTP/1.1" 200 29495 "-" "MaiaDesktop/1.0" 72ms
+10.5.62.51 - - [14/Feb/2026:07:25:21 +0000] "POST /api/v1/analyze HTTP/1.1" 201 11091 "-" "python-httpx/0.27" 557ms
+10.2.41.163 - - [14/Feb/2026:07:27:58 +0000] "GET /metrics HTTP/1.1" 200 14366 "-" "PostmanRuntime/7.36" 634ms
+10.4.75.48 - - [14/Feb/2026:07:30:55 +0000] "POST /api/v1/tracks HTTP/1.1" 200 10427 "-" "Mozilla/5.0 (X11; Linux x86_64)" 604ms
+10.2.120.133 - - [14/Feb/2026:07:34:46 +0000] "POST /metrics HTTP/1.1" 200 16013 "-" "python-httpx/0.27" 607ms
+10.0.90.180 - - [14/Feb/2026:07:36:50 +0000] "POST /auth/token HTTP/1.1" 200 5624 "-" "curl/8.1" 513ms
+10.2.180.177 - - [14/Feb/2026:07:40:38 +0000] "GET /api/v1/users HTTP/1.1" 200 14011 "-" "PostmanRuntime/7.36" 752ms
+10.0.217.201 - - [14/Feb/2026:07:43:40 +0000] "DELETE /api/v1/analyze HTTP/1.1" 200 18033 "-" "Mozilla/5.0 (X11; Linux x86_64)" 587ms
+10.4.76.41 - - [14/Feb/2026:07:47:02 +0000] "GET /auth/token HTTP/1.1" 201 13241 "-" "python-httpx/0.27" 695ms
+10.5.93.174 - - [14/Feb/2026:07:50:21 +0000] "DELETE /api/v1/repos HTTP/1.1" 304 31186 "-" "curl/8.1" 5ms
+10.4.141.104 - - [14/Feb/2026:07:52:42 +0000] "GET /auth/token HTTP/1.1" 201 11223 "-" "curl/8.1" 225ms
+10.3.112.127 - - [14/Feb/2026:07:56:46 +0000] "GET /api/v1/health HTTP/1.1" 200 20277 "-" "PostmanRuntime/7.36" 28ms
+10.2.163.241 - - [14/Feb/2026:07:58:10 +0000] "GET /auth/token HTTP/1.1" 404 18069 "-" "MaiaDesktop/1.0" 359ms
+10.2.4.95 - - [14/Feb/2026:08:02:02 +0000] "GET /api/v1/health HTTP/1.1" 200 20040 "-" "MaiaDesktop/1.0" 625ms
+10.2.228.86 - - [14/Feb/2026:08:04:39 +0000] "GET /api/v1/health HTTP/1.1" 401 17740 "-" "Mozilla/5.0 (X11; Linux x86_64)" 644ms
+10.1.53.16 - - [14/Feb/2026:08:07:13 +0000] "POST /api/v1/analyze HTTP/1.1" 429 792 "-" "Mozilla/5.0 (X11; Linux x86_64)" 387ms
+10.0.187.249 - - [14/Feb/2026:08:09:35 +0000] "GET /api/v1/health HTTP/1.1" 200 14387 "-" "PostmanRuntime/7.36" 59ms
+10.3.214.50 - - [14/Feb/2026:08:12:27 +0000] "GET /auth/token HTTP/1.1" 200 25406 "-" "curl/8.1" 92ms
+10.5.223.182 - - [14/Feb/2026:08:15:10 +0000] "DELETE /api/v1/users HTTP/1.1" 403 13915 "-" "Mozilla/5.0 (X11; Linux x86_64)" 396ms
+10.1.31.10 - - [14/Feb/2026:08:18:45 +0000] "PUT /api/v1/analyze HTTP/1.1" 500 2835 "-" "Mozilla/5.0 (X11; Linux x86_64)" 40ms
+10.1.27.47 - - [14/Feb/2026:08:21:05 +0000] "GET /api/v1/repos HTTP/1.1" 204 3761 "-" "python-httpx/0.27" 173ms
+10.3.83.101 - - [14/Feb/2026:08:24:50 +0000] "PUT /api/v1/health HTTP/1.1" 204 11897 "-" "Mozilla/5.0 (X11; Linux x86_64)" 203ms
+10.1.46.229 - - [14/Feb/2026:08:28:44 +0000] "GET /api/v1/users HTTP/1.1" 200 22142 "-" "curl/8.1" 26ms
+10.4.174.232 - - [14/Feb/2026:08:30:38 +0000] "GET /api/v1/repos HTTP/1.1" 304 14679 "-" "MaiaDesktop/1.0" 61ms
+10.3.225.6 - - [14/Feb/2026:08:33:08 +0000] "POST /auth/token HTTP/1.1" 400 532 "-" "python-httpx/0.27" 590ms
+10.0.234.202 - - [14/Feb/2026:08:38:33 +0000] "DELETE /api/v1/health HTTP/1.1" 204 30991 "-" "curl/8.1" 524ms
+10.5.165.2 - - [14/Feb/2026:08:41:23 +0000] "PUT /api/v1/analyze HTTP/1.1" 200 12640 "-" "curl/8.1" 705ms
+10.4.97.187 - - [14/Feb/2026:08:44:08 +0000] "DELETE /auth/token HTTP/1.1" 429 13649 "-" "curl/8.1" 371ms
+10.1.80.230 - - [14/Feb/2026:08:47:49 +0000] "POST /api/v1/health HTTP/1.1" 500 30519 "-" "MaiaDesktop/1.0" 594ms
+10.0.253.149 - - [14/Feb/2026:08:49:36 +0000] "GET /api/v1/health HTTP/1.1" 503 26039 "-" "MaiaDesktop/1.0" 217ms
+10.2.40.147 - - [14/Feb/2026:08:53:56 +0000] "GET /api/v1/health HTTP/1.1" 201 8674 "-" "MaiaDesktop/1.0" 574ms
+10.1.109.195 - - [14/Feb/2026:08:56:19 +0000] "POST /api/v1/health HTTP/1.1" 403 16203 "-" "Mozilla/5.0 (X11; Linux x86_64)" 85ms
+10.5.238.2 - - [14/Feb/2026:08:57:21 +0000] "PUT /api/v1/users HTTP/1.1" 404 16713 "-" "python-httpx/0.27" 601ms
+10.4.223.112 - - [14/Feb/2026:09:00:22 +0000] "PUT /metrics HTTP/1.1" 200 9144 "-" "Mozilla/5.0 (X11; Linux x86_64)" 386ms
+10.0.9.127 - - [14/Feb/2026:09:04:53 +0000] "DELETE /metrics HTTP/1.1" 200 14789 "-" "PostmanRuntime/7.36" 748ms
+10.1.235.131 - - [14/Feb/2026:09:07:16 +0000] "GET /api/v1/tracks HTTP/1.1" 204 25706 "-" "PostmanRuntime/7.36" 285ms
+10.3.164.222 - - [14/Feb/2026:09:11:08 +0000] "PUT /api/v1/users HTTP/1.1" 400 26572 "-" "PostmanRuntime/7.36" 710ms
+10.0.191.215 - - [14/Feb/2026:09:13:21 +0000] "POST /api/v1/repos HTTP/1.1" 429 31481 "-" "Mozilla/5.0 (X11; Linux x86_64)" 485ms
+10.2.163.218 - - [14/Feb/2026:09:15:37 +0000] "DELETE /api/v1/health HTTP/1.1" 200 24228 "-" "curl/8.1" 554ms
+10.0.22.21 - - [14/Feb/2026:09:19:36 +0000] "GET /api/v1/health HTTP/1.1" 401 14655 "-" "python-httpx/0.27" 35ms
+10.2.215.239 - - [14/Feb/2026:09:21:08 +0000] "GET /api/v1/users HTTP/1.1" 201 2717 "-" "PostmanRuntime/7.36" 736ms
+10.4.66.87 - - [14/Feb/2026:09:26:35 +0000] "GET /api/v1/analyze HTTP/1.1" 201 4015 "-" "curl/8.1" 777ms
+10.0.56.42 - - [14/Feb/2026:09:27:42 +0000] "GET /api/v1/analyze HTTP/1.1" 200 8278 "-" "PostmanRuntime/7.36" 230ms
+10.3.54.26 - - [14/Feb/2026:09:32:36 +0000] "GET /metrics HTTP/1.1" 200 17543 "-" "MaiaDesktop/1.0" 393ms
+10.1.167.119 - - [14/Feb/2026:09:34:46 +0000] "POST /metrics HTTP/1.1" 200 24483 "-" "python-httpx/0.27" 62ms
+10.4.81.104 - - [14/Feb/2026:09:38:03 +0000] "PUT /api/v1/analyze HTTP/1.1" 404 17140 "-" "Mozilla/5.0 (X11; Linux x86_64)" 165ms
+10.0.141.128 - - [14/Feb/2026:09:39:42 +0000] "GET /api/v1/users HTTP/1.1" 200 18535 "-" "PostmanRuntime/7.36" 275ms
+10.0.251.249 - - [14/Feb/2026:09:44:30 +0000] "GET /api/v1/analyze HTTP/1.1" 200 12128 "-" "python-httpx/0.27" 98ms
+10.4.45.81 - - [14/Feb/2026:09:45:35 +0000] "POST /auth/token HTTP/1.1" 200 12696 "-" "MaiaDesktop/1.0" 339ms
+10.4.199.243 - - [14/Feb/2026:09:48:07 +0000] "GET /api/v1/analyze HTTP/1.1" 200 14997 "-" "PostmanRuntime/7.36" 292ms
+10.5.171.45 - - [14/Feb/2026:09:53:55 +0000] "DELETE /api/v1/health HTTP/1.1" 200 6561 "-" "MaiaDesktop/1.0" 650ms
+10.5.249.151 - - [14/Feb/2026:09:55:32 +0000] "GET /auth/token HTTP/1.1" 200 31840 "-" "curl/8.1" 301ms
+10.4.169.31 - - [14/Feb/2026:09:57:16 +0000] "POST /api/v1/tracks HTTP/1.1" 200 6822 "-" "MaiaDesktop/1.0" 73ms
+10.5.170.1 - - [14/Feb/2026:10:01:00 +0000] "DELETE /api/v1/tracks HTTP/1.1" 204 6409 "-" "MaiaDesktop/1.0" 104ms
+10.5.2.132 - - [14/Feb/2026:10:04:08 +0000] "GET /api/v1/users HTTP/1.1" 200 10336 "-" "MaiaDesktop/1.0" 288ms
+10.1.252.46 - - [14/Feb/2026:10:07:46 +0000] "GET /api/v1/repos HTTP/1.1" 201 508 "-" "MaiaDesktop/1.0" 186ms
+10.2.172.248 - - [14/Feb/2026:10:09:57 +0000] "GET /api/v1/analyze HTTP/1.1" 404 19264 "-" "MaiaDesktop/1.0" 274ms
+10.0.212.192 - - [14/Feb/2026:10:13:38 +0000] "POST /api/v1/repos HTTP/1.1" 200 27290 "-" "python-httpx/0.27" 611ms
+10.0.254.110 - - [14/Feb/2026:10:16:09 +0000] "PUT /api/v1/analyze HTTP/1.1" 200 803 "-" "Mozilla/5.0 (X11; Linux x86_64)" 678ms
+10.4.34.92 - - [14/Feb/2026:10:20:39 +0000] "PUT /api/v1/repos HTTP/1.1" 200 23871 "-" "PostmanRuntime/7.36" 381ms
+10.0.150.204 - - [14/Feb/2026:10:22:34 +0000] "GET /auth/token HTTP/1.1" 200 5049 "-" "curl/8.1" 162ms
+10.3.105.119 - - [14/Feb/2026:10:24:31 +0000] "GET /api/v1/health HTTP/1.1" 200 3227 "-" "MaiaDesktop/1.0" 589ms
+10.0.61.230 - - [14/Feb/2026:10:29:19 +0000] "GET /api/v1/repos HTTP/1.1" 200 4683 "-" "curl/8.1" 433ms
+10.3.85.122 - - [14/Feb/2026:10:31:31 +0000] "GET /metrics HTTP/1.1" 200 19379 "-" "python-httpx/0.27" 489ms
+10.1.236.10 - - [14/Feb/2026:10:33:10 +0000] "GET /api/v1/repos HTTP/1.1" 503 14911 "-" "MaiaDesktop/1.0" 51ms
+10.0.86.167 - - [14/Feb/2026:10:38:34 +0000] "GET /api/v1/analyze HTTP/1.1" 200 25441 "-" "PostmanRuntime/7.36" 85ms
+10.1.175.40 - - [14/Feb/2026:10:39:20 +0000] "POST /metrics HTTP/1.1" 200 25605 "-" "python-httpx/0.27" 525ms
+10.3.237.43 - - [14/Feb/2026:10:42:44 +0000] "GET /api/v1/users HTTP/1.1" 200 23220 "-" "MaiaDesktop/1.0" 109ms
+10.5.202.15 - - [14/Feb/2026:10:47:30 +0000] "GET /api/v1/users HTTP/1.1" 200 21314 "-" "curl/8.1" 753ms
+10.4.103.44 - - [14/Feb/2026:10:49:12 +0000] "PUT /api/v1/tracks HTTP/1.1" 200 17149 "-" "curl/8.1" 105ms
+10.1.231.120 - - [14/Feb/2026:10:51:58 +0000] "DELETE /api/v1/analyze HTTP/1.1" 200 14952 "-" "Mozilla/5.0 (X11; Linux x86_64)" 678ms
+10.0.137.176 - - [14/Feb/2026:10:54:00 +0000] "DELETE /api/v1/analyze HTTP/1.1" 204 6580 "-" "python-httpx/0.27" 104ms
+10.1.9.103 - - [14/Feb/2026:10:58:13 +0000] "GET /api/v1/health HTTP/1.1" 200 22056 "-" "PostmanRuntime/7.36" 678ms
+10.0.139.50 - - [14/Feb/2026:11:01:46 +0000] "DELETE /metrics HTTP/1.1" 200 2859 "-" "Mozilla/5.0 (X11; Linux x86_64)" 160ms
+10.1.25.172 - - [14/Feb/2026:11:04:07 +0000] "DELETE /api/v1/tracks HTTP/1.1" 200 16085 "-" "PostmanRuntime/7.36" 697ms
+10.3.32.37 - - [14/Feb/2026:11:08:06 +0000] "PUT /metrics HTTP/1.1" 200 30681 "-" "MaiaDesktop/1.0" 65ms
+10.4.252.250 - - [14/Feb/2026:11:09:17 +0000] "POST /api/v1/users HTTP/1.1" 200 904 "-" "curl/8.1" 703ms
+10.1.13.57 - - [14/Feb/2026:11:12:11 +0000] "DELETE /metrics HTTP/1.1" 400 26352 "-" "PostmanRuntime/7.36" 116ms
+10.3.182.212 - - [14/Feb/2026:11:17:29 +0000] "DELETE /api/v1/health HTTP/1.1" 200 27273 "-" "PostmanRuntime/7.36" 713ms
+10.4.185.111 - - [14/Feb/2026:11:19:10 +0000] "GET /api/v1/users HTTP/1.1" 200 4406 "-" "Mozilla/5.0 (X11; Linux x86_64)" 4ms
+10.0.206.98 - - [14/Feb/2026:11:22:00 +0000] "DELETE /api/v1/analyze HTTP/1.1" 204 23569 "-" "Mozilla/5.0 (X11; Linux x86_64)" 267ms
+10.0.223.79 - - [14/Feb/2026:11:24:23 +0000] "DELETE /api/v1/analyze HTTP/1.1" 200 28722 "-" "PostmanRuntime/7.36" 44ms
+10.3.248.245 - - [14/Feb/2026:11:29:31 +0000] "GET /metrics HTTP/1.1" 404 28427 "-" "MaiaDesktop/1.0" 573ms
+10.5.86.33 - - [14/Feb/2026:11:32:44 +0000] "PUT /auth/token HTTP/1.1" 200 6770 "-" "python-httpx/0.27" 532ms
+10.5.128.33 - - [14/Feb/2026:11:34:35 +0000] "GET /auth/token HTTP/1.1" 200 20380 "-" "PostmanRuntime/7.36" 228ms
+10.4.75.71 - - [14/Feb/2026:11:38:08 +0000] "GET /api/v1/users HTTP/1.1" 200 6156 "-" "Mozilla/5.0 (X11; Linux x86_64)" 613ms
+10.1.180.237 - - [14/Feb/2026:11:39:30 +0000] "DELETE /api/v1/repos HTTP/1.1" 200 17033 "-" "python-httpx/0.27" 384ms
+10.2.123.83 - - [14/Feb/2026:11:44:10 +0000] "PUT /api/v1/users HTTP/1.1" 200 13253 "-" "Mozilla/5.0 (X11; Linux x86_64)" 301ms
+10.3.92.23 - - [14/Feb/2026:11:47:54 +0000] "GET /api/v1/repos HTTP/1.1" 200 23320 "-" "PostmanRuntime/7.36" 367ms
+10.5.188.174 - - [14/Feb/2026:11:49:32 +0000] "DELETE /api/v1/repos HTTP/1.1" 200 25782 "-" "python-httpx/0.27" 240ms
+10.2.92.105 - - [14/Feb/2026:11:52:05 +0000] "DELETE /api/v1/health HTTP/1.1" 204 18050 "-" "Mozilla/5.0 (X11; Linux x86_64)" 280ms
+10.1.87.87 - - [14/Feb/2026:11:54:08 +0000] "POST /auth/token HTTP/1.1" 200 28533 "-" "PostmanRuntime/7.36" 687ms
+10.0.94.51 - - [14/Feb/2026:11:59:00 +0000] "GET /api/v1/repos HTTP/1.1" 400 6175 "-" "python-httpx/0.27" 755ms
+10.3.73.108 - - [14/Feb/2026:12:01:09 +0000] "POST /api/v1/tracks HTTP/1.1" 301 27894 "-" "python-httpx/0.27" 348ms
+10.2.71.16 - - [14/Feb/2026:12:03:39 +0000] "GET /api/v1/analyze HTTP/1.1" 500 23436 "-" "curl/8.1" 188ms
+10.3.108.50 - - [14/Feb/2026:12:08:52 +0000] "GET /api/v1/health HTTP/1.1" 200 29267 "-" "Mozilla/5.0 (X11; Linux x86_64)" 178ms
+10.3.254.153 - - [14/Feb/2026:12:09:38 +0000] "GET /auth/token HTTP/1.1" 200 14482 "-" "MaiaDesktop/1.0" 279ms
+10.5.95.30 - - [14/Feb/2026:12:13:05 +0000] "GET /api/v1/users HTTP/1.1" 200 25707 "-" "Mozilla/5.0 (X11; Linux x86_64)" 389ms
+10.1.5.149 - - [14/Feb/2026:12:16:22 +0000] "GET /api/v1/analyze HTTP/1.1" 204 23559 "-" "curl/8.1" 640ms
+10.1.120.151 - - [14/Feb/2026:12:20:52 +0000] "PUT /auth/token HTTP/1.1" 200 6639 "-" "curl/8.1" 101ms
+10.0.130.118 - - [14/Feb/2026:12:23:27 +0000] "GET /api/v1/tracks HTTP/1.1" 200 16989 "-" "MaiaDesktop/1.0" 334ms
+10.0.230.59 - - [14/Feb/2026:12:24:31 +0000] "GET /api/v1/analyze HTTP/1.1" 200 30067 "-" "PostmanRuntime/7.36" 427ms
+10.4.61.97 - - [14/Feb/2026:12:27:29 +0000] "GET /api/v1/users HTTP/1.1" 200 8061 "-" "PostmanRuntime/7.36" 433ms
+10.5.122.120 - - [14/Feb/2026:12:32:42 +0000] "GET /auth/token HTTP/1.1" 400 8900 "-" "python-httpx/0.27" 312ms
+10.1.199.154 - - [14/Feb/2026:12:33:03 +0000] "GET /api/v1/repos HTTP/1.1" 200 19708 "-" "MaiaDesktop/1.0" 234ms
+10.0.79.119 - - [14/Feb/2026:12:38:00 +0000] "PUT /api/v1/users HTTP/1.1" 200 8599 "-" "python-httpx/0.27" 108ms
+10.0.110.106 - - [14/Feb/2026:12:39:54 +0000] "DELETE /api/v1/tracks HTTP/1.1" 200 6103 "-" "PostmanRuntime/7.36" 94ms
+10.5.43.26 - - [14/Feb/2026:12:44:09 +0000] "POST /api/v1/health HTTP/1.1" 404 16991 "-" "PostmanRuntime/7.36" 357ms
+10.1.56.225 - - [14/Feb/2026:12:47:10 +0000] "PUT /api/v1/users HTTP/1.1" 200 28299 "-" "MaiaDesktop/1.0" 298ms
+10.2.72.195 - - [14/Feb/2026:12:49:39 +0000] "GET /metrics HTTP/1.1" 200 18405 "-" "MaiaDesktop/1.0" 630ms
+10.5.83.36 - - [14/Feb/2026:12:51:21 +0000] "PUT /api/v1/repos HTTP/1.1" 200 12074 "-" "MaiaDesktop/1.0" 118ms
+10.2.56.103 - - [14/Feb/2026:12:55:24 +0000] "DELETE /metrics HTTP/1.1" 200 13757 "-" "Mozilla/5.0 (X11; Linux x86_64)" 166ms
+10.3.66.60 - - [14/Feb/2026:12:57:00 +0000] "GET /api/v1/repos HTTP/1.1" 200 14705 "-" "PostmanRuntime/7.36" 545ms
+10.0.96.57 - - [14/Feb/2026:13:00:44 +0000] "DELETE /api/v1/users HTTP/1.1" 200 26788 "-" "Mozilla/5.0 (X11; Linux x86_64)" 384ms
+10.1.138.45 - - [14/Feb/2026:13:04:22 +0000] "DELETE /api/v1/users HTTP/1.1" 204 17964 "-" "python-httpx/0.27" 509ms
+10.1.179.157 - - [14/Feb/2026:13:06:17 +0000] "DELETE /api/v1/analyze HTTP/1.1" 204 26663 "-" "MaiaDesktop/1.0" 265ms
+10.1.183.124 - - [14/Feb/2026:13:09:43 +0000] "DELETE /auth/token HTTP/1.1" 403 18123 "-" "MaiaDesktop/1.0" 298ms
+10.4.249.158 - - [14/Feb/2026:13:14:37 +0000] "GET /api/v1/analyze HTTP/1.1" 200 22317 "-" "curl/8.1" 309ms
+10.2.126.115 - - [14/Feb/2026:13:17:26 +0000] "GET /api/v1/repos HTTP/1.1" 200 18649 "-" "curl/8.1" 328ms
+10.4.8.152 - - [14/Feb/2026:13:20:20 +0000] "GET /metrics HTTP/1.1" 200 2727 "-" "MaiaDesktop/1.0" 110ms
+10.0.4.159 - - [14/Feb/2026:13:23:56 +0000] "PUT /api/v1/repos HTTP/1.1" 200 5886 "-" "MaiaDesktop/1.0" 72ms
+10.1.220.47 - - [14/Feb/2026:13:24:58 +0000] "POST /api/v1/tracks HTTP/1.1" 401 14954 "-" "MaiaDesktop/1.0" 706ms
+10.2.16.233 - - [14/Feb/2026:13:27:51 +0000] "GET /api/v1/repos HTTP/1.1" 200 4395 "-" "PostmanRuntime/7.36" 27ms
+10.5.71.77 - - [14/Feb/2026:13:30:18 +0000] "GET /auth/token HTTP/1.1" 304 5312 "-" "PostmanRuntime/7.36" 52ms
+10.0.187.74 - - [14/Feb/2026:13:33:22 +0000] "GET /api/v1/users HTTP/1.1" 201 18202 "-" "Mozilla/5.0 (X11; Linux x86_64)" 288ms
+10.4.153.221 - - [14/Feb/2026:13:36:58 +0000] "GET /api/v1/tracks HTTP/1.1" 429 18173 "-" "python-httpx/0.27" 678ms
+10.1.240.245 - - [14/Feb/2026:13:39:36 +0000] "POST /api/v1/repos HTTP/1.1" 200 25837 "-" "python-httpx/0.27" 386ms
+10.5.78.102 - - [14/Feb/2026:13:42:56 +0000] "GET /api/v1/health HTTP/1.1" 304 8199 "-" "curl/8.1" 523ms
+10.2.128.125 - - [14/Feb/2026:13:45:11 +0000] "GET /api/v1/tracks HTTP/1.1" 200 15202 "-" "MaiaDesktop/1.0" 378ms
+10.1.40.89 - - [14/Feb/2026:13:48:06 +0000] "PUT /metrics HTTP/1.1" 400 11776 "-" "python-httpx/0.27" 725ms
+10.3.235.48 - - [14/Feb/2026:13:53:07 +0000] "DELETE /api/v1/repos HTTP/1.1" 429 17271 "-" "curl/8.1" 161ms
+10.2.146.208 - - [14/Feb/2026:13:56:00 +0000] "PUT /api/v1/analyze HTTP/1.1" 400 21499 "-" "curl/8.1" 203ms
+10.3.151.149 - - [14/Feb/2026:13:57:24 +0000] "GET /api/v1/health HTTP/1.1" 200 15887 "-" "PostmanRuntime/7.36" 125ms
+10.4.141.154 - - [14/Feb/2026:14:00:55 +0000] "GET /api/v1/users HTTP/1.1" 400 8400 "-" "curl/8.1" 310ms
+10.5.111.209 - - [14/Feb/2026:14:05:24 +0000] "DELETE /api/v1/analyze HTTP/1.1" 301 9650 "-" "Mozilla/5.0 (X11; Linux x86_64)" 175ms
+10.1.105.45 - - [14/Feb/2026:14:07:59 +0000] "POST /metrics HTTP/1.1" 204 6276 "-" "Mozilla/5.0 (X11; Linux x86_64)" 448ms
+10.1.25.47 - - [14/Feb/2026:14:11:10 +0000] "GET /api/v1/health HTTP/1.1" 200 12793 "-" "PostmanRuntime/7.36" 445ms
+10.5.128.125 - - [14/Feb/2026:14:14:27 +0000] "GET /api/v1/analyze HTTP/1.1" 200 6408 "-" "python-httpx/0.27" 551ms
+10.0.137.112 - - [14/Feb/2026:14:15:25 +0000] "GET /metrics HTTP/1.1" 200 29228 "-" "MaiaDesktop/1.0" 40ms
+10.1.165.89 - - [14/Feb/2026:14:18:55 +0000] "GET /api/v1/repos HTTP/1.1" 304 30865 "-" "MaiaDesktop/1.0" 234ms
+10.1.64.141 - - [14/Feb/2026:14:22:35 +0000] "GET /api/v1/users HTTP/1.1" 400 5245 "-" "PostmanRuntime/7.36" 659ms
+10.1.21.66 - - [14/Feb/2026:14:24:25 +0000] "GET /metrics HTTP/1.1" 201 6549 "-" "curl/8.1" 52ms
+10.3.57.96 - - [14/Feb/2026:14:28:04 +0000] "GET /api/v1/health HTTP/1.1" 200 85 "-" "PostmanRuntime/7.36" 257ms
+10.0.84.192 - - [14/Feb/2026:14:31:02 +0000] "DELETE /api/v1/users HTTP/1.1" 200 28370 "-" "Mozilla/5.0 (X11; Linux x86_64)" 229ms
+10.2.9.81 - - [14/Feb/2026:14:33:27 +0000] "POST /api/v1/repos HTTP/1.1" 200 7468 "-" "curl/8.1" 24ms
+10.3.18.159 - - [14/Feb/2026:14:37:39 +0000] "POST /api/v1/repos HTTP/1.1" 404 7412 "-" "PostmanRuntime/7.36" 402ms
+10.3.70.46 - - [14/Feb/2026:14:41:11 +0000] "DELETE /api/v1/users HTTP/1.1" 204 25265 "-" "MaiaDesktop/1.0" 599ms
+10.4.231.63 - - [14/Feb/2026:14:43:44 +0000] "POST /api/v1/analyze HTTP/1.1" 204 7148 "-" "python-httpx/0.27" 574ms
+10.0.3.67 - - [14/Feb/2026:14:47:22 +0000] "PUT /metrics HTTP/1.1" 200 12169 "-" "python-httpx/0.27" 702ms
+10.2.111.183 - - [14/Feb/2026:14:50:40 +0000] "POST /api/v1/repos HTTP/1.1" 200 15480 "-" "curl/8.1" 198ms
+10.5.75.6 - - [14/Feb/2026:14:53:42 +0000] "DELETE /api/v1/analyze HTTP/1.1" 200 21600 "-" "Mozilla/5.0 (X11; Linux x86_64)" 403ms
+10.0.32.13 - - [14/Feb/2026:14:55:37 +0000] "POST /api/v1/repos HTTP/1.1" 200 7665 "-" "PostmanRuntime/7.36" 612ms
+10.5.206.42 - - [14/Feb/2026:14:59:51 +0000] "GET /api/v1/health HTTP/1.1" 200 10097 "-" "MaiaDesktop/1.0" 303ms
+10.5.45.158 - - [14/Feb/2026:15:00:29 +0000] "GET /api/v1/repos HTTP/1.1" 201 904 "-" "PostmanRuntime/7.36" 307ms
+10.3.76.125 - - [14/Feb/2026:15:04:41 +0000] "DELETE /auth/token HTTP/1.1" 304 3939 "-" "MaiaDesktop/1.0" 126ms
+10.2.122.166 - - [14/Feb/2026:15:07:53 +0000] "POST /api/v1/tracks HTTP/1.1" 200 12534 "-" "curl/8.1" 234ms
+10.4.10.167 - - [14/Feb/2026:15:10:36 +0000] "POST /auth/token HTTP/1.1" 400 27411 "-" "Mozilla/5.0 (X11; Linux x86_64)" 286ms
+10.4.70.93 - - [14/Feb/2026:15:13:54 +0000] "GET /metrics HTTP/1.1" 404 14513 "-" "python-httpx/0.27" 158ms
+10.1.31.144 - - [14/Feb/2026:15:15:39 +0000] "PUT /auth/token HTTP/1.1" 200 30832 "-" "PostmanRuntime/7.36" 153ms
+10.4.112.182 - - [14/Feb/2026:15:18:04 +0000] "POST /api/v1/tracks HTTP/1.1" 200 21820 "-" "PostmanRuntime/7.36" 456ms
+10.3.93.33 - - [14/Feb/2026:15:21:16 +0000] "GET /metrics HTTP/1.1" 200 16664 "-" "Mozilla/5.0 (X11; Linux x86_64)" 309ms
+10.0.141.50 - - [14/Feb/2026:15:26:01 +0000] "GET /api/v1/tracks HTTP/1.1" 200 7369 "-" "Mozilla/5.0 (X11; Linux x86_64)" 516ms
+10.4.61.81 - - [14/Feb/2026:15:29:34 +0000] "PUT /api/v1/tracks HTTP/1.1" 200 14533 "-" "PostmanRuntime/7.36" 427ms
+10.2.152.15 - - [14/Feb/2026:15:30:12 +0000] "PUT /api/v1/repos HTTP/1.1" 500 31031 "-" "python-httpx/0.27" 557ms
+10.5.220.72 - - [14/Feb/2026:15:33:28 +0000] "GET /api/v1/users HTTP/1.1" 200 7120 "-" "MaiaDesktop/1.0" 711ms
+10.3.149.84 - - [14/Feb/2026:15:38:53 +0000] "POST /api/v1/health HTTP/1.1" 200 780 "-" "PostmanRuntime/7.36" 448ms
+10.4.126.88 - - [14/Feb/2026:15:40:16 +0000] "PUT /api/v1/health HTTP/1.1" 201 2883 "-" "Mozilla/5.0 (X11; Linux x86_64)" 522ms
+10.2.63.106 - - [14/Feb/2026:15:42:58 +0000] "GET /api/v1/tracks HTTP/1.1" 200 9624 "-" "PostmanRuntime/7.36" 516ms
+10.2.242.209 - - [14/Feb/2026:15:47:11 +0000] "GET /auth/token HTTP/1.1" 502 14308 "-" "python-httpx/0.27" 247ms
+10.0.20.66 - - [14/Feb/2026:15:50:36 +0000] "GET /api/v1/analyze HTTP/1.1" 503 4274 "-" "MaiaDesktop/1.0" 664ms
+10.1.182.167 - - [14/Feb/2026:15:51:44 +0000] "GET /api/v1/health HTTP/1.1" 204 13161 "-" "python-httpx/0.27" 199ms
+10.5.107.12 - - [14/Feb/2026:15:54:24 +0000] "GET /api/v1/repos HTTP/1.1" 400 15665 "-" "MaiaDesktop/1.0" 189ms
+10.5.249.167 - - [14/Feb/2026:15:57:48 +0000] "POST /api/v1/users HTTP/1.1" 204 12354 "-" "MaiaDesktop/1.0" 201ms
+10.3.243.37 - - [14/Feb/2026:16:01:13 +0000] "POST /api/v1/repos HTTP/1.1" 201 13046 "-" "curl/8.1" 528ms
+10.5.142.241 - - [14/Feb/2026:16:05:11 +0000] "GET /auth/token HTTP/1.1" 200 7965 "-" "Mozilla/5.0 (X11; Linux x86_64)" 84ms
+10.2.153.95 - - [14/Feb/2026:16:06:44 +0000] "GET /metrics HTTP/1.1" 200 15654 "-" "PostmanRuntime/7.36" 471ms
+10.4.54.123 - - [14/Feb/2026:16:09:47 +0000] "PUT /api/v1/repos HTTP/1.1" 200 5181 "-" "MaiaDesktop/1.0" 91ms
+10.2.248.218 - - [14/Feb/2026:16:13:26 +0000] "GET /auth/token HTTP/1.1" 200 18131 "-" "curl/8.1" 735ms
+10.3.56.98 - - [14/Feb/2026:16:16:13 +0000] "GET /api/v1/tracks HTTP/1.1" 200 30192 "-" "Mozilla/5.0 (X11; Linux x86_64)" 405ms
+10.0.245.243 - - [14/Feb/2026:16:19:59 +0000] "GET /api/v1/users HTTP/1.1" 403 25847 "-" "Mozilla/5.0 (X11; Linux x86_64)" 385ms
+10.5.107.149 - - [14/Feb/2026:16:21:58 +0000] "POST /api/v1/health HTTP/1.1" 200 3341 "-" "python-httpx/0.27" 608ms
+10.2.146.254 - - [14/Feb/2026:16:26:50 +0000] "PUT /api/v1/tracks HTTP/1.1" 200 7057 "-" "Mozilla/5.0 (X11; Linux x86_64)" 294ms
+10.5.124.141 - - [14/Feb/2026:16:27:08 +0000] "GET /metrics HTTP/1.1" 401 20680 "-" "MaiaDesktop/1.0" 22ms
+10.3.41.49 - - [14/Feb/2026:16:30:37 +0000] "POST /api/v1/analyze HTTP/1.1" 404 8791 "-" "PostmanRuntime/7.36" 474ms
+10.4.111.237 - - [14/Feb/2026:16:33:23 +0000] "DELETE /auth/token HTTP/1.1" 400 20665 "-" "PostmanRuntime/7.36" 680ms
+10.2.129.27 - - [14/Feb/2026:16:36:49 +0000] "GET /auth/token HTTP/1.1" 204 30483 "-" "MaiaDesktop/1.0" 49ms
+10.3.199.135 - - [14/Feb/2026:16:39:09 +0000] "GET /api/v1/health HTTP/1.1" 301 8606 "-" "PostmanRuntime/7.36" 662ms
+10.5.158.45 - - [14/Feb/2026:16:43:54 +0000] "POST /api/v1/users HTTP/1.1" 200 10490 "-" "Mozilla/5.0 (X11; Linux x86_64)" 581ms
+10.1.53.127 - - [14/Feb/2026:16:45:29 +0000] "GET /api/v1/repos HTTP/1.1" 204 4263 "-" "curl/8.1" 724ms
+10.0.161.215 - - [14/Feb/2026:16:50:50 +0000] "GET /api/v1/analyze HTTP/1.1" 429 14682 "-" "python-httpx/0.27" 746ms
+10.0.226.124 - - [14/Feb/2026:16:51:44 +0000] "GET /api/v1/analyze HTTP/1.1" 200 14909 "-" "Mozilla/5.0 (X11; Linux x86_64)" 69ms
+10.4.105.61 - - [14/Feb/2026:16:55:45 +0000] "PUT /api/v1/tracks HTTP/1.1" 200 25631 "-" "Mozilla/5.0 (X11; Linux x86_64)" 142ms
+10.0.82.10 - - [14/Feb/2026:16:58:26 +0000] "GET /api/v1/repos HTTP/1.1" 200 1956 "-" "MaiaDesktop/1.0" 405ms
+10.0.218.109 - - [14/Feb/2026:17:02:35 +0000] "POST /api/v1/analyze HTTP/1.1" 200 959 "-" "Mozilla/5.0 (X11; Linux x86_64)" 13ms
+10.4.80.4 - - [14/Feb/2026:17:05:05 +0000] "DELETE /api/v1/users HTTP/1.1" 500 19277 "-" "python-httpx/0.27" 102ms
+10.4.96.27 - - [14/Feb/2026:17:07:38 +0000] "DELETE /api/v1/health HTTP/1.1" 200 16453 "-" "MaiaDesktop/1.0" 68ms
+10.4.153.7 - - [14/Feb/2026:17:11:05 +0000] "GET /api/v1/users HTTP/1.1" 204 24049 "-" "python-httpx/0.27" 510ms
+10.0.155.225 - - [14/Feb/2026:17:12:29 +0000] "DELETE /auth/token HTTP/1.1" 200 27850 "-" "PostmanRuntime/7.36" 786ms
+10.1.89.148 - - [14/Feb/2026:17:16:47 +0000] "DELETE /auth/token HTTP/1.1" 200 27149 "-" "python-httpx/0.27" 3ms
+10.0.84.79 - - [14/Feb/2026:17:19:59 +0000] "POST /api/v1/tracks HTTP/1.1" 200 19850 "-" "MaiaDesktop/1.0" 780ms
+10.3.117.226 - - [14/Feb/2026:17:23:19 +0000] "GET /metrics HTTP/1.1" 201 26260 "-" "Mozilla/5.0 (X11; Linux x86_64)" 580ms
+10.2.162.232 - - [14/Feb/2026:17:26:21 +0000] "DELETE /api/v1/repos HTTP/1.1" 201 20504 "-" "python-httpx/0.27" 150ms
+10.2.181.225 - - [14/Feb/2026:17:29:16 +0000] "GET /api/v1/repos HTTP/1.1" 200 536 "-" "curl/8.1" 683ms
+10.2.60.188 - - [14/Feb/2026:17:32:59 +0000] "GET /metrics HTTP/1.1" 400 29910 "-" "curl/8.1" 32ms
+10.4.150.37 - - [14/Feb/2026:17:34:37 +0000] "GET /api/v1/repos HTTP/1.1" 301 19924 "-" "PostmanRuntime/7.36" 542ms
+10.1.205.115 - - [14/Feb/2026:17:36:25 +0000] "GET /api/v1/users HTTP/1.1" 200 31266 "-" "PostmanRuntime/7.36" 395ms
+10.2.203.127 - - [14/Feb/2026:17:39:44 +0000] "PUT /metrics HTTP/1.1" 200 689 "-" "MaiaDesktop/1.0" 380ms
+10.5.237.192 - - [14/Feb/2026:17:42:13 +0000] "GET /api/v1/analyze HTTP/1.1" 401 13094 "-" "MaiaDesktop/1.0" 1ms
+10.4.179.11 - - [14/Feb/2026:17:45:16 +0000] "GET /api/v1/health HTTP/1.1" 200 4464 "-" "PostmanRuntime/7.36" 389ms
+10.3.210.215 - - [14/Feb/2026:17:50:28 +0000] "GET /metrics HTTP/1.1" 400 24685 "-" "curl/8.1" 520ms
+10.0.222.234 - - [14/Feb/2026:17:51:30 +0000] "GET /api/v1/analyze HTTP/1.1" 401 29649 "-" "Mozilla/5.0 (X11; Linux x86_64)" 235ms
+10.2.250.214 - - [14/Feb/2026:17:55:06 +0000] "GET /metrics HTTP/1.1" 200 20846 "-" "MaiaDesktop/1.0" 449ms
+10.5.145.115 - - [14/Feb/2026:17:57:33 +0000] "GET /api/v1/health HTTP/1.1" 301 22505 "-" "curl/8.1" 403ms
+10.1.62.178 - - [14/Feb/2026:18:01:10 +0000] "GET /auth/token HTTP/1.1" 200 20220 "-" "PostmanRuntime/7.36" 139ms
+10.0.78.83 - - [14/Feb/2026:18:05:58 +0000] "GET /api/v1/repos HTTP/1.1" 403 25586 "-" "PostmanRuntime/7.36" 207ms
+10.1.113.28 - - [14/Feb/2026:18:06:25 +0000] "DELETE /api/v1/health HTTP/1.1" 404 15372 "-" "MaiaDesktop/1.0" 695ms
+10.0.23.233 - - [14/Feb/2026:18:09:23 +0000] "GET /api/v1/users HTTP/1.1" 404 6875 "-" "Mozilla/5.0 (X11; Linux x86_64)" 166ms
+10.3.160.116 - - [14/Feb/2026:18:14:50 +0000] "POST /api/v1/tracks HTTP/1.1" 200 21824 "-" "Mozilla/5.0 (X11; Linux x86_64)" 465ms
+10.5.88.201 - - [14/Feb/2026:18:15:29 +0000] "GET /api/v1/users HTTP/1.1" 200 19338 "-" "python-httpx/0.27" 248ms
+10.0.74.108 - - [14/Feb/2026:18:19:56 +0000] "PUT /api/v1/health HTTP/1.1" 301 28806 "-" "python-httpx/0.27" 131ms
+10.2.48.222 - - [14/Feb/2026:18:22:12 +0000] "GET /api/v1/repos HTTP/1.1" 200 10741 "-" "python-httpx/0.27" 448ms
+10.3.16.146 - - [14/Feb/2026:18:26:43 +0000] "POST /api/v1/health HTTP/1.1" 200 30862 "-" "Mozilla/5.0 (X11; Linux x86_64)" 92ms
+10.4.179.197 - - [14/Feb/2026:18:28:53 +0000] "POST /api/v1/health HTTP/1.1" 200 3458 "-" "curl/8.1" 405ms
+10.2.96.165 - - [14/Feb/2026:18:32:44 +0000] "GET /auth/token HTTP/1.1" 200 15847 "-" "python-httpx/0.27" 7ms
+10.5.39.79 - - [14/Feb/2026:18:33:31 +0000] "PUT /api/v1/repos HTTP/1.1" 304 30332 "-" "python-httpx/0.27" 87ms
+10.2.233.223 - - [14/Feb/2026:18:37:45 +0000] "PUT /api/v1/analyze HTTP/1.1" 200 27292 "-" "python-httpx/0.27" 457ms
+10.5.128.224 - - [14/Feb/2026:18:41:30 +0000] "POST /auth/token HTTP/1.1" 500 5757 "-" "PostmanRuntime/7.36" 143ms
+10.3.95.225 - - [14/Feb/2026:18:42:04 +0000] "POST /api/v1/repos HTTP/1.1" 503 9079 "-" "MaiaDesktop/1.0" 26ms
+10.5.204.175 - - [14/Feb/2026:18:45:54 +0000] "POST /metrics HTTP/1.1" 200 23949 "-" "curl/8.1" 421ms
+10.1.106.96 - - [14/Feb/2026:18:48:23 +0000] "GET /api/v1/repos HTTP/1.1" 502 10243 "-" "python-httpx/0.27" 227ms
+10.3.27.58 - - [14/Feb/2026:18:53:27 +0000] "DELETE /api/v1/repos HTTP/1.1" 429 14279 "-" "PostmanRuntime/7.36" 649ms
+10.5.89.147 - - [14/Feb/2026:18:54:17 +0000] "GET /auth/token HTTP/1.1" 200 14734 "-" "python-httpx/0.27" 768ms
+10.4.253.110 - - [14/Feb/2026:18:58:47 +0000] "DELETE /api/v1/analyze HTTP/1.1" 200 19445 "-" "MaiaDesktop/1.0" 642ms
+10.0.250.128 - - [14/Feb/2026:19:01:24 +0000] "GET /api/v1/users HTTP/1.1" 200 24044 "-" "python-httpx/0.27" 506ms
+10.2.200.21 - - [14/Feb/2026:19:05:24 +0000] "PUT /api/v1/analyze HTTP/1.1" 204 1925 "-" "PostmanRuntime/7.36" 163ms
+10.3.136.20 - - [14/Feb/2026:19:06:55 +0000] "GET /api/v1/users HTTP/1.1" 400 29578 "-" "MaiaDesktop/1.0" 453ms
+10.3.39.236 - - [14/Feb/2026:19:09:10 +0000] "DELETE /api/v1/tracks HTTP/1.1" 200 22660 "-" "Mozilla/5.0 (X11; Linux x86_64)" 213ms
+10.5.109.58 - - [14/Feb/2026:19:14:15 +0000] "DELETE /api/v1/health HTTP/1.1" 200 18211 "-" "PostmanRuntime/7.36" 146ms
+10.5.186.72 - - [14/Feb/2026:19:15:31 +0000] "GET /api/v1/tracks HTTP/1.1" 200 28300 "-" "python-httpx/0.27" 36ms
+10.3.242.184 - - [14/Feb/2026:19:19:35 +0000] "POST /api/v1/analyze HTTP/1.1" 200 6025 "-" "curl/8.1" 479ms
+10.0.48.78 - - [14/Feb/2026:19:22:28 +0000] "GET /auth/token HTTP/1.1" 301 25066 "-" "MaiaDesktop/1.0" 403ms
+10.4.85.99 - - [14/Feb/2026:19:25:32 +0000] "DELETE /api/v1/health HTTP/1.1" 200 26591 "-" "Mozilla/5.0 (X11; Linux x86_64)" 655ms
+10.5.184.96 - - [14/Feb/2026:19:27:59 +0000] "PUT /metrics HTTP/1.1" 200 14649 "-" "python-httpx/0.27" 10ms
+10.5.162.90 - - [14/Feb/2026:19:31:17 +0000] "POST /api/v1/analyze HTTP/1.1" 201 9866 "-" "curl/8.1" 226ms
+10.0.252.222 - - [14/Feb/2026:19:35:23 +0000] "POST /auth/token HTTP/1.1" 200 30242 "-" "python-httpx/0.27" 714ms
+10.5.197.166 - - [14/Feb/2026:19:36:02 +0000] "PUT /metrics HTTP/1.1" 200 22772 "-" "python-httpx/0.27" 559ms
+10.1.125.252 - - [14/Feb/2026:19:40:20 +0000] "POST /api/v1/analyze HTTP/1.1" 200 18113 "-" "MaiaDesktop/1.0" 665ms
+10.5.66.75 - - [14/Feb/2026:19:42:09 +0000] "POST /metrics HTTP/1.1" 404 15540 "-" "Mozilla/5.0 (X11; Linux x86_64)" 335ms
+10.5.216.53 - - [14/Feb/2026:19:47:50 +0000] "DELETE /metrics HTTP/1.1" 200 14603 "-" "MaiaDesktop/1.0" 777ms
+10.2.101.88 - - [14/Feb/2026:19:49:12 +0000] "PUT /api/v1/users HTTP/1.1" 201 29828 "-" "curl/8.1" 747ms
+10.1.44.106 - - [14/Feb/2026:19:51:05 +0000] "GET /api/v1/health HTTP/1.1" 200 6409 "-" "MaiaDesktop/1.0" 748ms
+10.2.64.195 - - [14/Feb/2026:19:55:13 +0000] "GET /api/v1/health HTTP/1.1" 304 31649 "-" "Mozilla/5.0 (X11; Linux x86_64)" 152ms
+10.5.173.179 - - [14/Feb/2026:19:59:11 +0000] "POST /api/v1/health HTTP/1.1" 201 30828 "-" "PostmanRuntime/7.36" 466ms
+10.2.58.83 - - [14/Feb/2026:20:02:23 +0000] "GET /api/v1/health HTTP/1.1" 204 510 "-" "curl/8.1" 747ms
+10.2.3.132 - - [14/Feb/2026:20:03:50 +0000] "POST /api/v1/health HTTP/1.1" 404 23985 "-" "PostmanRuntime/7.36" 25ms
+10.0.130.47 - - [14/Feb/2026:20:07:09 +0000] "GET /api/v1/analyze HTTP/1.1" 200 12113 "-" "PostmanRuntime/7.36" 654ms
+10.2.134.133 - - [14/Feb/2026:20:10:49 +0000] "GET /api/v1/tracks HTTP/1.1" 201 16425 "-" "PostmanRuntime/7.36" 457ms
+10.3.127.85 - - [14/Feb/2026:20:12:10 +0000] "GET /api/v1/users HTTP/1.1" 404 18487 "-" "curl/8.1" 269ms
+10.1.8.51 - - [14/Feb/2026:20:15:34 +0000] "GET /api/v1/health HTTP/1.1" 201 7797 "-" "curl/8.1" 101ms
+10.2.220.128 - - [14/Feb/2026:20:20:59 +0000] "PUT /api/v1/analyze HTTP/1.1" 200 27415 "-" "python-httpx/0.27" 698ms
+10.4.251.122 - - [14/Feb/2026:20:22:35 +0000] "DELETE /api/v1/tracks HTTP/1.1" 200 7637 "-" "python-httpx/0.27" 642ms
+10.0.124.39 - - [14/Feb/2026:20:24:48 +0000] "GET /api/v1/repos HTTP/1.1" 200 9063 "-" "PostmanRuntime/7.36" 88ms
+10.4.38.221 - - [14/Feb/2026:20:29:11 +0000] "PUT /api/v1/analyze HTTP/1.1" 429 3236 "-" "MaiaDesktop/1.0" 647ms
+10.0.238.123 - - [14/Feb/2026:20:31:36 +0000] "GET /api/v1/health HTTP/1.1" 200 11036 "-" "python-httpx/0.27" 784ms
+10.3.51.51 - - [14/Feb/2026:20:34:26 +0000] "POST /api/v1/analyze HTTP/1.1" 500 734 "-" "python-httpx/0.27" 353ms
+10.4.195.26 - - [14/Feb/2026:20:38:19 +0000] "PUT /api/v1/tracks HTTP/1.1" 204 25449 "-" "curl/8.1" 472ms
+10.2.175.21 - - [14/Feb/2026:20:40:26 +0000] "GET /api/v1/tracks HTTP/1.1" 200 23778 "-" "PostmanRuntime/7.36" 573ms
+10.3.120.70 - - [14/Feb/2026:20:43:45 +0000] "GET /metrics HTTP/1.1" 200 30666 "-" "python-httpx/0.27" 305ms
+10.1.20.53 - - [14/Feb/2026:20:46:27 +0000] "GET /metrics HTTP/1.1" 200 6225 "-" "python-httpx/0.27" 26ms
+10.5.21.136 - - [14/Feb/2026:20:49:28 +0000] "DELETE /auth/token HTTP/1.1" 200 31103 "-" "Mozilla/5.0 (X11; Linux x86_64)" 745ms
+10.5.208.65 - - [14/Feb/2026:20:51:11 +0000] "PUT /api/v1/analyze HTTP/1.1" 200 14450 "-" "MaiaDesktop/1.0" 500ms
+10.2.34.119 - - [14/Feb/2026:20:55:10 +0000] "GET /api/v1/users HTTP/1.1" 404 17388 "-" "Mozilla/5.0 (X11; Linux x86_64)" 278ms
+10.2.33.125 - - [14/Feb/2026:20:57:53 +0000] "DELETE /metrics HTTP/1.1" 200 994 "-" "MaiaDesktop/1.0" 151ms
+10.0.127.245 - - [14/Feb/2026:21:01:45 +0000] "GET /api/v1/tracks HTTP/1.1" 200 1948 "-" "MaiaDesktop/1.0" 715ms
+10.3.44.38 - - [14/Feb/2026:21:05:29 +0000] "DELETE /metrics HTTP/1.1" 200 4537 "-" "python-httpx/0.27" 713ms
+10.2.68.22 - - [14/Feb/2026:21:08:11 +0000] "POST /metrics HTTP/1.1" 403 28788 "-" "python-httpx/0.27" 516ms
+10.4.136.132 - - [14/Feb/2026:21:10:01 +0000] "GET /api/v1/users HTTP/1.1" 404 18753 "-" "Mozilla/5.0 (X11; Linux x86_64)" 373ms
+10.2.58.32 - - [14/Feb/2026:21:12:46 +0000] "PUT /api/v1/analyze HTTP/1.1" 200 10844 "-" "curl/8.1" 95ms
+10.3.77.193 - - [14/Feb/2026:21:15:12 +0000] "POST /api/v1/analyze HTTP/1.1" 200 15951 "-" "curl/8.1" 490ms
+10.1.10.89 - - [14/Feb/2026:21:20:42 +0000] "GET /api/v1/analyze HTTP/1.1" 200 15276 "-" "python-httpx/0.27" 610ms
+10.3.27.31 - - [14/Feb/2026:21:23:22 +0000] "GET /metrics HTTP/1.1" 200 24059 "-" "curl/8.1" 122ms
+10.1.235.176 - - [14/Feb/2026:21:25:25 +0000] "DELETE /auth/token HTTP/1.1" 400 19043 "-" "MaiaDesktop/1.0" 529ms
+10.3.146.14 - - [14/Feb/2026:21:29:45 +0000] "GET /api/v1/repos HTTP/1.1" 200 16264 "-" "MaiaDesktop/1.0" 8ms
+10.4.132.93 - - [14/Feb/2026:21:30:33 +0000] "GET /api/v1/users HTTP/1.1" 201 14244 "-" "curl/8.1" 69ms
+10.0.112.5 - - [14/Feb/2026:21:35:12 +0000] "POST /api/v1/analyze HTTP/1.1" 200 9828 "-" "MaiaDesktop/1.0" 381ms
+10.0.93.10 - - [14/Feb/2026:21:37:22 +0000] "DELETE /api/v1/tracks HTTP/1.1" 200 5814 "-" "MaiaDesktop/1.0" 460ms
+10.3.172.83 - - [14/Feb/2026:21:40:01 +0000] "PUT /api/v1/tracks HTTP/1.1" 200 30849 "-" "PostmanRuntime/7.36" 53ms
+10.3.99.30 - - [14/Feb/2026:21:42:14 +0000] "GET /metrics HTTP/1.1" 204 8430 "-" "python-httpx/0.27" 460ms
+10.4.209.253 - - [14/Feb/2026:21:45:59 +0000] "GET /metrics HTTP/1.1" 400 3827 "-" "PostmanRuntime/7.36" 375ms
+10.5.148.122 - - [14/Feb/2026:21:49:57 +0000] "GET /api/v1/tracks HTTP/1.1" 200 2327 "-" "python-httpx/0.27" 221ms
+10.1.128.238 - - [14/Feb/2026:21:53:37 +0000] "GET /api/v1/tracks HTTP/1.1" 204 13873 "-" "python-httpx/0.27" 9ms
+10.0.112.157 - - [14/Feb/2026:21:54:31 +0000] "PUT /api/v1/analyze HTTP/1.1" 200 18853 "-" "PostmanRuntime/7.36" 223ms
+10.2.223.156 - - [14/Feb/2026:21:57:46 +0000] "DELETE /api/v1/repos HTTP/1.1" 200 31268 "-" "Mozilla/5.0 (X11; Linux x86_64)" 745ms
+10.2.215.9 - - [14/Feb/2026:22:00:04 +0000] "GET /api/v1/health HTTP/1.1" 200 5820 "-" "MaiaDesktop/1.0" 639ms
+10.4.158.39 - - [14/Feb/2026:22:04:54 +0000] "GET /api/v1/health HTTP/1.1" 200 28380 "-" "PostmanRuntime/7.36" 176ms
+10.5.39.76 - - [14/Feb/2026:22:08:11 +0000] "GET /api/v1/health HTTP/1.1" 404 9112 "-" "python-httpx/0.27" 701ms
+10.1.113.34 - - [14/Feb/2026:22:10:07 +0000] "DELETE /api/v1/users HTTP/1.1" 200 5500 "-" "MaiaDesktop/1.0" 623ms
+10.3.251.102 - - [14/Feb/2026:22:12:54 +0000] "DELETE /api/v1/health HTTP/1.1" 200 10072 "-" "python-httpx/0.27" 778ms
+10.4.85.175 - - [14/Feb/2026:22:15:39 +0000] "GET /api/v1/tracks HTTP/1.1" 200 8293 "-" "curl/8.1" 661ms
+10.5.209.118 - - [14/Feb/2026:22:18:52 +0000] "POST /api/v1/health HTTP/1.1" 401 29090 "-" "PostmanRuntime/7.36" 132ms
+10.5.197.140 - - [14/Feb/2026:22:23:11 +0000] "PUT /auth/token HTTP/1.1" 200 21182 "-" "PostmanRuntime/7.36" 182ms
+10.2.23.55 - - [14/Feb/2026:22:25:07 +0000] "GET /api/v1/repos HTTP/1.1" 301 6189 "-" "Mozilla/5.0 (X11; Linux x86_64)" 444ms
+10.2.201.89 - - [14/Feb/2026:22:27:27 +0000] "GET /auth/token HTTP/1.1" 200 8225 "-" "PostmanRuntime/7.36" 613ms
+10.5.168.30 - - [14/Feb/2026:22:32:53 +0000] "DELETE /metrics HTTP/1.1" 200 29077 "-" "MaiaDesktop/1.0" 763ms
+10.0.210.162 - - [14/Feb/2026:22:35:26 +0000] "GET /api/v1/tracks HTTP/1.1" 200 28448 "-" "MaiaDesktop/1.0" 265ms
+10.3.11.218 - - [14/Feb/2026:22:38:29 +0000] "POST /api/v1/analyze HTTP/1.1" 200 24765 "-" "PostmanRuntime/7.36" 558ms
+10.4.76.182 - - [14/Feb/2026:22:40:18 +0000] "GET /metrics HTTP/1.1" 400 21479 "-" "PostmanRuntime/7.36" 408ms
+10.2.70.70 - - [14/Feb/2026:22:42:25 +0000] "DELETE /api/v1/analyze HTTP/1.1" 429 21148 "-" "PostmanRuntime/7.36" 620ms
+10.3.89.148 - - [14/Feb/2026:22:47:36 +0000] "GET /api/v1/analyze HTTP/1.1" 502 2861 "-" "MaiaDesktop/1.0" 45ms
+10.5.245.169 - - [14/Feb/2026:22:48:47 +0000] "DELETE /api/v1/users HTTP/1.1" 200 8198 "-" "curl/8.1" 276ms
+10.0.61.95 - - [14/Feb/2026:22:53:12 +0000] "PUT /api/v1/health HTTP/1.1" 200 18194 "-" "curl/8.1" 114ms
+10.3.42.11 - - [14/Feb/2026:22:56:11 +0000] "PUT /api/v1/users HTTP/1.1" 200 13823 "-" "MaiaDesktop/1.0" 745ms
+10.0.200.48 - - [14/Feb/2026:22:58:35 +0000] "GET /api/v1/tracks HTTP/1.1" 201 921 "-" "MaiaDesktop/1.0" 147ms
+10.4.175.41 - - [14/Feb/2026:23:00:32 +0000] "GET /api/v1/health HTTP/1.1" 401 31716 "-" "Mozilla/5.0 (X11; Linux x86_64)" 706ms
+10.1.114.43 - - [14/Feb/2026:23:04:44 +0000] "DELETE /api/v1/analyze HTTP/1.1" 200 10539 "-" "curl/8.1" 303ms
+10.2.141.62 - - [14/Feb/2026:23:07:54 +0000] "POST /api/v1/analyze HTTP/1.1" 200 4520 "-" "MaiaDesktop/1.0" 395ms
+10.3.221.192 - - [14/Feb/2026:23:10:43 +0000] "GET /metrics HTTP/1.1" 400 10886 "-" "MaiaDesktop/1.0" 542ms
+10.4.65.157 - - [14/Feb/2026:23:12:24 +0000] "PUT /auth/token HTTP/1.1" 400 28514 "-" "Mozilla/5.0 (X11; Linux x86_64)" 587ms
+10.0.25.47 - - [14/Feb/2026:23:15:24 +0000] "GET /api/v1/health HTTP/1.1" 200 699 "-" "MaiaDesktop/1.0" 418ms
+10.5.31.96 - - [14/Feb/2026:23:19:47 +0000] "GET /api/v1/health HTTP/1.1" 200 25035 "-" "PostmanRuntime/7.36" 767ms
+10.2.77.83 - - [14/Feb/2026:23:22:28 +0000] "GET /api/v1/repos HTTP/1.1" 200 15174 "-" "Mozilla/5.0 (X11; Linux x86_64)" 468ms
+10.3.175.221 - - [14/Feb/2026:23:26:11 +0000] "GET /api/v1/repos HTTP/1.1" 200 11655 "-" "MaiaDesktop/1.0" 57ms
+10.0.205.223 - - [14/Feb/2026:23:28:31 +0000] "PUT /auth/token HTTP/1.1" 201 9050 "-" "curl/8.1" 461ms
+10.0.10.208 - - [14/Feb/2026:23:31:18 +0000] "DELETE /api/v1/tracks HTTP/1.1" 204 31675 "-" "python-httpx/0.27" 673ms
+10.4.23.35 - - [14/Feb/2026:23:35:15 +0000] "GET /auth/token HTTP/1.1" 404 13523 "-" "MaiaDesktop/1.0" 185ms
+10.5.0.239 - - [14/Feb/2026:23:37:03 +0000] "GET /api/v1/repos HTTP/1.1" 200 14566 "-" "MaiaDesktop/1.0" 689ms
+10.3.136.226 - - [14/Feb/2026:23:40:00 +0000] "GET /api/v1/analyze HTTP/1.1" 200 24789 "-" "curl/8.1" 243ms
+10.3.247.123 - - [14/Feb/2026:23:42:38 +0000] "GET /metrics HTTP/1.1" 200 24572 "-" "MaiaDesktop/1.0" 778ms
+10.4.187.201 - - [14/Feb/2026:23:46:11 +0000] "GET /metrics HTTP/1.1" 400 10433 "-" "PostmanRuntime/7.36" 697ms
+10.3.33.145 - - [14/Feb/2026:23:50:04 +0000] "GET /api/v1/health HTTP/1.1" 200 22514 "-" "MaiaDesktop/1.0" 130ms
+10.4.217.141 - - [14/Feb/2026:23:53:33 +0000] "DELETE /auth/token HTTP/1.1" 200 316 "-" "python-httpx/0.27" 667ms
+10.0.166.127 - - [14/Feb/2026:23:54:38 +0000] "GET /api/v1/health HTTP/1.1" 200 12299 "-" "MaiaDesktop/1.0" 408ms
+10.1.66.168 - - [14/Feb/2026:23:57:11 +0000] "GET /api/v1/users HTTP/1.1" 200 13194 "-" "PostmanRuntime/7.36" 584ms
+10.3.148.79 - - [15/Feb/2026:00:01:54 +0000] "DELETE /api/v1/tracks HTTP/1.1" 200 27547 "-" "MaiaDesktop/1.0" 552ms
+10.0.105.32 - - [15/Feb/2026:00:05:15 +0000] "PUT /auth/token HTTP/1.1" 200 7201 "-" "python-httpx/0.27" 745ms
+10.1.56.62 - - [15/Feb/2026:00:08:10 +0000] "GET /api/v1/repos HTTP/1.1" 200 30209 "-" "curl/8.1" 433ms
+10.4.107.77 - - [15/Feb/2026:00:09:56 +0000] "GET /api/v1/tracks HTTP/1.1" 200 1931 "-" "Mozilla/5.0 (X11; Linux x86_64)" 294ms
+10.5.161.183 - - [15/Feb/2026:00:14:52 +0000] "PUT /api/v1/users HTTP/1.1" 201 24998 "-" "MaiaDesktop/1.0" 308ms
+10.0.119.243 - - [15/Feb/2026:00:15:43 +0000] "POST /api/v1/users HTTP/1.1" 200 13228 "-" "Mozilla/5.0 (X11; Linux x86_64)" 293ms
+10.5.208.239 - - [15/Feb/2026:00:20:37 +0000] "GET /api/v1/analyze HTTP/1.1" 201 28883 "-" "Mozilla/5.0 (X11; Linux x86_64)" 520ms
+10.0.84.2 - - [15/Feb/2026:00:23:05 +0000] "GET /api/v1/analyze HTTP/1.1" 200 20106 "-" "MaiaDesktop/1.0" 756ms
+10.2.232.184 - - [15/Feb/2026:00:26:28 +0000] "GET /api/v1/health HTTP/1.1" 200 3760 "-" "PostmanRuntime/7.36" 770ms
+10.3.138.252 - - [15/Feb/2026:00:28:24 +0000] "GET /api/v1/analyze HTTP/1.1" 200 19395 "-" "Mozilla/5.0 (X11; Linux x86_64)" 24ms
+10.4.66.245 - - [15/Feb/2026:00:31:20 +0000] "GET /auth/token HTTP/1.1" 200 7147 "-" "python-httpx/0.27" 383ms
+10.5.92.19 - - [15/Feb/2026:00:34:24 +0000] "GET /auth/token HTTP/1.1" 200 8723 "-" "MaiaDesktop/1.0" 547ms
+10.2.106.7 - - [15/Feb/2026:00:38:27 +0000] "PUT /api/v1/repos HTTP/1.1" 429 8492 "-" "Mozilla/5.0 (X11; Linux x86_64)" 590ms
+10.4.181.136 - - [15/Feb/2026:00:40:15 +0000] "GET /api/v1/tracks HTTP/1.1" 200 2004 "-" "curl/8.1" 596ms
+10.5.65.90 - - [15/Feb/2026:00:44:47 +0000] "POST /api/v1/tracks HTTP/1.1" 201 2423 "-" "MaiaDesktop/1.0" 347ms
+10.1.237.184 - - [15/Feb/2026:00:45:25 +0000] "GET /api/v1/tracks HTTP/1.1" 304 14804 "-" "curl/8.1" 470ms
+10.3.158.144 - - [15/Feb/2026:00:50:16 +0000] "GET /auth/token HTTP/1.1" 200 15621 "-" "PostmanRuntime/7.36" 748ms
+10.4.14.38 - - [15/Feb/2026:00:53:26 +0000] "GET /api/v1/tracks HTTP/1.1" 403 17859 "-" "MaiaDesktop/1.0" 26ms
+10.1.0.175 - - [15/Feb/2026:00:55:52 +0000] "GET /api/v1/analyze HTTP/1.1" 200 9776 "-" "python-httpx/0.27" 606ms
+10.5.225.184 - - [15/Feb/2026:00:57:23 +0000] "DELETE /auth/token HTTP/1.1" 200 14592 "-" "MaiaDesktop/1.0" 262ms

@@ -1,4 +1,5 @@
 import type { RepositoryAnalysis } from "../../../types/library";
+import { useT } from "../../../i18n/I18nContext";
 import { formatShortDateTime } from "../../../utils/date";
 
 interface RepositoriesTableProps {
@@ -6,6 +7,7 @@ interface RepositoriesTableProps {
   selectedRepositoryId: string | null;
   onSelectRepository: (repositoryId: string) => void;
   onInspectRepository: (repositoryId: string) => void;
+  onReanalyze?: (repositoryId: string) => Promise<boolean>;
 }
 
 export function RepositoriesTable({
@@ -13,15 +15,17 @@ export function RepositoriesTable({
   selectedRepositoryId,
   onSelectRepository,
   onInspectRepository,
+  onReanalyze,
 }: RepositoriesTableProps) {
+  const t = useT();
   function sourceKindLabel(sourceKind: RepositoryAnalysis["sourceKind"]): string {
     if (sourceKind === "directory") {
-      return "Filesystem";
+      return t.inspect.filesystem;
     }
     if (sourceKind === "file") {
-      return "Log file";
+      return t.library.logFile;
     }
-    return "GitHub URL";
+    return t.library.githubUrl;
   }
 
   return (
@@ -29,13 +33,13 @@ export function RepositoriesTable({
       <table className="tracks-table">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Source</th>
-            <th>Signal BPM</th>
-            <th>Mode</th>
-            <th>Language</th>
-            <th>Status</th>
-            <th>Imported</th>
+            <th>{t.library.tables.repositories.name}</th>
+            <th>{t.library.tables.repositories.source}</th>
+            <th>{t.library.tables.repositories.signalBpm}</th>
+            <th>{t.library.tables.repositories.mode}</th>
+            <th>{t.library.tables.repositories.language}</th>
+            <th>{t.library.tables.repositories.status}</th>
+            <th>{t.library.tables.repositories.imported}</th>
             <th />
           </tr>
         </thead>
@@ -55,12 +59,34 @@ export function RepositoriesTable({
                 </td>
                 <td title={repository.sourcePath}>{repository.sourcePath}</td>
                 <td>
-                  {repository.suggestedBpm ? Math.round(repository.suggestedBpm) : "Pending"}
-                  <small>{Math.round(repository.confidence * 100)}% confidence</small>
+                  {repository.suggestedBpm
+                    ? Math.round(repository.suggestedBpm)
+                    : t.library.tables.repositories.pending}
+                  <small>
+                    {t.library.tables.repositories.confidence.replace(
+                      "{value}",
+                      String(Math.round(repository.confidence * 100)),
+                    )}
+                  </small>
                 </td>
                 <td>{repository.buildSystem}</td>
                 <td>{repository.primaryLanguage}</td>
-                <td>{repository.analyzerStatus}</td>
+                <td>
+                  {!repository.suggestedBpm && onReanalyze ? (
+                    <button
+                      type="button"
+                      className="table-action"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void onReanalyze(repository.id);
+                      }}
+                    >
+                      {t.library.tables.repositories.reanalyze}
+                    </button>
+                  ) : (
+                    repository.analyzerStatus
+                  )}
+                </td>
                 <td>{formatShortDateTime(repository.importedAt)}</td>
                 <td>
                   <button
@@ -71,7 +97,7 @@ export function RepositoriesTable({
                       onInspectRepository(repository.id);
                     }}
                   >
-                    Open
+                    {t.library.tables.repositories.open}
                   </button>
                 </td>
               </tr>

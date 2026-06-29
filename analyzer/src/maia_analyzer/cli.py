@@ -5,8 +5,7 @@ import json
 import sys
 from typing import Any
 
-from .contracts import CONTRACT_VERSION
-from .contracts import error_response
+from .contracts import CONTRACT_VERSION, error_response
 from .service import handle_request
 
 
@@ -16,6 +15,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("health", help="Emit an analyzer health response")
     subparsers.add_parser("analyze", help="Read a request from stdin and emit a response")
+
+    stems_p = subparsers.add_parser(
+        "export-stems",
+        help="Write per-stem WAV files for a composition render_preview (JSON on stdin)",
+    )
+    stems_p.add_argument("--dest-dir", required=True, help="Output directory for stem WAV files")
 
     return parser
 
@@ -34,6 +39,9 @@ def main() -> int:
         )
         print(json.dumps(response))
         return 0
+
+    if args.command == "export-stems":
+        return _cmd_export_stems(args)
 
     raw = sys.stdin.read().strip()
     if not raw:
@@ -65,6 +73,19 @@ def main() -> int:
     response = handle_request(request)
     print(json.dumps(response))
     return 0 if response.get("status") == "ok" else 1
+
+
+def _cmd_export_stems(args: Any) -> int:
+    """Read a composition export-stems request from stdin and write per-stem WAVs."""
+    print(
+        json.dumps(
+            {
+                "status": "error",
+                "error": "Timeline composition and stem export are disabled in this MVP.",
+            }
+        )
+    )
+    return 1
 
 
 if __name__ == "__main__":

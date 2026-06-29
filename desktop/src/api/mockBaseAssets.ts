@@ -2,10 +2,7 @@ import {
   fallbackBaseAssetCategoryLabel,
   resolveBaseAssetCategory,
 } from "../config/baseAssetCategories";
-import type {
-  BaseAssetRecord,
-  ImportBaseAssetInput,
-} from "../types/library";
+import type { BaseAssetRecord, ImportBaseAssetInput } from "../types/library";
 
 const STORAGE_KEY = "maia.library.base-assets.v1";
 let memoryStore: BaseAssetRecord[] = [];
@@ -98,8 +95,7 @@ function createBaseAsset(input: ImportBaseAssetInput): BaseAssetRecord {
     input.sourceKind === "directory" ? 100_000 + (seed % 700_000) : 10_000 + (seed % 90_000);
   const storagePath = `browser-fallback://base-assets/${seed.toString(16)}/${title}`;
   const playableAudioEntries =
-    input.sourceKind === "file" &&
-    /\.(wav|mp3|flac|ogg|oga|aif|aiff)$/i.test(sourcePath)
+    input.sourceKind === "file" && /\.(wav|mp3|flac|ogg|oga|aif|aiff)$/i.test(sourcePath)
       ? [title]
       : playableEntriesForCategory(categoryId, input.sourceKind);
   const previewEntries =
@@ -128,9 +124,7 @@ function createBaseAsset(input: ImportBaseAssetInput): BaseAssetRecord {
         ? `${title} registered as a reusable base collection.`
         : `${title} registered as a reusable base file.`,
     analyzerStatus:
-      input.sourceKind === "directory"
-        ? "Base collection analyzed"
-        : "Base file analyzed",
+      input.sourceKind === "directory" ? "Base collection analyzed" : "Base file analyzed",
     notes: [
       "Browser fallback is active because Tauri is unavailable.",
       `Registered under ${categoryLabel} category.`,
@@ -168,14 +162,10 @@ function createBaseAsset(input: ImportBaseAssetInput): BaseAssetRecord {
 }
 
 export async function listMockBaseAssets(): Promise<BaseAssetRecord[]> {
-  return readBaseAssets().sort((left, right) =>
-    right.importedAt.localeCompare(left.importedAt),
-  );
+  return readBaseAssets().sort((left, right) => right.importedAt.localeCompare(left.importedAt));
 }
 
-export async function importMockBaseAsset(
-  input: ImportBaseAssetInput,
-): Promise<BaseAssetRecord> {
+export async function importMockBaseAsset(input: ImportBaseAssetInput): Promise<BaseAssetRecord> {
   const nextBaseAsset = createBaseAsset(input);
   const nextBaseAssets = [nextBaseAsset, ...readBaseAssets()];
   writeBaseAssets(nextBaseAssets);

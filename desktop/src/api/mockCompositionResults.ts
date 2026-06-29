@@ -3,18 +3,19 @@ import type {
   CompositionResultRecord,
   ImportCompositionInput,
 } from "../types/library";
+import { getPlaylistMedianBpm } from "../utils/playlist";
 import { listMockBaseAssets } from "./mockBaseAssets";
-import { listMockTracks } from "./mockLibrary";
+import { listMockPlaylists, listMockTracks } from "./mockLibrary";
 import { listMockRepositories } from "./mockRepositories";
 
 const STORAGE_KEY = "maia.library.compositions.v1";
 let memoryStore: CompositionResultRecord[] = [];
 
-function normalizeComposition(
-  composition: CompositionResultRecord,
-): CompositionResultRecord {
+function normalizeComposition(composition: CompositionResultRecord): CompositionResultRecord {
   return {
     ...composition,
+    basePlaylistId: composition.basePlaylistId ?? null,
+    basePlaylistName: composition.basePlaylistName ?? null,
     exportPath: composition.exportPath ?? null,
     previewAudioPath: composition.previewAudioPath ?? null,
   };
@@ -43,10 +44,7 @@ function writeCompositions(compositions: CompositionResultRecord[]): void {
     return;
   }
 
-  window.localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(compositions.map(normalizeComposition)),
-  );
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(compositions.map(normalizeComposition)));
 }
 
 function stableHash(input: string): number {
@@ -66,8 +64,7 @@ function createWaveformBins(seed: number, length = 56): number[] {
   return Array.from({ length }, (_, index) => {
     state = Math.imul(state ^ (state >>> 13), 1274126177) >>> 0;
     const raw = ((state >>> 8) & 0xff) / 255;
-    const envelope =
-      0.42 + Math.sin((index / Math.max(1, length - 1)) * Math.PI) * 0.58;
+    const envelope = 0.42 + Math.sin((index / Math.max(1, length - 1)) * Math.PI) * 0.58;
 
     return Number(Math.min(1, raw * envelope).toFixed(3));
   });
@@ -130,7 +127,9 @@ function buildArrangementPlan(
   if (referenceType === "repo") {
     plan.push("Treat repository BPM as structural pacing instead of literal audio timing.");
   } else if (referenceType === "manual") {
-    plan.push("Replace the manual tempo with a real track reference when one is available.");
+    plan.push(
+      "Replace the manual tempo with a real track or playlist reference when one is available.",
+    );
   }
 
   if (!reusable) {
@@ -155,12 +154,7 @@ function arrangementSections(
   const definitions = [
     { id: "intro", label: "Intro lock", energy: "low" },
     {
-      id:
-        categoryId === "fx-palette"
-          ? "lift"
-          : referenceType === "repo"
-            ? "translation"
-            : "build",
+      id: categoryId === "fx-palette" ? "lift" : referenceType === "repo" ? "translation" : "build",
       label:
         categoryId === "pad-texture"
           ? "Texture rise"
@@ -301,16 +295,16 @@ function renderPreview(
       label:
         referenceType === "repo"
           ? "Structural glue"
-          : referenceType === "track"
-            ? "Reference groove glue"
+          : referenceType === "track" || referenceType === "playlist"
+            ? "Base groove glue"
             : "Tempo guide glue",
       role: "glue",
       source: referenceType === "manual" ? "manual" : "reference",
       focus:
         referenceType === "repo"
-          ? "translate reference pacing into arrangement density"
-          : referenceType === "track"
-            ? "keep section changes aligned with the imported groove"
+          ? "translate structure pacing into arrangement density"
+          : referenceType === "track" || referenceType === "playlist"
+            ? "keep section changes aligned with the base groove"
             : "stabilize the typed tempo through each section boundary",
       gainDb: -11,
       pan: 0,
@@ -373,43 +367,81 @@ function renderPreview(
   };
 }
 
-async function resolveReference(
-  input: ImportCompositionInput,
-): Promise<{
+async function resolveReference(input: ImportCompositionInput): Promise<{
+  basePlaylistId: string | null;
+  basePlaylistName: string | null;
   referenceAssetId: string | null;
   referenceTitle: string;
   referenceSourcePath: string | null;
   targetBpm: number;
 }> {
-  if (input.referenceType === "track") {
-    const tracks = await listMockTracks();
-    const track = tracks.find((entry) => entry.id === input.referenceAssetId);
-    if (!track || typeof track.bpm !== "number") {
+  const [tracks, playlists] = await Promise.all([listMockTracks(), listMockPlaylists()]);
+
+  let basePlaylistId: string | null = null;
+  let basePlaylistName: string | null = null;
+  let baseReferenceAssetId: string | null = null;
+  let baseReferenceTitle: string | null = null;
+  let baseReferenceSourcePath: string | null = null;
+  let baseBpm: number | null = null;
+
+  if (input.playlistId) {
+    const playlist = playlists.find((entry) => entry.id === input.playlistId);
+    if (!playlist) {
+      throw new Error("Select a saved playlist before composing.");
+    }
+
+    const playlistBpm = getPlaylistMedianBpm(playlist, tracks);
+    if (typeof playlistBpm !== "number") {
+      throw new Error("Select a playlist with at least one analyzed BPM before composing.");
+    }
+
+    basePlaylistId = playlist.id;
+    basePlaylistName = playlist.name;
+    baseReferenceAssetId = playlist.id;
+    baseReferenceTitle = playlist.name;
+    baseReferenceSourcePath = null;
+    baseBpm = playlistBpm;
+  } else if (input.trackId) {
+    const track = tracks.find((entry) => entry.id === input.trackId);
+    if (!track || typeof track.analysis.bpm !== "number") {
       throw new Error("Select a track with stored BPM before composing.");
     }
 
-    return {
-      referenceAssetId: track.id,
-      referenceTitle: track.title,
-      referenceSourcePath: track.sourcePath,
-      targetBpm: track.bpm,
-    };
+    baseReferenceAssetId = track.id;
+    baseReferenceTitle = track.tags.title;
+    baseReferenceSourcePath = track.file.sourcePath;
+    baseBpm = track.analysis.bpm;
   }
 
-  if (input.referenceType === "repo") {
+  if (input.structureId || input.referenceType === "repo") {
     const repositories = await listMockRepositories();
     const repository = repositories.find(
-      (entry) => entry.id === input.referenceAssetId,
+      (entry) => entry.id === (input.structureId ?? input.referenceAssetId),
     );
-    if (!repository || typeof repository.suggestedBpm !== "number") {
+    if (!repository) {
       throw new Error("Select a repository with suggested BPM before composing.");
     }
 
     return {
+      basePlaylistId,
+      basePlaylistName,
       referenceAssetId: repository.id,
-      referenceTitle: repository.title,
+      referenceTitle: baseReferenceTitle
+        ? `${baseReferenceTitle} (structured by ${repository.title})`
+        : repository.title,
       referenceSourcePath: repository.sourcePath,
-      targetBpm: repository.suggestedBpm,
+      targetBpm: repository.suggestedBpm ?? baseBpm ?? repository.suggestedBpm ?? 124,
+    };
+  }
+
+  if (baseReferenceTitle && typeof baseBpm === "number") {
+    return {
+      basePlaylistId,
+      basePlaylistName,
+      referenceAssetId: baseReferenceAssetId,
+      referenceTitle: baseReferenceTitle,
+      referenceSourcePath: baseReferenceSourcePath,
+      targetBpm: baseBpm,
     };
   }
 
@@ -418,6 +450,8 @@ async function resolveReference(
   }
 
   return {
+    basePlaylistId: null,
+    basePlaylistName: null,
     referenceAssetId: null,
     referenceTitle: `Manual ${input.manualBpm.toFixed(0)} BPM`,
     referenceSourcePath: null,
@@ -425,9 +459,7 @@ async function resolveReference(
   };
 }
 
-async function createComposition(
-  input: ImportCompositionInput,
-): Promise<CompositionResultRecord> {
+async function createComposition(input: ImportCompositionInput): Promise<CompositionResultRecord> {
   const baseAssets = await listMockBaseAssets();
   const baseAsset = baseAssets.find((entry) => entry.id === input.baseAssetId);
   if (!baseAsset) {
@@ -460,8 +492,7 @@ async function createComposition(
     input.referenceType,
     strategy,
   );
-  const title =
-    input.label?.trim() || `${baseAsset.title} x ${reference.referenceTitle}`;
+  const title = input.label?.trim() || `${baseAsset.title} x ${reference.referenceTitle}`;
   const compositionId =
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
@@ -481,6 +512,8 @@ async function createComposition(
     baseAssetTitle: baseAsset.title,
     baseAssetCategoryId: baseAsset.categoryId,
     baseAssetCategoryLabel: baseAsset.categoryLabel,
+    basePlaylistId: reference.basePlaylistId,
+    basePlaylistName: reference.basePlaylistName,
     referenceType: input.referenceType,
     referenceAssetId: reference.referenceAssetId,
     referenceTitle: reference.referenceTitle,
@@ -492,13 +525,16 @@ async function createComposition(
     analyzerStatus:
       input.referenceType === "track"
         ? "Track-referenced composition plan"
-        : input.referenceType === "repo"
-          ? "Repository-referenced composition plan"
-          : "Manual-tempo composition plan",
+        : input.referenceType === "playlist"
+          ? "Playlist-referenced composition plan"
+          : input.referenceType === "repo"
+            ? "Repository-referenced composition plan"
+            : "Manual-tempo composition plan",
     notes: [
       "Browser fallback is active because Tauri is unavailable.",
       `Built from base asset ${baseAsset.title} (${baseAsset.categoryLabel}) at ${targetBpm.toFixed(0)} BPM.`,
       `Reference type is ${input.referenceType} using ${reference.referenceTitle}.`,
+      ...(reference.basePlaylistName ? [`Base playlist is ${reference.basePlaylistName}.`] : []),
       `Composition plan snapshot is simulated at ${exportPath}.`,
       `Preview audio path is simulated at ${previewAudioPath}.`,
       ...(!baseAsset.reusable
@@ -518,6 +554,8 @@ async function createComposition(
       baseAssetSourceKind: baseAsset.sourceKind,
       baseAssetReusable: baseAsset.reusable,
       baseAssetEntryCount: baseAsset.entryCount,
+      basePlaylistId: reference.basePlaylistId,
+      basePlaylistName: reference.basePlaylistName,
       referenceType: input.referenceType,
       referenceLabel: reference.referenceTitle,
       referenceBpm: targetBpm,
@@ -525,23 +563,14 @@ async function createComposition(
       strategy,
       managedPlanPath: exportPath,
       storageMode: "browser-fallback",
-      intensityBand:
-        targetBpm >= 132 ? "peak-time" : targetBpm <= 108 ? "warmup" : "steady",
+      intensityBand: targetBpm >= 132 ? "peak-time" : targetBpm <= 108 ? "warmup" : "steady",
       previewDurationSeconds: durationSeconds,
       recommendedBars: 16,
-      recommendedLayerCount: Math.min(
-        8,
-        Math.max(2, 1 + Math.floor(baseAsset.entryCount / 4)),
-      ),
+      recommendedLayerCount: Math.min(8, Math.max(2, 1 + Math.floor(baseAsset.entryCount / 4))),
       arrangementPlan,
       arrangementSections: sections,
       cuePoints: cuePoints(sections),
-      renderPreview: renderPreview(
-        sections,
-        baseAsset.categoryId,
-        input.referenceType,
-        strategy,
-      ),
+      renderPreview: renderPreview(sections, baseAsset.categoryId, input.referenceType, strategy),
       previewAudioPath,
       previewAudioFormat: "wav",
       previewAudioSampleRateHz: 22050,
@@ -554,9 +583,7 @@ async function createComposition(
 }
 
 export async function listMockCompositionResults(): Promise<CompositionResultRecord[]> {
-  return readCompositions().sort((left, right) =>
-    right.importedAt.localeCompare(left.importedAt),
-  );
+  return readCompositions().sort((left, right) => right.importedAt.localeCompare(left.importedAt));
 }
 
 export async function importMockCompositionResult(

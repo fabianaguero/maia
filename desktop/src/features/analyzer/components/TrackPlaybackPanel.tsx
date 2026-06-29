@@ -1,13 +1,23 @@
 import type { LibraryTrack } from "../../../types/library";
-import { ManagedAudioPlayer } from "./ManagedAudioPlayer";
+import { useT } from "../../../i18n/I18nContext";
+import {
+  describeTrackPlaybackSource,
+  getTrackSourcePath,
+  getTrackStoragePath,
+  resolvePlayableTrackPath,
+} from "../../../utils/track";
+import { ManagedAudioPlayer, type ManagedAudioCueRequest } from "./ManagedAudioPlayer";
 
 interface TrackPlaybackPanelProps {
   track: LibraryTrack;
+  onTimeUpdate?: (seconds: number) => void;
+  cueRequest?: ManagedAudioCueRequest | null;
+  auditionLabel?: string | null;
 }
 
-function formatDuration(durationSeconds: number | null): string {
+function formatDuration(durationSeconds: number | null, pendingLabel: string): string {
   if (!durationSeconds) {
-    return "Pending";
+    return pendingLabel;
   }
 
   const rounded = Math.round(durationSeconds);
@@ -16,78 +26,67 @@ function formatDuration(durationSeconds: number | null): string {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
-function describePlaybackSource(track: LibraryTrack): string {
-  if (!track.storagePath) {
-    return "Unavailable";
-  }
-
-  if (track.storagePath.startsWith("browser-fallback://")) {
-    return "Browser fallback";
-  }
-
-  if (track.storagePath === track.sourcePath) {
-    return "Legacy/original path";
-  }
-
-  return "Managed snapshot";
-}
-
-function resolvePlayableTrackPath(track: LibraryTrack): string | null {
-  if (!track.storagePath || track.storagePath === track.sourcePath) {
-    return null;
-  }
-
-  return track.storagePath;
-}
-
-export function TrackPlaybackPanel({ track }: TrackPlaybackPanelProps) {
+export function TrackPlaybackPanel({
+  track,
+  onTimeUpdate,
+  cueRequest,
+  auditionLabel,
+}: TrackPlaybackPanelProps) {
+  const t = useT();
   const playableTrackPath = resolvePlayableTrackPath(track);
-  const trackFormat = track.fileExtension.replace(/^\./, "").toUpperCase() || "AUDIO";
+  const trackFormat = track.file.fileExtension.replace(/^\./, "").toUpperCase() || "AUDIO";
 
   return (
     <section className="panel waveform-panel">
       <div className="panel-header compact">
         <div>
-          <h2>Track playback</h2>
-          <p className="support-copy">
-            Audition the managed local track snapshot directly inside Maia while reviewing waveform
-            and BPM artifacts.
-          </p>
+          <h2>{t.inspect.trackPlayback}</h2>
+          <p className="support-copy">{t.inspect.trackPlaybackCopy}</p>
         </div>
       </div>
 
       <div className="metric-grid">
         <div>
-          <span>Playback source</span>
-          <strong>{describePlaybackSource(track)}</strong>
+          <span>{t.inspect.playbackSource}</span>
+          <strong>{describeTrackPlaybackSource(track)}</strong>
         </div>
         <div>
-          <span>Track file</span>
+          <span>{t.inspect.trackFile}</span>
           <strong>{trackFormat}</strong>
         </div>
         <div>
-          <span>Duration</span>
-          <strong>{formatDuration(track.durationSeconds)}</strong>
+          <span>{t.inspect.duration}</span>
+          <strong>{formatDuration(track.analysis.durationSeconds, t.inspect.pending)}</strong>
         </div>
+        {auditionLabel ? (
+          <div>
+            <span>{t.inspect.compareCue}</span>
+            <strong>{auditionLabel}</strong>
+          </div>
+        ) : null}
       </div>
 
       <div className="audio-path-card top-spaced">
-        <span>Managed audio path</span>
-        <strong>{track.storagePath ?? "No managed snapshot created"}</strong>
+        <span>{t.inspect.audioPath}</span>
+        <strong>
+          {getTrackStoragePath(track) ?? getTrackSourcePath(track) ?? t.inspect.noAudioPath}
+        </strong>
       </div>
 
       <ManagedAudioPlayer
-        title="Track transport"
-        description="Cue and audition the managed track audio without leaving the analyzer screen."
+        title={t.inspect.trackTransport}
+        description={t.inspect.trackTransportCopy}
         audioPath={playableTrackPath}
-        durationSeconds={track.durationSeconds}
-        playLabel="Play track"
-        pauseLabel="Pause track"
-        missingNote="This track does not have a managed Maia snapshot yet. Re-import it to enable in-app playback."
-        browserFallbackNote="Browser fallback simulates track storage. Open the Tauri desktop shell to audition the managed track."
-        desktopOnlyNote="Managed track playback is available inside the desktop shell."
-        availableNote="Track playback runs from the managed local snapshot stored by Maia."
-        errorNote="Maia could not read the managed track snapshot. Re-import the track if the file is missing."
+        durationSeconds={track.analysis.durationSeconds}
+        playLabel={t.inspect.playTrack}
+        pauseLabel={t.inspect.pauseTrack}
+        missingNote={t.inspect.noTrackAudioPath}
+        browserFallbackNote={t.inspect.trackBrowserFallback}
+        desktopOnlyNote={t.inspect.trackDesktopOnly}
+        availableNote={t.inspect.trackAvailableNote}
+        errorNote={t.inspect.trackErrorNote}
+        onTimeUpdate={onTimeUpdate}
+        cueRequest={cueRequest}
       />
     </section>
   );

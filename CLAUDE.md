@@ -1,0 +1,122 @@
+# Maia — Collaboration Guidelines
+
+## Design System
+
+All UI decisions must align with `DESIGN.md`.
+
+**Read DESIGN.md before:**
+- Modifying any component styling
+- Adding new components
+- Changing layout or spacing
+- Updating colors, typography, or motion
+
+**Key constraints:**
+- Typography: Space Grotesk (titles only), IBM Plex Sans (body)
+- Colors: Use CSS variables (--color-calm, --color-attention, --color-critical, --color-accent)
+- Spacing: Base unit 8px, use --space-* variables
+- Responsive: Mobile-first, test at 320px / 768px / 1440px breakpoints
+- Motion: Functional only, no decorative animations
+
+Do not deviate without explicit user approval.
+
+## Architecture Notes
+
+- **Desktop app:** Tauri 2 + React 19 + TypeScript
+- **State management:** React hooks (useSessions, useLibrary, useRepositories, etc.)
+- **Local persistence:** SQLite via Tauri invoke
+- **Analyzer integration:** Python analyzer via JSON contract
+- **Internationalization:** i18n context (en, es support)
+
+## Code Style
+
+- **Naming:** camelCase for variables/functions, PascalCase for components
+- **Imports:** Group by: React, external libs, local types, local components, utils, hooks
+- **Comments:** Only when logic is non-obvious
+- **Types:** Use strict TypeScript, no `any`
+
+## Key Concepts
+
+### Musical Assets
+- **track_analysis:** Audio file with BPM, key, energy, danceability
+- **repo_analysis:** Code/log repository with language, metrics
+- **base_asset:** Reusable musical segment for composition
+- **composition_result:** Assembled sonic output from base assets + tracks
+
+### Workflow
+1. **Library:** Import and manage musical assets, repositories, base packs
+2. **Inspect:** Deep-dive analysis of selected asset (waveform, metrics, BPM grid)
+3. **Compose:** Create compositions from base assets
+4. **Session:** Live monitoring — arm a repository, listen to real-time anomalies
+5. **Replay:** Playback of past sessions with bookmarks
+
+### Monitor Context
+- Active monitor session runs in background
+- Emits `MonitorMetrics` (window count, anomaly count, uptime)
+- User can pause, seek, toggle playback
+- Replay bookmarks track specific anomaly windows
+
+## Common Patterns
+
+### Component Props
+```typescript
+interface ComponentProps {
+  // Data
+  item: SomeType;
+  
+  // Callbacks (verb + noun convention)
+  onAction: (id: string) => void;
+  onUpdate: (data: UpdateInput) => Promise<void>;
+  
+  // UI state
+  loading?: boolean;
+  error?: string | null;
+  busy?: boolean;
+}
+```
+
+### Hook Conventions
+- `use*()` prefix for all hooks
+- Return object with `{data, loading, error, mutate/set*}`
+- Avoid prop drilling; use context for global state (I18nContext, MonitorContext)
+
+### Error Handling
+- Use `NotificationSystem` (notify function) for user-facing errors
+- Console only for dev/debugging
+- Never throw uncaught errors in React components
+
+## Simple Mode Feature
+
+When implementing anything related to `userMode` or `SimpleMode`:
+
+- `simple` mode = terminología SRE, wizard 3 pasos, sidebar colapsado
+- `expert` mode = UI actual sin cambios (PERFORM/DESIGN/CURATE, BPM, etc.)
+- El modo se persiste en `localStorage` con key `maia_user_mode`
+- Default para usuarios nuevos: `simple`
+- Los componentes del modo simple viven en `src/features/simple/`
+- Nunca modificar los componentes experto — solo condicionarlos con `userMode`
+- Los textos del modo simple van en `src/i18n/en.ts` y `src/i18n/es.ts` bajo la clave `simpleMode`
+
+## Recent Implementations (April 2026)
+
+### Tasks 4-8: Audio Session Enhancements
+- **Task 4 (April 20):** Added `source_template_id` column to sessions DB for persisting source template associations
+- **Task 5 (April 20):** BPM and template chips on session cards with auto-fit grid layout
+- **Task 6 (April 20):** Template indicator chip in MonitorWaveformBar showing genre, template, live BPM sync
+- **Task 7 (April 21):** Property-based tests for audio session improvements (11 properties validated)
+- **Task 8 (April 21):** Replay bookmark enrichment with source template context data
+
+### Design System Integration (April)
+- V0 design system fully integrated into AppShell, Monitor, Library & Wizard components
+- AppSidebar and layout restructured to match DESIGN.md minimalismo instrumental aesthetic
+- Monitor waveform bar now displays template metadata inline with listening bed selector
+- SessionScreen shows enriched session cards with BPM and template quick-view chips
+
+## Debugging Tips
+
+- **Analyzer connection:** Check `App.tsx` bootstrap logic (loads health, manifest)
+- **State sync issues:** Trace through hook effects in `useSessions`, `useLibrary`
+- **Tauri invoke:** Check `src-tauri/src/main.rs` for available commands; includes `ensure_session_source_template_id_column()` migration
+- **Styling regressions:** Check current breakpoint in DevTools, compare to DESIGN.md
+- **Performance:** React DevTools Profiler, check for unnecessary re-renders
+- **Session persistence:** Verify `sourceTemplateId` round-trips through `db_create_session` → `db_get_session`
+- **Template chip display:** Check MonitorWaveformBar has active session; template-chip only renders when `hasSession` is true

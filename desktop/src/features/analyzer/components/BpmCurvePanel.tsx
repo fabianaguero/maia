@@ -1,4 +1,5 @@
 import type { BpmCurvePoint } from "../../../types/library";
+import { useT } from "../../../i18n/I18nContext";
 
 interface BpmCurvePanelProps {
   bpmCurve: BpmCurvePoint[];
@@ -6,11 +7,7 @@ interface BpmCurvePanelProps {
   durationSeconds: number | null;
 }
 
-function buildCurvePath(
-  points: BpmCurvePoint[],
-  width: number,
-  height: number,
-): string {
+function buildCurvePath(points: BpmCurvePoint[], width: number, height: number): string {
   if (points.length === 0) {
     return "";
   }
@@ -30,11 +27,8 @@ function buildCurvePath(
     .join(" ");
 }
 
-export function BpmCurvePanel({
-  bpmCurve,
-  fallbackBpm,
-  durationSeconds,
-}: BpmCurvePanelProps) {
+export function BpmCurvePanel({ bpmCurve, fallbackBpm, durationSeconds }: BpmCurvePanelProps) {
+  const t = useT();
   const normalizedDuration = durationSeconds && durationSeconds > 0 ? durationSeconds : 0;
   const points =
     bpmCurve.length > 0
@@ -54,17 +48,14 @@ export function BpmCurvePanel({
     <section className="panel metric-panel">
       <div className="panel-header compact">
         <div>
-          <h2>BPM curve</h2>
-          <p className="support-copy">
-            Stored curve points from the local analyzer. MVP curves stay coarse
-            on purpose, but the screen now renders the persisted contour.
-          </p>
+          <h2>{t.inspect.bpmCurveTitle}</h2>
+          <p className="support-copy">{t.inspect.bpmCurveCopy}</p>
         </div>
       </div>
 
       {points.length === 0 ? (
         <div className="empty-state">
-          <p>No BPM curve points were stored for this track yet.</p>
+          <p>{t.inspect.noBpmCurve}</p>
         </div>
       ) : (
         <>
@@ -74,7 +65,7 @@ export function BpmCurvePanel({
               viewBox="0 0 520 180"
               preserveAspectRatio="none"
               role="img"
-              aria-label="BPM curve"
+              aria-label={t.inspect.bpmCurveAria}
             >
               <defs>
                 <linearGradient id="bpmCurveStroke" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -110,15 +101,15 @@ export function BpmCurvePanel({
 
           <div className="waveform-summary">
             <div className="waveform-meta-pill">
-              <span>Curve points</span>
+              <span>{t.inspect.curvePoints}</span>
               <strong>{points.length}</strong>
             </div>
             <div className="waveform-meta-pill">
-              <span>Min BPM</span>
+              <span>{t.inspect.minBpm}</span>
               <strong>{minBpm?.toFixed(1) ?? "--"}</strong>
             </div>
             <div className="waveform-meta-pill">
-              <span>Max BPM</span>
+              <span>{t.inspect.maxBpm}</span>
               <strong>{maxBpm?.toFixed(1) ?? "--"}</strong>
             </div>
           </div>

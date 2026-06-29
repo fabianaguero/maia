@@ -1,12 +1,14 @@
 # Vision
 
-MAIA is a desktop app that turns repositories, logs, and reusable sonic assets into music and audible operational signals.
+MAIA is a desktop app for auditory monitoring that turns repositories, logs, streams, scanned files, and reusable sonic assets into music and audible operational signals.
 
 It should:
 - make software behavior listenable, not only visible
 - let a team hear a live stream of logs or system events as evolving music
+- let a team monitor systems mainly by ear while the mix keeps running in background
 - mark anomalous log or code events with distinct sounds, accents, or timbral changes
 - import local songs
+- support a base track or playlist chosen by listener preference
 - require choosing a curated music style before track import
 - allow browsing local tracks and project folders from the desktop workflow
 - keep parsing and analysis inside the app/analyzer once a source is selected, while still using OS-native dialogs for browsing
@@ -22,6 +24,7 @@ It should:
 - trigger a real managed base-asset sample from that scene when a playable file exists, falling back to synthesis only when no usable sample is available
 - map multiple managed samples from a base-asset folder pack across live severity/anomaly routes when a pack exposes enough playable entries
 - evolve from local log tails toward broader live log-stream sonification
+- evolve from app-scoped monitoring toward a background music-server workflow
 - store reusable musical base assets
 - require categorizing base assets at import time and inspect them in a dedicated analyzer view
 - audition imported tracks directly inside the analyzer from Maia-managed snapshots
@@ -32,4 +35,4 @@ It should:
 For MVP, music styles stay curated and local-editable instead of free-text so
 the desktop flow can keep deterministic priors for BPM and asset grouping.
 
-Current MVP note: repository snapshots, local log-file snapshots, reusable base assets, composition previews, local live log-tail listening, runtime sonification scenes, and multi-sample live triggering now exist; broader stream adapters, denser sequencing logic, and continuously running background monitoring still need to be built.
+Current MVP note: repository snapshots, local log-file snapshots, reusable base assets, composition previews, local live log-tail listening, runtime sonification scenes, session replay with feedback, and multi-sample live triggering now exist; broader stream adapters, denser sequencing logic, and a true background music-server runtime still need to be built.

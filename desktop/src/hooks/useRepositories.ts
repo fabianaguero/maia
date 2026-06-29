@@ -3,23 +3,25 @@ import { startTransition, useEffect, useState } from "react";
 import {
   importRepository,
   listRepositories,
+  deleteRepository,
+  checkRepositoryExists,
 } from "../api/repositories";
-import type {
-  ImportRepositoryInput,
-  RepositoryAnalysis,
-} from "../types/library";
-
-function toMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Unexpected repository failure.";
-}
-
-function sortRepositories(
-  repositories: RepositoryAnalysis[],
-): RepositoryAnalysis[] {
-  return [...repositories].sort((left, right) =>
-    right.importedAt.localeCompare(left.importedAt),
-  );
-}
+import { runAnalyzerRequest } from "../api/analyzer";
+import { createAnalyzeRepositoryRequest } from "../contracts";
+import type { ImportRepositoryInput, RepositoryAnalysis } from "../types/library";
+import {
+  appendImportedRepository,
+  applyAnalyzedRepositoryMetadata,
+  clearDeletedSelectedRepositoryId,
+  removeDeletedRepository,
+  replaceReanalyzedRepository,
+  resolveReanalyzeRepositoryInput,
+  resolveRepositoryAnalysisPayload,
+  resolveSelectedRepositoryId,
+  shouldAnalyzeImportedRepository,
+  sortRepositoriesByImportedAt,
+  toRepositoryErrorMessage,
+} from "./repositoriesRuntime";
 
 export function useRepositories() {
   const [repositories, setRepositories] = useState<RepositoryAnalysis[]>([]);
@@ -40,15 +42,9 @@ export function useRepositories() {
         }
 
         startTransition(() => {
-          const sorted = sortRepositories(nextRepositories);
+          const sorted = sortRepositoriesByImportedAt(nextRepositories);
           setRepositories(sorted);
-          setSelectedRepositoryId((current) => {
-            if (current && sorted.some((repository) => repository.id === current)) {
-              return current;
-            }
-
-            return sorted[0]?.id ?? null;
-          });
+          setSelectedRepositoryId((current) => resolveSelectedRepositoryId(current, sorted));
           setError(null);
           setLoading(false);
         });
@@ -58,7 +54,7 @@ export function useRepositories() {
         }
 
         startTransition(() => {
-          setError(toMessage(nextError));
+          setError(toRepositoryErrorMessage(nextError, "Unexpected repository failure."));
           setLoading(false);
         });
       }
@@ -80,24 +76,100 @@ export function useRepositories() {
       const nextRepository = await importRepository(input);
 
       startTransition(() => {
-        setRepositories((current) =>
-          sortRepositories([
-            nextRepository,
-            ...current.filter((repository) => repository.id !== nextRepository.id),
-          ]),
-        );
+        setRepositories((current) => appendImportedRepository(current, nextRepository));
         setSelectedRepositoryId(nextRepository.id);
+        setError(null);
+      });
+
+      // Start background analysis without blocking or error handling
+      if (shouldAnalyzeImportedRepository(nextRepository)) {
+        analyzeRepositoryBackground(nextRepository).catch((err) => {
+          console.debug("Background analysis error (non-blocking):", err);
+        });
+      }
+
+      return nextRepository;
+    } catch (nextError) {
+      startTransition(() => {
+        setError(toRepositoryErrorMessage(nextError, "Unexpected repository failure."));
+      });
+      return null;
+    } finally {
+      setMutating(false);
+    }
+  }
+
+  async function analyzeRepositoryBackground(repository: RepositoryAnalysis): Promise<void> {
+    try {
+      const request = createAnalyzeRepositoryRequest(repository.sourceKind, repository.sourcePath);
+      const response = await runAnalyzerRequest(request);
+      const analyzed = resolveRepositoryAnalysisPayload(response);
+      if (analyzed) {
+        // Just update metadata, don't change analyzerStatus
+        // Status change requires re-import from backend to persist to DB
+        startTransition(() => {
+          setRepositories((current) =>
+            applyAnalyzedRepositoryMetadata(current, repository.id, analyzed),
+          );
+        });
+      }
+    } catch (err) {
+      // Silent fail — analysis in background doesn't block user
+      console.debug("Background analysis failed:", err);
+    }
+  }
+
+  async function reanalyzeRepository(repositoryId: string): Promise<RepositoryAnalysis | null> {
+    setMutating(true);
+
+    try {
+      const repository = repositories.find((r) => r.id === repositoryId);
+      if (!repository) throw new Error("Repository not found");
+
+      // Check if file/directory exists before analyzing
+      const sourceExists = await checkRepositoryExists(repository.sourcePath);
+      if (!sourceExists) {
+        throw new Error(`Repository source not found: ${repository.sourcePath}`);
+      }
+
+      const nextRepository = await importRepository(resolveReanalyzeRepositoryInput(repository));
+
+      startTransition(() => {
+        setRepositories((current) =>
+          replaceReanalyzedRepository(current, repositoryId, nextRepository),
+        );
         setError(null);
       });
 
       return nextRepository;
     } catch (nextError) {
       startTransition(() => {
-        setError(toMessage(nextError));
+        setError(toRepositoryErrorMessage(nextError, "Unexpected repository failure."));
       });
       return null;
     } finally {
       setMutating(false);
+    }
+  }
+
+  async function deleteLibraryRepository(repositoryId: string): Promise<boolean> {
+    try {
+      await deleteRepository(repositoryId);
+
+      startTransition(() => {
+        setRepositories((current) => removeDeletedRepository(current, repositoryId));
+        setSelectedRepositoryId((current) =>
+          clearDeletedSelectedRepositoryId(current, repositoryId),
+        );
+        setError(null);
+      });
+
+      return true;
+    } catch (nextError) {
+      startTransition(() => {
+        setError(toRepositoryErrorMessage(nextError, "Unexpected repository failure."));
+      });
+      return false;
     }
   }
 
@@ -113,5 +185,7 @@ export function useRepositories() {
     mutating,
     error,
     importRepositorySource,
+    reanalyzeRepository,
+    deleteLibraryRepository,
   };
 }

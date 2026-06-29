@@ -3,6 +3,7 @@
 Falls back gracefully when librosa / numpy are not installed so the
 embedded heuristic path in audio.py remains functional.
 """
+
 from __future__ import annotations
 
 from array import array
@@ -24,9 +25,9 @@ def dsp_available() -> bool:
 
 
 def analyze_dsp(
-    samples: "array[float]",
+    samples: array[float],
     sample_rate_hz: int,
-    waveform_bins: int = 24,
+    waveform_bins: int = 256,
 ) -> dict[str, Any] | None:
     """Run librosa-based tempo, beat, and waveform analysis.
 
@@ -39,12 +40,12 @@ def analyze_dsp(
 
     try:
         return _run_librosa_analysis(samples, sample_rate_hz, waveform_bins)
-    except Exception:  # noqa: BLE001 — never bubble up DSP errors into the IPC contract
+    except Exception:
         return None
 
 
 def _run_librosa_analysis(
-    samples: "array[float]",
+    samples: array[float],
     sample_rate_hz: int,
     waveform_bins: int,
 ) -> dict[str, Any]:
@@ -65,9 +66,9 @@ def _run_librosa_analysis(
 
     # --- confidence via tempo strength ---
     if bpm is not None and len(onset_env) > 0:
-        tempo_strength = float(librosa.feature.rhythm.tempo(
-            onset_envelope=onset_env, sr=sr, aggregate=None
-        ).std())
+        tempo_strength = float(
+            librosa.feature.rhythm.tempo(onset_envelope=onset_env, sr=sr, aggregate=None).std()
+        )
         # lower std = more stable tempo = higher confidence
         confidence = round(min(0.96, max(0.45, 0.82 - min(0.37, tempo_strength * 0.04))), 3)
     else:
@@ -138,7 +139,7 @@ def _build_dsp_bpm_curve(
             seg_tempo = librosa.feature.rhythm.tempo(onset_envelope=onset_env, sr=sr)
             seg_bpm = float(np.atleast_1d(seg_tempo)[0])
             seg_bpm = seg_bpm if 30 < seg_bpm < 300 else global_bpm
-        except Exception:  # noqa: BLE001
+        except Exception:
             seg_bpm = global_bpm
 
         points.append({"second": round(offset, 3), "bpm": round(seg_bpm, 2)})

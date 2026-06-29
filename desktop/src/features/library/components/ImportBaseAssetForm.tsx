@@ -1,12 +1,11 @@
+import { FolderOpen, PackagePlus } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 
 import { pickBaseAssetPath } from "../../../api/baseAssets";
+import { useT } from "../../../i18n/I18nContext";
 import type { BaseAssetCategoryOption } from "../../../types/baseAsset";
-import type {
-  BaseAssetSourceKind,
-  ImportBaseAssetInput,
-} from "../../../types/library";
+import type { BaseAssetSourceKind, ImportBaseAssetInput } from "../../../types/library";
 
 interface ImportBaseAssetFormProps {
   busy: boolean;
@@ -15,25 +14,8 @@ interface ImportBaseAssetFormProps {
   onImportBaseAsset: (input: ImportBaseAssetInput) => Promise<boolean>;
 }
 
-const sourceModes: Array<{
-  id: BaseAssetSourceKind;
-  label: string;
-  help: string;
-}> = [
-  {
-    id: "file",
-    label: "Single file",
-    help: "Register one reusable source file by reference.",
-  },
-  {
-    id: "directory",
-    label: "Folder pack",
-    help: "Register a reusable folder or collection by reference.",
-  },
-];
-
-function deriveLabel(sourcePath: string): string {
-  return sourcePath.trim().split(/[\\/]/).pop() ?? "Base asset";
+function deriveLabel(sourcePath: string, fallbackLabel: string): string {
+  return sourcePath.trim().split(/[\\/]/).pop() ?? fallbackLabel;
 }
 
 export function ImportBaseAssetForm({
@@ -42,6 +24,23 @@ export function ImportBaseAssetForm({
   defaultCategoryId,
   onImportBaseAsset,
 }: ImportBaseAssetFormProps) {
+  const t = useT();
+  const sourceModes: Array<{
+    id: BaseAssetSourceKind;
+    label: string;
+    help: string;
+  }> = [
+    {
+      id: "file",
+      label: t.library.forms.baseAsset.singleFile,
+      help: t.library.forms.baseAsset.singleFileHelp,
+    },
+    {
+      id: "directory",
+      label: t.library.forms.baseAsset.folderPack,
+      help: t.library.forms.baseAsset.folderPackHelp,
+    },
+  ];
   const fallbackCategoryId = defaultCategoryId ?? baseAssetCategories[0]?.id ?? "";
   const [sourceKind, setSourceKind] = useState<BaseAssetSourceKind>("directory");
   const [sourcePath, setSourcePath] = useState("");
@@ -65,12 +64,12 @@ export function ImportBaseAssetForm({
 
     const normalizedPath = sourcePath.trim();
     if (!normalizedPath) {
-      setError("A file or directory path is required.");
+      setError(t.library.forms.baseAsset.pathRequiredError);
       return;
     }
 
     if (!categoryId.trim()) {
-      setError("Select a base asset category before importing.");
+      setError(t.library.forms.baseAsset.categoryRequiredError);
       return;
     }
 
@@ -78,7 +77,7 @@ export function ImportBaseAssetForm({
     const imported = await onImportBaseAsset({
       sourceKind,
       sourcePath: normalizedPath,
-      label: label.trim() || deriveLabel(normalizedPath),
+      label: label.trim() || deriveLabel(normalizedPath, t.library.forms.baseAsset.fallbackLabel),
       categoryId: categoryId.trim(),
       reusable,
     });
@@ -102,12 +101,13 @@ export function ImportBaseAssetForm({
       }
 
       setSourcePath(pickedPath);
-      setLabel((current) => current.trim() || deriveLabel(pickedPath));
+      setLabel(
+        (current) =>
+          current.trim() || deriveLabel(pickedPath, t.library.forms.baseAsset.fallbackLabel),
+      );
     } catch (nextError) {
       setError(
-        nextError instanceof Error
-          ? nextError.message
-          : "Native base asset picker failed. Enter the path manually.",
+        nextError instanceof Error ? nextError.message : t.library.forms.baseAsset.pickerFailed,
       );
     } finally {
       setPickerBusy(false);
@@ -118,15 +118,16 @@ export function ImportBaseAssetForm({
     <form className="import-form" onSubmit={(event) => void handleSubmit(event)}>
       <div className="panel-header compact">
         <div>
-          <h2>Register base asset</h2>
-          <p className="support-copy">
-            Catalog reusable files or folders as local base assets for future
-            composition workflows.
-          </p>
+          <h2>{t.library.forms.baseAsset.title}</h2>
+          <p className="support-copy">{t.library.forms.baseAsset.description}</p>
         </div>
       </div>
 
-      <div className="mode-toggle" role="tablist" aria-label="Base asset source type">
+      <div
+        className="mode-toggle"
+        role="tablist"
+        aria-label={t.library.forms.baseAsset.sourceTypeAria}
+      >
         {sourceModes.map((mode) => (
           <button
             key={mode.id}
@@ -141,7 +142,7 @@ export function ImportBaseAssetForm({
       </div>
 
       <label className="field">
-        <span>Category</span>
+        <span>{t.library.forms.baseAsset.category}</span>
         <select
           value={categoryId}
           onChange={(event) => setCategoryId(event.target.value)}
@@ -163,24 +164,28 @@ export function ImportBaseAssetForm({
       ) : null}
 
       <label className="field">
-        <span>{sourceKind === "directory" ? "Folder path" : "File path"}</span>
+        <span>
+          {sourceKind === "directory"
+            ? t.library.forms.baseAsset.folderPath
+            : t.library.forms.baseAsset.filePath}
+        </span>
         <input
           value={sourcePath}
           onChange={(event) => setSourcePath(event.target.value)}
           placeholder={
             sourceKind === "directory"
-              ? "~/Music/base-packs/melodic-house"
-              : "~/Music/base-packs/kicks/solid-kick.wav"
+              ? t.library.forms.baseAsset.folderPathPlaceholder
+              : t.library.forms.baseAsset.filePathPlaceholder
           }
         />
       </label>
 
       <label className="field">
-        <span>Display label</span>
+        <span>{t.library.forms.baseAsset.displayLabel}</span>
         <input
           value={label}
           onChange={(event) => setLabel(event.target.value)}
-          placeholder="Peak-time FX pack"
+          placeholder={t.library.forms.baseAsset.displayLabelPlaceholder}
         />
       </label>
 
@@ -190,13 +195,10 @@ export function ImportBaseAssetForm({
           checked={reusable}
           onChange={(event) => setReusable(event.target.checked)}
         />
-        <span>Mark as reusable in future composition flows</span>
+        <span>{t.library.forms.baseAsset.markReusable}</span>
       </label>
 
-      <p className="field-hint">
-        Tauri imports snapshot the selected file or folder into managed Maia
-        storage. Browser fallback keeps the same shape but cannot create the native copy.
-      </p>
+      <p className="field-hint">{t.library.forms.baseAsset.hint}</p>
 
       {error ? <p className="inline-error">{error}</p> : null}
 
@@ -207,10 +209,30 @@ export function ImportBaseAssetForm({
           disabled={busy || pickerBusy}
           onClick={() => void handleBrowse()}
         >
-          {pickerBusy ? "Browsing..." : sourceKind === "directory" ? "Browse folder" : "Browse file"}
+          {pickerBusy ? (
+            <>
+              <span className="spin-ring" aria-hidden="true" /> {t.library.forms.baseAsset.browsing}
+            </>
+          ) : (
+            <>
+              <FolderOpen size={14} />{" "}
+              {sourceKind === "directory"
+                ? t.library.forms.baseAsset.browseFolder
+                : t.library.forms.baseAsset.browseFile}
+            </>
+          )}
         </button>
         <button type="submit" className="action" disabled={busy}>
-          {busy ? "Registering..." : "Register base asset"}
+          {busy ? (
+            <>
+              <span className="spin-ring" aria-hidden="true" />{" "}
+              {t.library.forms.baseAsset.registering}
+            </>
+          ) : (
+            <>
+              <PackagePlus size={14} /> {t.library.forms.baseAsset.registerBaseAsset}
+            </>
+          )}
         </button>
       </div>
     </form>

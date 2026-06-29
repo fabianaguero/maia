@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { RepositoryAnalysis } from "../../../types/library";
+import { useT } from "../../../i18n/I18nContext";
 
 interface LogSignalPanelProps {
   repository: RepositoryAnalysis;
@@ -57,7 +58,9 @@ function anomalyMarkers(metrics: Record<string, unknown>): AnomalyMarker[] {
   });
 }
 
-function topComponents(metrics: Record<string, unknown>): Array<{ component: string; count: number }> {
+function topComponents(
+  metrics: Record<string, unknown>,
+): Array<{ component: string; count: number }> {
   const raw = metrics.topComponents;
   if (!Array.isArray(raw)) {
     return [];
@@ -91,6 +94,7 @@ function levelCounts(metrics: Record<string, unknown>): Record<string, number> {
 }
 
 export function LogSignalPanel({ repository }: LogSignalPanelProps) {
+  const t = useT();
   const metrics = repository.metrics as Record<string, unknown>;
   const bins = cadenceBins(metrics);
   const markers = anomalyMarkers(metrics);
@@ -110,20 +114,19 @@ export function LogSignalPanel({ repository }: LogSignalPanelProps) {
     <section className="panel waveform-panel">
       <div className="panel-header">
         <div>
-          <h2>Log signal map</h2>
-          <p className="support-copy">
-            Maia translates log cadence, severity pressure, and anomaly spikes into a deterministic
-            musical signal profile.
-          </p>
+          <h2>{t.inspect.logSignalTitle}</h2>
+          <p className="support-copy">{t.inspect.logSignalCopy}</p>
         </div>
       </div>
 
       <div className="log-cadence-stage">
         <div
           className="log-cadence-bars"
-          style={{
-            gridTemplateColumns: `repeat(${normalizedBins.length}, minmax(0, 1fr))`,
-          } as CSSProperties}
+          style={
+            {
+              gridTemplateColumns: `repeat(${normalizedBins.length}, minmax(0, 1fr))`,
+            } as CSSProperties
+          }
         >
           {normalizedBins.map((bin, index) => (
             <span
@@ -137,34 +140,34 @@ export function LogSignalPanel({ repository }: LogSignalPanelProps) {
 
       <div className="waveform-summary">
         <div className="waveform-meta-pill">
-          <span>Lines</span>
+          <span>{t.inspect.lines}</span>
           <strong>{lineCount}</strong>
         </div>
         <div className="waveform-meta-pill">
-          <span>Anomalies</span>
+          <span>{t.session.anomaliesDetected}</span>
           <strong>{anomalyCount}</strong>
         </div>
         <div className="waveform-meta-pill">
-          <span>Dominant level</span>
+          <span>{t.session.dominantLevel}</span>
           <strong>{dominantLevel}</strong>
         </div>
       </div>
 
       <div className="metric-grid top-spaced">
         <div>
-          <span>Errors</span>
+          <span>{t.inspect.errors}</span>
           <strong>{levels.error ?? 0}</strong>
         </div>
         <div>
-          <span>Warnings</span>
+          <span>{t.inspect.warnings}</span>
           <strong>{levels.warn ?? 0}</strong>
         </div>
         <div>
-          <span>Info</span>
+          <span>{t.inspect.info}</span>
           <strong>{levels.info ?? 0}</strong>
         </div>
         <div>
-          <span>Timestamped</span>
+          <span>{t.inspect.timestamped}</span>
           <strong>{timestampedLineCount}</strong>
         </div>
       </div>
@@ -173,10 +176,8 @@ export function LogSignalPanel({ repository }: LogSignalPanelProps) {
         <>
           <div className="panel-header compact top-spaced">
             <div>
-              <h2>Hot components</h2>
-              <p className="support-copy">
-                Most active sources in the current log signal profile.
-              </p>
+              <h2>{t.inspect.hotComponents}</h2>
+              <p className="support-copy">{t.inspect.hotComponentsCopy}</p>
             </div>
           </div>
           <div className="pill-strip">
@@ -191,10 +192,8 @@ export function LogSignalPanel({ repository }: LogSignalPanelProps) {
 
       <div className="panel-header compact top-spaced">
         <div>
-          <h2>Anomaly markers</h2>
-          <p className="support-copy">
-            Markers Maia also maps to distinct sonic accents during live monitoring.
-          </p>
+          <h2>{t.inspect.anomalyMarkers}</h2>
+          <p className="support-copy">{t.inspect.anomalyMarkersCopy}</p>
         </div>
       </div>
 
@@ -203,7 +202,7 @@ export function LogSignalPanel({ repository }: LogSignalPanelProps) {
           {markers.map((marker) => (
             <li key={`${marker.lineNumber}-${marker.component}-${marker.level}`}>
               <strong>
-                Line {marker.lineNumber} · {marker.level} · {marker.component}
+                {t.inspect.lineRef} {marker.lineNumber} · {marker.level} · {marker.component}
               </strong>
               <small>{marker.excerpt}</small>
             </li>
@@ -211,7 +210,7 @@ export function LogSignalPanel({ repository }: LogSignalPanelProps) {
         </ul>
       ) : (
         <div className="empty-state">
-          <p>No anomaly markers were emitted for this log source.</p>
+          <p>{t.inspect.noAnomalyMarkers}</p>
         </div>
       )}
     </section>

@@ -1,32 +1,48 @@
 from __future__ import annotations
 
-import hashlib
 import re
 from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 from uuid import uuid4
 
-from .treesitter import analyze_java_sources, analyze_kotlin_sources, build_repo_waveform_bins
+from .presets import get_preset as get_style_preset
 from .stream import ingest_lines
+
+np: Any | None = None
+_IsolationForest: Any | None = None
+
+try:
+    import numpy as _np
+    from sklearn import ensemble
+except ImportError:
+    pass
+else:
+    np = _np
+    _IsolationForest = ensemble.IsolationForest
 
 MAX_LOG_LINES = 4000
 LOG_BUCKET_COUNT = 24
 MAX_ANOMALY_MARKERS = 8
+MIN_AI_ANOMALY_SAMPLE_LINES = 24
 
 LEVEL_ALIASES = {
     "trace": "trace",
     "debug": "debug",
+    "default": "info",
     "info": "info",
+    "notice": "info",
     "warn": "warn",
     "warning": "warn",
     "error": "error",
     "fatal": "error",
     "critical": "error",
 }
-LEVEL_PATTERN = re.compile(r"\b(trace|debug|info|warn|warning|error|fatal|critical)\b", re.IGNORECASE)
+LEVEL_PATTERN = re.compile(
+    r"\b(trace|debug|default|info|notice|warn|warning|error|fatal|critical)\b",
+    re.IGNORECASE,
+)
 TIMESTAMP_PATTERN = re.compile(
     r"^\s*(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}|"
     r"\d{2}:\d{2}:\d{2}|"
@@ -62,7 +78,7 @@ def analyze_repository(
     options: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], list[str]]:
     if source_kind == "url":
-        return _analyze_remote_repository(source_path)
+        raise NotImplementedError("Remote repository analysis is disabled in MVP.")
 
     resolved_path = Path(source_path).expanduser().resolve()
     if source_kind == "file" or resolved_path.is_file():
@@ -80,294 +96,7 @@ def analyze_repository(
             )
         return _analyze_log_file(source_path)
 
-    return _analyze_local_repository(source_path, options=options)
-
-
-def _analyze_local_repository(
-    source_path: str,
-    options: dict[str, Any] | None = None,
-) -> tuple[dict[str, Any], list[str]]:
-    root = Path(source_path).expanduser().resolve()
-    if not root.is_dir():
-        raise FileNotFoundError(f"Repository path does not exist or is not a directory: {root}")
-
-    warnings: list[str] = []
-    extension_counts: Counter[str] = Counter()
-    sample_packages: set[str] = set()
-
-    java_files = 0
-    kotlin_files = 0
-    test_files = 0
-    controller_count = 0
-    service_count = 0
-    repository_count = 0
-    entity_count = 0
-    resource_count = 0
-    has_jakarta = False
-    has_javax = False
-
-    java_paths: list[Path] = []
-    kotlin_paths: list[Path] = []
-    allowed_extensions = _normalize_extension_filter(options)
-    allowed_languages = _normalize_language_filter(options)
-    extension_by_language = {
-        "java": ".java",
-        "kotlin": ".kt",
-    }
-
-    for file_path in root.rglob("*"):
-        if not file_path.is_file():
-            continue
-
-        extension = file_path.suffix.lower() or "<none>"
-        if not _should_include_extension(
-            extension,
-            allowed_extensions,
-            allowed_languages,
-            extension_by_language,
-        ):
-            continue
-        extension_counts[extension] += 1
-
-        if extension == ".java":
-            java_files += 1
-            if len(java_paths) < 600:
-                java_paths.append(file_path)
-            lower_name = file_path.name.lower()
-            lower_parts = [part.lower() for part in file_path.parts]
-
-            if "test" in lower_parts or lower_name.endswith("test.java"):
-                test_files += 1
-            if lower_name.endswith("controller.java"):
-                controller_count += 1
-            if lower_name.endswith("service.java"):
-                service_count += 1
-            if lower_name.endswith("repository.java"):
-                repository_count += 1
-            if lower_name.endswith("entity.java"):
-                entity_count += 1
-            if lower_name.endswith("resource.java"):
-                resource_count += 1
-
-            if len(sample_packages) < 5:
-                try:
-                    relative_parent = file_path.parent.relative_to(root)
-                    sample_packages.add(str(relative_parent))
-                except ValueError:
-                    pass
-
-            if java_files <= 25:
-                content = file_path.read_text(encoding="utf-8", errors="ignore")
-                has_jakarta = has_jakarta or ("jakarta." in content)
-                has_javax = has_javax or ("javax." in content)
-
-        if extension == ".kt":
-            kotlin_files += 1
-            if len(kotlin_paths) < 400:
-                kotlin_paths.append(file_path)
-
-    build_system = "plain"
-    if (root / "pom.xml").exists():
-        build_system = "maven"
-    elif any((root / name).exists() for name in ("build.gradle", "build.gradle.kts", "settings.gradle.kts")):
-        build_system = "gradle"
-
-    if java_files == 0 and kotlin_files == 0:
-        warnings.append("No Java or Kotlin source files were detected.")
-
-    ast_metrics = analyze_java_sources(java_paths)
-    kt_metrics = analyze_kotlin_sources(kotlin_paths)
-    ast_enabled = bool(ast_metrics.get("enabled"))
-    kt_enabled = bool(kt_metrics.get("enabled")) and kotlin_files > 0
-    ast_class_count = int(ast_metrics.get("classCount", 0) or 0)
-    ast_method_count = int(ast_metrics.get("methodCount", 0) or 0)
-    ast_annotation_count = int(ast_metrics.get("annotationCount", 0) or 0)
-    ast_endpoint_count = int(ast_metrics.get("endpointAnnotationCount", 0) or 0)
-    kt_class_count = int(kt_metrics.get("classCount", 0) or 0)
-    kt_function_count = int(kt_metrics.get("functionCount", 0) or 0)
-
-    suggested_bpm = max(
-        85,
-        min(
-            160,
-            96
-            + min(32, java_files // 8)
-            + min(12, kotlin_files // 10)
-            + controller_count * 2
-            + service_count
-            + repository_count
-            + entity_count // 2
-            + (6 if has_jakarta else 0)
-            + (3 if has_javax else 0)
-            + (min(12, ast_method_count // 40) if ast_enabled else 0)
-            + (min(10, ast_class_count // 30) if ast_enabled else 0)
-            + (min(6, ast_annotation_count // 80) if ast_enabled else 0)
-            + (min(8, ast_endpoint_count * 2) if ast_enabled else 0)
-            + (min(8, kt_function_count // 30) if kt_enabled else 0)
-            + (min(6, kt_class_count // 20) if kt_enabled else 0)
-            + (4 if build_system == "maven" else 2 if build_system == "gradle" else 0),
-        ),
-    )
-
-    confidence = round(
-        min(
-            0.94,
-            0.3
-            + min(0.35, java_files / 400)
-            + min(0.12, kotlin_files / 200)
-            + (0.1 if build_system != "plain" else 0)
-            + (0.07 if has_jakarta or has_javax else 0)
-            + (0.06 if ast_enabled and ast_metrics.get("parseErrors", 0) == 0 else 0)
-            + (0.04 if kt_enabled and kt_metrics.get("parseErrors", 0) == 0 else 0),
-        ),
-        2,
-    )
-
-    primary_language = "java"
-    if kotlin_files > java_files:
-        primary_language = "kotlin"
-    elif java_files == 0 and kotlin_files == 0:
-        primary_language = "unknown"
-
-    tags = ["repo-analysis", build_system, primary_language]
-    if has_jakarta:
-        tags.append("jakarta-ee")
-    elif has_javax:
-        tags.append("java-ee")
-    if ast_enabled:
-        tags.append("tree-sitter-java")
-    if kt_enabled:
-        tags.append("tree-sitter-kotlin")
-
-    metrics = {
-        "buildSystem": build_system,
-        "primaryLanguage": primary_language,
-        "javaFileCount": java_files,
-        "kotlinFileCount": kotlin_files,
-        "testFileCount": test_files,
-        "controllerCount": controller_count,
-        "serviceCount": service_count,
-        "repositoryCount": repository_count,
-        "entityCount": entity_count,
-        "resourceCount": resource_count,
-        "samplePackages": sorted(sample_packages),
-        "fileExtensionBreakdown": dict(extension_counts.most_common(8)),
-        "astEnabled": ast_enabled,
-        "astFileCount": ast_metrics.get("fileCount", 0),
-        "astFileLimit": ast_metrics.get("fileLimit", 0),
-        "astParseErrors": ast_metrics.get("parseErrors", 0),
-        "astClassCount": ast_metrics.get("classCount", 0),
-        "astInterfaceCount": ast_metrics.get("interfaceCount", 0),
-        "astEnumCount": ast_metrics.get("enumCount", 0),
-        "astRecordCount": ast_metrics.get("recordCount", 0),
-        "astMethodCount": ast_metrics.get("methodCount", 0),
-        "astFieldCount": ast_metrics.get("fieldCount", 0),
-        "astAnnotationCount": ast_metrics.get("annotationCount", 0),
-        "astEndpointAnnotationCount": ast_metrics.get("endpointAnnotationCount", 0),
-        "astJakartaImportCount": ast_metrics.get("jakartaImportCount", 0),
-        "astJavaxImportCount": ast_metrics.get("javaxImportCount", 0),
-        "astAnnotationBreakdown": ast_metrics.get("annotationBreakdown", {}),
-        "ktAstEnabled": kt_enabled,
-        "ktAstFileCount": kt_metrics.get("fileCount", 0),
-        "ktAstClassCount": kt_metrics.get("classCount", 0),
-        "ktAstFunctionCount": kt_metrics.get("functionCount", 0),
-        "ktAstPropertyCount": kt_metrics.get("propertyCount", 0),
-        "ktAstEndpointAnnotationCount": kt_metrics.get("endpointAnnotationCount", 0),
-        "ktAstAnnotationBreakdown": kt_metrics.get("annotationBreakdown", {}),
-    }
-
-    if ast_enabled is False and ast_metrics.get("error"):
-        warnings.append(str(ast_metrics["error"]))
-
-    if allowed_extensions or allowed_languages:
-        metrics["parseExtensionFilter"] = sorted(allowed_extensions)
-        metrics["parseLanguageFilter"] = sorted(allowed_languages)
-
-    repo_waveform = build_repo_waveform_bins(java_paths, kotlin_paths)
-    repo_beat_grid = _repo_beat_grid(float(suggested_bpm), len(repo_waveform))
-    repo_bpm_curve = _repo_bpm_curve(float(suggested_bpm), len(repo_waveform))
-
-    asset = {
-        "id": str(uuid4()),
-        "assetType": "repo_analysis",
-        "title": root.name,
-        "sourcePath": str(root),
-        "suggestedBpm": float(suggested_bpm),
-        "confidence": confidence,
-        "tags": tags,
-        "metrics": metrics,
-        "artifacts": {
-            "waveformBins": repo_waveform,
-            "beatGrid": repo_beat_grid,
-            "bpmCurve": repo_bpm_curve,
-        },
-        "createdAt": datetime.now(UTC).isoformat(),
-    }
-
-    return asset, warnings
-
-
-def _normalize_extension_filter(options: dict[str, Any] | None) -> set[str]:
-    if not options:
-        return set()
-    raw = options.get("parseExtensions")
-    if not isinstance(raw, list):
-        return set()
-    normalized = {str(item).strip().lower() for item in raw if str(item).strip()}
-    return {ext if ext.startswith(".") else f".{ext}" for ext in normalized}
-
-
-def _normalize_language_filter(options: dict[str, Any] | None) -> set[str]:
-    if not options:
-        return set()
-    raw = options.get("parseLanguages")
-    if not isinstance(raw, list):
-        return set()
-    return {str(item).strip().lower() for item in raw if str(item).strip()}
-
-
-def _should_include_extension(
-    extension: str,
-    allowed_extensions: set[str],
-    allowed_languages: set[str],
-    extension_by_language: dict[str, str],
-) -> bool:
-    if not allowed_extensions and not allowed_languages:
-        return True
-
-    if allowed_extensions and extension in allowed_extensions:
-        return True
-
-    if allowed_languages:
-        for language in allowed_languages:
-            if extension_by_language.get(language) == extension:
-                return True
-
-    return False
-
-
-def _repo_beat_grid(bpm: float, bin_count: int) -> list[float]:
-    """Return beat positions (0.0–1.0) normalized to the waveform bin count."""
-    if bpm <= 0 or bin_count <= 0:
-        return []
-    seconds_per_beat = 60.0 / bpm
-    total_seconds = bin_count * 0.5  # treat each bin as ~0.5s for display purposes
-    beats: list[float] = []
-    t = 0.0
-    while t < total_seconds:
-        beats.append(round(t / total_seconds, 5))
-        t += seconds_per_beat
-    return beats
-
-
-def _repo_bpm_curve(bpm: float, bin_count: int) -> list[dict[str, float]]:
-    """Return a flat BPM curve with 5 evenly-spaced checkpoints."""
-    if bpm <= 0 or bin_count <= 0:
-        return []
-    return [
-        {"position": round(i / 4, 2), "bpm": round(bpm, 2)}
-        for i in range(5)
-    ]
+    raise NotImplementedError("Local repository analysis is disabled in MVP.")
 
 
 def _analyze_log_file(source_path: str) -> tuple[dict[str, Any], list[str]]:
@@ -402,11 +131,12 @@ def _analyze_log_chunk(
     live_mode: bool = False,
 ) -> tuple[dict[str, Any], list[str]]:
     log_path = Path(source_path).expanduser().resolve()
+    if not log_path.is_file() and not live_mode:
+        raise FileNotFoundError(f"Log path does not exist or is not a file: {log_path}")
     if not log_path.is_file():
-        if not live_mode:
-            raise FileNotFoundError(f"Log path does not exist or is not a file: {log_path}")
         # Virtual / URL / directory sources are valid in live mode —
         # log_path is used only for cosmetic title derivation below.
+        pass
 
     raw_lines = chunk.splitlines()
     return _summarize_log_signal(
@@ -416,62 +146,6 @@ def _analyze_log_chunk(
         from_offset=_coerce_non_negative_int(from_offset),
         to_offset=_coerce_non_negative_int(to_offset),
     )
-
-
-def _analyze_remote_repository(source_path: str) -> tuple[dict[str, Any], list[str]]:
-    parsed = urlparse(source_path)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        raise ValueError(f"Repository URL is invalid: {source_path}")
-
-    path_parts = [part for part in parsed.path.split("/") if part]
-    repo_name = path_parts[-1].removesuffix(".git") if path_parts else parsed.netloc
-    owner = path_parts[-2] if len(path_parts) >= 2 else "unknown"
-    provider = "github" if parsed.netloc.lower() == "github.com" else parsed.netloc.lower()
-
-    seed = int(hashlib.sha1(source_path.encode("utf-8")).hexdigest()[:8], 16)
-    suggested_bpm = 88 + (seed % 48)
-    confidence = 0.34 if provider == "github" else 0.22
-
-    asset = {
-        "id": str(uuid4()),
-        "assetType": "repo_analysis",
-        "title": repo_name or "remote-repository",
-        "sourcePath": source_path,
-        "suggestedBpm": float(suggested_bpm),
-        "confidence": confidence,
-        "tags": ["repo-analysis", "remote-url", provider],
-        "metrics": {
-            "buildSystem": "unknown",
-            "primaryLanguage": "unknown",
-            "javaFileCount": 0,
-            "kotlinFileCount": 0,
-            "testFileCount": 0,
-            "controllerCount": 0,
-            "serviceCount": 0,
-            "repositoryCount": 0,
-            "entityCount": 0,
-            "resourceCount": 0,
-            "samplePackages": [],
-            "fileExtensionBreakdown": {},
-            "importMode": "remote-url",
-            "provider": provider,
-            "owner": owner,
-            "repoName": repo_name,
-            "remoteCloneAvailable": False,
-        },
-        "artifacts": {
-            "waveformBins": [],
-            "beatGrid": [],
-            "bpmCurve": [],
-        },
-        "createdAt": datetime.now(UTC).isoformat(),
-    }
-
-    warnings = [
-        "Remote repository intake is metadata-only for MVP.",
-        "Clone or import a local checkout to run code heuristics over filesystem contents.",
-    ]
-    return asset, warnings
 
 
 def _detect_log_level(lowered_line: str) -> str:
@@ -495,11 +169,123 @@ def _extract_log_component(line: str) -> str | None:
     return None
 
 
-def _is_anomaly_line(lowered_line: str, level: str) -> bool:
+def _is_anomaly_line(
+    lowered_line: str,
+    level: str,
+    ai_score: float = 0.0,
+    *,
+    allow_ai: bool = True,
+) -> bool:
     if level == "error":
         return True
 
-    return any(keyword in lowered_line for keyword in ANOMALY_KEYWORDS)
+    if any(keyword in lowered_line for keyword in ANOMALY_KEYWORDS):
+        return True
+
+    # Keep statistical anomaly detection as a fallback only for unknown log shapes.
+    # Live windows with INFO/NOTICE timestamps were generating false positives.
+    return allow_ai and level == "unknown" and ai_score < -0.24
+
+
+class LogAnomalyDetector:
+    """Unsupervised anomaly detection for raw text logs using IsolationForest.
+
+    Features:
+    - Structural: length, character ratios, entropy
+    - Pattern-based: anomaly keywords, stack traces
+    - Contextual: similarity to previous line
+    """
+
+    def __init__(self, conservative: bool = True):
+        self.model = (
+            _IsolationForest(
+                contamination=0.04 if conservative else 0.08,
+                random_state=42,
+                n_estimators=50,  # Lightweight for latency
+            )
+            if _IsolationForest is not None
+            else None
+        )
+        self.is_fitted = False
+        self.prev_line = ""
+
+    def _entropy(self, text: str) -> float:
+        """Shannon entropy of character distribution (0-8 bits)."""
+        if not text:
+            return 0.0
+        from collections import Counter
+        from math import log2
+
+        counts = Counter(text)
+        length = len(text)
+        entropy = 0.0
+        for count in counts.values():
+            p = count / length
+            if p > 0:
+                entropy -= p * log2(p)
+        return entropy / 8.0  # Normalize to [0, 1]
+
+    def _vectorize(self, line: str) -> list[float]:
+        length = len(line)
+        if length == 0:
+            return [0.0] * 9
+
+        # Structural features
+        alpha_ratio = sum(c.isalpha() for c in line) / length
+        symbol_ratio = sum(not c.isalnum() and not c.isspace() for c in line) / length
+        digit_ratio = sum(c.isdigit() for c in line) / length
+        entropy_norm = self._entropy(line)
+
+        # Pattern features: anomaly indicators
+        has_error_keywords = 1.0 if any(kw in line.lower() for kw in ANOMALY_KEYWORDS) else 0.0
+        has_stack_trace = 1.0 if re.search(r"\s+at\s+|File.*line\s+\d+|\.rs:\d+", line) else 0.0
+
+        # Contextual: comparison with previous line
+        if self.prev_line and self.prev_line != line:
+            # Simple diff ratio: how different from last line
+            diff_chars = sum(1 for a, b in zip(self.prev_line, line, strict=False) if a != b)
+            max_len = max(len(self.prev_line), len(line))
+            dissimilarity = (diff_chars / max_len) if max_len > 0 else 0.0
+        else:
+            dissimilarity = 0.0
+
+        self.prev_line = line
+
+        return [
+            float(length) / 256.0,  # Normalize length [0, 1]
+            alpha_ratio,
+            symbol_ratio,
+            digit_ratio,
+            entropy_norm,
+            has_error_keywords,
+            has_stack_trace,
+            dissimilarity,
+            0.0,  # Reserved for future features
+        ]
+
+    def fit(self, lines: list[str]):
+        if self.model is None or not lines:
+            return
+
+        # Fit on representative sample to establish 'normalcy'
+        self.prev_line = ""
+        X = []
+        for line in lines[:1000]:
+            vec = self._vectorize(line)
+            X.append(vec)
+
+        if X:
+            self.model.fit(X)
+            self.is_fitted = True
+
+        # Reset for scoring phase
+        self.prev_line = ""
+
+    def score(self, line: str) -> float:
+        if not self.is_fitted or self.model is None:
+            return 0.0
+        X = [self._vectorize(line)]
+        return float(self.model.decision_function(X)[0])
 
 
 def _event_weight(level: str, anomaly: bool) -> float:
@@ -553,7 +339,7 @@ def _log_bpm(
         1,
         non_empty_line_count,
     )
-    severity_pressure = min(26, int(round(severity_ratio * 140)))
+    severity_pressure = min(26, round(severity_ratio * 140))
     burst_bonus = 7 if cadence_bins and max(cadence_bins) >= 0.88 else 0
     return max(82, min(160, 92 + activity_pressure + severity_pressure + burst_bonus))
 
@@ -585,6 +371,7 @@ def _summarize_log_signal(
     from_offset: int | None = None,
     to_offset: int | None = None,
     truncated: bool = False,
+    options: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], list[str]]:
     warnings: list[str] = []
     level_counts: Counter[str] = Counter()
@@ -597,6 +384,12 @@ def _summarize_log_signal(
     timestamped_line_count = 0
     anomaly_count = 0
 
+    # Initialize AI Detector
+    detector = LogAnomalyDetector(conservative=True)
+    detector_training_lines = [line.strip() for line in raw_lines if line.strip()]
+    if len(detector_training_lines) >= MIN_AI_ANOMALY_SAMPLE_LINES:
+        detector.fit(detector_training_lines)
+
     for line_number, raw_line in enumerate(raw_lines, start=1):
         line_count += 1
         stripped = raw_line.strip()
@@ -607,7 +400,19 @@ def _summarize_log_signal(
         lowered = stripped.lower()
         level = _detect_log_level(lowered)
         component = _extract_log_component(stripped) or "unknown"
-        anomaly = _is_anomaly_line(lowered, level)
+
+        # AI Scoring
+        ai_score = detector.score(stripped)
+        anomaly = _is_anomaly_line(
+            lowered,
+            level,
+            ai_score,
+            allow_ai=len(detector_training_lines) >= MIN_AI_ANOMALY_SAMPLE_LINES,
+        )
+
+        # Level elevation if AI detects strong anomaly in unknown logs
+        if level == "unknown" and ai_score < -0.15:
+            level = "error" if ai_score < -0.22 else "warn"
 
         level_counts[level] += 1
         if component != "unknown":
@@ -640,8 +445,7 @@ def _summarize_log_signal(
     cadence_bins = _build_log_cadence_bins(cadence_samples)
     dominant_level = _dominant_level(level_counts)
     top_components = [
-        {"component": name, "count": count}
-        for name, count in component_counts.most_common(5)
+        {"component": name, "count": count} for name, count in component_counts.most_common(5)
     ]
     suggested_bpm = _log_bpm(non_empty_line_count, level_counts, anomaly_count, cadence_bins)
     confidence = _log_confidence(
@@ -671,7 +475,7 @@ def _summarize_log_signal(
             "No anomaly keywords were detected. This log source currently looks steady rather than spiky."
         )
 
-    metrics = {
+    metrics: dict[str, Any] = {
         "buildSystem": "log-stream",
         "primaryLanguage": "logs",
         "javaFileCount": 0,
@@ -699,7 +503,6 @@ def _summarize_log_signal(
         "anomalyMarkers": anomaly_markers,
         "detectedFormat": file_extension,
         "trackedAs": "log-tail-window" if live_mode else "log-signal",
-        "sonificationCues": _build_sonification_cues(event_records),
     }
     if live_mode:
         metrics["logTailFromOffset"] = from_offset
@@ -713,7 +516,7 @@ def _summarize_log_signal(
     if live_mode:
         tags.append("live-window")
 
-    asset = {
+    asset: dict[str, Any] = {
         "id": str(uuid4()),
         "assetType": "repo_analysis",
         "title": log_path.stem or log_path.name,
@@ -723,36 +526,65 @@ def _summarize_log_signal(
         "tags": tags,
         "metrics": metrics,
         "artifacts": {
-            "waveformBins": [],
+            "waveformBins": cadence_bins,
             "beatGrid": [],
             "bpmCurve": [],
         },
         "createdAt": datetime.now(UTC).isoformat(),
     }
 
+    # Inject Preset-based Visuals
+    preset_id = options.get("presetId", "techno") if options else "techno"
+    preset = get_style_preset(preset_id)
+    asset["metrics"]["colorPalette"] = {
+        "primary": preset.palette.primary,
+        "secondary": preset.palette.secondary,
+        "accent": preset.palette.accent,
+        "background": preset.palette.background,
+        "anomaly": preset.palette.anomaly,
+    }
+    asset["metrics"]["sonificationCues"] = _build_sonification_cues(event_records, preset)
+    asset["metrics"]["stemInteraction"] = preset.stem_interaction
+
     return asset, warnings
 
 
-def _build_sonification_cues(event_records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _build_sonification_cues(
+    event_records: list[dict[str, Any]],
+    preset: Any,
+) -> list[dict[str, Any]]:
     cues: list[dict[str, Any]] = []
 
-    for record in event_records[:24]:
+    # Prioritize anomalies so they are always heard even in dense log streams
+    anomalies = [r for r in event_records if r["anomaly"]]
+    normals = [r for r in event_records if not r["anomaly"]]
+
+    # Take up to 64 cues, prioritizing anomalies
+    limited_records = (anomalies + normals)[:64]
+
+    for record in limited_records:
         level = str(record["level"])
         anomaly = bool(record["anomaly"])
         event_index = int(record["eventIndex"])
         component = str(record["component"])
         excerpt = str(record["excerpt"])
 
-        note_hz = {
-            "trace": 196.0,
-            "debug": 220.0,
-            "info": 261.63,
-            "warn": 329.63,
-            "error": 392.0,
-            "unknown": 246.94,
-        }.get(level, 246.94)
+        # Mapping governed by Style Preset
+        profile = preset.mappings.get(level, preset.mappings.get("unknown"))
+
+        note_hz = profile.freq_multiplier * 261.63  # Base on C4
+        waveform = profile.waveform
+        gain = profile.base_gain
+        duration_ms = profile.base_duration_ms
+
         if anomaly:
+            # Shift frequency up by a fifth and use more aggressive waveform
             note_hz *= 1.5
+            duration_ms += 120
+            gain += 0.12
+            # Force aggressive waveform for anomalies to ensure they 'cut through' the mix
+            if waveform in ("sine", "triangle"):
+                waveform = "square" if preset.id != "ambient" else "sawtooth"
 
         cues.append(
             {
@@ -762,10 +594,12 @@ def _build_sonification_cues(event_records: list[dict[str, Any]]) -> list[dict[s
                 "component": component,
                 "excerpt": excerpt,
                 "noteHz": round(note_hz, 2),
-                "durationMs": 260 if anomaly else 180 if level in {"warn", "error"} else 120,
-                "gain": 0.22 if anomaly else 0.16 if level in {"warn", "error"} else 0.1,
-                "waveform": "sawtooth" if anomaly else "triangle" if level == "warn" else "sine",
+                "durationMs": duration_ms,
+                "gain": round(gain, 3),
+                "waveform": waveform,
                 "accent": "anomaly" if anomaly else level,
+                "filterCutoff": profile.filter_cutoff,
+                "resonance": profile.resonance,
             }
         )
 

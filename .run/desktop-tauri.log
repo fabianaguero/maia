@@ -1,0 +1,25 @@
+
+> maia-desktop@0.1.0 tauri
+> tauri dev
+
+     Running BeforeDevCommand (`npx vite --port 1421 --host 127.0.0.1`)
+
+  VITE v5.4.21  ready in 104 ms
+
+  ➜  Local:   http://127.0.0.1:1421/
+     Running DevCommand (`cargo  run --no-default-features --color always --`)
+        Info Watching /home/faguero/dev/maia/desktop/src-tauri for changes...
+[1m[92m    Finished[0m ]8;;https://doc.rust-lang.org/cargo/reference/profiles.html#default-profiles\`dev` profile [unoptimized + debuginfo]]8;;\ target(s) in 0.42s
+[1m[92m     Running[0m `target/debug/maia-desktop`
+═══════════════════════════════════════════════════════
+[MAIA:Rust] Desktop app starting — eprintln! verified
+═══════════════════════════════════════════════════════
+
+(maia-desktop:2208955): libayatana-appindicator-WARNING **: 21:04:17.762: libayatana-appindicator is deprecated. Please use libayatana-appindicator-glib in newly written code.
+INFO === MAIA LOGGER INITIALIZED ===
+INFO 21:04:23.228 INFO  [MonitorCtx] loading guide track: /home/faguero/.local/share/com.fabianaguero.maia/assets/tracks/trk-1776025757277-c916e09d8b5ee99f/Eurythmics - Sweet Dreams [Are Made Of This] (Giorgio Moroder Remix).mp3
+INFO 21:04:23.229 INFO  [MonitorCtx] decodeAudioFile path=/home/faguero/.local/share/com.fabianaguero.maia/assets/tracks/trk-1776025757277-c916e09d8b5ee99f/Eurythmics - Sweet Dreams [Are Made Of This] (Giorgio Moroder Remix).mp3
+INFO 21:04:23.242 INFO  [MonitorCtx] convertFileSrc failed, falling back to read_audio_bytes: HTTP 403
+INFO 21:04:23.501 INFO  [MonitorCtx] audio file loaded 5112893 bytes via IPC
+INFO 21:04:24.011 INFO  [MonitorCtx] decoded mono PCM: 14089068 samples, 319.48s @ 44100Hz
+INFO 21:04:24.011 INFO  [MonitorCtx] guide track ready: 319.48s, 14089068 samples

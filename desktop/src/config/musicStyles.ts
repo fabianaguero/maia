@@ -32,8 +32,7 @@ const fallbackCatalog: MusicStyleCatalog = {
 function normalizeMusicStyle(style: Partial<MusicStyleOption>): MusicStyleOption | null {
   const id = typeof style.id === "string" ? style.id.trim() : "";
   const label = typeof style.label === "string" ? style.label.trim() : "";
-  const description =
-    typeof style.description === "string" ? style.description.trim() : "";
+  const description = typeof style.description === "string" ? style.description.trim() : "";
   const minBpm =
     typeof style.minBpm === "number" && Number.isFinite(style.minBpm)
       ? Math.round(style.minBpm)
@@ -68,12 +67,8 @@ function normalizeCatalog(input: Partial<MusicStyleCatalog>): MusicStyleCatalog 
   }
 
   const preferredDefaultId =
-    typeof input.defaultTrackMusicStyleId === "string"
-      ? input.defaultTrackMusicStyleId.trim()
-      : "";
-  const defaultTrackMusicStyleId = musicStyles.some(
-    (style) => style.id === preferredDefaultId,
-  )
+    typeof input.defaultTrackMusicStyleId === "string" ? input.defaultTrackMusicStyleId.trim() : "";
+  const defaultTrackMusicStyleId = musicStyles.some((style) => style.id === preferredDefaultId)
     ? preferredDefaultId
     : musicStyles[0].id;
 

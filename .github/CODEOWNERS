@@ -1,0 +1,12 @@
+# Default owners
+* @faguero
+
+# Desktop app
+/desktop/ @faguero
+
+# Analyzer runtime
+/analyzer/ @faguero
+
+# Shared contracts and docs
+/contracts/ @faguero
+/docs/ @faguero

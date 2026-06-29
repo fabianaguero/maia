@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS musical_assets (
   id TEXT PRIMARY KEY,
   asset_type TEXT NOT NULL CHECK (asset_type IN ('track_analysis', 'repo_analysis', 'base_asset', 'composition_result')),
   title TEXT NOT NULL,
-  source_path TEXT NOT NULL,
+  source_path TEXT NOT NULL UNIQUE,
   source_kind TEXT NOT NULL CHECK (source_kind IN ('file', 'directory', 'url')),
   suggested_bpm REAL,
   confidence REAL NOT NULL DEFAULT 0,
@@ -13,6 +13,9 @@ CREATE TABLE IF NOT EXISTS musical_assets (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_musical_assets_source_path 
+  ON musical_assets (source_path);
 
 CREATE TABLE IF NOT EXISTS track_analyses (
   asset_id TEXT PRIMARY KEY REFERENCES musical_assets(id) ON DELETE CASCADE,
@@ -25,6 +28,44 @@ CREATE TABLE IF NOT EXISTS track_analyses (
   bpm_curve_json TEXT NOT NULL DEFAULT '[]',
   analyzer_notes TEXT NOT NULL DEFAULT ''
 );
+
+CREATE TABLE IF NOT EXISTS track_library_states (
+  asset_id TEXT PRIMARY KEY REFERENCES musical_assets(id) ON DELETE CASCADE,
+  color TEXT,
+  rating INTEGER NOT NULL DEFAULT 0 CHECK (rating BETWEEN 0 AND 5),
+  play_count INTEGER NOT NULL DEFAULT 0,
+  last_played_at TEXT,
+  bpm_lock INTEGER NOT NULL DEFAULT 0 CHECK (bpm_lock IN (0, 1)),
+  grid_lock INTEGER NOT NULL DEFAULT 0 CHECK (grid_lock IN (0, 1)),
+  main_cue_second REAL,
+  hot_cues_json TEXT NOT NULL DEFAULT '[]',
+  memory_cues_json TEXT NOT NULL DEFAULT '[]',
+  saved_loops_json TEXT NOT NULL DEFAULT '[]',
+  missing_state TEXT NOT NULL DEFAULT 'available' CHECK (missing_state IN ('available', 'missing')),
+  file_size_bytes INTEGER,
+  source_modified_at TEXT,
+  source_checksum TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_track_library_states_last_played
+  ON track_library_states (last_played_at DESC);
+
+CREATE TABLE IF NOT EXISTS base_track_playlists (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS base_track_playlist_items (
+  playlist_id TEXT NOT NULL REFERENCES base_track_playlists(id) ON DELETE CASCADE,
+  track_id TEXT NOT NULL REFERENCES musical_assets(id) ON DELETE CASCADE,
+  position INTEGER NOT NULL,
+  PRIMARY KEY (playlist_id, position)
+);
+
+CREATE INDEX IF NOT EXISTS idx_base_track_playlist_items_track
+  ON base_track_playlist_items (track_id);
 
 CREATE TABLE IF NOT EXISTS repo_analyses (
   asset_id TEXT PRIMARY KEY REFERENCES musical_assets(id) ON DELETE CASCADE,
@@ -60,6 +101,24 @@ CREATE TABLE IF NOT EXISTS composition_results (
   bpm_curve_json TEXT NOT NULL DEFAULT '[]'
 );
 
+
+CREATE TABLE IF NOT EXISTS log_source_connections (
+  id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL CHECK (kind IN ('file_log', 'gcp_cloud_run')),
+  label TEXT NOT NULL,
+  source_uri TEXT NOT NULL UNIQUE,
+  enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+  adapter_kind TEXT NOT NULL CHECK (adapter_kind IN ('file', 'process')),
+  config_json TEXT NOT NULL DEFAULT '{}',
+  last_cursor INTEGER NOT NULL DEFAULT 0,
+  last_seen_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_log_source_connections_kind_updated
+  ON log_source_connections (kind, updated_at DESC);
+
 CREATE TABLE IF NOT EXISTS analysis_jobs (
   id TEXT PRIMARY KEY,
   asset_id TEXT REFERENCES musical_assets(id) ON DELETE SET NULL,
@@ -71,8 +130,117 @@ CREATE TABLE IF NOT EXISTS analysis_jobs (
   created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS sessions (
+  id TEXT PRIMARY KEY,
+  label TEXT,
+  source_id TEXT REFERENCES musical_assets(id) ON DELETE SET NULL,
+  track_id TEXT REFERENCES musical_assets(id) ON DELETE SET NULL,
+  playlist_id TEXT REFERENCES base_track_playlists(id) ON DELETE SET NULL,
+  adapter_kind TEXT NOT NULL DEFAULT 'file',
+  mode TEXT NOT NULL DEFAULT 'live' CHECK (mode IN ('live', 'play')),
+  status TEXT NOT NULL DEFAULT 'stopped' CHECK (status IN ('active', 'paused', 'stopped')),
+  file_cursor INTEGER NOT NULL DEFAULT 0,
+  total_polls INTEGER NOT NULL DEFAULT 0,
+  total_lines INTEGER NOT NULL DEFAULT 0,
+  total_anomalies INTEGER NOT NULL DEFAULT 0,
+  last_bpm REAL,
+  source_template_id TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_status_updated
+  ON sessions (status, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS session_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  poll_index INTEGER NOT NULL,
+  captured_at TEXT NOT NULL,
+  from_offset INTEGER NOT NULL DEFAULT 0,
+  to_offset INTEGER NOT NULL DEFAULT 0,
+  summary TEXT NOT NULL DEFAULT '',
+  suggested_bpm REAL,
+  confidence REAL NOT NULL DEFAULT 0,
+  dominant_level TEXT NOT NULL DEFAULT '',
+  line_count INTEGER NOT NULL DEFAULT 0,
+  anomaly_count INTEGER NOT NULL DEFAULT 0,
+  level_counts_json TEXT NOT NULL DEFAULT '{}',
+  anomaly_markers_json TEXT NOT NULL DEFAULT '[]',
+  top_components_json TEXT NOT NULL DEFAULT '[]',
+  sonification_cues_json TEXT NOT NULL DEFAULT '[]',
+  parsed_lines_json TEXT NOT NULL DEFAULT '[]',
+  warnings_json TEXT NOT NULL DEFAULT '[]'
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_events_session_poll
+  ON session_events (session_id, poll_index);
+
+CREATE TABLE IF NOT EXISTS session_bookmarks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  replay_window_index INTEGER NOT NULL,
+  event_index INTEGER,
+  label TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '',
+  bookmark_tag TEXT,
+  suggested_style_profile_id TEXT,
+  suggested_mutation_profile_id TEXT,
+  track_id TEXT,
+  track_title TEXT,
+  track_second REAL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_session_bookmarks_session_window
+  ON session_bookmarks (session_id, replay_window_index);
+
 CREATE INDEX IF NOT EXISTS idx_musical_assets_type_created
   ON musical_assets (asset_type, created_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_analysis_jobs_status_created
   ON analysis_jobs (status, created_at DESC);
+
+CREATE TABLE provider_sources (
+  id TEXT PRIMARY KEY,
+  source_type TEXT NOT NULL CHECK(source_type IN ('spotify', 'soundcloud', 'local_directory')),
+  display_name TEXT NOT NULL,
+  is_connected BOOLEAN NOT NULL DEFAULT 1,
+  oauth_token TEXT,
+  local_path TEXT,
+  last_synced_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE provider_playlists (
+  id TEXT PRIMARY KEY,
+  provider_source_id TEXT NOT NULL,
+  source_type TEXT NOT NULL CHECK(source_type IN ('spotify', 'soundcloud', 'local_directory')),
+  name TEXT NOT NULL,
+  description TEXT,
+  track_count INTEGER,
+  image_url TEXT,
+  is_public BOOLEAN,
+  external_url TEXT,
+  synced_at TEXT NOT NULL,
+  FOREIGN KEY (provider_source_id) REFERENCES provider_sources(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_provider_playlists_source ON provider_playlists(provider_source_id);
+
+CREATE TABLE provider_tracks (
+  id TEXT PRIMARY KEY,
+  provider_playlist_id TEXT NOT NULL,
+  source_type TEXT NOT NULL CHECK(source_type IN ('spotify', 'soundcloud', 'local_directory')),
+  title TEXT NOT NULL,
+  artist TEXT,
+  duration_seconds REAL,
+  is_playable BOOLEAN,
+  external_url TEXT,
+  synced_at TEXT NOT NULL,
+  FOREIGN KEY (provider_playlist_id) REFERENCES provider_playlists(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_provider_tracks_playlist ON provider_tracks(provider_playlist_id);

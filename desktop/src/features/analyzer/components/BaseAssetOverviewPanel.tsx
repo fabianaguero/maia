@@ -1,39 +1,36 @@
 import type { BaseAssetRecord } from "../../../types/library";
+import { useT } from "../../../i18n/I18nContext";
 
 interface BaseAssetOverviewPanelProps {
   baseAsset: BaseAssetRecord;
 }
 
-export function BaseAssetOverviewPanel({
-  baseAsset,
-}: BaseAssetOverviewPanelProps) {
+export function BaseAssetOverviewPanel({ baseAsset }: BaseAssetOverviewPanelProps) {
+  const t = useT();
   return (
     <section className="panel waveform-panel">
       <div className="panel-header">
         <div>
-          <h2>Base asset overview</h2>
-          <p className="support-copy">
-            Reusable source material snapshotted into the local Maia catalog for
-            future composition and pattern workflows.
-          </p>
+          <h2>{t.inspect.baseAssetOverview}</h2>
+          <p className="support-copy">{t.inspect.baseAssetOverviewCopy}</p>
         </div>
       </div>
 
       <div className="repo-hero">
         <div className="repo-hero-card">
-          <span>Summary</span>
+          <span>{t.inspect.summary}</span>
           <strong>{baseAsset.summary}</strong>
         </div>
         <div className="repo-hero-card">
-          <span>Source path</span>
+          <span>{t.inspect.sourcePath}</span>
           <strong>{baseAsset.sourcePath}</strong>
         </div>
         <div className="repo-hero-card">
-          <span>Storage path</span>
+          <span>{t.inspect.storagePath}</span>
           <strong>{baseAsset.storagePath}</strong>
         </div>
         <div className="repo-hero-card">
-          <span>Tags</span>
+          <span>{t.inspect.tags}</span>
           <div className="pill-strip">
             {baseAsset.tags.map((tag) => (
               <span key={tag}>{tag}</span>

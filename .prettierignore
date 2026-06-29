@@ -1,0 +1,12 @@
+.git/
+.run/
+.venv/
+node_modules/
+dist/
+coverage/
+htmlcov/
+desktop/src-tauri/target/
+desktop/coverage/
+desktop/dist/
+site/dist/
+demo/audio/

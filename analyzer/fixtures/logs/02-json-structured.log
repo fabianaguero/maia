@@ -1,0 +1,400 @@
+{"timestamp": "2026-02-03T14:00:29.131Z", "level": "INFO", "service": "auth", "message": "Password changed", "user_id": "u15", "ip": "10.0.3.28", "mfa": true, "trace_id": "t-86414"}
+{"timestamp": "2026-02-03T14:01:07.084Z", "level": "INFO", "service": "auth", "message": "User login", "user_id": "u03", "ip": "10.0.0.163", "mfa": true, "trace_id": "t-84115"}
+{"timestamp": "2026-02-03T14:01:50.198Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 22, "mem_pct": 23, "heap_mb": 571, "goroutines": 33}
+{"timestamp": "2026-02-03T14:02:23.853Z", "level": "WARN", "service": "ingest", "message": "Retry triggered", "value": 368, "threshold": 1000, "trace_id": "t-41544", "user_id": "u06"}
+{"timestamp": "2026-02-03T14:03:22.514Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 40, "mem_pct": 78, "heap_mb": 888, "goroutines": 70}
+{"timestamp": "2026-02-03T14:04:15.381Z", "level": "WARN", "service": "db", "message": "Retry triggered", "value": 1406, "threshold": 1000, "trace_id": "t-27455", "user_id": "u09"}
+{"timestamp": "2026-02-03T14:04:32.335Z", "level": "INFO", "service": "db", "message": "Cache hit", "trace_id": "t-76510", "user_id": "u13", "duration_ms": 348, "status": "ok"}
+{"timestamp": "2026-02-03T14:05:39.651Z", "level": "INFO", "service": "worker", "message": "Metric submitted", "trace_id": "t-84868", "user_id": "u09", "duration_ms": 25, "status": "ok"}
+{"timestamp": "2026-02-03T14:06:23.403Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "SELECT * FROM tracks WHERE id=?", "duration_ms": 65, "rows": 274, "cached": false, "trace_id": "t-16105"}
+{"timestamp": "2026-02-03T14:07:08.235Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "UPDATE tracks SET status=? WHERE id=?", "duration_ms": 85, "rows": 391, "cached": true, "trace_id": "t-26226"}
+{"timestamp": "2026-02-03T14:07:41.917Z", "level": "INFO", "service": "api", "message": "Metric submitted", "trace_id": "t-41544", "user_id": "u17", "duration_ms": 340, "status": "ok"}
+{"timestamp": "2026-02-03T14:08:35.640Z", "level": "INFO", "service": "api", "message": "Cache hit", "trace_id": "t-33688", "user_id": "u02", "duration_ms": 316, "status": "ok"}
+{"timestamp": "2026-02-03T14:09:27.022Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 21, "mem_pct": 82, "heap_mb": 1230, "goroutines": 16}
+{"timestamp": "2026-02-03T14:09:48.546Z", "level": "INFO", "service": "api", "message": "Metric submitted", "trace_id": "t-82963", "user_id": "u12", "duration_ms": 183, "status": "ok"}
+{"timestamp": "2026-02-03T14:10:44.162Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "INSERT INTO results VALUES(?,?,?)", "duration_ms": 94, "rows": 319, "cached": false, "trace_id": "t-27455"}
+{"timestamp": "2026-02-03T14:11:23.065Z", "level": "WARN", "service": "api", "message": "Queue growing", "value": 492, "threshold": 1000, "trace_id": "t-91134", "user_id": "u08"}
+{"timestamp": "2026-02-03T14:12:40.057Z", "level": "INFO", "service": "worker", "message": "Cache hit", "trace_id": "t-81793", "user_id": "u09", "duration_ms": 6, "status": "ok"}
+{"timestamp": "2026-02-03T14:13:26.504Z", "level": "INFO", "service": "queue", "message": "Metric submitted", "trace_id": "t-47959", "user_id": "u19", "duration_ms": 376, "status": "ok"}
+{"timestamp": "2026-02-03T14:13:45.415Z", "level": "INFO", "service": "worker", "message": "Metric submitted", "trace_id": "t-83972", "user_id": "u01", "duration_ms": 13, "status": "ok"}
+{"timestamp": "2026-02-03T14:14:26.423Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 18, "mem_pct": 21, "heap_mb": 1107, "goroutines": 41}
+{"timestamp": "2026-02-03T14:15:12.910Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "SELECT * FROM tracks WHERE id=?", "duration_ms": 77, "rows": 320, "cached": true, "trace_id": "t-34624"}
+{"timestamp": "2026-02-03T14:16:15.179Z", "level": "ERROR", "service": "api", "message": "Auth rejected", "error_code": "TIMEOUT", "trace_id": "t-26226", "request_id": "r-95921", "retries": 3}
+{"timestamp": "2026-02-03T14:16:44.912Z", "level": "WARN", "service": "auth", "message": "Latency above threshold", "value": 1474, "threshold": 1000, "trace_id": "t-64810", "user_id": "u08"}
+{"timestamp": "2026-02-03T14:17:59.446Z", "level": "INFO", "service": "cache", "message": "Metric submitted", "trace_id": "t-83434", "user_id": "u02", "duration_ms": 348, "status": "ok"}
+{"timestamp": "2026-02-03T14:18:43.173Z", "level": "INFO", "service": "cache", "message": "Metric submitted", "trace_id": "t-41544", "user_id": "u07", "duration_ms": 8, "status": "ok"}
+{"timestamp": "2026-02-03T14:19:01.615Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 46, "mem_pct": 44, "heap_mb": 1892, "goroutines": 89}
+{"timestamp": "2026-02-03T14:19:45.447Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "VACUUM", "duration_ms": 179, "rows": 3, "cached": false, "trace_id": "t-17812"}
+{"timestamp": "2026-02-03T14:20:29.578Z", "level": "INFO", "service": "cache", "message": "Metric submitted", "trace_id": "t-84868", "user_id": "u07", "duration_ms": 40, "status": "ok"}
+{"timestamp": "2026-02-03T14:21:10.353Z", "level": "INFO", "service": "worker", "message": "Metric submitted", "trace_id": "t-61750", "user_id": "u01", "duration_ms": 83, "status": "ok"}
+{"timestamp": "2026-02-03T14:21:54.069Z", "level": "INFO", "service": "api", "message": "Request processed", "trace_id": "t-29772", "user_id": "u02", "duration_ms": 357, "status": "ok"}
+{"timestamp": "2026-02-03T14:22:32.252Z", "level": "ERROR", "service": "auth", "message": "Timeout", "error_code": "TIMEOUT", "trace_id": "t-22770", "request_id": "r-60311", "retries": 0}
+{"timestamp": "2026-02-03T14:23:28.646Z", "level": "INFO", "service": "db", "message": "Request processed", "trace_id": "t-22337", "user_id": "u02", "duration_ms": 385, "status": "ok"}
+{"timestamp": "2026-02-03T14:24:40.326Z", "level": "INFO", "service": "cache", "message": "Job complete", "trace_id": "t-85642", "user_id": "u04", "duration_ms": 151, "status": "ok"}
+{"timestamp": "2026-02-03T14:25:06.732Z", "level": "INFO", "service": "scheduler", "message": "Cache hit", "trace_id": "t-64810", "user_id": "u01", "duration_ms": 25, "status": "ok"}
+{"timestamp": "2026-02-03T14:25:53.422Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "UPDATE tracks SET status=? WHERE id=?", "duration_ms": 159, "rows": 381, "cached": true, "trace_id": "t-86231"}
+{"timestamp": "2026-02-03T14:26:16.579Z", "level": "INFO", "service": "scheduler", "message": "Request processed", "trace_id": "t-16499", "user_id": "u04", "duration_ms": 276, "status": "ok"}
+{"timestamp": "2026-02-03T14:27:13.206Z", "level": "INFO", "service": "auth", "message": "Request processed", "trace_id": "t-82963", "user_id": "u10", "duration_ms": 269, "status": "ok"}
+{"timestamp": "2026-02-03T14:28:03.990Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "DELETE FROM sessions WHERE ts<?", "duration_ms": 178, "rows": 407, "cached": false, "trace_id": "t-52445"}
+{"timestamp": "2026-02-03T14:29:01.834Z", "level": "INFO", "service": "queue", "message": "Job complete", "trace_id": "t-58810", "user_id": "u17", "duration_ms": 146, "status": "ok"}
+{"timestamp": "2026-02-03T14:29:28.806Z", "level": "INFO", "service": "db", "message": "Request processed", "trace_id": "t-86748", "user_id": "u06", "duration_ms": 252, "status": "ok"}
+{"timestamp": "2026-02-03T14:30:44.913Z", "level": "INFO", "service": "auth", "message": "Session refreshed", "trace_id": "t-28907", "user_id": "u11", "duration_ms": 203, "status": "ok"}
+{"timestamp": "2026-02-03T14:30:50.438Z", "level": "INFO", "service": "scheduler", "message": "Cache hit", "trace_id": "t-18229", "user_id": "u01", "duration_ms": 135, "status": "ok"}
+{"timestamp": "2026-02-03T14:32:04.534Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 21, "mem_pct": 24, "heap_mb": 1727, "goroutines": 88}
+{"timestamp": "2026-02-03T14:32:24.593Z", "level": "ERROR", "service": "ingest", "message": "Timeout", "error_code": "RATE_LIMIT", "trace_id": "t-25439", "request_id": "r-67514", "retries": 2}
+{"timestamp": "2026-02-03T14:33:14.196Z", "level": "WARN", "service": "worker", "message": "Retry triggered", "value": 2179, "threshold": 1000, "trace_id": "t-65642", "user_id": "u15"}
+{"timestamp": "2026-02-03T14:34:02.164Z", "level": "ERROR", "service": "cache", "message": "Timeout", "error_code": "AUTH_FAIL", "trace_id": "t-23507", "request_id": "r-89022", "retries": 2}
+{"timestamp": "2026-02-03T14:34:45.393Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 18, "mem_pct": 41, "heap_mb": 716, "goroutines": 55}
+{"timestamp": "2026-02-03T14:35:24.653Z", "level": "ERROR", "service": "worker", "message": "Auth rejected", "error_code": "AUTH_FAIL", "trace_id": "t-84868", "request_id": "r-35715", "retries": 0}
+{"timestamp": "2026-02-03T14:36:06.710Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "SELECT * FROM tracks WHERE id=?", "duration_ms": 103, "rows": 437, "cached": false, "trace_id": "t-14914"}
+{"timestamp": "2026-02-03T14:36:59.414Z", "level": "INFO", "service": "cache", "message": "Metric submitted", "trace_id": "t-18108", "user_id": "u01", "duration_ms": 378, "status": "ok"}
+{"timestamp": "2026-02-03T14:37:30.683Z", "level": "WARN", "service": "db", "message": "Queue growing", "value": 1036, "threshold": 1000, "trace_id": "t-17812", "user_id": "u14"}
+{"timestamp": "2026-02-03T14:38:56.320Z", "level": "WARN", "service": "db", "message": "Queue growing", "value": 1871, "threshold": 1000, "trace_id": "t-84830", "user_id": "u06"}
+{"timestamp": "2026-02-03T14:39:16.729Z", "level": "INFO", "service": "auth", "message": "Session refreshed", "trace_id": "t-83972", "user_id": "u14", "duration_ms": 366, "status": "ok"}
+{"timestamp": "2026-02-03T14:40:25.691Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "SELECT * FROM tracks WHERE id=?", "duration_ms": 160, "rows": 439, "cached": false, "trace_id": "t-64810"}
+{"timestamp": "2026-02-03T14:41:12.257Z", "level": "ERROR", "service": "worker", "message": "Auth rejected", "error_code": "RATE_LIMIT", "trace_id": "t-83972", "request_id": "r-23943", "retries": 0}
+{"timestamp": "2026-02-03T14:41:49.734Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "SELECT * FROM tracks WHERE id=?", "duration_ms": 148, "rows": 233, "cached": false, "trace_id": "t-17602"}
+{"timestamp": "2026-02-03T14:42:30.188Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "DELETE FROM sessions WHERE ts<?", "duration_ms": 117, "rows": 107, "cached": false, "trace_id": "t-28907"}
+{"timestamp": "2026-02-03T14:43:10.391Z", "level": "WARN", "service": "auth", "message": "High memory usage", "value": 1223, "threshold": 1000, "trace_id": "t-99391", "user_id": "u12"}
+{"timestamp": "2026-02-03T14:43:55.715Z", "level": "INFO", "service": "api", "message": "Session refreshed", "trace_id": "t-52445", "user_id": "u03", "duration_ms": 322, "status": "ok"}
+{"timestamp": "2026-02-03T14:44:58.410Z", "level": "INFO", "service": "queue", "message": "Cache hit", "trace_id": "t-27455", "user_id": "u09", "duration_ms": 380, "status": "ok"}
+{"timestamp": "2026-02-03T14:45:33.829Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "INSERT INTO results VALUES(?,?,?)", "duration_ms": 34, "rows": 475, "cached": false, "trace_id": "t-93743"}
+{"timestamp": "2026-02-03T14:46:25.479Z", "level": "ERROR", "service": "db", "message": "Timeout", "error_code": "AUTH_FAIL", "trace_id": "t-85642", "request_id": "r-97298", "retries": 3}
+{"timestamp": "2026-02-03T14:46:48.721Z", "level": "INFO", "service": "worker", "message": "Job complete", "trace_id": "t-86231", "user_id": "u16", "duration_ms": 137, "status": "ok"}
+{"timestamp": "2026-02-03T14:47:39.328Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "UPDATE tracks SET status=? WHERE id=?", "duration_ms": 92, "rows": 125, "cached": false, "trace_id": "t-92238"}
+{"timestamp": "2026-02-03T14:48:30.951Z", "level": "WARN", "service": "ingest", "message": "High memory usage", "value": 725, "threshold": 1000, "trace_id": "t-92238", "user_id": "u03"}
+{"timestamp": "2026-02-03T14:49:04.648Z", "level": "INFO", "service": "auth", "message": "Logout", "user_id": "u03", "ip": "10.0.1.136", "mfa": false, "trace_id": "t-95319"}
+{"timestamp": "2026-02-03T14:50:07.300Z", "level": "INFO", "service": "api", "message": "Request processed", "trace_id": "t-25439", "user_id": "u01", "duration_ms": 336, "status": "ok"}
+{"timestamp": "2026-02-03T14:50:31.213Z", "level": "INFO", "service": "auth", "message": "Token issued", "user_id": "u05", "ip": "10.0.3.89", "mfa": true, "trace_id": "t-27455"}
+{"timestamp": "2026-02-03T14:51:25.506Z", "level": "WARN", "service": "worker", "message": "High memory usage", "value": 908, "threshold": 1000, "trace_id": "t-64937", "user_id": "u03"}
+{"timestamp": "2026-02-03T14:52:29.270Z", "level": "ERROR", "service": "db", "message": "Auth rejected", "error_code": "TIMEOUT", "trace_id": "t-16499", "request_id": "r-82753", "retries": 0}
+{"timestamp": "2026-02-03T14:52:56.147Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "VACUUM", "duration_ms": 15, "rows": 247, "cached": false, "trace_id": "t-34624"}
+{"timestamp": "2026-02-03T14:53:59.006Z", "level": "INFO", "service": "ingest", "message": "Metric submitted", "trace_id": "t-66838", "user_id": "u16", "duration_ms": 377, "status": "ok"}
+{"timestamp": "2026-02-03T14:54:10.983Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "UPDATE tracks SET status=? WHERE id=?", "duration_ms": 120, "rows": 191, "cached": false, "trace_id": "t-18108"}
+{"timestamp": "2026-02-03T14:55:28.624Z", "level": "WARN", "service": "auth", "message": "Latency above threshold", "value": 184, "threshold": 1000, "trace_id": "t-76510", "user_id": "u12"}
+{"timestamp": "2026-02-03T14:55:32.425Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "DELETE FROM sessions WHERE ts<?", "duration_ms": 37, "rows": 17, "cached": true, "trace_id": "t-93743"}
+{"timestamp": "2026-02-03T14:56:55.290Z", "level": "INFO", "service": "auth", "message": "Logout", "user_id": "u04", "ip": "10.0.2.122", "mfa": true, "trace_id": "t-65642"}
+{"timestamp": "2026-02-03T14:57:27.413Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "UPDATE tracks SET status=? WHERE id=?", "duration_ms": 75, "rows": 181, "cached": false, "trace_id": "t-92238"}
+{"timestamp": "2026-02-03T14:58:06.504Z", "level": "INFO", "service": "cache", "message": "Job complete", "trace_id": "t-81793", "user_id": "u17", "duration_ms": 336, "status": "ok"}
+{"timestamp": "2026-02-03T14:58:37.996Z", "level": "WARN", "service": "queue", "message": "Retry triggered", "value": 2502, "threshold": 1000, "trace_id": "t-38140", "user_id": "u11"}
+{"timestamp": "2026-02-03T14:59:55.558Z", "level": "INFO", "service": "auth", "message": "Metric submitted", "trace_id": "t-84868", "user_id": "u02", "duration_ms": 208, "status": "ok"}
+{"timestamp": "2026-02-03T15:00:36.841Z", "level": "INFO", "service": "api", "message": "Request processed", "trace_id": "t-39260", "user_id": "u10", "duration_ms": 98, "status": "ok"}
+{"timestamp": "2026-02-03T15:01:15.040Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 53, "mem_pct": 38, "heap_mb": 639, "goroutines": 59}
+{"timestamp": "2026-02-03T15:02:12.431Z", "level": "INFO", "service": "ingest", "message": "Job complete", "trace_id": "t-28907", "user_id": "u06", "duration_ms": 19, "status": "ok"}
+{"timestamp": "2026-02-03T15:02:21.035Z", "level": "ERROR", "service": "api", "message": "Constraint violation", "error_code": "AUTH_FAIL", "trace_id": "t-84115", "request_id": "r-34219", "retries": 3}
+{"timestamp": "2026-02-03T15:03:20.581Z", "level": "WARN", "service": "api", "message": "Latency above threshold", "value": 2138, "threshold": 1000, "trace_id": "t-92238", "user_id": "u19"}
+{"timestamp": "2026-02-03T15:04:18.014Z", "level": "ERROR", "service": "api", "message": "Auth rejected", "error_code": "RATE_LIMIT", "trace_id": "t-34624", "request_id": "r-68519", "retries": 0}
+{"timestamp": "2026-02-03T15:05:13.104Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 24, "mem_pct": 80, "heap_mb": 1989, "goroutines": 145}
+{"timestamp": "2026-02-03T15:05:20.009Z", "level": "WARN", "service": "ingest", "message": "Queue growing", "value": 119, "threshold": 1000, "trace_id": "t-14914", "user_id": "u05"}
+{"timestamp": "2026-02-03T15:06:43.483Z", "level": "INFO", "service": "auth", "message": "Request processed", "trace_id": "t-22770", "user_id": "u03", "duration_ms": 67, "status": "ok"}
+{"timestamp": "2026-02-03T15:06:46.374Z", "level": "INFO", "service": "cache", "message": "Job complete", "trace_id": "t-99391", "user_id": "u19", "duration_ms": 26, "status": "ok"}
+{"timestamp": "2026-02-03T15:08:14.510Z", "level": "INFO", "service": "worker", "message": "Metric submitted", "trace_id": "t-99391", "user_id": "u03", "duration_ms": 364, "status": "ok"}
+{"timestamp": "2026-02-03T15:08:44.015Z", "level": "WARN", "service": "cache", "message": "Latency above threshold", "value": 348, "threshold": 1000, "trace_id": "t-17812", "user_id": "u02"}
+{"timestamp": "2026-02-03T15:09:41.980Z", "level": "INFO", "service": "auth", "message": "Metric submitted", "trace_id": "t-26226", "user_id": "u10", "duration_ms": 85, "status": "ok"}
+{"timestamp": "2026-02-03T15:10:16.989Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 61, "mem_pct": 80, "heap_mb": 981, "goroutines": 42}
+{"timestamp": "2026-02-03T15:10:37.394Z", "level": "WARN", "service": "queue", "message": "Queue growing", "value": 2053, "threshold": 1000, "trace_id": "t-80868", "user_id": "u06"}
+{"timestamp": "2026-02-03T15:11:43.636Z", "level": "INFO", "service": "cache", "message": "Cache hit", "trace_id": "t-84868", "user_id": "u19", "duration_ms": 32, "status": "ok"}
+{"timestamp": "2026-02-03T15:12:41.385Z", "level": "INFO", "service": "auth", "message": "Logout", "user_id": "u01", "ip": "10.0.4.110", "mfa": true, "trace_id": "t-81793"}
+{"timestamp": "2026-02-03T15:13:09.269Z", "level": "INFO", "service": "auth", "message": "Logout", "user_id": "u08", "ip": "10.0.5.1", "mfa": false, "trace_id": "t-47959"}
+{"timestamp": "2026-02-03T15:13:47.280Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 10, "mem_pct": 56, "heap_mb": 876, "goroutines": 42}
+{"timestamp": "2026-02-03T15:14:50.816Z", "level": "INFO", "service": "ingest", "message": "Metric submitted", "trace_id": "t-17747", "user_id": "u18", "duration_ms": 249, "status": "ok"}
+{"timestamp": "2026-02-03T15:15:24.404Z", "level": "INFO", "service": "db", "message": "Request processed", "trace_id": "t-84868", "user_id": "u08", "duration_ms": 347, "status": "ok"}
+{"timestamp": "2026-02-03T15:16:14.549Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "SELECT * FROM tracks WHERE id=?", "duration_ms": 99, "rows": 235, "cached": false, "trace_id": "t-91134"}
+{"timestamp": "2026-02-03T15:16:52.603Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "UPDATE tracks SET status=? WHERE id=?", "duration_ms": 134, "rows": 164, "cached": false, "trace_id": "t-21265"}
+{"timestamp": "2026-02-03T15:17:27.591Z", "level": "INFO", "service": "db", "message": "Cache hit", "trace_id": "t-14914", "user_id": "u07", "duration_ms": 186, "status": "ok"}
+{"timestamp": "2026-02-03T15:18:36.383Z", "level": "INFO", "service": "auth", "message": "Token issued", "user_id": "u17", "ip": "10.0.0.237", "mfa": false, "trace_id": "t-39260"}
+{"timestamp": "2026-02-03T15:18:51.353Z", "level": "ERROR", "service": "queue", "message": "Timeout", "error_code": "AUTH_FAIL", "trace_id": "t-28907", "request_id": "r-88277", "retries": 0}
+{"timestamp": "2026-02-03T15:19:47.600Z", "level": "INFO", "service": "api", "message": "Metric submitted", "trace_id": "t-80239", "user_id": "u02", "duration_ms": 249, "status": "ok"}
+{"timestamp": "2026-02-03T15:20:51.607Z", "level": "INFO", "service": "db", "message": "Session refreshed", "trace_id": "t-64810", "user_id": "u09", "duration_ms": 393, "status": "ok"}
+{"timestamp": "2026-02-03T15:21:38.085Z", "level": "INFO", "service": "worker", "message": "Job complete", "trace_id": "t-64810", "user_id": "u02", "duration_ms": 194, "status": "ok"}
+{"timestamp": "2026-02-03T15:21:46.969Z", "level": "INFO", "service": "api", "message": "Session refreshed", "trace_id": "t-61750", "user_id": "u18", "duration_ms": 250, "status": "ok"}
+{"timestamp": "2026-02-03T15:22:34.326Z", "level": "WARN", "service": "scheduler", "message": "Latency above threshold", "value": 1153, "threshold": 1000, "trace_id": "t-91134", "user_id": "u04"}
+{"timestamp": "2026-02-03T15:23:51.870Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 69, "mem_pct": 70, "heap_mb": 1048, "goroutines": 119}
+{"timestamp": "2026-02-03T15:24:10.060Z", "level": "INFO", "service": "queue", "message": "Cache hit", "trace_id": "t-66838", "user_id": "u08", "duration_ms": 181, "status": "ok"}
+{"timestamp": "2026-02-03T15:25:20.757Z", "level": "INFO", "service": "api", "message": "Metric submitted", "trace_id": "t-58810", "user_id": "u02", "duration_ms": 364, "status": "ok"}
+{"timestamp": "2026-02-03T15:26:11.693Z", "level": "INFO", "service": "ingest", "message": "Request processed", "trace_id": "t-95319", "user_id": "u04", "duration_ms": 102, "status": "ok"}
+{"timestamp": "2026-02-03T15:26:34.492Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "UPDATE tracks SET status=? WHERE id=?", "duration_ms": 66, "rows": 199, "cached": true, "trace_id": "t-23507"}
+{"timestamp": "2026-02-03T15:27:24.818Z", "level": "INFO", "service": "auth", "message": "User login", "user_id": "u08", "ip": "10.0.3.184", "mfa": true, "trace_id": "t-86414"}
+{"timestamp": "2026-02-03T15:27:47.910Z", "level": "INFO", "service": "worker", "message": "Metric submitted", "trace_id": "t-91134", "user_id": "u08", "duration_ms": 192, "status": "ok"}
+{"timestamp": "2026-02-03T15:28:38.330Z", "level": "INFO", "service": "auth", "message": "User login", "user_id": "u13", "ip": "10.0.3.249", "mfa": false, "trace_id": "t-80239"}
+{"timestamp": "2026-02-03T15:29:29.058Z", "level": "INFO", "service": "ingest", "message": "Job complete", "trace_id": "t-22337", "user_id": "u12", "duration_ms": 377, "status": "ok"}
+{"timestamp": "2026-02-03T15:30:11.428Z", "level": "INFO", "service": "ingest", "message": "Job complete", "trace_id": "t-16105", "user_id": "u05", "duration_ms": 137, "status": "ok"}
+{"timestamp": "2026-02-03T15:31:11.823Z", "level": "INFO", "service": "db", "message": "Cache hit", "trace_id": "t-86387", "user_id": "u01", "duration_ms": 172, "status": "ok"}
+{"timestamp": "2026-02-03T15:31:40.157Z", "level": "INFO", "service": "cache", "message": "Session refreshed", "trace_id": "t-86748", "user_id": "u04", "duration_ms": 59, "status": "ok"}
+{"timestamp": "2026-02-03T15:32:47.993Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "UPDATE tracks SET status=? WHERE id=?", "duration_ms": 31, "rows": 131, "cached": false, "trace_id": "t-28907"}
+{"timestamp": "2026-02-03T15:33:23.917Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 17, "mem_pct": 69, "heap_mb": 1485, "goroutines": 111}
+{"timestamp": "2026-02-03T15:33:55.826Z", "level": "INFO", "service": "api", "message": "Request processed", "trace_id": "t-58810", "user_id": "u10", "duration_ms": 227, "status": "ok"}
+{"timestamp": "2026-02-03T15:35:02.190Z", "level": "INFO", "service": "queue", "message": "Metric submitted", "trace_id": "t-61993", "user_id": "u05", "duration_ms": 147, "status": "ok"}
+{"timestamp": "2026-02-03T15:35:38.141Z", "level": "INFO", "service": "scheduler", "message": "Metric submitted", "trace_id": "t-61750", "user_id": "u14", "duration_ms": 93, "status": "ok"}
+{"timestamp": "2026-02-03T15:36:11.910Z", "level": "INFO", "service": "db", "message": "Request processed", "trace_id": "t-83434", "user_id": "u06", "duration_ms": 45, "status": "ok"}
+{"timestamp": "2026-02-03T15:37:23.685Z", "level": "INFO", "service": "ingest", "message": "Job complete", "trace_id": "t-23507", "user_id": "u09", "duration_ms": 314, "status": "ok"}
+{"timestamp": "2026-02-03T15:38:10.750Z", "level": "INFO", "service": "db", "message": "Request processed", "trace_id": "t-27455", "user_id": "u10", "duration_ms": 355, "status": "ok"}
+{"timestamp": "2026-02-03T15:38:48.885Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "UPDATE tracks SET status=? WHERE id=?", "duration_ms": 86, "rows": 144, "cached": false, "trace_id": "t-58810"}
+{"timestamp": "2026-02-03T15:39:31.190Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 66, "mem_pct": 37, "heap_mb": 1390, "goroutines": 68}
+{"timestamp": "2026-02-03T15:40:21.532Z", "level": "WARN", "service": "queue", "message": "Latency above threshold", "value": 1558, "threshold": 1000, "trace_id": "t-61750", "user_id": "u06"}
+{"timestamp": "2026-02-03T15:40:58.590Z", "level": "WARN", "service": "auth", "message": "High memory usage", "value": 1662, "threshold": 1000, "trace_id": "t-22337", "user_id": "u12"}
+{"timestamp": "2026-02-03T15:41:18.543Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 68, "mem_pct": 77, "heap_mb": 2402, "goroutines": 11}
+{"timestamp": "2026-02-03T15:42:34.319Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 33, "mem_pct": 43, "heap_mb": 987, "goroutines": 31}
+{"timestamp": "2026-02-03T15:43:01.535Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 29, "mem_pct": 53, "heap_mb": 372, "goroutines": 123}
+{"timestamp": "2026-02-03T15:43:45.476Z", "level": "INFO", "service": "auth", "message": "Token issued", "user_id": "u12", "ip": "10.0.0.70", "mfa": true, "trace_id": "t-80239"}
+{"timestamp": "2026-02-03T15:44:46.606Z", "level": "INFO", "service": "cache", "message": "Job complete", "trace_id": "t-22337", "user_id": "u04", "duration_ms": 278, "status": "ok"}
+{"timestamp": "2026-02-03T15:45:14.960Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "DELETE FROM sessions WHERE ts<?", "duration_ms": 43, "rows": 485, "cached": false, "trace_id": "t-86387"}
+{"timestamp": "2026-02-03T15:46:25.963Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "VACUUM", "duration_ms": 135, "rows": 18, "cached": false, "trace_id": "t-50433"}
+{"timestamp": "2026-02-03T15:46:33.446Z", "level": "INFO", "service": "queue", "message": "Cache hit", "trace_id": "t-65642", "user_id": "u13", "duration_ms": 367, "status": "ok"}
+{"timestamp": "2026-02-03T15:47:51.980Z", "level": "INFO", "service": "auth", "message": "User login", "user_id": "u13", "ip": "10.0.2.133", "mfa": true, "trace_id": "t-34624"}
+{"timestamp": "2026-02-03T15:48:43.111Z", "level": "WARN", "service": "queue", "message": "Latency above threshold", "value": 1592, "threshold": 1000, "trace_id": "t-66838", "user_id": "u14"}
+{"timestamp": "2026-02-03T15:49:18.021Z", "level": "INFO", "service": "worker", "message": "Metric submitted", "trace_id": "t-16328", "user_id": "u11", "duration_ms": 343, "status": "ok"}
+{"timestamp": "2026-02-03T15:49:44.886Z", "level": "ERROR", "service": "worker", "message": "Auth rejected", "error_code": "TIMEOUT", "trace_id": "t-92657", "request_id": "r-15277", "retries": 0}
+{"timestamp": "2026-02-03T15:50:56.102Z", "level": "WARN", "service": "cache", "message": "Latency above threshold", "value": 2644, "threshold": 1000, "trace_id": "t-17812", "user_id": "u09"}
+{"timestamp": "2026-02-03T15:51:16.115Z", "level": "INFO", "service": "auth", "message": "Request processed", "trace_id": "t-16499", "user_id": "u01", "duration_ms": 148, "status": "ok"}
+{"timestamp": "2026-02-03T15:52:04.923Z", "level": "INFO", "service": "queue", "message": "Metric submitted", "trace_id": "t-80868", "user_id": "u06", "duration_ms": 264, "status": "ok"}
+{"timestamp": "2026-02-03T15:52:47.906Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "INSERT INTO results VALUES(?,?,?)", "duration_ms": 113, "rows": 63, "cached": false, "trace_id": "t-18108"}
+{"timestamp": "2026-02-03T15:53:33.559Z", "level": "INFO", "service": "scheduler", "message": "Request processed", "trace_id": "t-82963", "user_id": "u10", "duration_ms": 380, "status": "ok"}
+{"timestamp": "2026-02-03T15:54:18.561Z", "level": "INFO", "service": "ingest", "message": "Session refreshed", "trace_id": "t-64937", "user_id": "u19", "duration_ms": 104, "status": "ok"}
+{"timestamp": "2026-02-03T15:55:08.838Z", "level": "INFO", "service": "ingest", "message": "Session refreshed", "trace_id": "t-83972", "user_id": "u18", "duration_ms": 241, "status": "ok"}
+{"timestamp": "2026-02-03T15:55:49.392Z", "level": "INFO", "service": "api", "message": "Metric submitted", "trace_id": "t-66838", "user_id": "u11", "duration_ms": 280, "status": "ok"}
+{"timestamp": "2026-02-03T15:56:52.570Z", "level": "INFO", "service": "scheduler", "message": "Job complete", "trace_id": "t-52445", "user_id": "u12", "duration_ms": 166, "status": "ok"}
+{"timestamp": "2026-02-03T15:57:20.162Z", "level": "INFO", "service": "auth", "message": "Token issued", "user_id": "u10", "ip": "10.0.2.15", "mfa": true, "trace_id": "t-19156"}
+{"timestamp": "2026-02-03T15:58:20.397Z", "level": "INFO", "service": "auth", "message": "Request processed", "trace_id": "t-47959", "user_id": "u12", "duration_ms": 265, "status": "ok"}
+{"timestamp": "2026-02-03T15:58:58.143Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "INSERT INTO results VALUES(?,?,?)", "duration_ms": 107, "rows": 172, "cached": false, "trace_id": "t-33688"}
+{"timestamp": "2026-02-03T15:59:58.275Z", "level": "INFO", "service": "auth", "message": "User login", "user_id": "u09", "ip": "10.0.5.220", "mfa": false, "trace_id": "t-64937"}
+{"timestamp": "2026-02-03T16:00:40.120Z", "level": "INFO", "service": "worker", "message": "Metric submitted", "trace_id": "t-92657", "user_id": "u04", "duration_ms": 300, "status": "ok"}
+{"timestamp": "2026-02-03T16:01:16.621Z", "level": "INFO", "service": "scheduler", "message": "Cache hit", "trace_id": "t-82963", "user_id": "u05", "duration_ms": 319, "status": "ok"}
+{"timestamp": "2026-02-03T16:01:37.299Z", "level": "WARN", "service": "scheduler", "message": "High memory usage", "value": 1544, "threshold": 1000, "trace_id": "t-22770", "user_id": "u15"}
+{"timestamp": "2026-02-03T16:02:37.511Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "UPDATE tracks SET status=? WHERE id=?", "duration_ms": 2, "rows": 402, "cached": false, "trace_id": "t-16499"}
+{"timestamp": "2026-02-03T16:03:24.237Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "INSERT INTO results VALUES(?,?,?)", "duration_ms": 112, "rows": 294, "cached": false, "trace_id": "t-21889"}
+{"timestamp": "2026-02-03T16:03:50.048Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 31, "mem_pct": 74, "heap_mb": 343, "goroutines": 11}
+{"timestamp": "2026-02-03T16:04:46.366Z", "level": "ERROR", "service": "ingest", "message": "Auth rejected", "error_code": "RATE_LIMIT", "trace_id": "t-21889", "request_id": "r-61054", "retries": 3}
+{"timestamp": "2026-02-03T16:05:17.419Z", "level": "WARN", "service": "queue", "message": "Retry triggered", "value": 505, "threshold": 1000, "trace_id": "t-86414", "user_id": "u01"}
+{"timestamp": "2026-02-03T16:06:23.411Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 24, "mem_pct": 44, "heap_mb": 2025, "goroutines": 129}
+{"timestamp": "2026-02-03T16:07:13.375Z", "level": "ERROR", "service": "queue", "message": "Upstream failure", "error_code": "DB_ERR", "trace_id": "t-50433", "request_id": "r-57542", "retries": 2}
+{"timestamp": "2026-02-03T16:07:34.351Z", "level": "INFO", "service": "cache", "message": "Cache hit", "trace_id": "t-61993", "user_id": "u06", "duration_ms": 354, "status": "ok"}
+{"timestamp": "2026-02-03T16:08:47.422Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "VACUUM", "duration_ms": 54, "rows": 258, "cached": false, "trace_id": "t-28907"}
+{"timestamp": "2026-02-03T16:09:11.646Z", "level": "WARN", "service": "api", "message": "High memory usage", "value": 2434, "threshold": 1000, "trace_id": "t-28907", "user_id": "u19"}
+{"timestamp": "2026-02-03T16:10:25.727Z", "level": "INFO", "service": "api", "message": "Request processed", "trace_id": "t-50433", "user_id": "u14", "duration_ms": 158, "status": "ok"}
+{"timestamp": "2026-02-03T16:11:14.015Z", "level": "INFO", "service": "api", "message": "Request processed", "trace_id": "t-17812", "user_id": "u10", "duration_ms": 301, "status": "ok"}
+{"timestamp": "2026-02-03T16:11:57.917Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "VACUUM", "duration_ms": 146, "rows": 136, "cached": false, "trace_id": "t-38140"}
+{"timestamp": "2026-02-03T16:12:34.160Z", "level": "INFO", "service": "worker", "message": "Request processed", "trace_id": "t-82963", "user_id": "u07", "duration_ms": 75, "status": "ok"}
+{"timestamp": "2026-02-03T16:13:18.842Z", "level": "INFO", "service": "auth", "message": "Metric submitted", "trace_id": "t-29772", "user_id": "u04", "duration_ms": 252, "status": "ok"}
+{"timestamp": "2026-02-03T16:13:59.732Z", "level": "WARN", "service": "scheduler", "message": "High memory usage", "value": 689, "threshold": 1000, "trace_id": "t-93743", "user_id": "u02"}
+{"timestamp": "2026-02-03T16:14:30.064Z", "level": "INFO", "service": "queue", "message": "Request processed", "trace_id": "t-19156", "user_id": "u06", "duration_ms": 299, "status": "ok"}
+{"timestamp": "2026-02-03T16:15:22.596Z", "level": "INFO", "service": "db", "message": "Job complete", "trace_id": "t-86414", "user_id": "u13", "duration_ms": 203, "status": "ok"}
+{"timestamp": "2026-02-03T16:15:47.953Z", "level": "INFO", "service": "ingest", "message": "Request processed", "trace_id": "t-95319", "user_id": "u08", "duration_ms": 82, "status": "ok"}
+{"timestamp": "2026-02-03T16:17:07.983Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 63, "mem_pct": 58, "heap_mb": 2013, "goroutines": 69}
+{"timestamp": "2026-02-03T16:17:46.316Z", "level": "WARN", "service": "auth", "message": "Retry triggered", "value": 1793, "threshold": 1000, "trace_id": "t-66838", "user_id": "u13"}
+{"timestamp": "2026-02-03T16:18:25.388Z", "level": "INFO", "service": "ingest", "message": "Job complete", "trace_id": "t-29772", "user_id": "u08", "duration_ms": 184, "status": "ok"}
+{"timestamp": "2026-02-03T16:18:56.343Z", "level": "INFO", "service": "api", "message": "Cache hit", "trace_id": "t-18229", "user_id": "u10", "duration_ms": 59, "status": "ok"}
+{"timestamp": "2026-02-03T16:20:04.845Z", "level": "WARN", "service": "scheduler", "message": "Latency above threshold", "value": 1829, "threshold": 1000, "trace_id": "t-65642", "user_id": "u13"}
+{"timestamp": "2026-02-03T16:20:37.680Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "UPDATE tracks SET status=? WHERE id=?", "duration_ms": 61, "rows": 223, "cached": true, "trace_id": "t-26226"}
+{"timestamp": "2026-02-03T16:21:01.201Z", "level": "INFO", "service": "queue", "message": "Job complete", "trace_id": "t-93743", "user_id": "u05", "duration_ms": 48, "status": "ok"}
+{"timestamp": "2026-02-03T16:22:02.739Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "INSERT INTO results VALUES(?,?,?)", "duration_ms": 41, "rows": 188, "cached": false, "trace_id": "t-16105"}
+{"timestamp": "2026-02-03T16:22:55.209Z", "level": "INFO", "service": "scheduler", "message": "Session refreshed", "trace_id": "t-28907", "user_id": "u19", "duration_ms": 259, "status": "ok"}
+{"timestamp": "2026-02-03T16:23:29.252Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 38, "mem_pct": 76, "heap_mb": 1807, "goroutines": 141}
+{"timestamp": "2026-02-03T16:24:25.872Z", "level": "WARN", "service": "db", "message": "Latency above threshold", "value": 2322, "threshold": 1000, "trace_id": "t-57931", "user_id": "u04"}
+{"timestamp": "2026-02-03T16:25:02.727Z", "level": "INFO", "service": "scheduler", "message": "Request processed", "trace_id": "t-29772", "user_id": "u19", "duration_ms": 200, "status": "ok"}
+{"timestamp": "2026-02-03T16:25:35.575Z", "level": "INFO", "service": "worker", "message": "Request processed", "trace_id": "t-86231", "user_id": "u08", "duration_ms": 35, "status": "ok"}
+{"timestamp": "2026-02-03T16:26:38.295Z", "level": "WARN", "service": "cache", "message": "Latency above threshold", "value": 1027, "threshold": 1000, "trace_id": "t-38140", "user_id": "u03"}
+{"timestamp": "2026-02-03T16:27:08.643Z", "level": "INFO", "service": "scheduler", "message": "Session refreshed", "trace_id": "t-41544", "user_id": "u12", "duration_ms": 397, "status": "ok"}
+{"timestamp": "2026-02-03T16:28:25.818Z", "level": "INFO", "service": "worker", "message": "Cache hit", "trace_id": "t-91134", "user_id": "u09", "duration_ms": 348, "status": "ok"}
+{"timestamp": "2026-02-03T16:29:12.867Z", "level": "INFO", "service": "queue", "message": "Session refreshed", "trace_id": "t-83972", "user_id": "u14", "duration_ms": 128, "status": "ok"}
+{"timestamp": "2026-02-03T16:29:40.934Z", "level": "INFO", "service": "queue", "message": "Request processed", "trace_id": "t-83972", "user_id": "u04", "duration_ms": 139, "status": "ok"}
+{"timestamp": "2026-02-03T16:30:38.441Z", "level": "INFO", "service": "db", "message": "Metric submitted", "trace_id": "t-83434", "user_id": "u02", "duration_ms": 83, "status": "ok"}
+{"timestamp": "2026-02-03T16:30:57.583Z", "level": "ERROR", "service": "cache", "message": "Constraint violation", "error_code": "DB_ERR", "trace_id": "t-86387", "request_id": "r-83996", "retries": 1}
+{"timestamp": "2026-02-03T16:32:01.114Z", "level": "WARN", "service": "cache", "message": "High memory usage", "value": 103, "threshold": 1000, "trace_id": "t-91134", "user_id": "u14"}
+{"timestamp": "2026-02-03T16:32:56.038Z", "level": "INFO", "service": "auth", "message": "User login", "user_id": "u02", "ip": "10.0.1.175", "mfa": true, "trace_id": "t-83972"}
+{"timestamp": "2026-02-03T16:33:20.287Z", "level": "ERROR", "service": "db", "message": "Upstream failure", "error_code": "RATE_LIMIT", "trace_id": "t-86231", "request_id": "r-61594", "retries": 1}
+{"timestamp": "2026-02-03T16:34:18.515Z", "level": "INFO", "service": "auth", "message": "Cache hit", "trace_id": "t-17747", "user_id": "u14", "duration_ms": 355, "status": "ok"}
+{"timestamp": "2026-02-03T16:35:14.689Z", "level": "WARN", "service": "ingest", "message": "Retry triggered", "value": 1854, "threshold": 1000, "trace_id": "t-61993", "user_id": "u02"}
+{"timestamp": "2026-02-03T16:35:47.178Z", "level": "INFO", "service": "worker", "message": "Metric submitted", "trace_id": "t-86748", "user_id": "u07", "duration_ms": 134, "status": "ok"}
+{"timestamp": "2026-02-03T16:36:34.421Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "INSERT INTO results VALUES(?,?,?)", "duration_ms": 16, "rows": 86, "cached": false, "trace_id": "t-86231"}
+{"timestamp": "2026-02-03T16:36:50.494Z", "level": "INFO", "service": "db", "message": "Session refreshed", "trace_id": "t-28907", "user_id": "u10", "duration_ms": 344, "status": "ok"}
+{"timestamp": "2026-02-03T16:37:45.359Z", "level": "WARN", "service": "db", "message": "Retry triggered", "value": 2725, "threshold": 1000, "trace_id": "t-52445", "user_id": "u17"}
+{"timestamp": "2026-02-03T16:38:59.561Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "INSERT INTO results VALUES(?,?,?)", "duration_ms": 86, "rows": 322, "cached": false, "trace_id": "t-57931"}
+{"timestamp": "2026-02-03T16:39:27.706Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "DELETE FROM sessions WHERE ts<?", "duration_ms": 104, "rows": 425, "cached": true, "trace_id": "t-84830"}
+{"timestamp": "2026-02-03T16:40:03.311Z", "level": "INFO", "service": "api", "message": "Request processed", "trace_id": "t-84115", "user_id": "u16", "duration_ms": 144, "status": "ok"}
+{"timestamp": "2026-02-03T16:40:42.332Z", "level": "INFO", "service": "auth", "message": "Request processed", "trace_id": "t-50433", "user_id": "u10", "duration_ms": 83, "status": "ok"}
+{"timestamp": "2026-02-03T16:41:43.046Z", "level": "INFO", "service": "ingest", "message": "Metric submitted", "trace_id": "t-82963", "user_id": "u12", "duration_ms": 37, "status": "ok"}
+{"timestamp": "2026-02-03T16:42:00.577Z", "level": "INFO", "service": "ingest", "message": "Cache hit", "trace_id": "t-23507", "user_id": "u16", "duration_ms": 379, "status": "ok"}
+{"timestamp": "2026-02-03T16:43:01.367Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 67, "mem_pct": 44, "heap_mb": 1618, "goroutines": 7}
+{"timestamp": "2026-02-03T16:43:35.765Z", "level": "WARN", "service": "cache", "message": "Latency above threshold", "value": 667, "threshold": 1000, "trace_id": "t-28907", "user_id": "u09"}
+{"timestamp": "2026-02-03T16:44:16.104Z", "level": "INFO", "service": "auth", "message": "Logout", "user_id": "u13", "ip": "10.0.2.48", "mfa": true, "trace_id": "t-86231"}
+{"timestamp": "2026-02-03T16:45:19.235Z", "level": "WARN", "service": "queue", "message": "High memory usage", "value": 1411, "threshold": 1000, "trace_id": "t-26226", "user_id": "u06"}
+{"timestamp": "2026-02-03T16:46:08.109Z", "level": "INFO", "service": "auth", "message": "Logout", "user_id": "u12", "ip": "10.0.1.15", "mfa": true, "trace_id": "t-16105"}
+{"timestamp": "2026-02-03T16:47:06.306Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 68, "mem_pct": 74, "heap_mb": 2346, "goroutines": 45}
+{"timestamp": "2026-02-03T16:47:53.993Z", "level": "INFO", "service": "auth", "message": "Session refreshed", "trace_id": "t-86387", "user_id": "u08", "duration_ms": 327, "status": "ok"}
+{"timestamp": "2026-02-03T16:48:25.625Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "INSERT INTO results VALUES(?,?,?)", "duration_ms": 96, "rows": 1, "cached": true, "trace_id": "t-61750"}
+{"timestamp": "2026-02-03T16:49:17.727Z", "level": "INFO", "service": "scheduler", "message": "Request processed", "trace_id": "t-86387", "user_id": "u10", "duration_ms": 264, "status": "ok"}
+{"timestamp": "2026-02-03T16:49:56.168Z", "level": "INFO", "service": "queue", "message": "Job complete", "trace_id": "t-16328", "user_id": "u15", "duration_ms": 372, "status": "ok"}
+{"timestamp": "2026-02-03T16:50:39.087Z", "level": "INFO", "service": "auth", "message": "Logout", "user_id": "u15", "ip": "10.0.4.51", "mfa": false, "trace_id": "t-52445"}
+{"timestamp": "2026-02-03T16:51:34.886Z", "level": "INFO", "service": "queue", "message": "Metric submitted", "trace_id": "t-16499", "user_id": "u15", "duration_ms": 321, "status": "ok"}
+{"timestamp": "2026-02-03T16:51:54.623Z", "level": "INFO", "service": "auth", "message": "User login", "user_id": "u03", "ip": "10.0.5.174", "mfa": false, "trace_id": "t-47959"}
+{"timestamp": "2026-02-03T16:53:12.672Z", "level": "INFO", "service": "cache", "message": "Cache hit", "trace_id": "t-82963", "user_id": "u19", "duration_ms": 247, "status": "ok"}
+{"timestamp": "2026-02-03T16:53:56.458Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "SELECT * FROM tracks WHERE id=?", "duration_ms": 49, "rows": 113, "cached": false, "trace_id": "t-21889"}
+{"timestamp": "2026-02-03T16:54:44.368Z", "level": "INFO", "service": "auth", "message": "Metric submitted", "trace_id": "t-86387", "user_id": "u19", "duration_ms": 214, "status": "ok"}
+{"timestamp": "2026-02-03T16:55:18.184Z", "level": "INFO", "service": "db", "message": "Request processed", "trace_id": "t-82963", "user_id": "u15", "duration_ms": 117, "status": "ok"}
+{"timestamp": "2026-02-03T16:55:42.686Z", "level": "WARN", "service": "auth", "message": "Retry triggered", "value": 2274, "threshold": 1000, "trace_id": "t-21265", "user_id": "u09"}
+{"timestamp": "2026-02-03T16:56:31.525Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "VACUUM", "duration_ms": 147, "rows": 356, "cached": true, "trace_id": "t-21265"}
+{"timestamp": "2026-02-03T16:57:37.884Z", "level": "WARN", "service": "auth", "message": "Queue growing", "value": 650, "threshold": 1000, "trace_id": "t-22770", "user_id": "u14"}
+{"timestamp": "2026-02-03T16:58:17.175Z", "level": "INFO", "service": "auth", "message": "Session refreshed", "trace_id": "t-28907", "user_id": "u17", "duration_ms": 279, "status": "ok"}
+{"timestamp": "2026-02-03T16:58:42.414Z", "level": "INFO", "service": "ingest", "message": "Metric submitted", "trace_id": "t-86231", "user_id": "u03", "duration_ms": 30, "status": "ok"}
+{"timestamp": "2026-02-03T16:59:30.470Z", "level": "INFO", "service": "api", "message": "Metric submitted", "trace_id": "t-84115", "user_id": "u02", "duration_ms": 110, "status": "ok"}
+{"timestamp": "2026-02-03T17:00:19.893Z", "level": "INFO", "service": "auth", "message": "Request processed", "trace_id": "t-83434", "user_id": "u05", "duration_ms": 319, "status": "ok"}
+{"timestamp": "2026-02-03T17:00:57.753Z", "level": "INFO", "service": "auth", "message": "Cache hit", "trace_id": "t-17812", "user_id": "u12", "duration_ms": 391, "status": "ok"}
+{"timestamp": "2026-02-03T17:02:13.754Z", "level": "INFO", "service": "api", "message": "Cache hit", "trace_id": "t-34624", "user_id": "u09", "duration_ms": 263, "status": "ok"}
+{"timestamp": "2026-02-03T17:02:48.102Z", "level": "INFO", "service": "queue", "message": "Metric submitted", "trace_id": "t-99391", "user_id": "u16", "duration_ms": 181, "status": "ok"}
+{"timestamp": "2026-02-03T17:03:22.362Z", "level": "INFO", "service": "queue", "message": "Job complete", "trace_id": "t-93743", "user_id": "u04", "duration_ms": 131, "status": "ok"}
+{"timestamp": "2026-02-03T17:03:57.113Z", "level": "INFO", "service": "ingest", "message": "Request processed", "trace_id": "t-29772", "user_id": "u19", "duration_ms": 250, "status": "ok"}
+{"timestamp": "2026-02-03T17:04:34.147Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "UPDATE tracks SET status=? WHERE id=?", "duration_ms": 176, "rows": 342, "cached": false, "trace_id": "t-76510"}
+{"timestamp": "2026-02-03T17:05:52.498Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 6, "mem_pct": 23, "heap_mb": 1702, "goroutines": 43}
+{"timestamp": "2026-02-03T17:06:32.863Z", "level": "INFO", "service": "auth", "message": "User login", "user_id": "u02", "ip": "10.0.0.47", "mfa": false, "trace_id": "t-81793"}
+{"timestamp": "2026-02-03T17:07:15.077Z", "level": "INFO", "service": "worker", "message": "Metric submitted", "trace_id": "t-50433", "user_id": "u15", "duration_ms": 265, "status": "ok"}
+{"timestamp": "2026-02-03T17:07:53.639Z", "level": "INFO", "service": "queue", "message": "Job complete", "trace_id": "t-16499", "user_id": "u07", "duration_ms": 302, "status": "ok"}
+{"timestamp": "2026-02-03T17:08:17.321Z", "level": "ERROR", "service": "db", "message": "Constraint violation", "error_code": "RATE_LIMIT", "trace_id": "t-17602", "request_id": "r-60840", "retries": 2}
+{"timestamp": "2026-02-03T17:09:00.470Z", "level": "INFO", "service": "queue", "message": "Request processed", "trace_id": "t-27455", "user_id": "u16", "duration_ms": 128, "status": "ok"}
+{"timestamp": "2026-02-03T17:10:23.065Z", "level": "ERROR", "service": "api", "message": "Timeout", "error_code": "AUTH_FAIL", "trace_id": "t-28907", "request_id": "r-60388", "retries": 2}
+{"timestamp": "2026-02-03T17:11:02.574Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "VACUUM", "duration_ms": 36, "rows": 357, "cached": true, "trace_id": "t-17747"}
+{"timestamp": "2026-02-03T17:11:21.810Z", "level": "WARN", "service": "db", "message": "Latency above threshold", "value": 1586, "threshold": 1000, "trace_id": "t-86231", "user_id": "u14"}
+{"timestamp": "2026-02-03T17:12:18.757Z", "level": "WARN", "service": "db", "message": "High memory usage", "value": 1498, "threshold": 1000, "trace_id": "t-81793", "user_id": "u05"}
+{"timestamp": "2026-02-03T17:13:08.721Z", "level": "WARN", "service": "db", "message": "High memory usage", "value": 347, "threshold": 1000, "trace_id": "t-17747", "user_id": "u18"}
+{"timestamp": "2026-02-03T17:13:51.210Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "INSERT INTO results VALUES(?,?,?)", "duration_ms": 61, "rows": 178, "cached": true, "trace_id": "t-18229"}
+{"timestamp": "2026-02-03T17:14:15.600Z", "level": "INFO", "service": "ingest", "message": "Cache hit", "trace_id": "t-39260", "user_id": "u15", "duration_ms": 87, "status": "ok"}
+{"timestamp": "2026-02-03T17:15:04.674Z", "level": "INFO", "service": "worker", "message": "Metric submitted", "trace_id": "t-21889", "user_id": "u10", "duration_ms": 283, "status": "ok"}
+{"timestamp": "2026-02-03T17:16:06.361Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "SELECT * FROM tracks WHERE id=?", "duration_ms": 150, "rows": 91, "cached": false, "trace_id": "t-17812"}
+{"timestamp": "2026-02-03T17:16:59.282Z", "level": "ERROR", "service": "queue", "message": "Upstream failure", "error_code": "RATE_LIMIT", "trace_id": "t-86231", "request_id": "r-51845", "retries": 1}
+{"timestamp": "2026-02-03T17:17:31.020Z", "level": "WARN", "service": "api", "message": "Retry triggered", "value": 2985, "threshold": 1000, "trace_id": "t-23507", "user_id": "u06"}
+{"timestamp": "2026-02-03T17:18:13.884Z", "level": "INFO", "service": "api", "message": "Metric submitted", "trace_id": "t-39260", "user_id": "u15", "duration_ms": 145, "status": "ok"}
+{"timestamp": "2026-02-03T17:19:17.828Z", "level": "ERROR", "service": "auth", "message": "Timeout", "error_code": "TIMEOUT", "trace_id": "t-38140", "request_id": "r-20395", "retries": 0}
+{"timestamp": "2026-02-03T17:20:06.657Z", "level": "INFO", "service": "queue", "message": "Cache hit", "trace_id": "t-99391", "user_id": "u05", "duration_ms": 275, "status": "ok"}
+{"timestamp": "2026-02-03T17:20:15.027Z", "level": "INFO", "service": "queue", "message": "Cache hit", "trace_id": "t-91134", "user_id": "u01", "duration_ms": 384, "status": "ok"}
+{"timestamp": "2026-02-03T17:21:41.089Z", "level": "INFO", "service": "ingest", "message": "Session refreshed", "trace_id": "t-39260", "user_id": "u11", "duration_ms": 24, "status": "ok"}
+{"timestamp": "2026-02-03T17:22:25.026Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 56, "mem_pct": 52, "heap_mb": 2197, "goroutines": 8}
+{"timestamp": "2026-02-03T17:22:50.095Z", "level": "WARN", "service": "queue", "message": "High memory usage", "value": 741, "threshold": 1000, "trace_id": "t-95319", "user_id": "u14"}
+{"timestamp": "2026-02-03T17:23:16.352Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "SELECT * FROM tracks WHERE id=?", "duration_ms": 92, "rows": 416, "cached": false, "trace_id": "t-14914"}
+{"timestamp": "2026-02-03T17:24:34.832Z", "level": "INFO", "service": "worker", "message": "Metric submitted", "trace_id": "t-25439", "user_id": "u19", "duration_ms": 133, "status": "ok"}
+{"timestamp": "2026-02-03T17:25:15.284Z", "level": "WARN", "service": "api", "message": "Queue growing", "value": 2390, "threshold": 1000, "trace_id": "t-86231", "user_id": "u10"}
+{"timestamp": "2026-02-03T17:25:53.671Z", "level": "INFO", "service": "cache", "message": "Session refreshed", "trace_id": "t-57931", "user_id": "u09", "duration_ms": 52, "status": "ok"}
+{"timestamp": "2026-02-03T17:26:38.639Z", "level": "INFO", "service": "worker", "message": "Request processed", "trace_id": "t-28907", "user_id": "u08", "duration_ms": 15, "status": "ok"}
+{"timestamp": "2026-02-03T17:27:08.374Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "VACUUM", "duration_ms": 47, "rows": 132, "cached": false, "trace_id": "t-95319"}
+{"timestamp": "2026-02-03T17:27:54.510Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "UPDATE tracks SET status=? WHERE id=?", "duration_ms": 63, "rows": 226, "cached": false, "trace_id": "t-81793"}
+{"timestamp": "2026-02-03T17:28:43.015Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "UPDATE tracks SET status=? WHERE id=?", "duration_ms": 7, "rows": 55, "cached": false, "trace_id": "t-83972"}
+{"timestamp": "2026-02-03T17:29:19.419Z", "level": "INFO", "service": "scheduler", "message": "Metric submitted", "trace_id": "t-84830", "user_id": "u12", "duration_ms": 193, "status": "ok"}
+{"timestamp": "2026-02-03T17:30:24.236Z", "level": "INFO", "service": "db", "message": "Session refreshed", "trace_id": "t-29772", "user_id": "u09", "duration_ms": 124, "status": "ok"}
+{"timestamp": "2026-02-03T17:31:07.221Z", "level": "WARN", "service": "db", "message": "High memory usage", "value": 2142, "threshold": 1000, "trace_id": "t-82226", "user_id": "u14"}
+{"timestamp": "2026-02-03T17:32:06.339Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 22, "mem_pct": 58, "heap_mb": 1457, "goroutines": 27}
+{"timestamp": "2026-02-03T17:32:15.979Z", "level": "INFO", "service": "ingest", "message": "Metric submitted", "trace_id": "t-81793", "user_id": "u08", "duration_ms": 306, "status": "ok"}
+{"timestamp": "2026-02-03T17:33:28.186Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 31, "mem_pct": 66, "heap_mb": 489, "goroutines": 117}
+{"timestamp": "2026-02-03T17:34:12.997Z", "level": "WARN", "service": "worker", "message": "Latency above threshold", "value": 722, "threshold": 1000, "trace_id": "t-91134", "user_id": "u10"}
+{"timestamp": "2026-02-03T17:34:30.769Z", "level": "INFO", "service": "worker", "message": "Cache hit", "trace_id": "t-17812", "user_id": "u10", "duration_ms": 50, "status": "ok"}
+{"timestamp": "2026-02-03T17:35:25.940Z", "level": "INFO", "service": "ingest", "message": "Cache hit", "trace_id": "t-84830", "user_id": "u13", "duration_ms": 329, "status": "ok"}
+{"timestamp": "2026-02-03T17:36:42.038Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 9, "mem_pct": 50, "heap_mb": 1124, "goroutines": 8}
+{"timestamp": "2026-02-03T17:36:53.915Z", "level": "WARN", "service": "db", "message": "Latency above threshold", "value": 297, "threshold": 1000, "trace_id": "t-82963", "user_id": "u14"}
+{"timestamp": "2026-02-03T17:37:50.538Z", "level": "INFO", "service": "auth", "message": "Session refreshed", "trace_id": "t-18229", "user_id": "u04", "duration_ms": 70, "status": "ok"}
+{"timestamp": "2026-02-03T17:38:42.755Z", "level": "WARN", "service": "api", "message": "Retry triggered", "value": 2693, "threshold": 1000, "trace_id": "t-76510", "user_id": "u08"}
+{"timestamp": "2026-02-03T17:39:34.873Z", "level": "INFO", "service": "auth", "message": "User login", "user_id": "u12", "ip": "10.0.2.249", "mfa": true, "trace_id": "t-16499"}
+{"timestamp": "2026-02-03T17:39:59.989Z", "level": "INFO", "service": "auth", "message": "Cache hit", "trace_id": "t-19156", "user_id": "u06", "duration_ms": 36, "status": "ok"}
+{"timestamp": "2026-02-03T17:40:32.273Z", "level": "INFO", "service": "db", "message": "Metric submitted", "trace_id": "t-61993", "user_id": "u02", "duration_ms": 186, "status": "ok"}
+{"timestamp": "2026-02-03T17:41:15.338Z", "level": "WARN", "service": "queue", "message": "High memory usage", "value": 2347, "threshold": 1000, "trace_id": "t-50433", "user_id": "u02"}
+{"timestamp": "2026-02-03T17:42:44.429Z", "level": "INFO", "service": "scheduler", "message": "Cache hit", "trace_id": "t-81793", "user_id": "u09", "duration_ms": 277, "status": "ok"}
+{"timestamp": "2026-02-03T17:43:09.948Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 23, "mem_pct": 20, "heap_mb": 1279, "goroutines": 133}
+{"timestamp": "2026-02-03T17:43:46.802Z", "level": "WARN", "service": "scheduler", "message": "Latency above threshold", "value": 2642, "threshold": 1000, "trace_id": "t-66838", "user_id": "u07"}
+{"timestamp": "2026-02-03T17:44:17.684Z", "level": "INFO", "service": "api", "message": "Session refreshed", "trace_id": "t-39260", "user_id": "u18", "duration_ms": 282, "status": "ok"}
+{"timestamp": "2026-02-03T17:45:20.389Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "DELETE FROM sessions WHERE ts<?", "duration_ms": 131, "rows": 175, "cached": false, "trace_id": "t-82963"}
+{"timestamp": "2026-02-03T17:46:00.627Z", "level": "INFO", "service": "scheduler", "message": "Metric submitted", "trace_id": "t-17747", "user_id": "u03", "duration_ms": 137, "status": "ok"}
+{"timestamp": "2026-02-03T17:47:12.930Z", "level": "WARN", "service": "queue", "message": "High memory usage", "value": 1174, "threshold": 1000, "trace_id": "t-16328", "user_id": "u18"}
+{"timestamp": "2026-02-03T17:47:45.541Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "INSERT INTO results VALUES(?,?,?)", "duration_ms": 37, "rows": 33, "cached": false, "trace_id": "t-16499"}
+{"timestamp": "2026-02-03T17:48:23.841Z", "level": "INFO", "service": "auth", "message": "Token issued", "user_id": "u06", "ip": "10.0.5.45", "mfa": true, "trace_id": "t-16499"}
+{"timestamp": "2026-02-03T17:49:27.125Z", "level": "INFO", "service": "ingest", "message": "Cache hit", "trace_id": "t-76510", "user_id": "u02", "duration_ms": 220, "status": "ok"}
+{"timestamp": "2026-02-03T17:49:56.678Z", "level": "INFO", "service": "worker", "message": "Cache hit", "trace_id": "t-50433", "user_id": "u09", "duration_ms": 183, "status": "ok"}
+{"timestamp": "2026-02-03T17:50:48.711Z", "level": "INFO", "service": "cache", "message": "Cache hit", "trace_id": "t-86414", "user_id": "u03", "duration_ms": 229, "status": "ok"}
+{"timestamp": "2026-02-03T17:51:07.375Z", "level": "ERROR", "service": "ingest", "message": "Timeout", "error_code": "DB_ERR", "trace_id": "t-28907", "request_id": "r-10775", "retries": 1}
+{"timestamp": "2026-02-03T17:52:16.000Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "DELETE FROM sessions WHERE ts<?", "duration_ms": 65, "rows": 9, "cached": false, "trace_id": "t-64937"}
+{"timestamp": "2026-02-03T17:53:06.938Z", "level": "INFO", "service": "cache", "message": "Metric submitted", "trace_id": "t-95319", "user_id": "u19", "duration_ms": 141, "status": "ok"}
+{"timestamp": "2026-02-03T17:53:35.879Z", "level": "INFO", "service": "auth", "message": "User login", "user_id": "u09", "ip": "10.0.4.163", "mfa": false, "trace_id": "t-66838"}
+{"timestamp": "2026-02-03T17:54:05.384Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 42, "mem_pct": 67, "heap_mb": 479, "goroutines": 118}
+{"timestamp": "2026-02-03T17:55:08.394Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 60, "mem_pct": 52, "heap_mb": 1743, "goroutines": 66}
+{"timestamp": "2026-02-03T17:56:07.337Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 79, "mem_pct": 67, "heap_mb": 559, "goroutines": 57}
+{"timestamp": "2026-02-03T17:56:19.508Z", "level": "INFO", "service": "auth", "message": "Metric submitted", "trace_id": "t-23507", "user_id": "u15", "duration_ms": 213, "status": "ok"}
+{"timestamp": "2026-02-03T17:57:41.484Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "DELETE FROM sessions WHERE ts<?", "duration_ms": 180, "rows": 429, "cached": false, "trace_id": "t-80239"}
+{"timestamp": "2026-02-03T17:57:56.205Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "VACUUM", "duration_ms": 3, "rows": 343, "cached": true, "trace_id": "t-86414"}
+{"timestamp": "2026-02-03T17:58:55.868Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "DELETE FROM sessions WHERE ts<?", "duration_ms": 118, "rows": 60, "cached": true, "trace_id": "t-91134"}
+{"timestamp": "2026-02-03T17:59:19.465Z", "level": "INFO", "service": "api", "message": "Job complete", "trace_id": "t-80239", "user_id": "u16", "duration_ms": 289, "status": "ok"}
+{"timestamp": "2026-02-03T18:00:03.863Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "SELECT * FROM tracks WHERE id=?", "duration_ms": 141, "rows": 353, "cached": false, "trace_id": "t-83434"}
+{"timestamp": "2026-02-03T18:01:22.530Z", "level": "INFO", "service": "auth", "message": "Token issued", "user_id": "u02", "ip": "10.0.2.86", "mfa": true, "trace_id": "t-92657"}
+{"timestamp": "2026-02-03T18:01:30.879Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "SELECT * FROM tracks WHERE id=?", "duration_ms": 81, "rows": 196, "cached": true, "trace_id": "t-38977"}
+{"timestamp": "2026-02-03T18:02:34.254Z", "level": "WARN", "service": "scheduler", "message": "High memory usage", "value": 1347, "threshold": 1000, "trace_id": "t-61993", "user_id": "u14"}
+{"timestamp": "2026-02-03T18:03:24.053Z", "level": "INFO", "service": "scheduler", "message": "Job complete", "trace_id": "t-22770", "user_id": "u18", "duration_ms": 68, "status": "ok"}
+{"timestamp": "2026-02-03T18:03:58.952Z", "level": "WARN", "service": "queue", "message": "Retry triggered", "value": 1598, "threshold": 1000, "trace_id": "t-91134", "user_id": "u15"}
+{"timestamp": "2026-02-03T18:04:51.545Z", "level": "WARN", "service": "db", "message": "High memory usage", "value": 134, "threshold": 1000, "trace_id": "t-18108", "user_id": "u18"}
+{"timestamp": "2026-02-03T18:05:19.298Z", "level": "INFO", "service": "scheduler", "message": "Job complete", "trace_id": "t-82963", "user_id": "u11", "duration_ms": 225, "status": "ok"}
+{"timestamp": "2026-02-03T18:06:12.208Z", "level": "WARN", "service": "db", "message": "Queue growing", "value": 1922, "threshold": 1000, "trace_id": "t-93743", "user_id": "u19"}
+{"timestamp": "2026-02-03T18:06:58.833Z", "level": "INFO", "service": "auth", "message": "User login", "user_id": "u14", "ip": "10.0.0.36", "mfa": true, "trace_id": "t-76510"}
+{"timestamp": "2026-02-03T18:08:08.690Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 76, "mem_pct": 41, "heap_mb": 2340, "goroutines": 61}
+{"timestamp": "2026-02-03T18:08:58.211Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "INSERT INTO results VALUES(?,?,?)", "duration_ms": 38, "rows": 398, "cached": false, "trace_id": "t-93743"}
+{"timestamp": "2026-02-03T18:09:33.424Z", "level": "INFO", "service": "auth", "message": "Request processed", "trace_id": "t-18108", "user_id": "u04", "duration_ms": 26, "status": "ok"}
+{"timestamp": "2026-02-03T18:09:59.946Z", "level": "WARN", "service": "cache", "message": "Retry triggered", "value": 332, "threshold": 1000, "trace_id": "t-83434", "user_id": "u15"}
+{"timestamp": "2026-02-03T18:11:14.723Z", "level": "INFO", "service": "auth", "message": "Logout", "user_id": "u06", "ip": "10.0.1.224", "mfa": false, "trace_id": "t-61750"}
+{"timestamp": "2026-02-03T18:11:50.968Z", "level": "INFO", "service": "worker", "message": "Job complete", "trace_id": "t-21889", "user_id": "u09", "duration_ms": 78, "status": "ok"}
+{"timestamp": "2026-02-03T18:12:42.298Z", "level": "INFO", "service": "db", "message": "Job complete", "trace_id": "t-39260", "user_id": "u02", "duration_ms": 329, "status": "ok"}
+{"timestamp": "2026-02-03T18:12:59.341Z", "level": "INFO", "service": "auth", "message": "Job complete", "trace_id": "t-38140", "user_id": "u15", "duration_ms": 221, "status": "ok"}
+{"timestamp": "2026-02-03T18:14:13.671Z", "level": "INFO", "service": "auth", "message": "User login", "user_id": "u02", "ip": "10.0.5.237", "mfa": true, "trace_id": "t-22337"}
+{"timestamp": "2026-02-03T18:14:48.205Z", "level": "INFO", "service": "auth", "message": "Session refreshed", "trace_id": "t-41544", "user_id": "u16", "duration_ms": 48, "status": "ok"}
+{"timestamp": "2026-02-03T18:15:31.277Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "VACUUM", "duration_ms": 23, "rows": 103, "cached": true, "trace_id": "t-81793"}
+{"timestamp": "2026-02-03T18:15:59.672Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "SELECT * FROM tracks WHERE id=?", "duration_ms": 89, "rows": 99, "cached": false, "trace_id": "t-61750"}
+{"timestamp": "2026-02-03T18:16:49.337Z", "level": "INFO", "service": "api", "message": "Session refreshed", "trace_id": "t-76510", "user_id": "u11", "duration_ms": 127, "status": "ok"}
+{"timestamp": "2026-02-03T18:17:38.806Z", "level": "INFO", "service": "auth", "message": "Password changed", "user_id": "u10", "ip": "10.0.0.192", "mfa": true, "trace_id": "t-22337"}
+{"timestamp": "2026-02-03T18:18:10.099Z", "level": "INFO", "service": "scheduler", "message": "Metric submitted", "trace_id": "t-18108", "user_id": "u02", "duration_ms": 297, "status": "ok"}
+{"timestamp": "2026-02-03T18:19:11.368Z", "level": "INFO", "service": "auth", "message": "User login", "user_id": "u19", "ip": "10.0.2.187", "mfa": true, "trace_id": "t-92657"}
+{"timestamp": "2026-02-03T18:19:40.096Z", "level": "INFO", "service": "auth", "message": "Password changed", "user_id": "u01", "ip": "10.0.2.39", "mfa": false, "trace_id": "t-65642"}
+{"timestamp": "2026-02-03T18:20:21.251Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "VACUUM", "duration_ms": 139, "rows": 60, "cached": false, "trace_id": "t-22337"}
+{"timestamp": "2026-02-03T18:21:10.413Z", "level": "INFO", "service": "api", "message": "Job complete", "trace_id": "t-61993", "user_id": "u09", "duration_ms": 146, "status": "ok"}
+{"timestamp": "2026-02-03T18:22:20.965Z", "level": "ERROR", "service": "db", "message": "Timeout", "error_code": "TIMEOUT", "trace_id": "t-57931", "request_id": "r-11980", "retries": 0}
+{"timestamp": "2026-02-03T18:22:33.768Z", "level": "INFO", "service": "ingest", "message": "Job complete", "trace_id": "t-84868", "user_id": "u19", "duration_ms": 45, "status": "ok"}
+{"timestamp": "2026-02-03T18:23:25.298Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 59, "mem_pct": 70, "heap_mb": 2422, "goroutines": 33}
+{"timestamp": "2026-02-03T18:24:36.793Z", "level": "INFO", "service": "auth", "message": "Job complete", "trace_id": "t-19494", "user_id": "u19", "duration_ms": 305, "status": "ok"}
+{"timestamp": "2026-02-03T18:25:17.042Z", "level": "INFO", "service": "api", "message": "Cache hit", "trace_id": "t-34624", "user_id": "u08", "duration_ms": 51, "status": "ok"}
+{"timestamp": "2026-02-03T18:25:43.942Z", "level": "INFO", "service": "worker", "message": "Session refreshed", "trace_id": "t-34624", "user_id": "u10", "duration_ms": 304, "status": "ok"}
+{"timestamp": "2026-02-03T18:26:26.751Z", "level": "ERROR", "service": "api", "message": "Upstream failure", "error_code": "TIMEOUT", "trace_id": "t-82226", "request_id": "r-42091", "retries": 1}
+{"timestamp": "2026-02-03T18:27:32.725Z", "level": "ERROR", "service": "worker", "message": "Timeout", "error_code": "DB_ERR", "trace_id": "t-86387", "request_id": "r-38789", "retries": 2}
+{"timestamp": "2026-02-03T18:27:49.337Z", "level": "INFO", "service": "api", "message": "Metric submitted", "trace_id": "t-84868", "user_id": "u16", "duration_ms": 399, "status": "ok"}
+{"timestamp": "2026-02-03T18:28:34.596Z", "level": "INFO", "service": "auth", "message": "Password changed", "user_id": "u02", "ip": "10.0.0.167", "mfa": false, "trace_id": "t-38140"}
+{"timestamp": "2026-02-03T18:29:25.762Z", "level": "INFO", "service": "ingest", "message": "Cache hit", "trace_id": "t-84830", "user_id": "u16", "duration_ms": 28, "status": "ok"}
+{"timestamp": "2026-02-03T18:30:29.069Z", "level": "INFO", "service": "auth", "message": "Logout", "user_id": "u13", "ip": "10.0.5.246", "mfa": true, "trace_id": "t-92238"}
+{"timestamp": "2026-02-03T18:31:01.929Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "VACUUM", "duration_ms": 61, "rows": 449, "cached": false, "trace_id": "t-66838"}
+{"timestamp": "2026-02-03T18:32:13.233Z", "level": "ERROR", "service": "api", "message": "Constraint violation", "error_code": "RATE_LIMIT", "trace_id": "t-39260", "request_id": "r-63246", "retries": 0}
+{"timestamp": "2026-02-03T18:32:56.973Z", "level": "ERROR", "service": "queue", "message": "Upstream failure", "error_code": "AUTH_FAIL", "trace_id": "t-25439", "request_id": "r-74101", "retries": 0}
+{"timestamp": "2026-02-03T18:33:07.343Z", "level": "WARN", "service": "ingest", "message": "Queue growing", "value": 697, "threshold": 1000, "trace_id": "t-92657", "user_id": "u14"}
+{"timestamp": "2026-02-03T18:34:19.033Z", "level": "INFO", "service": "db", "message": "Session refreshed", "trace_id": "t-19494", "user_id": "u12", "duration_ms": 318, "status": "ok"}
+{"timestamp": "2026-02-03T18:34:48.676Z", "level": "INFO", "service": "queue", "message": "Session refreshed", "trace_id": "t-19494", "user_id": "u09", "duration_ms": 209, "status": "ok"}
+{"timestamp": "2026-02-03T18:35:49.842Z", "level": "WARN", "service": "db", "message": "Latency above threshold", "value": 1638, "threshold": 1000, "trace_id": "t-22337", "user_id": "u07"}
+{"timestamp": "2026-02-03T18:36:11.911Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 51, "mem_pct": 41, "heap_mb": 1218, "goroutines": 94}
+{"timestamp": "2026-02-03T18:37:24.193Z", "level": "INFO", "service": "scheduler", "message": "Metric submitted", "trace_id": "t-21889", "user_id": "u16", "duration_ms": 311, "status": "ok"}
+{"timestamp": "2026-02-03T18:37:40.967Z", "level": "INFO", "service": "scheduler", "message": "Job complete", "trace_id": "t-16499", "user_id": "u01", "duration_ms": 54, "status": "ok"}
+{"timestamp": "2026-02-03T18:38:30.682Z", "level": "ERROR", "service": "ingest", "message": "Upstream failure", "error_code": "RATE_LIMIT", "trace_id": "t-82963", "request_id": "r-27699", "retries": 2}
+{"timestamp": "2026-02-03T18:39:26.312Z", "level": "INFO", "service": "auth", "message": "Cache hit", "trace_id": "t-61993", "user_id": "u11", "duration_ms": 186, "status": "ok"}
+{"timestamp": "2026-02-03T18:40:27.058Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 68, "mem_pct": 83, "heap_mb": 1789, "goroutines": 9}
+{"timestamp": "2026-02-03T18:41:13.746Z", "level": "INFO", "service": "auth", "message": "Metric submitted", "trace_id": "t-16105", "user_id": "u13", "duration_ms": 78, "status": "ok"}
+{"timestamp": "2026-02-03T18:41:53.940Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "SELECT * FROM tracks WHERE id=?", "duration_ms": 70, "rows": 73, "cached": true, "trace_id": "t-61750"}
+{"timestamp": "2026-02-03T18:42:36.430Z", "level": "ERROR", "service": "api", "message": "Constraint violation", "error_code": "DB_ERR", "trace_id": "t-39260", "request_id": "r-48164", "retries": 0}
+{"timestamp": "2026-02-03T18:43:20.707Z", "level": "INFO", "service": "auth", "message": "Password changed", "user_id": "u03", "ip": "10.0.3.247", "mfa": false, "trace_id": "t-80868"}
+{"timestamp": "2026-02-03T18:43:47.205Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "SELECT * FROM tracks WHERE id=?", "duration_ms": 137, "rows": 177, "cached": false, "trace_id": "t-17602"}
+{"timestamp": "2026-02-03T18:44:48.994Z", "level": "ERROR", "service": "api", "message": "Timeout", "error_code": "AUTH_FAIL", "trace_id": "t-17602", "request_id": "r-17011", "retries": 2}
+{"timestamp": "2026-02-03T18:45:24.635Z", "level": "INFO", "service": "queue", "message": "Session refreshed", "trace_id": "t-50433", "user_id": "u06", "duration_ms": 102, "status": "ok"}
+{"timestamp": "2026-02-03T18:46:05.327Z", "level": "WARN", "service": "ingest", "message": "High memory usage", "value": 1713, "threshold": 1000, "trace_id": "t-39260", "user_id": "u04"}
+{"timestamp": "2026-02-03T18:46:54.513Z", "level": "INFO", "service": "ingest", "message": "Metric submitted", "trace_id": "t-19156", "user_id": "u04", "duration_ms": 231, "status": "ok"}
+{"timestamp": "2026-02-03T18:47:41.548Z", "level": "INFO", "service": "worker", "message": "Cache hit", "trace_id": "t-86231", "user_id": "u11", "duration_ms": 388, "status": "ok"}
+{"timestamp": "2026-02-03T18:48:30.939Z", "level": "INFO", "service": "scheduler", "message": "Cache hit", "trace_id": "t-23507", "user_id": "u03", "duration_ms": 368, "status": "ok"}
+{"timestamp": "2026-02-03T18:49:10.544Z", "level": "INFO", "service": "cache", "message": "Request processed", "trace_id": "t-22770", "user_id": "u04", "duration_ms": 22, "status": "ok"}
+{"timestamp": "2026-02-03T18:50:14.896Z", "level": "INFO", "service": "cache", "message": "Job complete", "trace_id": "t-17747", "user_id": "u12", "duration_ms": 36, "status": "ok"}
+{"timestamp": "2026-02-03T18:50:50.990Z", "level": "INFO", "service": "auth", "message": "User login", "user_id": "u14", "ip": "10.0.2.43", "mfa": true, "trace_id": "t-23507"}
+{"timestamp": "2026-02-03T18:51:40.401Z", "level": "INFO", "service": "auth", "message": "Cache hit", "trace_id": "t-86231", "user_id": "u13", "duration_ms": 205, "status": "ok"}
+{"timestamp": "2026-02-03T18:52:16.753Z", "level": "WARN", "service": "queue", "message": "Retry triggered", "value": 2278, "threshold": 1000, "trace_id": "t-17747", "user_id": "u06"}
+{"timestamp": "2026-02-03T18:53:03.067Z", "level": "INFO", "service": "scheduler", "message": "Cache hit", "trace_id": "t-25439", "user_id": "u10", "duration_ms": 350, "status": "ok"}
+{"timestamp": "2026-02-03T18:53:41.219Z", "level": "INFO", "service": "auth", "message": "Token issued", "user_id": "u01", "ip": "10.0.4.111", "mfa": false, "trace_id": "t-61993"}
+{"timestamp": "2026-02-03T18:54:36.127Z", "level": "INFO", "service": "cache", "message": "Job complete", "trace_id": "t-84868", "user_id": "u05", "duration_ms": 257, "status": "ok"}
+{"timestamp": "2026-02-03T18:55:03.627Z", "level": "INFO", "service": "auth", "message": "Token issued", "user_id": "u13", "ip": "10.0.5.181", "mfa": false, "trace_id": "t-33688"}
+{"timestamp": "2026-02-03T18:55:47.316Z", "level": "INFO", "service": "auth", "message": "Job complete", "trace_id": "t-86231", "user_id": "u17", "duration_ms": 115, "status": "ok"}
+{"timestamp": "2026-02-03T18:56:21.073Z", "level": "INFO", "service": "metrics", "message": "System snapshot", "cpu_pct": 15, "mem_pct": 66, "heap_mb": 395, "goroutines": 137}
+{"timestamp": "2026-02-03T18:57:07.456Z", "level": "DEBUG", "service": "db", "message": "Query executed", "query": "INSERT INTO results VALUES(?,?,?)", "duration_ms": 115, "rows": 140, "cached": false, "trace_id": "t-14914"}
+{"timestamp": "2026-02-03T18:58:22.644Z", "level": "INFO", "service": "auth", "message": "User login", "user_id": "u18", "ip": "10.0.3.58", "mfa": false, "trace_id": "t-61750"}
+{"timestamp": "2026-02-03T18:58:51.288Z", "level": "INFO", "service": "queue", "message": "Metric submitted", "trace_id": "t-16499", "user_id": "u19", "duration_ms": 107, "status": "ok"}
+{"timestamp": "2026-02-03T18:59:51.434Z", "level": "INFO", "service": "api", "message": "Metric submitted", "trace_id": "t-21265", "user_id": "u06", "duration_ms": 138, "status": "ok"}

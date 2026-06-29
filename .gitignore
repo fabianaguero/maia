@@ -23,8 +23,12 @@ venv/
 
 # Test coverage
 .coverage
+coverage.xml
 htmlcov/
+desktop/coverage/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # IDE
 .vscode/
@@ -32,3 +36,7 @@ htmlcov/
 
 # Build artifacts
 *.zip
+.gstack/
+
+# Local runtime helpers
+.run/

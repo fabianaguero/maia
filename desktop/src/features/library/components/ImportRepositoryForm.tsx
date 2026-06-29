@@ -1,51 +1,61 @@
+import { FolderOpen, GitBranch, ScrollText, Globe } from "lucide-react";
 import type { FormEvent } from "react";
 import { useState } from "react";
 
 import {
   pickRepositoryDirectory,
   pickRepositoryFile,
+  upsertLogSourceConnection,
 } from "../../../api/repositories";
-import type {
-  ImportRepositoryInput,
-  RepositorySourceKind,
-} from "../../../types/library";
+import { useT } from "../../../i18n/I18nContext";
+import type { ImportRepositoryInput, RepositorySourceKind } from "../../../types/library";
+import { Web3Spinner } from "../../../components/Web3Spinner";
 
 interface ImportRepositoryFormProps {
   busy: boolean;
   defaultDirectoryPath?: string;
   onImportRepository: (input: ImportRepositoryInput) => Promise<boolean>;
+  onLogConnectionSaved?: () => void;
 }
-
-const importModes: Array<{
-  id: RepositorySourceKind;
-  label: string;
-  help: string;
-}> = [
-  {
-    id: "directory",
-    label: "Code project",
-    help: "Import a local project directory into a managed Maia snapshot.",
-  },
-  {
-    id: "file",
-    label: "Log file",
-    help: "Import a local log file and derive a musical/operational signal profile.",
-  },
-  {
-    id: "url",
-    label: "GitHub URL",
-    help: "Register a remote repo reference for metadata-only intake.",
-  },
-];
 
 export function ImportRepositoryForm({
   busy,
   defaultDirectoryPath,
   onImportRepository,
+  onLogConnectionSaved,
 }: ImportRepositoryFormProps) {
+  const t = useT();
+  const importModes: Array<{
+    id: RepositorySourceKind;
+    label: string;
+    help: string;
+    icon: typeof FolderOpen;
+  }> = [
+    {
+      id: "directory",
+      label: t.library.forms.repository.projectFolder,
+      help: t.library.forms.repository.projectFolderHelp,
+      icon: FolderOpen,
+    },
+    {
+      id: "file",
+      label: t.library.forms.repository.logFile,
+      help: t.library.forms.repository.logFileHelp,
+      icon: ScrollText,
+    },
+    {
+      id: "url",
+      label: t.library.forms.repository.githubRepo,
+      help: t.library.forms.repository.githubRepoHelp,
+      icon: GitBranch,
+    },
+  ];
   const [sourceKind, setSourceKind] = useState<RepositorySourceKind>("directory");
   const [sourcePath, setSourcePath] = useState("");
   const [label, setLabel] = useState("");
+  const [gcpProjectId, setGcpProjectId] = useState("");
+  const [gcpServiceName, setGcpServiceName] = useState("");
+  const [gcpRegion, setGcpRegion] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pickerBusy, setPickerBusy] = useState(false);
 
@@ -53,8 +63,37 @@ export function ImportRepositoryForm({
     event.preventDefault();
 
     const normalizedPath = sourcePath.trim();
+    const normalizedLabel = label.trim();
+
+    if (sourceKind === "url" && normalizedPath === "gcp-cloud-run") {
+      const projectId = gcpProjectId.trim();
+      const serviceName = gcpServiceName.trim();
+      if (!projectId || !serviceName) {
+        setError(t.library.forms.repository.gcpRequiresProjectAndService);
+        return;
+      }
+      setError(null);
+      await upsertLogSourceConnection({
+        kind: "gcp_cloud_run",
+        label:
+          normalizedLabel || `${serviceName} · ${t.simpleMode.connections.cloudRunLabelSuffix}`,
+        config: {
+          projectId,
+          serviceName,
+          region: gcpRegion.trim() || undefined,
+          minimumSeverity: "DEFAULT",
+        },
+      });
+      setLabel("");
+      setSourcePath("");
+      setGcpProjectId("");
+      setGcpServiceName("");
+      setGcpRegion("");
+      return;
+    }
+
     if (!normalizedPath) {
-      setError("A local code/log path or GitHub URL is required.");
+      setError(t.library.forms.repository.sourceRequiredError);
       return;
     }
 
@@ -62,10 +101,13 @@ export function ImportRepositoryForm({
     const imported = await onImportRepository({
       sourceKind,
       sourcePath: normalizedPath,
-      label: label.trim() || undefined,
+      label: normalizedLabel || undefined,
     });
 
     if (imported) {
+      if (sourceKind === "file") {
+        onLogConnectionSaved?.();
+      }
       setLabel("");
       setSourcePath("");
     }
@@ -76,9 +118,7 @@ export function ImportRepositoryForm({
     setError(null);
 
     try {
-      const pickedPath = await pickRepositoryDirectory(
-        sourcePath || defaultDirectoryPath,
-      );
+      const pickedPath = await pickRepositoryDirectory(sourcePath || defaultDirectoryPath);
       if (!pickedPath) {
         return;
       }
@@ -89,7 +129,7 @@ export function ImportRepositoryForm({
       setError(
         nextError instanceof Error
           ? nextError.message
-          : "Native directory picker failed. Enter the path manually.",
+          : t.library.forms.repository.directoryPickerFailed,
       );
     } finally {
       setPickerBusy(false);
@@ -112,7 +152,7 @@ export function ImportRepositoryForm({
       setError(
         nextError instanceof Error
           ? nextError.message
-          : "Native file picker failed. Enter the path manually.",
+          : t.library.forms.repository.filePickerFailed,
       );
     } finally {
       setPickerBusy(false);
@@ -120,115 +160,179 @@ export function ImportRepositoryForm({
   }
 
   return (
-    <form className="import-form" onSubmit={(event) => void handleSubmit(event)}>
-      <div className="panel-header compact">
-        <div>
-          <h2>Import code or logs</h2>
-          <p className="support-copy">
-            Accept a local project directory, a local log file, or a GitHub URL to start code/log
-            signal intake.
-          </p>
-        </div>
+    <form className="import-form maia-pro-form" onSubmit={(event) => void handleSubmit(event)}>
+      <Web3Spinner visible={busy} label={t.library.forms.repository.ingestingTelemetrySource} />
+      <div className="form-intro">
+        <h2>{t.library.forms.repository.title}</h2>
+        <p className="support-copy">{t.library.forms.repository.description}</p>
       </div>
 
-      <div className="mode-toggle" role="tablist" aria-label="Repository import type">
-        {importModes.map((mode) => (
-          <button
-            key={mode.id}
-            type="button"
-            className={`toggle-chip${mode.id === sourceKind ? " active" : ""}`}
-            onClick={() => setSourceKind(mode.id)}
-          >
-            <span>{mode.label}</span>
-            <small>{mode.help}</small>
-          </button>
-        ))}
-      </div>
-
-      <label className="field">
-        <span>
-          {sourceKind === "directory"
-            ? "Project path"
-            : sourceKind === "file"
-              ? "Log file path"
-              : "GitHub URL"}
-        </span>
-        <input
-          value={sourcePath}
-          onChange={(event) => setSourcePath(event.target.value)}
-          placeholder={
-            sourceKind === "directory"
-              ? "/home/faguero/dev/maia"
-              : sourceKind === "file"
-                ? "~/logs/app.log"
-              : "https://github.com/fabianaguero/maia"
-          }
-        />
-      </label>
-
-      {sourceKind === "directory" ? (
-        <p className="field-hint">
-          Browse uses the native Linux folder picker when the desktop shell is
-          available. In Tauri, Maia snapshots the selected directory before analysis.
-        </p>
-      ) : null}
-
-      {sourceKind === "file" ? (
-        <p className="field-hint">
-          Browse uses the native file picker when the desktop shell is available. In Tauri, Maia
-          snapshots the selected log file for baseline analysis, then the analyzer screen can also
-          run a live internal tail against the original file as it grows.
-        </p>
-      ) : null}
-
-      <label className="field">
-        <span>Optional label</span>
-        <input
-          value={label}
-          onChange={(event) => setLabel(event.target.value)}
-          placeholder="maia workspace"
-        />
-      </label>
-
-      {error ? <p className="inline-error">{error}</p> : null}
-
-      <div className="form-actions">
-        {sourceKind === "directory" ? (
-          <button
-            type="button"
-            className="secondary-action"
-            disabled={busy || pickerBusy}
-            onClick={() => void handleBrowseDirectory()}
-          >
-            {pickerBusy ? "Browsing..." : "Browse folder"}
-          </button>
-        ) : null}
-        {sourceKind === "file" ? (
-          <button
-            type="button"
-            className="secondary-action"
-            disabled={busy || pickerBusy}
-            onClick={() => void handleBrowseFile()}
-          >
-            {pickerBusy ? "Browsing..." : "Browse log file"}
-          </button>
-        ) : null}
-        <button type="submit" className="action" disabled={busy}>
-          {busy ? "Analyzing..." : "Import source"}
+      <div
+        className="source-card-grid"
+        role="tablist"
+        aria-label={t.library.forms.repository.importTypeAria}
+      >
+        {importModes.map((mode) => {
+          const Icon = mode.icon;
+          const active = mode.id === sourceKind;
+          return (
+            <button
+              key={mode.id}
+              type="button"
+              className={`source-card ${active ? "active" : ""}`}
+              onClick={() => setSourceKind(mode.id)}
+            >
+              <div className="source-card-icon">
+                <Icon size={24} />
+              </div>
+              <div className="source-card-content">
+                <strong>{mode.label}</strong>
+                <p>{mode.help}</p>
+              </div>
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          className={`source-card ${sourceKind === "url" && sourcePath === "gcp-cloud-run" ? "active" : ""}`}
+          onClick={() => {
+            setSourceKind("url");
+            setSourcePath("gcp-cloud-run");
+          }}
+        >
+          <div className="source-card-icon">
+            <Globe size={24} />
+          </div>
+          <div className="source-card-content">
+            <strong>{t.library.forms.repository.gcpCloudRun}</strong>
+            <p>{t.library.forms.repository.gcpCloudRunHelp}</p>
+          </div>
         </button>
-        {defaultDirectoryPath ? (
+      </div>
+
+      <div className="form-fields-section">
+        {sourceKind === "url" && sourcePath === "gcp-cloud-run" ? (
+          <>
+            <label className="field maia-field">
+              <span className="field-label">{t.library.forms.repository.gcpProjectId}</span>
+              <input
+                value={gcpProjectId}
+                className="maia-input"
+                onChange={(event) => setGcpProjectId(event.target.value)}
+                placeholder={t.library.forms.repository.gcpProjectIdPlaceholder}
+              />
+            </label>
+            <label className="field maia-field">
+              <span className="field-label">{t.library.forms.repository.cloudRunService}</span>
+              <input
+                value={gcpServiceName}
+                className="maia-input"
+                onChange={(event) => setGcpServiceName(event.target.value)}
+                placeholder={t.library.forms.repository.cloudRunServicePlaceholder}
+              />
+            </label>
+            <label className="field maia-field">
+              <span className="field-label">{t.library.forms.repository.regionOptional}</span>
+              <input
+                value={gcpRegion}
+                className="maia-input"
+                onChange={(event) => setGcpRegion(event.target.value)}
+                placeholder={t.library.forms.repository.regionPlaceholder}
+              />
+            </label>
+          </>
+        ) : (
+          <label className="field maia-field">
+            <span className="field-label">
+              {sourceKind === "directory"
+                ? t.library.forms.repository.localProjectPath
+                : sourceKind === "file"
+                  ? t.library.forms.repository.sourceLogPath
+                  : t.library.forms.repository.githubRepositoryUrl}
+            </span>
+            <div className="field-input-wrapper">
+              <input
+                value={sourcePath}
+                className="maia-input"
+                onChange={(event) => setSourcePath(event.target.value)}
+                placeholder={
+                  sourceKind === "directory"
+                    ? t.library.forms.repository.localProjectPathPlaceholder
+                    : sourceKind === "file"
+                      ? t.library.forms.repository.sourceLogPathPlaceholder
+                      : t.library.forms.repository.githubRepositoryUrlPlaceholder
+                }
+              />
+              {sourceKind === "directory" && (
+                <button
+                  type="button"
+                  className="input-inline-action"
+                  disabled={busy || pickerBusy}
+                  onClick={() => void handleBrowseDirectory()}
+                >
+                  {pickerBusy ? t.library.forms.repository.pickerBusy : <FolderOpen size={16} />}
+                </button>
+              )}
+              {sourceKind === "file" && (
+                <button
+                  type="button"
+                  className="input-inline-action"
+                  disabled={busy || pickerBusy}
+                  onClick={() => void handleBrowseFile()}
+                >
+                  {pickerBusy ? t.library.forms.repository.pickerBusy : <ScrollText size={16} />}
+                </button>
+              )}
+            </div>
+          </label>
+        )}
+
+        <label className="field maia-field">
+          <span className="field-label">
+            {t.library.forms.repository.targetSessionLabelOptional}
+          </span>
+          <input
+            value={label}
+            className="maia-input"
+            onChange={(event) => setLabel(event.target.value)}
+            placeholder={t.library.forms.repository.targetSessionLabelPlaceholder}
+          />
+        </label>
+      </div>
+
+      {error ? (
+        <div className="form-notice error">
+          <span>{error}</span>
+        </div>
+      ) : null}
+
+      <div className="form-actions-footer">
+        <button type="submit" className="action primary-launch-btn" disabled={busy}>
+          {busy ? (
+            <>
+              <span className="spin-ring" aria-hidden="true" />{" "}
+              {t.library.forms.repository.analyzing}
+            </>
+          ) : (
+            <>
+              <GitBranch size={16} /> {t.library.forms.repository.startIngestion}
+            </>
+          )}
+        </button>
+
+        {defaultDirectoryPath && (
           <button
             type="button"
-            className="secondary-action"
+            className="secondary-action glass-btn"
             disabled={busy}
             onClick={() => {
               setSourceKind("directory");
               setSourcePath(defaultDirectoryPath);
             }}
           >
-            Use current workspace
+            {t.library.forms.repository.useCurrentWorkspace}
           </button>
-        ) : null}
+        )}
       </div>
     </form>
   );

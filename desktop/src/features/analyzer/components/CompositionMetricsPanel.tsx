@@ -1,30 +1,22 @@
 import type { CompositionResultRecord } from "../../../types/library";
+import { useT } from "../../../i18n/I18nContext";
 
 interface CompositionMetricsPanelProps {
   composition: CompositionResultRecord;
   analyzerLabel: string;
 }
 
-function metricNumber(
-  metrics: Record<string, unknown>,
-  key: string,
-): number | null {
+function metricNumber(metrics: Record<string, unknown>, key: string): number | null {
   const value = metrics[key];
   return typeof value === "number" ? value : null;
 }
 
-function metricString(
-  metrics: Record<string, unknown>,
-  key: string,
-): string | null {
+function metricString(metrics: Record<string, unknown>, key: string): string | null {
   const value = metrics[key];
   return typeof value === "string" ? value : null;
 }
 
-function metricArrayLength(
-  metrics: Record<string, unknown>,
-  key: string,
-): number | null {
+function metricArrayLength(metrics: Record<string, unknown>, key: string): number | null {
   const value = metrics[key];
   return Array.isArray(value) ? value.length : null;
 }
@@ -59,50 +51,51 @@ export function CompositionMetricsPanel({
   composition,
   analyzerLabel,
 }: CompositionMetricsPanelProps) {
+  const t = useT();
   return (
     <section className="panel metric-panel">
       <div className="panel-header compact">
         <div>
-          <h2>Composition metrics</h2>
-          <p className="support-copy">
-            Target tempo, preview scope, and reuse confidence.
-          </p>
+          <h2>{t.compose.compositionMetrics}</h2>
+          <p className="support-copy">{t.compose.compositionMetricsCopy}</p>
         </div>
       </div>
 
       <div className="metric-grid">
         <div>
-          <span>Target BPM</span>
+          <span>{t.compose.targetBpm}</span>
           <strong>{composition.targetBpm.toFixed(0)}</strong>
         </div>
         <div>
-          <span>Confidence</span>
+          <span>{t.session.confidence}</span>
           <strong>{Math.round(composition.confidence * 100)}%</strong>
         </div>
         <div>
-          <span>Intensity</span>
-          <strong>{metricString(composition.metrics, "intensityBand") ?? "unknown"}</strong>
+          <span>{t.compose.intensity}</span>
+          <strong>{metricString(composition.metrics, "intensityBand") ?? t.inspect.unknown}</strong>
         </div>
         <div>
-          <span>Recommended layers</span>
+          <span>{t.compose.recommendedLayers}</span>
           <strong>{metricNumber(composition.metrics, "recommendedLayerCount") ?? "?"}</strong>
         </div>
         <div>
-          <span>Preview duration</span>
+          <span>{t.compose.previewDuration}</span>
           <strong>
             {metricNumber(composition.metrics, "previewDurationSeconds")?.toFixed(1) ?? "?"}s
           </strong>
         </div>
         <div>
-          <span>Sections</span>
+          <span>{t.compose.sections}</span>
           <strong>{metricArrayLength(composition.metrics, "arrangementSections") ?? 4}</strong>
         </div>
         <div>
-          <span>Render stems</span>
-          <strong>{nestedMetricArrayLength(composition.metrics, "renderPreview", "stems") ?? 3}</strong>
+          <span>{t.compose.renderStems}</span>
+          <strong>
+            {nestedMetricArrayLength(composition.metrics, "renderPreview", "stems") ?? 3}
+          </strong>
         </div>
         <div>
-          <span>Headroom</span>
+          <span>{t.compose.headroom}</span>
           <strong>
             {nestedMetricNumber(composition.metrics, "renderPreview", "headroomDb")?.toFixed(1) ??
               "-6.0"}{" "}
@@ -110,7 +103,7 @@ export function CompositionMetricsPanel({
           </strong>
         </div>
         <div>
-          <span>Analyzer</span>
+          <span>{t.compose.analyzer}</span>
           <strong>{analyzerLabel}</strong>
         </div>
       </div>

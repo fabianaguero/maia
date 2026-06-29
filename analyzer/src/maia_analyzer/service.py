@@ -4,11 +4,10 @@ import platform
 from typing import Any
 
 from . import __version__
-from .assets import analyze_base_asset
-from .composition import analyze_composition
 from .audio import analyze_track, get_supported_track_formats
-from .dsp import dsp_available
 from .contracts import ContractError, error_response, ok_response, parse_request
+from .dsp import dsp_available
+from .presets import list_presets
 from .repository import analyze_repository
 from .stream import (
     get_or_create_session,
@@ -32,10 +31,15 @@ def handle_request(raw: Any) -> dict[str, Any]:
                 {
                     "analyzerVersion": __version__,
                     "runtime": platform.python_version(),
-                    "supportedActions": ["health", "analyze", "session_start", "session_stop", "session_list", "session_poll"],
+                    "supportedActions": [
+                        "health",
+                        "analyze",
+                        "session_start",
+                        "session_stop",
+                        "session_list",
+                        "session_poll",
+                    ],
                     "modes": [
-                        "repo-heuristics",
-                        "repo-tree-sitter",
                         "log-file-heuristics",
                         "log-live-tail",
                         "track-embedded-heuristic",
@@ -43,10 +47,10 @@ def handle_request(raw: Any) -> dict[str, Any]:
                         "stream-file-adapter",
                         "stream-process-adapter",
                         "stream-session-registry",
-                        "base-assets",
-                        "composition-planner",
+                        "aesthetic-presets",
                     ],
                     "supportedTrackFormats": get_supported_track_formats(),
+                    "presets": list_presets(),
                 },
             )
 
@@ -76,23 +80,11 @@ def handle_request(raw: Any) -> dict[str, Any]:
                 payload["source"]["path"],
                 waveform_bins=int(options.get("waveformBins", 24)),
             )
-        elif payload["assetType"] == "base_asset":
-            asset, warnings = analyze_base_asset(
-                payload["source"]["path"],
-                category=options.get("baseAssetCategory"),
-                reusable=bool(options.get("baseAssetReusable", True)),
-            )
-        elif payload["assetType"] == "composition_result":
-            asset, warnings = analyze_composition(
-                payload["source"]["kind"],
-                payload["source"]["path"],
-                base_asset_category=options.get("baseAssetCategory"),
-                reusable=bool(options.get("baseAssetReusable", True)),
-                entry_count=options.get("compositionBaseAssetEntryCount"),
-                reference_type=options.get("compositionReferenceType"),
-                reference_label=options.get("compositionReferenceLabel"),
-                reference_bpm=options.get("compositionReferenceBpm"),
-                preview_output_path=options.get("compositionPreviewOutputPath"),
+        elif payload["assetType"] in ("base_asset", "composition_result"):
+            return error_response(
+                request_id,
+                "unsupported_asset_type",
+                f"{payload['assetType']} is disabled in this MVP.",
             )
         else:
             return error_response(
@@ -170,12 +162,15 @@ def _handle_session_poll(request_id: str, payload: dict[str, Any]) -> dict[str, 
 
     ring = snapshot["ringBuffer"]
     if not ring:
-        return ok_response(request_id, {
-            "hasData": False,
-            "sessionId": session_id,
-            "summary": "Session buffer empty — waiting for data.",
-            "session": {k: v for k, v in snapshot.items() if k != "ringBuffer"},
-        })
+        return ok_response(
+            request_id,
+            {
+                "hasData": False,
+                "sessionId": session_id,
+                "summary": "Session buffer empty — waiting for data.",
+                "session": {k: v for k, v in snapshot.items() if k != "ringBuffer"},
+            },
+        )
 
     chunk = "\n".join(ring)
     source = snapshot["source"]
@@ -186,6 +181,7 @@ def _handle_session_poll(request_id: str, payload: dict[str, Any]) -> dict[str, 
             "inferCodeSuggestedBpm": True,
             "logTailChunk": chunk,
             "logTailLiveMode": True,
+            "presetId": payload.get("presetId", "techno"),
         },
     )
 
@@ -211,7 +207,11 @@ def _build_summary(asset: dict[str, Any]) -> str:
     if asset_type == "repo_analysis":
         if metrics.get("importMode") in {"log-file", "log-tail-window"}:
             anomaly_count = metrics.get("anomalyCount", 0)
-            source_label = "Live log window" if metrics.get("importMode") == "log-tail-window" else "Log signal"
+            source_label = (
+                "Live log window"
+                if metrics.get("importMode") == "log-tail-window"
+                else "Log signal"
+            )
             return (
                 f"{source_label} analysis completed for {title} with suggested BPM {suggested_bpm:.0f} "
                 f"and {anomaly_count} anomaly markers."

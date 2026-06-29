@@ -1,22 +1,25 @@
 from __future__ import annotations
 
-from array import array
 import hashlib
+import importlib.util
 import math
 import struct
 import wave
+from array import array
 from datetime import UTC, datetime
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 try:
     import miniaudio
-except ModuleNotFoundError:  # pragma: no cover - protected by project dependency, kept for resilience
+except (
+    ModuleNotFoundError
+):  # pragma: no cover - protected by project dependency, kept for resilience
     miniaudio = None
 
 from .dsp import analyze_dsp, dsp_available
-
 
 MAX_ANALYSIS_SECONDS = 180
 FRAME_SIZE = 1024
@@ -25,30 +28,60 @@ MIN_BPM = 70
 MAX_BPM = 180
 WAVE_EXTENSIONS = {".wav", ".wave"}
 MINIAUDIO_EXTENSIONS = WAVE_EXTENSIONS | {".mp3", ".flac", ".ogg", ".oga"}
+# Formats that miniaudio cannot decode; attempted via librosa/audioread (needs FFmpeg/GStreamer)
+LIBROSA_EXTENDED_EXTENSIONS = {".m4a", ".mp4", ".aac", ".aif", ".aiff", ".wma"}
 
 
-def analyze_track(source_path: str, waveform_bins: int = 24) -> tuple[dict[str, Any], list[str]]:
+def analyze_track(
+    source_path: str,
+    waveform_bins: int = 256,
+    options: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], list[str]]:
     track_path = Path(source_path).expanduser().resolve()
     if not track_path.is_file():
         raise FileNotFoundError(f"Track path does not exist or is not a file: {track_path}")
 
-    decoded = _decode_track_audio(track_path)
+    decoded = decode_track_audio(track_path)
     if decoded is not None:
-        return _build_embedded_track_asset(track_path, decoded, waveform_bins)
+        asset, warnings = _build_embedded_track_asset(track_path, decoded, waveform_bins)
+
+        # Handle Source Separation (Demucs) if requested (Disabled in MVP)
+        if options and options.get("separateSource"):
+            warnings.append("Source separation is disabled in this MVP.")
+
+        return asset, warnings
 
     return _build_hash_stub_asset(track_path, waveform_bins)
 
 
 def get_supported_track_formats() -> list[str]:
+    formats: list[str] = ["wav"]
     if miniaudio is not None:
-        return ["wav", "mp3", "flac", "ogg"]
-    return ["wav"]
+        formats += ["mp3", "flac", "ogg"]
+    try:
+        import librosa  # noqa: F401 — test presence only
+
+        formats += ["m4a", "aac", "aiff", "mp4"]
+    except ModuleNotFoundError:  # pragma: no cover
+        pass
+    return formats
 
 
 def _supported_track_format_summary() -> str:
-    if miniaudio is not None:
-        return "WAV, MP3, FLAC, and OGG/Vorbis"
-    return "WAV/PCM"
+    fmts = get_supported_track_formats()
+    if len(fmts) == 1:
+        return "WAV/PCM"
+    label_map = {
+        "mp3": "MP3",
+        "flac": "FLAC",
+        "ogg": "OGG/Vorbis",
+        "m4a": "M4A/AAC",
+        "aac": "AAC",
+        "aiff": "AIFF",
+        "mp4": "MP4",
+    }
+    labels = ["WAV"] + [label_map.get(f, f.upper()) for f in fmts if f != "wav"]
+    return ", ".join(labels[:-1]) + (f", and {labels[-1]}" if len(labels) > 1 else "")
 
 
 def _build_embedded_track_asset(
@@ -79,6 +112,14 @@ def _build_embedded_track_asset(
         bpm_curve = _build_bpm_curve(suggested_bpm, duration_seconds)
         analysis_mode = "embedded-heuristic"
 
+    musical_character = _analyze_musical_characteristics(
+        samples,
+        sample_rate_hz,
+        duration_seconds,
+        suggested_bpm,
+        confidence,
+    )
+
     asset = {
         "id": str(uuid4()),
         "assetType": "track_analysis",
@@ -103,6 +144,7 @@ def _build_embedded_track_asset(
             "analysisMode": analysis_mode,
             "decoder": decoder,
             "dspAvailable": dsp_available(),
+            **musical_character,
         },
         "artifacts": {
             "waveformBins": waveform,
@@ -114,7 +156,11 @@ def _build_embedded_track_asset(
 
     warnings = [
         f"Track analysis runs inside the Maia analyzer using the embedded {decoder} decoder."
-        + (" librosa DSP active." if analysis_mode == "librosa-dsp" else " Higher-fidelity DSP can later replace this path with librosa or Essentia without depending on system tools."),
+        + (
+            " librosa DSP active."
+            if analysis_mode == "librosa-dsp"
+            else " Higher-fidelity DSP can later replace this path with librosa or Essentia without depending on system tools."
+        ),
     ]
     if duration_seconds and analysis_seconds and analysis_seconds < duration_seconds:
         warnings.append(
@@ -128,7 +174,7 @@ def _build_hash_stub_asset(
     waveform_bins: int,
 ) -> tuple[dict[str, Any], list[str]]:
     size_bytes = track_path.stat().st_size
-    digest = hashlib.sha256(f"{track_path}:{size_bytes}".encode("utf-8")).digest()
+    digest = hashlib.sha256(f"{track_path}:{size_bytes}".encode()).digest()
     bins = [round(byte / 255, 3) for byte in digest[: max(8, min(waveform_bins, 32))]]
 
     asset = {
@@ -166,7 +212,7 @@ def _build_hash_stub_asset(
     return asset, warnings
 
 
-def _decode_track_audio(track_path: Path) -> dict[str, Any] | None:
+def decode_track_audio(track_path: Path) -> dict[str, Any] | None:
     extension = track_path.suffix.lower()
 
     if miniaudio is not None and extension in MINIAUDIO_EXTENSIONS:
@@ -177,7 +223,55 @@ def _decode_track_audio(track_path: Path) -> dict[str, Any] | None:
     if extension in WAVE_EXTENSIONS:
         return _decode_wave_audio(track_path)
 
+    if extension in LIBROSA_EXTENDED_EXTENSIONS:
+        return _decode_librosa_audio(track_path)
+
     return None
+
+
+def _decode_librosa_audio(track_path: Path) -> dict[str, Any] | None:
+    """Decode formats miniaudio cannot handle (m4a, aac, mp4, aiff, wma) via librosa/audioread.
+
+    Requires FFmpeg or GStreamer to be present on the host; returns None gracefully if not.
+    """
+    try:
+        import librosa
+    except ModuleNotFoundError:  # pragma: no cover
+        return None
+
+    try:
+        y, sr = librosa.load(
+            str(track_path),
+            sr=None,  # preserve native sample rate
+            mono=True,  # downmix to mono
+            duration=float(MAX_ANALYSIS_SECONDS),
+        )
+    except Exception:
+        return None
+
+    if y is None or len(y) == 0:
+        return None
+
+    sample_rate_hz = int(sr)
+    total_frames = len(y)
+    if sample_rate_hz <= 0 or total_frames <= 0:
+        return None
+
+    mono_list = y.tolist() if hasattr(y, "tolist") else list(y)
+
+    extension = track_path.suffix.lower().lstrip(".")
+    duration_seconds = total_frames / sample_rate_hz
+    analysis_seconds = min(duration_seconds, float(MAX_ANALYSIS_SECONDS))
+
+    return {
+        "samples": mono_list,
+        "sampleRateHz": sample_rate_hz,
+        "channels": 1,
+        "durationSeconds": round(duration_seconds, 3),
+        "analysisSeconds": round(analysis_seconds, 3),
+        "formatName": extension or "unknown",
+        "decoder": "librosa-audioread",
+    }
 
 
 def _decode_miniaudio_audio(track_path: Path) -> dict[str, Any] | None:
@@ -291,14 +385,14 @@ def _pcm_to_mono_f32(raw_frames: bytes, channels: int, sample_width: int) -> arr
         return mono
 
     if sample_width == 2:
-        ints = struct.unpack("<{}h".format(len(raw_frames) // 2), raw_frames)
+        ints = struct.unpack(f"<{len(raw_frames) // 2}h", raw_frames)
         return _downmix_integers_to_mono(ints, channels, 32768.0)
 
     if sample_width == 3:
         return _decode_pcm24_to_mono(raw_frames, channels)
 
     if sample_width == 4:
-        ints = struct.unpack("<{}i".format(len(raw_frames) // 4), raw_frames)
+        ints = struct.unpack(f"<{len(raw_frames) // 4}i", raw_frames)
         return _downmix_integers_to_mono(ints, channels, 2147483648.0)
 
     return array("f")
@@ -358,7 +452,7 @@ def _downmix_interleaved_f32_to_mono(
 
 
 def _build_waveform_bins(samples: array[float], waveform_bins: int) -> list[float]:
-    target_bins = max(8, min(waveform_bins, 256))
+    target_bins = max(8, min(waveform_bins, 512))
     chunk_size = max(1, len(samples) // target_bins)
     raw_bins = []
 
@@ -366,7 +460,12 @@ def _build_waveform_bins(samples: array[float], waveform_bins: int) -> list[floa
         frame = samples[start : start + chunk_size]
         if not frame:
             continue
-        energy = math.sqrt(sum(sample * sample for sample in frame) / len(frame))
+        # RMS for better perceptual representation
+        rms = math.sqrt(sum(sample * sample for sample in frame) / len(frame))
+        # Peak absolute value for transient capture
+        peak_val = max(abs(s) for s in frame) if frame else 0.0
+        # Blend: 70% RMS (smooth), 30% peak (transients)
+        energy = (0.7 * rms) + (0.3 * peak_val)
         raw_bins.append(energy)
         if len(raw_bins) >= target_bins:
             break
@@ -398,11 +497,7 @@ def _estimate_bpm(samples: array[float], sample_rate_hz: int) -> tuple[float | N
     second_score = scores[1][1] if len(scores) > 1 else 0.0
     average_score = sum(score for _, score in scores) / len(scores)
     dominance = (best_score - second_score) / best_score if best_score else 0.0
-    lift = (
-        max(0.0, (best_score / average_score) - 1.0)
-        if average_score > 0
-        else 0.0
-    )
+    lift = max(0.0, (best_score / average_score) - 1.0) if average_score > 0 else 0.0
     confidence = min(0.91, max(0.22, 0.34 + (dominance * 0.34) + min(0.18, lift * 0.08)))
     return float(best_bpm), round(confidence, 3)
 
@@ -421,7 +516,7 @@ def _build_onset_envelope(samples: array[float], sample_rate_hz: int) -> list[fl
         return []
 
     onset = [0.0]
-    for previous, current in zip(rms_values, rms_values[1:]):
+    for previous, current in pairwise(rms_values):
         onset.append(max(0.0, current - previous))
 
     peak = max(onset) or 1.0
@@ -507,3 +602,200 @@ def _build_bpm_curve(
         points.append({"second": round(duration_seconds, 3), "bpm": round(bpm, 3)})
 
     return points
+
+
+def _analyze_musical_characteristics(
+    samples: array[float] | list[float],
+    sample_rate_hz: int,
+    duration_seconds: float | None,
+    bpm: float | None,
+    bpm_confidence: float,
+) -> dict[str, Any]:
+    """Emit richer musical metadata compatible with the active desktop app.
+
+    This ports the useful parts of the legacy analyzer into the current JSON
+    contract without changing the top-level asset shape.
+    """
+    if importlib.util.find_spec("librosa") is None:
+        return {}
+
+    try:
+        import numpy as np
+    except ModuleNotFoundError:  # pragma: no cover
+        return {}
+
+    y = np.asarray(samples, dtype=np.float32)
+    if y.size == 0 or sample_rate_hz <= 0:
+        return {}
+
+    try:
+        key_name, scale = _detect_key_signature(y, sample_rate_hz)
+        energy_level = _detect_energy_level(y)
+        danceability = _estimate_danceability(bpm, bpm_confidence, energy_level)
+        structural_patterns = _detect_structural_patterns(
+            y,
+            sample_rate_hz,
+            duration_seconds or (len(y) / sample_rate_hz),
+        )
+    except Exception:
+        return {}
+
+    return {
+        "key": key_name,
+        "scale": scale,
+        "keySignature": f"{key_name} {scale}".strip(),
+        "energyLevel": energy_level,
+        "danceability": danceability,
+        "structuralPatterns": structural_patterns,
+    }
+
+
+def _detect_key_signature(y: Any, sr: int) -> tuple[str, str]:
+    import librosa
+    import numpy as np
+
+    chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
+    chroma_mean = np.mean(chroma, axis=1)
+
+    major_profile = np.array(
+        [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88]
+    )
+    minor_profile = np.array(
+        [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17]
+    )
+    key_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+    def correlate(profile: Any) -> list[float]:
+        scores = []
+        for shift in range(12):
+            shifted = np.roll(profile, shift)
+            scores.append(float(np.corrcoef(chroma_mean, shifted)[0, 1]))
+        return scores
+
+    major_scores = correlate(major_profile)
+    minor_scores = correlate(minor_profile)
+
+    best_major = max(range(12), key=lambda i: major_scores[i])
+    best_minor = max(range(12), key=lambda i: minor_scores[i])
+
+    if major_scores[best_major] >= minor_scores[best_minor]:
+        return key_names[best_major], "major"
+    return key_names[best_minor], "minor"
+
+
+def _detect_energy_level(y: Any) -> float:
+    import librosa
+    import numpy as np
+
+    rms = librosa.feature.rms(y=y, hop_length=2048)[0]
+    mean_rms = float(np.mean(rms)) if len(rms) > 0 else 0.0
+    return round(min(1.0, mean_rms / 0.2), 3)
+
+
+def _estimate_danceability(
+    bpm: float | None,
+    bpm_confidence: float,
+    energy_level: float,
+) -> float:
+    reference_bpm = bpm if bpm is not None and bpm > 0 else 120.0
+    bpm_dance_score = 1.0 - abs(reference_bpm - 128.0) / 128.0
+    energy_bonus = min(0.15, energy_level * 0.15)
+    return round(
+        max(
+            0.0,
+            min(1.0, bpm_confidence * 0.55 + bpm_dance_score * 0.35 + energy_bonus),
+        ),
+        3,
+    )
+
+
+def _detect_structural_patterns(
+    y: Any,
+    sr: int,
+    duration_seconds: float,
+) -> list[dict[str, Any]]:
+    import librosa
+    import numpy as np
+
+    if duration_seconds <= 12:
+        return []
+
+    frame_seconds = 1.0
+    frame_length = max(1, int(sr * frame_seconds))
+    rms = librosa.feature.rms(y=y, frame_length=frame_length, hop_length=frame_length)[0]
+    if len(rms) < 4:
+        return []
+
+    peak = float(np.max(rms)) or 1.0
+    norm_rms = [float(value / peak) for value in rms]
+    patterns: list[dict[str, Any]] = []
+
+    def add_pattern(
+        pattern_type: str,
+        start_second: float,
+        end_second: float,
+        confidence: float,
+        label: str,
+    ) -> None:
+        if end_second <= start_second:
+            return
+        patterns.append(
+            {
+                "type": pattern_type,
+                "start": round(start_second, 2),
+                "end": round(end_second, 2),
+                "confidence": round(max(0.0, min(1.0, confidence)), 2),
+                "label": label,
+            }
+        )
+
+    intro_end_idx = max(1, int(len(norm_rms) * 0.16))
+    intro_energy = float(np.mean(norm_rms[:intro_end_idx]))
+    if intro_energy < 0.62:
+        add_pattern("intro", 0.0, intro_end_idx * frame_seconds, 1.0 - intro_energy, "Intro")
+
+    outro_start_idx = min(len(norm_rms) - 1, int(len(norm_rms) * 0.86))
+    outro_energy = float(np.mean(norm_rms[outro_start_idx:]))
+    if outro_energy < 0.62:
+        add_pattern(
+            "outro",
+            outro_start_idx * frame_seconds,
+            duration_seconds,
+            1.0 - outro_energy,
+            "Outro",
+        )
+
+    drop_window = max(2, int(len(norm_rms) * 0.12))
+    best_drop_idx = 0
+    best_drop_energy = 0.0
+    for idx in range(0, max(1, len(norm_rms) - drop_window + 1)):
+        segment_energy = float(np.mean(norm_rms[idx : idx + drop_window]))
+        if segment_energy > best_drop_energy:
+            best_drop_energy = segment_energy
+            best_drop_idx = idx
+    if best_drop_energy > 0.78:
+        add_pattern(
+            "drop",
+            best_drop_idx * frame_seconds,
+            min(duration_seconds, (best_drop_idx + drop_window) * frame_seconds),
+            best_drop_energy,
+            "Drop",
+        )
+
+    break_window = max(2, int(len(norm_rms) * 0.1))
+    search_start = max(1, int(len(norm_rms) * 0.2))
+    search_end = max(search_start + 1, int(len(norm_rms) * 0.8))
+    for idx in range(search_start, max(search_start, search_end - break_window)):
+        segment_energy = float(np.mean(norm_rms[idx : idx + break_window]))
+        if segment_energy < 0.34:
+            add_pattern(
+                "break",
+                idx * frame_seconds,
+                min(duration_seconds, (idx + break_window) * frame_seconds),
+                1.0 - segment_energy,
+                "Break",
+            )
+            break
+
+    patterns.sort(key=lambda pattern: pattern["start"])
+    return patterns[:4]

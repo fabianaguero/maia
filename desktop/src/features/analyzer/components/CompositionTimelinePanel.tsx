@@ -1,10 +1,8 @@
 import type { CSSProperties } from "react";
 
+import { useT } from "../../../i18n/I18nContext";
 import type { CompositionResultRecord } from "../../../types/library";
-import {
-  resolveArrangementSections,
-  resolveCuePoints,
-} from "./compositionPreview";
+import { resolveArrangementSections, resolveCuePoints } from "./compositionPreview";
 
 interface CompositionTimelinePanelProps {
   composition: CompositionResultRecord;
@@ -27,9 +25,8 @@ function energyClass(energy: string): string {
   return "medium";
 }
 
-export function CompositionTimelinePanel({
-  composition,
-}: CompositionTimelinePanelProps) {
+export function CompositionTimelinePanel({ composition }: CompositionTimelinePanelProps) {
+  const t = useT();
   const resolvedSections = resolveArrangementSections(composition);
   const resolvedCuePoints = resolveCuePoints(composition);
   const previewDuration =
@@ -41,10 +38,8 @@ export function CompositionTimelinePanel({
     <section className="panel waveform-panel">
       <div className="panel-header compact">
         <div>
-          <h2>Arrangement timeline</h2>
-          <p className="support-copy">
-            Deterministic phrase sections and cue points derived from the composition planner.
-          </p>
+          <h2>{t.compose.arrangementTimeline}</h2>
+          <p className="support-copy">{t.compose.arrangementTimelineCopy}</p>
         </div>
       </div>
 
@@ -63,10 +58,14 @@ export function CompositionTimelinePanel({
             >
               <span>{section.label}</span>
               <strong>
-                Bars {section.startBar}-{section.endBar}
+                {t.compose.barsRange
+                  .replace("{start}", String(section.startBar))
+                  .replace("{end}", String(section.endBar))}
               </strong>
               <small>
-                {section.startSecond.toFixed(1)}s to {section.endSecond.toFixed(1)}s
+                {t.compose.secondsRange
+                  .replace("{start}", section.startSecond.toFixed(1))
+                  .replace("{end}", section.endSecond.toFixed(1))}
               </small>
               <p>{section.focus}</p>
             </article>
@@ -76,10 +75,8 @@ export function CompositionTimelinePanel({
 
       <div className="panel-header compact top-spaced">
         <div>
-          <h2>Cue points</h2>
-          <p className="support-copy">
-            Quick anchors for later render/export work and manual inspection.
-          </p>
+          <h2>{t.compose.cuePoints}</h2>
+          <p className="support-copy">{t.compose.cuePointsCopy}</p>
         </div>
       </div>
 
@@ -87,7 +84,7 @@ export function CompositionTimelinePanel({
         {resolvedCuePoints.map((cue) => (
           <div key={cue.id} className="cue-pill">
             <span>{cue.label}</span>
-            <strong>Bar {cue.bar}</strong>
+            <strong>{t.compose.bar.replace("{bar}", String(cue.bar))}</strong>
             <small>{cue.second.toFixed(1)}s</small>
           </div>
         ))}

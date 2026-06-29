@@ -1,0 +1,79 @@
+name: Quality
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+
+jobs:
+  python-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install analyzer dependencies
+        run: python -m pip install -e "./analyzer[dev]"
+      - name: Ruff
+        run: python -m ruff check --config analyzer/pyproject.toml analyzer/src/maia_analyzer/*.py analyzer/tests/*.py scripts/demo/*.py scripts/verification/*.py
+      - name: Mypy
+        run: python -m mypy --config-file analyzer/pyproject.toml analyzer/src/maia_analyzer/*.py
+      - name: Analyzer tests
+        run: python -m pytest analyzer/tests -v --cov=maia_analyzer --cov-report=term-missing --cov-report=xml
+      - name: Upload analyzer coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyzer-coverage
+          path: analyzer/coverage.xml
+
+  desktop-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: desktop/package-lock.json
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm ci
+      - name: Typecheck
+        working-directory: desktop
+        run: npm run typecheck
+      - name: Lint
+        working-directory: desktop
+        run: npm run lint
+      - name: Desktop tests
+        working-directory: desktop
+        run: npm run coverage
+      - name: Upload desktop coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-coverage
+          path: desktop/coverage
+      - name: Desktop build
+        working-directory: desktop
+        run: npm run build
+
+  site-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: site/package-lock.json
+      - name: Install site dependencies
+        working-directory: site
+        run: npm ci
+      - name: Lint
+        working-directory: site
+        run: npm run lint
+      - name: Build
+        working-directory: site
+        run: npm run build

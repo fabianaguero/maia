@@ -58,9 +58,7 @@ export function stringField(value: unknown): string | null {
 }
 
 function resolvedCategoryId(composition: CompositionResultRecord): string {
-  return (
-    stringField(composition.metrics.baseAssetCategory) ?? composition.baseAssetCategoryId
-  );
+  return stringField(composition.metrics.baseAssetCategory) ?? composition.baseAssetCategoryId;
 }
 
 function previewDurationSeconds(composition: CompositionResultRecord): number {
@@ -79,12 +77,7 @@ function derivedSections(composition: CompositionResultRecord): ArrangementSecti
   const definitions = [
     { id: "intro", label: "Intro lock", energy: "low" },
     {
-      id:
-        categoryId === "fx-palette"
-          ? "lift"
-          : referenceType === "repo"
-            ? "translation"
-            : "build",
+      id: categoryId === "fx-palette" ? "lift" : referenceType === "repo" ? "translation" : "build",
       label:
         categoryId === "pad-texture"
           ? "Texture rise"
@@ -286,16 +279,16 @@ function derivedRenderPreview(composition: CompositionResultRecord): RenderPrevi
       label:
         referenceType === "repo"
           ? "Structural glue"
-          : referenceType === "track"
-            ? "Reference groove glue"
+          : referenceType === "track" || referenceType === "playlist"
+            ? "Base groove glue"
             : "Tempo guide glue",
       role: "glue",
       source: referenceType === "manual" ? "manual" : "reference",
       focus:
         referenceType === "repo"
-          ? "translate reference pacing into arrangement density"
-          : referenceType === "track"
-            ? "keep section changes aligned with the imported groove"
+          ? "translate structure pacing into arrangement density"
+          : referenceType === "track" || referenceType === "playlist"
+            ? "keep section changes aligned with the base groove"
             : "stabilize the typed tempo through each section boundary",
       gainDb: -11,
       pan: 0,
@@ -461,8 +454,6 @@ export function resolveCuePoints(composition: CompositionResultRecord): CuePoint
     : derivedCuePoints(resolveArrangementSections(composition));
 }
 
-export function resolveRenderPreview(
-  composition: CompositionResultRecord,
-): RenderPreview {
+export function resolveRenderPreview(composition: CompositionResultRecord): RenderPreview {
   return readRenderPreview(composition.metrics) ?? derivedRenderPreview(composition);
 }

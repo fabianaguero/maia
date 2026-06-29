@@ -1,152 +1,181 @@
-import type { BootstrapManifest } from "../contracts";
-import type { ActiveMonitorSession, MonitorMetrics } from "../features/monitor/MonitorContext";
-import type { AppScreen } from "../types/library";
+import { Activity, AudioWaveform, Cable, Library } from "lucide-react";
+import type React from "react";
+import type { ActiveMonitorSession, MonitorMetrics } from "../features/monitor/monitorContextTypes";
+import { useT } from "../i18n/I18nContext";
+import { useUserMode } from "../features/simple/UserModeContext";
+import type { AppPillar } from "../types/library";
+import { getStreamAdapterLabel } from "../utils/streamAdapter";
+import {
+  formatMonitorShortUptime,
+  getMonitorAnomaliesInlineLabel,
+  getMonitorLiveStatusLabel,
+} from "../utils/monitorLabels";
+import { ModeToggle } from "./ModeToggle";
+import { BrandLockup } from "./Branding";
+import { buildSidebarNavItems } from "./appNavigationViewModel";
+
+const PILLAR_ICONS: Record<AppPillar, React.ReactNode> = {
+  perform: <Activity size={18} />,
+  design: <AudioWaveform size={18} />,
+  curate: <Library size={18} />,
+};
 
 interface AppSidebarProps {
-  currentScreen: AppScreen;
-  onScreenChange: (screen: AppScreen) => void;
+  currentPillar: AppPillar;
+  onPillarChange: (pillar: AppPillar) => void;
   trackCount: number;
   repositoryCount: number;
   baseAssetCount: number;
   compositionCount: number;
   selectedItemTitle: string | null;
-  manifest: BootstrapManifest | null;
-  analyzerLabel: string;
   monitorSession: ActiveMonitorSession | null;
   monitorMetrics: MonitorMetrics;
   onStopMonitor: () => void;
   onOpenMonitoredRepo: () => void;
+  onOpenConnections: () => void;
+  connectionsActive: boolean;
+  onHideToBackground: () => void;
 }
 
-const navigationItems: Array<{
-  id: AppScreen;
-  label: string;
-  description: string;
-}> = [
-  {
-    id: "library",
-    label: "Library",
-    description: "Tracks, code/log sources, bases, and compositions",
-  },
-  {
-    id: "analyzer",
-    label: "Analyzer",
-    description: "Signal, waveform, and BPM review",
-  },
-];
-
 export function AppSidebar({
-  currentScreen,
-  onScreenChange,
+  currentPillar,
+  onPillarChange,
   trackCount,
   repositoryCount,
   baseAssetCount,
   compositionCount,
   selectedItemTitle,
-  manifest,
-  analyzerLabel,
   monitorSession,
   monitorMetrics,
   onStopMonitor,
   onOpenMonitoredRepo,
+  onOpenConnections,
+  connectionsActive,
 }: AppSidebarProps) {
-  const uptimeSeconds = monitorSession
-    ? Math.floor((Date.now() - monitorSession.startedAt) / 1000)
-    : 0;
-  const uptimeLabel =
-    uptimeSeconds < 60
-      ? `${uptimeSeconds}s`
-      : `${Math.floor(uptimeSeconds / 60)}m ${uptimeSeconds % 60}s`;
+  const t = useT();
+  const { userMode } = useUserMode();
+  const liveStatusLabel = getMonitorLiveStatusLabel(t);
+  const anomaliesInlineLabel = getMonitorAnomaliesInlineLabel(t);
+  const navigationItems = buildSidebarNavItems({
+    t,
+    userMode,
+    liveStatusLabel,
+    monitorActive: Boolean(monitorSession),
+    trackCount,
+    repositoryCount,
+    compositionCount,
+  });
+
+  const uptimeLabel = formatMonitorShortUptime(monitorSession?.startedAt);
+  const monitorAdapterLabel = monitorSession
+    ? getStreamAdapterLabel(monitorSession.adapterKind)
+    : null;
 
   return (
-    <aside className="sidebar panel">
+    <aside className="sidebar panel role-based-sidebar">
       <div className="sidebar-brand">
-        <p className="eyebrow">Maia</p>
-        <h1>Software sonification shell</h1>
-        <p>
-          Local-first desktop workflow for code/log intake, reusable sonic assets, BPM review,
-          derived composition plans, and audible operational tooling.
-        </p>
+        <BrandLockup
+          className="sidebar-brand-lockup sidebar-brand-lockup--pro"
+          wordmarkClassName="sidebar-wordmark sidebar-wordmark--pro"
+        />
+        <p className="sidebar-tagline">{t.tagline}</p>
+        <ModeToggle />
       </div>
 
-      <nav className="nav-stack" aria-label="Main screens">
+      <nav className="nav-stack role-stack" aria-label={t.simpleMode.shell.professionalRoles}>
         {navigationItems.map((item) => {
-          const active = item.id === currentScreen;
-
+          const active = item.id === currentPillar;
           return (
             <button
               key={item.id}
               type="button"
-              className={`nav-button${active ? " active" : ""}`}
-              onClick={() => onScreenChange(item.id)}
+              className={`nav-button nav-pillar-button ${active ? "active" : ""}`}
+              onClick={() => onPillarChange(item.id)}
             >
-              <span>{item.label}</span>
-              <small>{item.description}</small>
+              {item.lane && <span className="nav-lane">{item.lane}</span>}
+              <span className="nav-icon-shell">{PILLAR_ICONS[item.id]}</span>
+              <span className="nav-copy">
+                <span className="nav-title">{item.label}</span>
+                <small>{item.description}</small>
+              </span>
+              <strong className="nav-detail">{item.detail}</strong>
             </button>
           );
         })}
       </nav>
 
+      <button
+        type="button"
+        className={`nav-button nav-pillar-button ${connectionsActive ? "active" : ""}`}
+        onClick={onOpenConnections}
+      >
+        <span className="nav-lane">{t.sidebar.connectionsLane}</span>
+        <span className="nav-icon-shell">
+          <Cable size={18} />
+        </span>
+        <span className="nav-copy">
+          <span className="nav-title">{t.simpleMode.nav.connections}</span>
+          <small>{t.simpleMode.shell.fileLogsAndCloudRun}</small>
+        </span>
+        <strong className="nav-detail">{t.simpleMode.shell.persistent}</strong>
+      </button>
+
       {monitorSession ? (
         <div className="monitor-status-card">
           <div className="monitor-status-header">
             <span className="monitor-pulse" aria-hidden="true" />
-            <span className="monitor-status-label">Live monitor</span>
-            <span className="monitor-mode-badge">
-              {monitorSession.adapterKind === "process" ? "process" : "file tail"}
-            </span>
+            <span className="monitor-status-label">{liveStatusLabel}</span>
+            <span className="monitor-mode-badge">{monitorAdapterLabel}</span>
           </div>
           <p className="monitor-repo-title" title={monitorSession.repoTitle}>
             {monitorSession.repoTitle}
           </p>
           <div className="monitor-metrics">
-            <span>{monitorMetrics.windowCount} windows</span>
-            <span>·</span>
-            <span>{monitorMetrics.totalAnomalies} anomalies</span>
+            <span>
+              {monitorMetrics.totalAnomalies} {anomaliesInlineLabel}
+            </span>
             <span>·</span>
             <span>{uptimeLabel}</span>
           </div>
           <div className="monitor-actions">
-            <button
-              type="button"
-              className="compact-action"
-              onClick={onOpenMonitoredRepo}
-            >
-              Open
+            <button type="button" className="compact-action" onClick={onOpenMonitoredRepo}>
+              {t.simpleMode.common.inspect}
             </button>
-            <button
-              type="button"
-              className="compact-action danger"
-              onClick={onStopMonitor}
-            >
-              Stop
+            <button type="button" className="compact-action danger" onClick={onStopMonitor}>
+              {t.simpleMode.common.stop}
             </button>
           </div>
         </div>
       ) : null}
 
-      <div className="sidebar-meta">
-        <div className="sidebar-stat">
-          <span>Assets</span>
-          <strong>{trackCount + repositoryCount + baseAssetCount + compositionCount}</strong>
+      {userMode === "expert" && (
+        <div className="sidebar-meta">
+          <div className="sidebar-stat">
+            <small className="sidebar-stat-code" title={t.simpleMode.shell.tracksTitle}>
+              {t.simpleMode.shell.tracksShort}
+            </small>
+            <strong>{trackCount}</strong>
+          </div>
+          <div className="sidebar-stat">
+            <small className="sidebar-stat-code" title={t.simpleMode.shell.logsTitle}>
+              {t.simpleMode.shell.logsShort}
+            </small>
+            <strong>{repositoryCount}</strong>
+          </div>
+          <div className="sidebar-stat">
+            <small className="sidebar-stat-code" title={t.simpleMode.shell.profilesTitle}>
+              {t.simpleMode.shell.profilesShort}
+            </small>
+            <strong>{baseAssetCount}</strong>
+          </div>
         </div>
-        <div className="sidebar-stat">
-          <span>Tracks / Code-logs / Bases / Comps</span>
-          <strong>{trackCount} / {repositoryCount} / {baseAssetCount} / {compositionCount}</strong>
-        </div>
-        <div className="sidebar-stat">
-          <span>Persistence</span>
-          <strong>{manifest?.persistenceMode ?? "fallback"}</strong>
-        </div>
-        <div className="sidebar-stat">
-          <span>Analyzer</span>
-          <strong>{analyzerLabel}</strong>
-        </div>
-      </div>
+      )}
 
       <div className="sidebar-footer">
-        <span>Selected</span>
-        <strong>{selectedItemTitle ?? "No asset selected"}</strong>
+        <span className="sidebar-footer-kicker">{t.simpleMode.shell.selectedFocus}</span>
+        <strong className="sidebar-footer-title">
+          {selectedItemTitle ?? t.simpleMode.shell.none}
+        </strong>
       </div>
     </aside>
   );
