@@ -1,9 +1,6 @@
 import { useCallback } from "react";
 
-import {
-  resolveReplaySourceRepository,
-  shouldReuseActiveReplaySession,
-} from "../appRuntime";
+import { resolveReplaySourceRepository, shouldReuseActiveReplaySession } from "../appRuntime";
 import {
   resolveMonitoredRepository,
   resolveReplayMonitorDraft,
@@ -50,10 +47,7 @@ export function useAppMonitorSessionActions({
       armSessionMusicalBase(draft);
       primeMonitorGuideTrack(draft);
 
-      const sourceRepository = resolveReplaySourceRepository(
-        session,
-        repositories.repositories,
-      );
+      const sourceRepository = resolveReplaySourceRepository(session, repositories.repositories);
 
       if (!sourceRepository) {
         notify("error", t.appShell.replayUnavailableTitle, t.appShell.replayUnavailableBody);

@@ -60,7 +60,8 @@ export function useLiveLogMonitorAudioBootstrap(input: {
         input.logger.info("Resuming AudioContext from suspended state...");
         if (input.usingSharedAudioContextRef.current) {
           await input.resumeSharedAudio();
-          input.audioContextRef.current = input.monitorAudioContext ?? input.audioContextRef.current;
+          input.audioContextRef.current =
+            input.monitorAudioContext ?? input.audioContextRef.current;
         } else {
           await context.resume();
         }

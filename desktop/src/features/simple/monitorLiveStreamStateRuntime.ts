@@ -1,7 +1,4 @@
-import type {
-  LiveLogCue,
-  LiveLogMarker,
-} from "../../types/monitor";
+import type { LiveLogCue, LiveLogMarker } from "../../types/monitor";
 import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { LibraryTrack } from "../../types/library";
 import { getBasename } from "./monitorDisplay";
@@ -26,7 +23,9 @@ export interface MonitorLiveStreamHookState {
   liveSuggestedBpm: number | null;
   waveformAnomalies: WaveformAnomalyMarker[];
   selectedAnomalyId: string | null;
-  setSelectedAnomalyId: (value: string | null | ((current: string | null) => string | null)) => void;
+  setSelectedAnomalyId: (
+    value: string | null | ((current: string | null) => string | null),
+  ) => void;
   simulateLog: () => void;
 }
 

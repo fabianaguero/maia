@@ -227,21 +227,21 @@ describe("useLiveLogMonitorSessionActions", () => {
     const revokeObjectURLSpy = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
     const clickSpy = vi.fn();
     const originalCreateElement = document.createElement.bind(document);
-    const createElementSpy = vi
-      .spyOn(document, "createElement")
-      .mockImplementation(((tagName: string) => {
-        const element = originalCreateElement(tagName);
-        if (tagName === "a") {
-          element.click = clickSpy;
-        }
-        return element;
-      }) as typeof document.createElement);
-    const setTimeoutSpy = vi
-      .spyOn(globalThis, "setTimeout")
-      .mockImplementation(((callback: TimerHandler) => {
-        if (typeof callback === "function") callback();
-        return 1 as never;
-      }) as typeof setTimeout);
+    const createElementSpy = vi.spyOn(document, "createElement").mockImplementation(((
+      tagName: string,
+    ) => {
+      const element = originalCreateElement(tagName);
+      if (tagName === "a") {
+        element.click = clickSpy;
+      }
+      return element;
+    }) as typeof document.createElement);
+    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout").mockImplementation(((
+      callback: TimerHandler,
+    ) => {
+      if (typeof callback === "function") callback();
+      return 1 as never;
+    }) as typeof setTimeout);
     vi.mocked(renderBounceWav).mockReturnValue(new Blob(["wav"], { type: "audio/wav" }));
 
     const { result, rerender } = renderHook(

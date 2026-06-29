@@ -14,10 +14,8 @@ vi.mock("../../../src/features/monitor/monitorProviderPlaybackControlsRuntime", 
   resumeMonitorPlaybackState: (...args: unknown[]) => resumeMonitorPlaybackState(...args),
   seekMonitorPlaybackProgressState: (...args: unknown[]) =>
     seekMonitorPlaybackProgressState(...args),
-  seekMonitorPlaybackWindowState: (...args: unknown[]) =>
-    seekMonitorPlaybackWindowState(...args),
-  stepMonitorPlaybackWindowState: (...args: unknown[]) =>
-    stepMonitorPlaybackWindowState(...args),
+  seekMonitorPlaybackWindowState: (...args: unknown[]) => seekMonitorPlaybackWindowState(...args),
+  stepMonitorPlaybackWindowState: (...args: unknown[]) => stepMonitorPlaybackWindowState(...args),
 }));
 
 function createInput() {

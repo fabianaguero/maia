@@ -12,7 +12,9 @@ describe("BpmCurvePanel", () => {
     render(<BpmCurvePanel bpmCurve={[]} fallbackBpm={null} durationSeconds={null} />);
 
     expect(screen.getByText("BPM curve")).toBeInTheDocument();
-    expect(screen.getByText("No BPM curve points were stored for this track yet.")).toBeInTheDocument();
+    expect(
+      screen.getByText("No BPM curve points were stored for this track yet."),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("img", { name: "BPM curve" })).not.toBeInTheDocument();
   });
 

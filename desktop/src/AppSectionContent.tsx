@@ -116,14 +116,8 @@ interface AppSectionContentProps {
   onGoCompose: () => void;
   onTabChange: (tab: LibraryTab) => void;
   onChangeAnalysisMode: (mode: AnalyzerViewMode) => void;
-  onUpdateTrackPerformance: (
-    trackId: string,
-    input: UpdateTrackPerformanceInput,
-  ) => Promise<void>;
-  onUpdateTrackAnalysis: (
-    trackId: string,
-    input: UpdateTrackAnalysisInput,
-  ) => Promise<void>;
+  onUpdateTrackPerformance: (trackId: string, input: UpdateTrackPerformanceInput) => Promise<void>;
+  onUpdateTrackAnalysis: (trackId: string, input: UpdateTrackAnalysisInput) => Promise<void>;
   onStartSimpleMonitoring: (repoId: string, trackId?: string | null) => void;
   onStartSimpleWizardSession: (repoId: string, presetId: string) => void;
   onStartSession: (
@@ -134,10 +128,7 @@ interface AppSectionContentProps {
   onStopSession: () => Promise<void>;
   onResumeSession: (sessionId: string) => void;
   onPlaybackSession: (session: PersistedSession) => Promise<boolean>;
-  onReplayBookmark: (
-    session: PersistedSession,
-    replayWindowIndex: number,
-  ) => Promise<boolean>;
+  onReplayBookmark: (session: PersistedSession, replayWindowIndex: number) => Promise<boolean>;
   onDeleteSession: (sessionId: string) => Promise<void>;
   onSelectSession: (sessionId: string) => void;
 }

@@ -59,8 +59,15 @@ export function RepositoriesTable({
                 </td>
                 <td title={repository.sourcePath}>{repository.sourcePath}</td>
                 <td>
-                  {repository.suggestedBpm ? Math.round(repository.suggestedBpm) : t.library.tables.repositories.pending}
-                  <small>{t.library.tables.repositories.confidence.replace("{value}", String(Math.round(repository.confidence * 100)))}</small>
+                  {repository.suggestedBpm
+                    ? Math.round(repository.suggestedBpm)
+                    : t.library.tables.repositories.pending}
+                  <small>
+                    {t.library.tables.repositories.confidence.replace(
+                      "{value}",
+                      String(Math.round(repository.confidence * 100)),
+                    )}
+                  </small>
                 </td>
                 <td>{repository.buildSystem}</td>
                 <td>{repository.primaryLanguage}</td>

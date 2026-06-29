@@ -68,11 +68,7 @@ export function useSimpleMonitorSourceSelector({
 
   useEffect(() => {
     if (
-      shouldResetSelectedSource(
-        selectedSourceId,
-        selectionModel.selectedSourceOption,
-        sourceFilter,
-      )
+      shouldResetSelectedSource(selectedSourceId, selectionModel.selectedSourceOption, sourceFilter)
     ) {
       setSelectedSourceId("");
     }

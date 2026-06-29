@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import type {
-  LibraryTrack,
-} from "../../types/library";
+import type { LibraryTrack } from "../../types/library";
 import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { MonitorDeckControls } from "./monitorDeckControls";
 import { parseMonitorLogLine, type MonitorLogLine } from "./monitorLogParsing";

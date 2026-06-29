@@ -26,10 +26,7 @@ interface UseLiveLogMonitorPanelAudioEffectsInput {
       trackIndex: number,
       transitionPlan?: PlaylistTransitionPlan | null,
     ) => Promise<void>;
-    scheduleBackgroundTransition: (
-      context: AudioContext,
-      deck: BackgroundDeckState,
-    ) => void;
+    scheduleBackgroundTransition: (context: AudioContext, deck: BackgroundDeckState) => void;
   };
 }
 

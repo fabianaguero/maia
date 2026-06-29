@@ -55,8 +55,10 @@ export function buildSimpleMonitorScreenStateViewModel(
   };
 }
 
-export interface BuildSimpleMonitorScreenHookStateArgs
-  extends Omit<BuildSimpleMonitorScreenSectionsArgs, "sessions"> {
+export interface BuildSimpleMonitorScreenHookStateArgs extends Omit<
+  BuildSimpleMonitorScreenSectionsArgs,
+  "sessions"
+> {
   isMonitorActive: boolean;
   sessions: PersistedSession[];
 }

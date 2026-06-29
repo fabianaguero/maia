@@ -1,7 +1,4 @@
-import type {
-  RepositoryAnalysis,
-  StartSessionInput,
-} from "../../../types/library";
+import type { RepositoryAnalysis, StartSessionInput } from "../../../types/library";
 import type { ArrangementTrack, RoutedLiveCue } from "./liveSonificationScene";
 import { resolveBeatLooperStartBpm } from "./liveLogMonitorControlRuntime";
 

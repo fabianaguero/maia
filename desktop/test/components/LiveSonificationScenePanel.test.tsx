@@ -30,7 +30,9 @@ function createBaseAsset(overrides: Partial<BaseAssetRecord> = {}): BaseAssetRec
   };
 }
 
-function createComposition(overrides: Partial<CompositionResultRecord> = {}): CompositionResultRecord {
+function createComposition(
+  overrides: Partial<CompositionResultRecord> = {},
+): CompositionResultRecord {
   return {
     id: "comp-1",
     title: "Night Drive Overlay",
@@ -92,7 +94,9 @@ describe("LiveSonificationScenePanel", () => {
     expect(screen.getByText("Internal synth")).toBeInTheDocument();
     expect(screen.getByText("Generic routing")).toBeInTheDocument();
     expect(screen.getByText("None")).toBeInTheDocument();
-    expect(screen.getByText("No playable managed audio found; live cues stay on internal synthesis.")).toBeInTheDocument();
+    expect(
+      screen.getByText("No playable managed audio found; live cues stay on internal synthesis."),
+    ).toBeInTheDocument();
     expect(screen.getAllByText("Synth fallback").length).toBeGreaterThan(0);
   });
 

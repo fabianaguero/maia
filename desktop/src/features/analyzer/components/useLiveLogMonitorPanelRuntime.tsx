@@ -44,7 +44,11 @@ export function useLiveLogMonitorPanelRuntime(input: UseLiveLogMonitorPanelRunti
     buildLiveLogMonitorOrchestratorInput(input, runtimeState),
   );
 
-  useLiveLogMonitorLifecycle(buildLiveLogMonitorLifecycleInput(input, runtimeState, onStreamUpdate));
+  useLiveLogMonitorLifecycle(
+    buildLiveLogMonitorLifecycleInput(input, runtimeState, onStreamUpdate),
+  );
 
-  return useLiveLogMonitorPanelDeckRuntime(buildLiveLogMonitorDeckRuntimeInput(input, runtimeState));
+  return useLiveLogMonitorPanelDeckRuntime(
+    buildLiveLogMonitorDeckRuntimeInput(input, runtimeState),
+  );
 }

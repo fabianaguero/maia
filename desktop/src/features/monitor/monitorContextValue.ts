@@ -1,8 +1,6 @@
 import type { MonitorContextValue } from "./monitorContextTypes";
 
-export function buildMonitorContextValue(
-  input: MonitorContextValue,
-): MonitorContextValue {
+export function buildMonitorContextValue(input: MonitorContextValue): MonitorContextValue {
   return {
     session: input.session,
     metrics: input.metrics,

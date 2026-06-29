@@ -44,7 +44,9 @@ describe("RepositoryOverviewPanel", () => {
         "Local filesystem repository snapshotted into Maia storage for deterministic heuristics.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("Monorepo translated into a deterministic BPM profile.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Monorepo translated into a deterministic BPM profile."),
+    ).toBeInTheDocument();
     expect(screen.getByText("/repos/services")).toBeInTheDocument();
     expect(screen.getByText("/managed/repos/services")).toBeInTheDocument();
     expect(screen.getByText("backend")).toBeInTheDocument();

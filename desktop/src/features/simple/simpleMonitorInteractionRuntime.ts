@@ -69,7 +69,10 @@ export async function executeSimpleMonitorStartRequest(
     input.setLaunchingImmediate();
     await input.waitForNextFrame();
     await input.resumeAudio();
-    await input.startMonitoring(input.selectedSourceOption as MonitorLaunchSource, input.selectedSoundId);
+    await input.startMonitoring(
+      input.selectedSourceOption as MonitorLaunchSource,
+      input.selectedSoundId,
+    );
     return true;
   } catch {
     input.resetLaunchingOnFailure();

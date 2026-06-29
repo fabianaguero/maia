@@ -46,7 +46,9 @@ export function MonitorDeckControlPanel({
           </div>
           <div className="monitor-control-rack__grid">
             <label className="monitor-control-field">
-              <span className="monitor-control-field__label">{t.simpleMode.deckSetup.waveZoom}</span>
+              <span className="monitor-control-field__label">
+                {t.simpleMode.deckSetup.waveZoom}
+              </span>
               <div className="monitor-control-field__meta">
                 <span>{t.simpleMode.deckSetup.waveZoomDetail}</span>
                 <strong>{formatMonitorDeckWaveZoom(controls.waveformScale)}</strong>
@@ -62,14 +64,18 @@ export function MonitorDeckControlPanel({
             </label>
 
             <label className="monitor-control-field monitor-control-field--compact">
-              <span className="monitor-control-field__label">{t.simpleMode.deckSetup.beatSnap}</span>
+              <span className="monitor-control-field__label">
+                {t.simpleMode.deckSetup.beatSnap}
+              </span>
               <div className="monitor-control-field__meta">
                 <span>{t.simpleMode.deckSetup.beatSnapMeta}</span>
                 <strong>{formatMonitorDeckBeatSnap(controls.beatSnapSubdivision, t)}</strong>
               </div>
               <select
                 value={controls.beatSnapSubdivision}
-                onChange={(event) => onChange("beatSnapSubdivision", parseFloat(event.target.value))}
+                onChange={(event) =>
+                  onChange("beatSnapSubdivision", parseFloat(event.target.value))
+                }
               >
                 <option value="0.5">{t.simpleMode.deckSetup.beatHalf}</option>
                 <option value="0.25">{t.simpleMode.deckSetup.beatQuarter}</option>
@@ -78,7 +84,9 @@ export function MonitorDeckControlPanel({
             </label>
 
             <label className="monitor-control-field monitor-control-field--compact">
-              <span className="monitor-control-field__label">{t.simpleMode.deckSetup.cueCooldown}</span>
+              <span className="monitor-control-field__label">
+                {t.simpleMode.deckSetup.cueCooldown}
+              </span>
               <div className="monitor-control-field__meta">
                 <span>{t.simpleMode.deckSetup.cueCooldownMeta}</span>
                 <strong>{formatMonitorDeckCooldown(controls.cueCooldownMs)}</strong>
@@ -102,7 +110,9 @@ export function MonitorDeckControlPanel({
           </div>
           <div className="monitor-control-rack__grid">
             <label className="monitor-control-field">
-              <span className="monitor-control-field__label">{t.simpleMode.deckSetup.reactiveMix}</span>
+              <span className="monitor-control-field__label">
+                {t.simpleMode.deckSetup.reactiveMix}
+              </span>
               <div className="monitor-control-field__meta">
                 <span>{t.simpleMode.deckSetup.reactiveMixMeta}</span>
                 <strong>{controls.reactivity}%</strong>
@@ -180,7 +190,9 @@ export function MonitorDeckControlPanel({
           </div>
           <div className="monitor-control-rack__grid">
             <label className="monitor-control-field">
-              <span className="monitor-control-field__label">{t.simpleMode.deckSetup.monitorLevel}</span>
+              <span className="monitor-control-field__label">
+                {t.simpleMode.deckSetup.monitorLevel}
+              </span>
               <div className="monitor-control-field__meta">
                 <span>{t.simpleMode.deckSetup.monitorLevelMeta}</span>
                 <strong>{formatMonitorDeckMasterVolume(controls.masterVolume)}</strong>
@@ -196,7 +208,9 @@ export function MonitorDeckControlPanel({
             </label>
 
             <label className="monitor-control-field">
-              <span className="monitor-control-field__label">{t.simpleMode.deckSetup.idleMotion}</span>
+              <span className="monitor-control-field__label">
+                {t.simpleMode.deckSetup.idleMotion}
+              </span>
               <div className="monitor-control-field__meta">
                 <span>{t.simpleMode.deckSetup.idleMotionMeta}</span>
                 <strong>{controls.idleMotion}%</strong>
@@ -212,7 +226,9 @@ export function MonitorDeckControlPanel({
             </label>
 
             <label className="monitor-control-field monitor-control-field--compact">
-              <span className="monitor-control-field__label">{t.simpleMode.deckSetup.alertShape}</span>
+              <span className="monitor-control-field__label">
+                {t.simpleMode.deckSetup.alertShape}
+              </span>
               <div className="monitor-control-field__meta">
                 <span>{t.simpleMode.deckSetup.alertShapeMeta}</span>
                 <strong>{formatMonitorDeckAlertShape(controls.alertShape, t)}</strong>

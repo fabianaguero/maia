@@ -30,9 +30,7 @@ const labels = {
   offLabel: "Off",
 } as const;
 
-function createSession(
-  overrides: Partial<ActiveMonitorSession> = {},
-): ActiveMonitorSession {
+function createSession(overrides: Partial<ActiveMonitorSession> = {}): ActiveMonitorSession {
   return {
     sessionId: "sess-1",
     persistedSessionId: "persisted-1",

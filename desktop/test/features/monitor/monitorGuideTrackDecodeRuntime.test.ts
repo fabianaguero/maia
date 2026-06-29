@@ -11,9 +11,7 @@ function createDependencies(overrides: Partial<Parameters<typeof decodeGuideTrac
     numberOfChannels: 2,
     sampleRate: 2,
     getChannelData: (channel: number) =>
-      channel === 0
-        ? new Float32Array([0.2, 0.4, 0.6, 0.8])
-        : new Float32Array([0.4, 0.6, 0.8, 1]),
+      channel === 0 ? new Float32Array([0.2, 0.4, 0.6, 0.8]) : new Float32Array([0.4, 0.6, 0.8, 1]),
   }));
 
   return {

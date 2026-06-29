@@ -235,9 +235,7 @@ export interface BuildSimpleMonitorScreenSectionsArgs {
   onReplaySession: (sessionId: string, sourcePath: string, repoTitle: string) => void;
 }
 
-export function buildSimpleMonitorScreenSections(
-  args: BuildSimpleMonitorScreenSectionsArgs,
-): {
+export function buildSimpleMonitorScreenSections(args: BuildSimpleMonitorScreenSectionsArgs): {
   activeViewArgs: BuildSimpleMonitorActiveViewPropsArgs;
   idleViewArgs: BuildSimpleMonitorIdleViewPropsArgs;
 } {

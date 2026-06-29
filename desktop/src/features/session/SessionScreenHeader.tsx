@@ -6,10 +6,7 @@ interface SessionScreenHeaderProps {
   activeSession: PersistedSession | null;
 }
 
-export function SessionScreenHeader({
-  sessionsCount,
-  activeSession,
-}: SessionScreenHeaderProps) {
+export function SessionScreenHeader({ sessionsCount, activeSession }: SessionScreenHeaderProps) {
   const t = useT();
 
   return (

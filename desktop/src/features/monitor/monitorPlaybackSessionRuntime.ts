@@ -48,10 +48,7 @@ export async function preparePlaybackMonitorSessionState(
   const events = await input.loadSessionEvents(input.sessionId);
   input.logger.info("playbackSession loaded %d stored events", events.length);
 
-  const shouldHydrateReplay = shouldHydrateReplayFromSource(
-    events.length,
-    input.sourcePath,
-  );
+  const shouldHydrateReplay = shouldHydrateReplayFromSource(events.length, input.sourcePath);
   if (events.length === 0 && !shouldHydrateReplay) {
     input.logger.warn("playbackSession — 0 events, aborting");
     return null;

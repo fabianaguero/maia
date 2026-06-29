@@ -9,15 +9,9 @@ import {
 import type { SessionMonitorDraft } from "../appMonitorActionsRuntime";
 import type { UseAppMonitorActionsInput } from "./appMonitorActionsTypes";
 
-type GuideActionsInput = Pick<
-  UseAppMonitorActionsInput,
-  "library" | "monitor"
->;
+type GuideActionsInput = Pick<UseAppMonitorActionsInput, "library" | "monitor">;
 
-export function useAppMonitorGuideActions({
-  library,
-  monitor,
-}: GuideActionsInput) {
+export function useAppMonitorGuideActions({ library, monitor }: GuideActionsInput) {
   const armTrackBase = useCallback(
     (trackId: string | null | undefined) => {
       const nextState = resolveTrackArmState(trackId, library.tracks);
@@ -29,11 +23,7 @@ export function useAppMonitorGuideActions({
 
   const armPlaylistBase = useCallback(
     (playlistId: string | null | undefined) => {
-      const nextState = resolvePlaylistArmState(
-        playlistId,
-        library.playlists,
-        library.tracks,
-      );
+      const nextState = resolvePlaylistArmState(playlistId, library.playlists, library.tracks);
       library.setSelectedPlaylistId(nextState.selectedPlaylistId);
       library.setSelectedTrackId(nextState.selectedTrackId);
     },
@@ -75,11 +65,7 @@ export function useAppMonitorGuideActions({
 
   const primeMonitorGuideTrack = useCallback(
     (draft?: SessionMonitorDraft) => {
-      const guideState = resolveSessionMonitorGuideState(
-        draft,
-        library.playlists,
-        library.tracks,
-      );
+      const guideState = resolveSessionMonitorGuideState(draft, library.playlists, library.tracks);
 
       if (guideState.playlistPaths) {
         monitor.setGuideTrackPlaylist(guideState.playlistPaths);

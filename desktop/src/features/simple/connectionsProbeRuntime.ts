@@ -1,8 +1,5 @@
 import type { AppTranslations } from "../../i18n/en";
-import type {
-  LogSourceConnectionKind,
-  StreamSessionPollResult,
-} from "../../types/monitor";
+import type { LogSourceConnectionKind, StreamSessionPollResult } from "../../types/monitor";
 import {
   filterObservableConnectionLines,
   findCloudProbeError,
@@ -61,10 +58,7 @@ export function evaluateConnectionProbeStep(input: {
 
   if (connectionKind === "gcp_cloud_run" && (sawReady || result.hasData)) {
     summary = result.hasData
-      ? t.simpleMode.connections.linesObservedFromCloud.replace(
-          "{count}",
-          String(result.lineCount),
-        )
+      ? t.simpleMode.connections.linesObservedFromCloud.replace("{count}", String(result.lineCount))
       : summary || t.simpleMode.connections.cloudTailOpenedWaiting;
 
     return {

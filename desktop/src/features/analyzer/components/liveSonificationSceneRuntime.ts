@@ -1,8 +1,4 @@
-import type {
-  BaseAssetRecord,
-  CompositionResultRecord,
-  LiveLogCue,
-} from "../../../types/library";
+import type { BaseAssetRecord, CompositionResultRecord, LiveLogCue } from "../../../types/library";
 import { resolveMutationProfile, resolveStyleProfile } from "../../../config/liveProfiles";
 import {
   resolveArrangementSections,

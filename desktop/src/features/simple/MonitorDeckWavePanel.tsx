@@ -93,12 +93,8 @@ export function MonitorDeckWavePanel({
             onClick={onOverviewClick}
           >
             <canvas ref={overviewCanvasRef} className="monitor-overview-wave__canvas" />
-            <span className="monitor-overview-wave__label">
-              {viewModel.overview.label}
-            </span>
-            <span className="monitor-overview-wave__sublabel">
-              {viewModel.overview.sublabel}
-            </span>
+            <span className="monitor-overview-wave__label">{viewModel.overview.label}</span>
+            <span className="monitor-overview-wave__sublabel">{viewModel.overview.sublabel}</span>
             <div className="monitor-overview-wave__anomalies">
               {anomalyBurstRegions.map((region) => (
                 <span

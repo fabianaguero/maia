@@ -50,9 +50,7 @@ describe("CompositionTimelinePanel", () => {
   });
 
   it("renders derived sections and cue points for the composition timeline", () => {
-    const { container } = render(
-      <CompositionTimelinePanel composition={createComposition()} />,
-    );
+    const { container } = render(<CompositionTimelinePanel composition={createComposition()} />);
 
     expect(screen.getByText("Arrangement timeline")).toBeInTheDocument();
     expect(screen.getAllByText("Intro lock").length).toBeGreaterThan(0);

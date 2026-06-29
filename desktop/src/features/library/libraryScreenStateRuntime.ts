@@ -28,9 +28,7 @@ export function buildLibraryPlaylistEditorResetState(): LibraryPlaylistEditorSta
 }
 
 export function toggleLibraryPlaylistTrackId(current: string[], trackId: string): string[] {
-  return current.includes(trackId)
-    ? current.filter((id) => id !== trackId)
-    : [...current, trackId];
+  return current.includes(trackId) ? current.filter((id) => id !== trackId) : [...current, trackId];
 }
 
 export function buildLibraryPlaylistSaveInput(input: {

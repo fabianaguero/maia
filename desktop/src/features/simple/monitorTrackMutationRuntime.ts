@@ -101,11 +101,7 @@ export function buildAdjustedMonitorTrackMutationPlan(input: {
       0.04,
       1.2,
     ),
-    dryGain: clamp(
-      NEUTRAL_DRY_GAIN + (plan.dryGain - NEUTRAL_DRY_GAIN) * reactivityMix,
-      0,
-      1,
-    ),
+    dryGain: clamp(NEUTRAL_DRY_GAIN + (plan.dryGain - NEUTRAL_DRY_GAIN) * reactivityMix, 0, 1),
     driveWet: clamp(
       NEUTRAL_DRIVE_WET +
         (plan.driveWet - NEUTRAL_DRIVE_WET) *

@@ -1,15 +1,10 @@
-import type {
-  ActiveMonitorSession,
-  MonitorMetrics,
-} from "../monitor/monitorContextTypes";
+import type { ActiveMonitorSession, MonitorMetrics } from "../monitor/monitorContextTypes";
 import type { PersistedSession } from "../../api/sessions";
 import type { LibraryTrack, RepositoryAnalysis } from "../../types/library";
 import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { MonitorLaunchSource } from "./monitorSourceOptions";
 import type { MonitorSetupPreferences } from "./monitorSetupPreferences";
-import {
-  buildSimpleMonitorScreenHookState,
-} from "./simpleMonitorScreenRuntime";
+import { buildSimpleMonitorScreenHookState } from "./simpleMonitorScreenRuntime";
 import { useSimpleMonitorScreenController } from "./useSimpleMonitorScreenController";
 
 export interface SimpleMonitorScreenStateInput {

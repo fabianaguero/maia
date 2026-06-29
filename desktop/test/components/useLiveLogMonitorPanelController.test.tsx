@@ -17,13 +17,11 @@ vi.mock("../../src/features/monitor/MonitorContext", () => ({
 }));
 
 vi.mock("../../src/features/analyzer/components/useLiveLogMonitorSurfaceState", () => ({
-  useLiveLogMonitorSurfaceState: (...args: unknown[]) =>
-    useLiveLogMonitorSurfaceState(...args),
+  useLiveLogMonitorSurfaceState: (...args: unknown[]) => useLiveLogMonitorSurfaceState(...args),
 }));
 
 vi.mock("../../src/features/analyzer/components/useLiveLogMonitorPanelRuntime", () => ({
-  useLiveLogMonitorPanelRuntime: (...args: unknown[]) =>
-    useLiveLogMonitorPanelRuntime(...args),
+  useLiveLogMonitorPanelRuntime: (...args: unknown[]) => useLiveLogMonitorPanelRuntime(...args),
 }));
 
 describe("useLiveLogMonitorPanelController", () => {

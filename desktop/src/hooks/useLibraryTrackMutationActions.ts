@@ -40,12 +40,7 @@ import type { UseLibraryMutationActionsInput } from "./libraryMutationActionsTyp
 
 type TrackMutationActionsInput = Pick<
   UseLibraryMutationActionsInput,
-  | "tracks"
-  | "setTracks"
-  | "setPlaylists"
-  | "setSelectedTrackId"
-  | "setMutating"
-  | "setError"
+  "tracks" | "setTracks" | "setPlaylists" | "setSelectedTrackId" | "setMutating" | "setError"
 >;
 
 export function useLibraryTrackMutationActions({

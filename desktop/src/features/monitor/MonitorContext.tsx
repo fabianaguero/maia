@@ -1,11 +1,5 @@
-import {
-  createContext,
-  useContext,
-  type ReactNode,
-} from "react";
-import type {
-  MonitorContextValue,
-} from "./monitorContextTypes";
+import { createContext, useContext, type ReactNode } from "react";
+import type { MonitorContextValue } from "./monitorContextTypes";
 import { useMonitorProviderController } from "./useMonitorProviderController";
 
 // ---------------------------------------------------------------------------

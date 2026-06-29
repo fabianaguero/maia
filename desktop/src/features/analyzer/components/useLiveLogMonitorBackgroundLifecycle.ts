@@ -1,9 +1,7 @@
 import { useEffect, type MutableRefObject } from "react";
 
 import type { LibraryTrack } from "../../../types/library";
-import {
-  resolveBackgroundDeckLifecyclePlan,
-} from "./liveLogMonitorBackgroundRuntime";
+import { resolveBackgroundDeckLifecyclePlan } from "./liveLogMonitorBackgroundRuntime";
 import {
   snapshotBackgroundDeckState,
   type BackgroundDeckState,

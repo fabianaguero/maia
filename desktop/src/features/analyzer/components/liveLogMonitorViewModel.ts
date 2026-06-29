@@ -1,7 +1,4 @@
-import {
-  resolveMutationProfile,
-  resolveStyleProfile,
-} from "../../../config/liveProfiles";
+import { resolveMutationProfile, resolveStyleProfile } from "../../../config/liveProfiles";
 import type {
   BaseTrackPlaylist,
   BaseAssetRecord,
@@ -14,10 +11,7 @@ import type { MutationProfileOption, StyleProfileOption } from "../../../types/m
 import type { LiveMutationExplanation } from "../../../utils/liveMutationExplainability";
 import type { PlaylistTransitionPlan } from "../../../utils/playlistTransition";
 import type { LiveMutationState } from "./liveLogMonitorAudioRuntime";
-import {
-  type ReferenceAnchor,
-  resolveLiveSonificationScene,
-} from "./liveSonificationScene";
+import { type ReferenceAnchor, resolveLiveSonificationScene } from "./liveSonificationScene";
 import {
   buildLiveLogMonitorAdapterState,
   buildLiveLogMonitorExplanationState,

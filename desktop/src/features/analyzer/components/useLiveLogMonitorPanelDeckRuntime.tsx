@@ -31,14 +31,28 @@ export interface UseLiveLogMonitorPanelDeckRuntimeInput {
   availableBaseAssets: Parameters<typeof useLiveLogMonitorDeckModel>[0]["availableBaseAssets"];
   availableCompositions: Parameters<typeof useLiveLogMonitorDeckModel>[0]["availableCompositions"];
   surfaceState: LiveLogMonitorSurfaceState;
-  selectedStyleProfile: Parameters<typeof buildLiveLogMonitorPanelRenderState>[0]["selectedStyleProfile"];
-  selectedMutationProfile: Parameters<typeof buildLiveLogMonitorPanelRenderState>[0]["selectedMutationProfile"];
-  availableBaseTrackOptions: Parameters<typeof useLiveLogMonitorDeckModel>[0]["availableBaseTrackOptions"];
-  backgroundNowPlayingTrack: Parameters<typeof useLiveLogMonitorDeckModel>[0]["backgroundNowPlayingTrack"];
-  backgroundTransitionNextTrack: Parameters<typeof useLiveLogMonitorDeckModel>[0]["backgroundTransitionNextTrack"];
+  selectedStyleProfile: Parameters<
+    typeof buildLiveLogMonitorPanelRenderState
+  >[0]["selectedStyleProfile"];
+  selectedMutationProfile: Parameters<
+    typeof buildLiveLogMonitorPanelRenderState
+  >[0]["selectedMutationProfile"];
+  availableBaseTrackOptions: Parameters<
+    typeof useLiveLogMonitorDeckModel
+  >[0]["availableBaseTrackOptions"];
+  backgroundNowPlayingTrack: Parameters<
+    typeof useLiveLogMonitorDeckModel
+  >[0]["backgroundNowPlayingTrack"];
+  backgroundTransitionNextTrack: Parameters<
+    typeof useLiveLogMonitorDeckModel
+  >[0]["backgroundTransitionNextTrack"];
   traceWaveformTrack: Parameters<typeof useLiveLogMonitorDeckModel>[0]["traceWaveformTrack"];
-  traceWaveformExplanations: Parameters<typeof useLiveLogMonitorDeckModel>[0]["traceWaveformExplanations"];
-  selectedTraceExplanation: Parameters<typeof useLiveLogMonitorDeckModel>[0]["selectedTraceExplanation"];
+  traceWaveformExplanations: Parameters<
+    typeof useLiveLogMonitorDeckModel
+  >[0]["traceWaveformExplanations"];
+  selectedTraceExplanation: Parameters<
+    typeof useLiveLogMonitorDeckModel
+  >[0]["selectedTraceExplanation"];
   traceWaveformCues: Parameters<typeof useLiveLogMonitorDeckModel>[0]["traceWaveformCues"];
   currentReplayExplanation: unknown;
   referenceAnchorBpm: number | null;
@@ -51,8 +65,12 @@ export interface UseLiveLogMonitorPanelDeckRuntimeInput {
   cueEnginePreviewLabel: string;
   liveMutationStateLabel: string;
   replaySessionId: string | null;
-  replayFeedbackRecommendation: Parameters<typeof useLiveLogMonitorDeckModel>[0]["replayFeedbackRecommendation"];
-  sortedSessionBookmarks: Parameters<typeof useLiveLogMonitorDeckModel>[0]["sortedSessionBookmarks"];
+  replayFeedbackRecommendation: Parameters<
+    typeof useLiveLogMonitorDeckModel
+  >[0]["replayFeedbackRecommendation"];
+  sortedSessionBookmarks: Parameters<
+    typeof useLiveLogMonitorDeckModel
+  >[0]["sortedSessionBookmarks"];
   activeReplayBookmark: Parameters<typeof useLiveLogMonitorDeckModel>[0]["activeReplayBookmark"];
   bookmarkLabelDraft: string;
   setBookmarkLabelDraft: (value: string) => void;
@@ -70,7 +88,9 @@ export interface UseLiveLogMonitorPanelDeckRuntimeInput {
   bookmarkError: string | null;
   captureCurrentScene: () => void;
   saveReplayBookmark: () => Promise<unknown>;
-  deleteReplayBookmark: (bookmark: Parameters<typeof useLiveLogMonitorDeckModel>[0]["sortedSessionBookmarks"][number]) => Promise<unknown>;
+  deleteReplayBookmark: (
+    bookmark: Parameters<typeof useLiveLogMonitorDeckModel>[0]["sortedSessionBookmarks"][number],
+  ) => Promise<unknown>;
   playPanelTestTone: () => Promise<void> | void;
   ensureAudioReady: () => Promise<AudioContext | null>;
   ensureBackgroundAudio: (context: AudioContext) => Promise<void>;

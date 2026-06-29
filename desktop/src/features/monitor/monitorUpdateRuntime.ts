@@ -1,9 +1,6 @@
 import type { InsertSessionEventInput } from "../../api/sessions";
 import type { LiveLogStreamUpdate } from "../../types/monitor";
-import type {
-  MonitorMetrics,
-  StreamListener,
-} from "./monitorContextTypes";
+import type { MonitorMetrics, StreamListener } from "./monitorContextTypes";
 
 export interface MonitorListenerRuntimeLogger {
   info: (message: string, ...args: unknown[]) => void;

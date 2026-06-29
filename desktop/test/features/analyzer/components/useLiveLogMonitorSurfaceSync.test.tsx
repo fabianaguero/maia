@@ -33,10 +33,18 @@ function createInput(overrides: Partial<Parameters<typeof useLiveLogMonitorSurfa
     syncTailListRef: { current: { scrollTop: 0, scrollHeight: 480 } as HTMLDivElement },
     syncTailRowCount: 3,
     previousAudibleVolumeRef: { current: 0.4 },
-    backgroundGainRef: { current: { gain: { setValueAtTime: backgroundGainSetValueAtTime } } as GainNode },
-    backgroundDryGainRef: { current: { gain: { setValueAtTime: backgroundDrySetValueAtTime } } as GainNode },
-    backgroundDriveWetGainRef: { current: { gain: { setValueAtTime: backgroundWetSetValueAtTime } } as GainNode },
-    filterNodeRef: { current: { frequency: { setValueAtTime: filterSetValueAtTime } } as BiquadFilterNode },
+    backgroundGainRef: {
+      current: { gain: { setValueAtTime: backgroundGainSetValueAtTime } } as GainNode,
+    },
+    backgroundDryGainRef: {
+      current: { gain: { setValueAtTime: backgroundDrySetValueAtTime } } as GainNode,
+    },
+    backgroundDriveWetGainRef: {
+      current: { gain: { setValueAtTime: backgroundWetSetValueAtTime } } as GainNode,
+    },
+    filterNodeRef: {
+      current: { frequency: { setValueAtTime: filterSetValueAtTime } } as BiquadFilterNode,
+    },
     selectedStyleProfile: {
       backgroundGain: 0.8,
       filterCeilingHz: 1200,
@@ -74,10 +82,7 @@ describe("useLiveLogMonitorSurfaceSync", () => {
       0.0001,
       12,
     );
-    expect(input.filterNodeRef.current?.frequency.setValueAtTime).toHaveBeenCalledWith(
-      1200,
-      12,
-    );
+    expect(input.filterNodeRef.current?.frequency.setValueAtTime).toHaveBeenCalledWith(1200, 12);
   });
 
   it("does not overwrite the last audible volume when muted", () => {

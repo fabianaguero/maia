@@ -18,8 +18,7 @@ vi.mock("../../src/features/analyzer/components/liveLogMonitorPreferencesRuntime
   buildRepoResetMonitorState: (...args: unknown[]) => buildRepoResetMonitorState(...args),
   resolveGuideTrackSeedPlaylist: (...args: unknown[]) => resolveGuideTrackSeedPlaylist(...args),
   resolveNextSceneBaseAssetId: (...args: unknown[]) => resolveNextSceneBaseAssetId(...args),
-  resolveNextSceneCompositionId: (...args: unknown[]) =>
-    resolveNextSceneCompositionId(...args),
+  resolveNextSceneCompositionId: (...args: unknown[]) => resolveNextSceneCompositionId(...args),
 }));
 
 vi.mock("../../src/features/analyzer/components/liveLogMonitorAudioRuntime", () => ({
@@ -56,7 +55,9 @@ describe("useLiveLogMonitorLifecycle", () => {
     loadMonitorPrefs.mockReturnValue({ selectedStyleProfileId: "club" });
     buildRepoResetMonitorState.mockReturnValue({ reset: true });
     resolveGuideTrackSeedPlaylist.mockReturnValue({ name: "seed", trackIds: ["track-1"] });
-    resolveNextSceneBaseAssetId.mockImplementation(({ currentSceneBaseAssetId }) => currentSceneBaseAssetId);
+    resolveNextSceneBaseAssetId.mockImplementation(
+      ({ currentSceneBaseAssetId }) => currentSceneBaseAssetId,
+    );
     resolveNextSceneCompositionId.mockImplementation(
       ({ currentSceneCompositionId }) => currentSceneCompositionId,
     );

@@ -129,7 +129,9 @@ describe("SessionSavedSessionsPanel", () => {
           selectedSessionBookmarks={[createBookmark()]}
           selectedSessionReplayFeedbackRecommendation={null}
           sessionBookmarksBySessionId={{ "session-1": [createBookmark()] }}
-          bookmarkContexts={{ 1: { bpm: 126, dominantLevel: "warn", anomalyCount: 3, logExcerpt: "timeout" } }}
+          bookmarkContexts={{
+            1: { bpm: 126, dominantLevel: "warn", anomalyCount: 3, logExcerpt: "timeout" },
+          }}
           activeSessionId={null}
           activeSessionMode={null}
           liveWindowCount={0}

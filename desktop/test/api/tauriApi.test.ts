@@ -40,7 +40,9 @@ describe("tauri api bridge helpers", () => {
   it("detects native bridge unavailability errors", () => {
     expect(isNativeBridgeUnavailable(new Error("Tauri native bridge not available"))).toBe(true);
     expect(
-      isNativeBridgeUnavailable(new Error("Cannot read properties of undefined (reading 'invoke')")),
+      isNativeBridgeUnavailable(
+        new Error("Cannot read properties of undefined (reading 'invoke')"),
+      ),
     ).toBe(true);
     expect(isNativeBridgeUnavailable(new Error("Network timeout"))).toBe(false);
     expect(isNativeBridgeUnavailable("not-an-error")).toBe(false);

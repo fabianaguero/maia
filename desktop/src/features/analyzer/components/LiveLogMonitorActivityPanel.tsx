@@ -2,10 +2,7 @@ import type { CSSProperties, ReactNode, RefObject } from "react";
 
 import type { LiveLogMarker } from "../../../types/library";
 import type { RoutedLiveCue } from "./liveSonificationScene";
-import type {
-  AnomalySourceRow,
-  SyncTailRow,
-} from "./liveLogMonitorPanelRuntime";
+import type { AnomalySourceRow, SyncTailRow } from "./liveLogMonitorPanelRuntime";
 
 type WaveBarStyle = CSSProperties & {
   "--bar-height": string;
@@ -170,9 +167,7 @@ export function LiveLogMonitorActivityPanel({
               <div className="monitor-parsed-line is-empty" role="listitem">
                 <span className="monitor-parsed-line-index">--</span>
                 <span className="monitor-parsed-line-tone">{labels.idleUpper}</span>
-                <code className="monitor-parsed-line-code">
-                  {labels.waitingSynchronizedLines}
-                </code>
+                <code className="monitor-parsed-line-code">{labels.waitingSynchronizedLines}</code>
               </div>
             )}
           </div>
@@ -185,7 +180,11 @@ export function LiveLogMonitorActivityPanel({
             </strong>
           </div>
           {anomalySourceRows.length > 0 ? (
-            <div className="monitor-parsed-lines-list" role="list" aria-label={labels.anomalySourceAria}>
+            <div
+              className="monitor-parsed-lines-list"
+              role="list"
+              aria-label={labels.anomalySourceAria}
+            >
               {anomalySourceRows.map((row, index) => (
                 <div
                   key={`${row.sourcePath}-${index}-${row.level}`}

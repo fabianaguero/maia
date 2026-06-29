@@ -155,9 +155,7 @@ export function LiveLogMonitorLaunchPanel({
             className="compact-select"
             value={forcedLiveMutationState}
             onChange={(event) =>
-              onChangeForcedState(
-                event.target.value as "auto" | "normal" | "warning" | "critical",
-              )
+              onChangeForcedState(event.target.value as "auto" | "normal" | "warning" | "critical")
             }
             title={labels.auditionOverrideTitle}
           >
@@ -184,7 +182,9 @@ export function LiveLogMonitorLaunchPanel({
               <strong className="monitor-readiness-state ready">{cueEnginePreviewLabel}</strong>
             </li>
           </ul>
-          {!hasBaseListeningBed ? <p className="monitor-empty-hint">{labels.synthOnlyHint}</p> : null}
+          {!hasBaseListeningBed ? (
+            <p className="monitor-empty-hint">{labels.synthOnlyHint}</p>
+          ) : null}
           <p className="support-copy">
             {labels.auditionOverridePrefix}{" "}
             {forcedLiveMutationState === "auto" ? labels.liveLogDriven : liveMutationStateLabel}

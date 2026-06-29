@@ -18,9 +18,7 @@ const repositoriesMock = vi.hoisted(() => ({
 
 vi.mock("../../src/api/repositories", () => repositoriesMock);
 
-function createConnection(
-  overrides: Partial<LogSourceConnection> = {},
-): LogSourceConnection {
+function createConnection(overrides: Partial<LogSourceConnection> = {}): LogSourceConnection {
   return {
     id: "conn-1",
     kind: "file_log",
@@ -39,7 +37,9 @@ function createConnection(
   };
 }
 
-function createPollResult(overrides: Partial<StreamSessionPollResult> = {}): StreamSessionPollResult {
+function createPollResult(
+  overrides: Partial<StreamSessionPollResult> = {},
+): StreamSessionPollResult {
   return {
     session: {
       sessionId: "session-1",
@@ -152,7 +152,9 @@ describe("ConnectionsScreen", () => {
       await Promise.resolve();
     });
     expect(screen.getByText("visits-service")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: en.simpleMode.connections.testPersistentConnection }));
+    fireEvent.click(
+      screen.getByRole("button", { name: en.simpleMode.connections.testPersistentConnection }),
+    );
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -160,7 +162,9 @@ describe("ConnectionsScreen", () => {
 
     expect(screen.getByText("12 lines available from the tail")).toBeInTheDocument();
     expect(repositoriesMock.startLogSourceConnection).toHaveBeenCalledTimes(1);
-    expect(repositoriesMock.stopStreamSession).toHaveBeenCalledWith(expect.stringMatching(/^test-conn-1-/));
+    expect(repositoriesMock.stopStreamSession).toHaveBeenCalledWith(
+      expect.stringMatching(/^test-conn-1-/),
+    );
   });
 
   it("starts and stops the live tail console for the selected connection", async () => {
@@ -214,7 +218,9 @@ describe("ConnectionsScreen", () => {
       await Promise.resolve();
     });
 
-    fireEvent.click(screen.getAllByRole("button", { name: en.simpleMode.connections.startLiveTail })[0]!);
+    fireEvent.click(
+      screen.getAllByRole("button", { name: en.simpleMode.connections.startLiveTail })[0]!,
+    );
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1600);

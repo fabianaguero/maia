@@ -37,7 +37,9 @@ describe("ImportRepositoryForm", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: en.library.forms.repository.startIngestion }));
+    fireEvent.click(
+      screen.getByRole("button", { name: en.library.forms.repository.startIngestion }),
+    );
     expect(
       await screen.findByText(en.library.forms.repository.sourceRequiredError),
     ).toBeInTheDocument();
@@ -45,7 +47,9 @@ describe("ImportRepositoryForm", () => {
     fireEvent.click(
       screen.getByRole("button", { name: en.library.forms.repository.useCurrentWorkspace }),
     );
-    fireEvent.click(screen.getByRole("button", { name: en.library.forms.repository.startIngestion }));
+    fireEvent.click(
+      screen.getByRole("button", { name: en.library.forms.repository.startIngestion }),
+    );
 
     await waitFor(() => {
       expect(onImportRepository).toHaveBeenCalledWith({
@@ -76,7 +80,9 @@ describe("ImportRepositoryForm", () => {
     );
     await screen.findByPlaceholderText(en.library.forms.repository.sourceLogPathPlaceholder);
     const browseButtons = screen.getAllByRole("button");
-    fireEvent.click(browseButtons.find((button) => button.className.includes("input-inline-action"))!);
+    fireEvent.click(
+      browseButtons.find((button) => button.className.includes("input-inline-action"))!,
+    );
 
     await waitFor(() => {
       expect(pickRepositoryFile).toHaveBeenCalledWith("");
@@ -90,12 +96,12 @@ describe("ImportRepositoryForm", () => {
     });
 
     fireEvent.change(
-      screen.getByPlaceholderText(
-        en.library.forms.repository.targetSessionLabelPlaceholder,
-      ),
+      screen.getByPlaceholderText(en.library.forms.repository.targetSessionLabelPlaceholder),
       { target: { value: "API stream" } },
     );
-    fireEvent.click(screen.getByRole("button", { name: en.library.forms.repository.startIngestion }));
+    fireEvent.click(
+      screen.getByRole("button", { name: en.library.forms.repository.startIngestion }),
+    );
 
     await waitFor(() => {
       expect(onImportRepository).toHaveBeenCalledWith({
@@ -110,10 +116,7 @@ describe("ImportRepositoryForm", () => {
 
   it("saves GCP Cloud Run connections through the dedicated branch", async () => {
     renderWithI18n(
-      <ImportRepositoryForm
-        busy={false}
-        onImportRepository={vi.fn(async () => true)}
-      />,
+      <ImportRepositoryForm busy={false} onImportRepository={vi.fn(async () => true)} />,
     );
 
     fireEvent.click(
@@ -121,7 +124,9 @@ describe("ImportRepositoryForm", () => {
         name: new RegExp(`^${en.library.forms.repository.gcpCloudRun}\\b`),
       }),
     );
-    fireEvent.click(screen.getByRole("button", { name: en.library.forms.repository.startIngestion }));
+    fireEvent.click(
+      screen.getByRole("button", { name: en.library.forms.repository.startIngestion }),
+    );
 
     expect(
       await screen.findByText(en.library.forms.repository.gcpRequiresProjectAndService),
@@ -135,18 +140,17 @@ describe("ImportRepositoryForm", () => {
       screen.getByPlaceholderText(en.library.forms.repository.cloudRunServicePlaceholder),
       { target: { value: "services" } },
     );
+    fireEvent.change(screen.getByPlaceholderText(en.library.forms.repository.regionPlaceholder), {
+      target: { value: "us-central1" },
+    });
     fireEvent.change(
-      screen.getByPlaceholderText(en.library.forms.repository.regionPlaceholder),
-      { target: { value: "us-central1" } },
-    );
-    fireEvent.change(
-      screen.getByPlaceholderText(
-        en.library.forms.repository.targetSessionLabelPlaceholder,
-      ),
+      screen.getByPlaceholderText(en.library.forms.repository.targetSessionLabelPlaceholder),
       { target: { value: "Prod Cloud Run" } },
     );
 
-    fireEvent.click(screen.getByRole("button", { name: en.library.forms.repository.startIngestion }));
+    fireEvent.click(
+      screen.getByRole("button", { name: en.library.forms.repository.startIngestion }),
+    );
 
     await waitFor(() => {
       expect(upsertLogSourceConnection).toHaveBeenCalledWith({

@@ -85,9 +85,7 @@ export function buildLiveLogMonitorBackgroundDeckControlInput(
   };
 }
 
-export function buildLiveLogMonitorResetActionsInput(
-  surfaceState: LiveLogMonitorSurfaceState,
-) {
+export function buildLiveLogMonitorResetActionsInput(surfaceState: LiveLogMonitorSurfaceState) {
   return {
     knownComponentsRef: surfaceState.knownComponentsRef,
     beatClockRef: surfaceState.beatClockRef,
@@ -167,10 +165,7 @@ export function buildLiveLogMonitorBackgroundLifecycleInput(
       trackIndex: number,
       transitionPlan?: PlaylistTransitionPlan | null,
     ) => Promise<void>;
-    scheduleBackgroundTransition: (
-      context: AudioContext,
-      deck: BackgroundDeckState,
-    ) => void;
+    scheduleBackgroundTransition: (context: AudioContext, deck: BackgroundDeckState) => void;
   },
 ) {
   return {

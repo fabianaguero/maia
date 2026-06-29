@@ -140,7 +140,9 @@ describe("monitorDeckCanvasDrawRuntime", () => {
     );
 
     expect(context.fillRect).toHaveBeenCalled();
-    expect((context.fillRect as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(3);
+    expect(
+      (context.fillRect as unknown as ReturnType<typeof vi.fn>).mock.calls.length,
+    ).toBeGreaterThan(3);
   });
 
   it("draws visible anomaly washes and selected marker beams while skipping hidden markers", () => {

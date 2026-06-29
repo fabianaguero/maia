@@ -142,9 +142,9 @@ describe("useLibraryBootstrap", () => {
       "track-b",
       "track-a",
     ]);
-    expect(
-      setPlaylists.mock.calls.at(-1)?.[0].map((entry: BaseTrackPlaylist) => entry.id),
-    ).toEqual(["playlist-b", "playlist-a"]);
+    expect(setPlaylists.mock.calls.at(-1)?.[0].map((entry: BaseTrackPlaylist) => entry.id)).toEqual(
+      ["playlist-b", "playlist-a"],
+    );
     expect(setSelectedTrackId).toHaveBeenCalledWith(expect.any(Function));
     expect(setSelectedPlaylistId).toHaveBeenCalledWith(expect.any(Function));
     const trackSelectionResolver = setSelectedTrackId.mock.calls.at(-1)?.[0] as (

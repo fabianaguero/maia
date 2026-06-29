@@ -1,7 +1,4 @@
-import type {
-  LiveLogCue,
-  LiveLogMarker,
-} from "../../types/monitor";
+import type { LiveLogCue, LiveLogMarker } from "../../types/monitor";
 import type { LiveLogStreamUpdate } from "../../types/monitor";
 import { resolveBurstFactor } from "./monitorAudioMutation";
 import type { MonitorDeckControls } from "./monitorDeckControls";
@@ -19,7 +16,10 @@ export function createMonitorSignalBuffer(
 }
 
 export function shouldEmitMonitorCueAccent(input: {
-  update: Pick<LiveLogStreamUpdate, "lineCount" | "anomalyCount" | "levelCounts" | "anomalyMarkers">;
+  update: Pick<
+    LiveLogStreamUpdate,
+    "lineCount" | "anomalyCount" | "levelCounts" | "anomalyMarkers"
+  >;
   cueBatch: LiveLogCue[];
   controls: MonitorDeckControls;
   hasMeaningfulUpdate: boolean;
@@ -55,10 +55,10 @@ export function shouldEmitMonitorCueAccent(input: {
 
   return Boolean(
     hasMeaningfulUpdate &&
-      anomalyPressure >= anomalyPressureThreshold &&
-      burstFactor < burstSuppressionThreshold &&
-      anomalyDrivenCue &&
-      (!hasBackgroundTrack || nowMs - lastCueAccentAtMs >= controls.cueCooldownMs),
+    anomalyPressure >= anomalyPressureThreshold &&
+    burstFactor < burstSuppressionThreshold &&
+    anomalyDrivenCue &&
+    (!hasBackgroundTrack || nowMs - lastCueAccentAtMs >= controls.cueCooldownMs),
   );
 }
 
@@ -133,7 +133,8 @@ export function advanceIdleLogSignalBuffer(input: {
   }
   const previousCenter = input.previous[60] || { val: 20, heat: 0 };
   nextBuffer[60] = {
-    val: previousCenter.val * (0.9 - input.idleMix * 0.22) + idlePulse * (0.1 + input.idleMix * 0.22),
+    val:
+      previousCenter.val * (0.9 - input.idleMix * 0.22) + idlePulse * (0.1 + input.idleMix * 0.22),
     heat: previousCenter.heat * (0.82 - input.idleMix * 0.22),
   };
   for (let index = 61; index < 120; index += 1) {

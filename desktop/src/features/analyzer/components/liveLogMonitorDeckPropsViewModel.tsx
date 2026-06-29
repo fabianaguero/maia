@@ -48,10 +48,14 @@ export interface BuildLiveLogMonitorDeckSectionContentInput {
   recentSyncTailRows: SyncTailRow[];
   anomalySourceRows: LiveMonitorDisplayState["anomalySourceRows"];
   activeTailWindowId: string | null;
-  syncTailListRef: ComponentProps<typeof LiveLogMonitorDeckSection>["activityPanelProps"]["syncTailListRef"];
+  syncTailListRef: ComponentProps<
+    typeof LiveLogMonitorDeckSection
+  >["activityPanelProps"]["syncTailListRef"];
   analyserRef: ComponentProps<typeof LiveWaveformCanvas>["analyserRef"];
   onSelectExplanation: (explanation: LiveMutationExplanation) => void;
-  onSequencerStepFire: ComponentProps<typeof LiveLogMonitorDeckSection>["sequencerPanelProps"]["onStepFire"];
+  onSequencerStepFire: ComponentProps<
+    typeof LiveLogMonitorDeckSection
+  >["sequencerPanelProps"]["onStepFire"];
 }
 
 export function buildLiveLogMonitorDeckSectionContent(
@@ -168,7 +172,9 @@ export interface BuildLiveLogMonitorLiveDeckPropsInput {
   metricGridItems: MetricGridItem[];
   masterVolume: number;
   repositorySourcePath: string;
-  playlistSummaryItems: ComponentProps<typeof LiveLogMonitorLiveDeck>["playlistSummaryProps"]["items"];
+  playlistSummaryItems: ComponentProps<
+    typeof LiveLogMonitorLiveDeck
+  >["playlistSummaryProps"]["items"];
   nowPlayingSummary: string | null;
   upNextSummary: string | null;
   selectedStyleProfileDescription: string;
@@ -276,8 +282,8 @@ export function buildLiveLogMonitorLiveDeckProps(
             display: input.sessionCardDisplay,
           }
         : null,
-      replaySectionProps: {
-        replayActive: input.replayActive,
+    replaySectionProps: {
+      replayActive: input.replayActive,
       playbackProgress: input.playbackProgress,
       playbackPercent: input.playbackPercent,
       playbackWindowLabel: input.playbackWindowLabel,

@@ -18,7 +18,11 @@ const repositoriesApiMock = vi.hoisted(() => ({
 vi.mock("../../src/api/analyzer", () => analyzerMock);
 vi.mock("../../src/api/repositories", () => repositoriesApiMock);
 
-function createRepository(id: string, importedAt: string, analyzerStatus = "ready"): RepositoryAnalysis {
+function createRepository(
+  id: string,
+  importedAt: string,
+  analyzerStatus = "ready",
+): RepositoryAnalysis {
   return {
     id,
     title: `${id}.log`,

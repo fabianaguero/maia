@@ -1,8 +1,5 @@
 import { stopBeatLooper } from "./liveLogMonitorBeatRuntime";
-import {
-  setBlobAudioVolumeState,
-  stopManagedBlobAudioState,
-} from "./liveLogMonitorAudioRuntime";
+import { setBlobAudioVolumeState, stopManagedBlobAudioState } from "./liveLogMonitorAudioRuntime";
 import { toMessage } from "./liveLogMonitorViewModel";
 import {
   buildLiveLogMonitorDeckBookmarkCallbacks,

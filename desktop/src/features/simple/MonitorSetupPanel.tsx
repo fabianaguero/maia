@@ -262,7 +262,9 @@ export function MonitorSetupPanel({
           selectedId={selectedSoundId}
           onSelect={onSelectSoundId}
           renderLeading={(_, isSelected) => (
-            <span className={`selector-brand-shell selector-brand-shell--track${isSelected ? " active" : ""}`}>
+            <span
+              className={`selector-brand-shell selector-brand-shell--track${isSelected ? " active" : ""}`}
+            >
               <BrandIcon className="selector-brand-icon" />
             </span>
           )}

@@ -244,11 +244,7 @@ describe("LibraryTabContent", () => {
     const connection = { id: "conn-1", name: "Tail A" } as never;
 
     renderWithI18n(
-      <LibraryTabContent
-        {...props}
-        tab="connections"
-        logConnections={[connection]}
-      />,
+      <LibraryTabContent {...props} tab="connections" logConnections={[connection]} />,
     );
 
     expect(screen.getByTestId("library-connections-panel")).toBeInTheDocument();

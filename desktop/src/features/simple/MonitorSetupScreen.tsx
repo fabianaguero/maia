@@ -4,9 +4,7 @@ import { useT } from "../../i18n/I18nContext";
 import type { AppSkin } from "./appSkin";
 import { MonitorSetupHeroPanel } from "./MonitorSetupHeroPanel";
 import { MonitorSetupRackSection } from "./MonitorSetupRackSection";
-import {
-  MonitorSetupSignalBank,
-} from "./MonitorSetupSections";
+import { MonitorSetupSignalBank } from "./MonitorSetupSections";
 import type { MonitorSetupPreferences } from "./monitorSetupPreferences";
 import { useMonitorSetupScreenModel } from "./useMonitorSetupScreenModel";
 
@@ -31,19 +29,13 @@ export function MonitorSetupScreen({
   onUpdateSetupPreference,
 }: MonitorSetupScreenProps) {
   const t = useT();
-  const {
-    profile,
-    viewModel,
-    screenModel,
-    updateDeckControl,
-    resetDeckControls,
-    applyDeckPreset,
-  } = useMonitorSetupScreenModel({
-    lang,
-    skin,
-    setupPreferences,
-    t,
-  });
+  const { profile, viewModel, screenModel, updateDeckControl, resetDeckControls, applyDeckPreset } =
+    useMonitorSetupScreenModel({
+      lang,
+      skin,
+      setupPreferences,
+      t,
+    });
 
   return (
     <div className="monitor-setup-screen">

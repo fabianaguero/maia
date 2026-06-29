@@ -19,10 +19,7 @@ export interface LiveTailPanelViewModel {
   }>;
 }
 
-export function getMonitorLevelBadgeLabel(
-  level: MonitorLogLevel,
-  t: AppTranslations,
-): string {
+export function getMonitorLevelBadgeLabel(level: MonitorLogLevel, t: AppTranslations): string {
   switch (level) {
     case "error":
       return t.simpleMode.monitor.levelErrorShort;

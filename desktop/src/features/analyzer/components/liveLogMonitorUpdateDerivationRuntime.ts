@@ -4,9 +4,7 @@ import {
   type LiveMutationExplanation,
 } from "../../../utils/liveMutationExplainability";
 import { getTrackTitle } from "../../../utils/track";
-import {
-  mergeKnownMonitorComponents,
-} from "./liveLogMonitorStreamUpdateRuntime";
+import { mergeKnownMonitorComponents } from "./liveLogMonitorStreamUpdateRuntime";
 import {
   routeCueThroughScene,
   type ComponentOverride,
@@ -52,17 +50,13 @@ export function buildMonitorUpdateDerivation(input: {
     input.currentDeckTrackId === null
       ? null
       : (input.availableTracks.find((track) => track.id === input.currentDeckTrackId) ?? null);
-  const nextExplanations = deriveLiveMutationExplanations(
-    routedCues,
-    input.update.anomalyMarkers,
-    {
-      limit: input.maxRecentExplanations,
-      replayWindowIndex: input.update.replayWindowIndex ?? null,
-      trackId: currentTrack?.id ?? null,
-      trackTitle: currentTrack ? getTrackTitle(currentTrack) : null,
-      trackSecond: input.currentTrackSecond,
-    },
-  );
+  const nextExplanations = deriveLiveMutationExplanations(routedCues, input.update.anomalyMarkers, {
+    limit: input.maxRecentExplanations,
+    replayWindowIndex: input.update.replayWindowIndex ?? null,
+    trackId: currentTrack?.id ?? null,
+    trackTitle: currentTrack ? getTrackTitle(currentTrack) : null,
+    trackSecond: input.currentTrackSecond,
+  });
 
   return {
     knownComponents: mergedComponents.knownComponents,

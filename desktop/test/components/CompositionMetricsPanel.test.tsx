@@ -58,10 +58,7 @@ describe("CompositionMetricsPanel", () => {
 
   it("renders derived and nested composition metrics", () => {
     render(
-      <CompositionMetricsPanel
-        composition={createComposition()}
-        analyzerLabel="Python analyzer"
-      />,
+      <CompositionMetricsPanel composition={createComposition()} analyzerLabel="Python analyzer" />,
     );
 
     expect(screen.getByText("Composition metrics")).toBeInTheDocument();

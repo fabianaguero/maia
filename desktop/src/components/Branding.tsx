@@ -21,10 +21,7 @@ interface BrandLockupProps {
   wordmarkClassName?: string;
 }
 
-export function BrandLockup({
-  className,
-  wordmarkClassName,
-}: BrandLockupProps) {
+export function BrandLockup({ className, wordmarkClassName }: BrandLockupProps) {
   return (
     <div className={className} aria-label="MAIA">
       <BrandWordmark className={wordmarkClassName} />

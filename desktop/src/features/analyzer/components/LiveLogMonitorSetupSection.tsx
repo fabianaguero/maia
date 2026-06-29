@@ -2,11 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 
 import { MUTATION_PROFILES, STYLE_PROFILES } from "../../../config/liveProfiles";
 import type { AppTranslations } from "../../../i18n/en";
-import type {
-  BaseTrackPlaylist,
-  LibraryTrack,
-  StreamAdapterKind,
-} from "../../../types/library";
+import type { BaseTrackPlaylist, LibraryTrack, StreamAdapterKind } from "../../../types/library";
 import { getStreamAdapterLabel } from "../../../utils/streamAdapter";
 import { LiveLogMonitorSetupDeck } from "./LiveLogMonitorSetupDeck";
 import {
@@ -176,9 +172,7 @@ export function LiveLogMonitorSetupSection({
             moveTrackWithinLiveMonitorBasePlaylist(current, trackId, "down"),
           ),
         onRemoveTrack: (trackId) =>
-          setBasePlaylist((current) =>
-            removeTrackFromLiveMonitorBasePlaylist(current, trackId),
-          ),
+          setBasePlaylist((current) => removeTrackFromLiveMonitorBasePlaylist(current, trackId)),
       }}
       launchPanelProps={{
         adapterKind,

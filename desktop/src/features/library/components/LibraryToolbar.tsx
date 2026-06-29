@@ -8,13 +8,7 @@ interface LibraryToolbarProps {
   actions: LibraryToolbarAction[];
 }
 
-export function LibraryToolbar({
-  eyebrow,
-  count,
-  title,
-  note,
-  actions,
-}: LibraryToolbarProps) {
+export function LibraryToolbar({ eyebrow, count, title, note, actions }: LibraryToolbarProps) {
   return (
     <div className="library-tab-toolbar">
       <div className="library-tab-toolbar-copy">

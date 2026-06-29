@@ -34,9 +34,7 @@ export function SessionTemplatePresetStrip({
               <span className="source-template-icon">{template.icon}</span>
               <span className="source-template-name">{presentation?.label ?? template.label}</span>
               <span className="source-template-bpm">{template.bpm} BPM</span>
-              <span className="source-template-genre">
-                {presentation?.genre ?? template.genre}
-              </span>
+              <span className="source-template-genre">{presentation?.genre ?? template.genre}</span>
             </button>
           );
         })}

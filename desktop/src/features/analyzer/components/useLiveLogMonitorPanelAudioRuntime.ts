@@ -2,9 +2,7 @@ import type { UseLiveLogMonitorPanelAudioRuntimeInput } from "./liveLogMonitorPa
 import { useLiveLogMonitorPanelAudioCore } from "./useLiveLogMonitorPanelAudioCore";
 import { useLiveLogMonitorPanelAudioEffects } from "./useLiveLogMonitorPanelAudioEffects";
 
-export function useLiveLogMonitorPanelAudioRuntime(
-  input: UseLiveLogMonitorPanelAudioRuntimeInput,
-) {
+export function useLiveLogMonitorPanelAudioRuntime(input: UseLiveLogMonitorPanelAudioRuntimeInput) {
   const core = useLiveLogMonitorPanelAudioCore({
     liveEnabled: input.liveEnabled,
     replayActive: input.replayActive,

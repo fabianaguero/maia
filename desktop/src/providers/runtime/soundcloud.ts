@@ -1,4 +1,9 @@
-import type { PlaylistSourceInput, PlaylistMetadata, RemoteTrackMetadata, ProviderError } from "./types";
+import type {
+  PlaylistSourceInput,
+  PlaylistMetadata,
+  RemoteTrackMetadata,
+  ProviderError,
+} from "./types";
 import { normalizePlaylistId, normalizeTrackId, normalizeIsoTimestamp } from "./normalization";
 
 const SOUNDCLOUD_API_BASE = "https://api.soundcloud.com";
@@ -38,7 +43,11 @@ export async function listSoundCloudPlaylists(
   input: PlaylistSourceInput,
 ): Promise<PlaylistMetadata[]> {
   if (!input.auth.oauthToken) {
-    throw { kind: "auth_expired", sourceType: "soundcloud", message: "Token missing" } as ProviderError;
+    throw {
+      kind: "auth_expired",
+      sourceType: "soundcloud",
+      message: "Token missing",
+    } as ProviderError;
   }
 
   const response = await fetch(`${SOUNDCLOUD_API_BASE}/me/playlists`, {
@@ -49,7 +58,11 @@ export async function listSoundCloudPlaylists(
   });
 
   if (response.status === 401) {
-    throw { kind: "auth_expired", sourceType: "soundcloud", message: "Token invalid" } as ProviderError;
+    throw {
+      kind: "auth_expired",
+      sourceType: "soundcloud",
+      message: "Token invalid",
+    } as ProviderError;
   }
 
   if (response.status === 429) {
@@ -72,7 +85,11 @@ export async function listTracksInSoundCloudPlaylist(
   input: PlaylistSourceInput & { playlistId: string },
 ): Promise<RemoteTrackMetadata[]> {
   if (!input.auth.oauthToken) {
-    throw { kind: "auth_expired", sourceType: "soundcloud", message: "Token missing" } as ProviderError;
+    throw {
+      kind: "auth_expired",
+      sourceType: "soundcloud",
+      message: "Token missing",
+    } as ProviderError;
   }
 
   const response = await fetch(`${SOUNDCLOUD_API_BASE}/playlists/${input.playlistId}/tracks`, {

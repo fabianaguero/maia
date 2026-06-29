@@ -3,10 +3,7 @@ import { invokeOrFallback } from "./tauri";
 
 const log = getLogger("API.Repos");
 
-import type {
-  ImportRepositoryInput,
-  RepositoryAnalysis,
-} from "../types/library";
+import type { ImportRepositoryInput, RepositoryAnalysis } from "../types/library";
 import type {
   LogSourceConnection,
   StartLogSourceConnectionInput,

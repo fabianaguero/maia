@@ -13,10 +13,7 @@ function NotificationHarness() {
   const { notify } = useNotify();
 
   return (
-    <button
-      type="button"
-      onClick={() => notify("success", "Track imported", "Ready for playback")}
-    >
+    <button type="button" onClick={() => notify("success", "Track imported", "Ready for playback")}>
       Trigger toast
     </button>
   );

@@ -36,12 +36,7 @@ describe("BaseAssetMetricsPanel", () => {
   });
 
   it("renders category, counts, size and analyzer metadata", () => {
-    render(
-      <BaseAssetMetricsPanel
-        baseAsset={createBaseAsset()}
-        analyzerLabel="Python analyzer"
-      />,
-    );
+    render(<BaseAssetMetricsPanel baseAsset={createBaseAsset()} analyzerLabel="Python analyzer" />);
 
     expect(screen.getByText("Drum kit")).toBeInTheDocument();
     expect(screen.getByText("Yes")).toBeInTheDocument();

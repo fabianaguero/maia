@@ -11,7 +11,10 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 import type { PersistedSession } from "../../../src/api/sessions";
-import { resolveSessionBedUrl, resolveSourceDetails } from "../../../src/features/session/sessionDisplaySourceRuntime";
+import {
+  resolveSessionBedUrl,
+  resolveSourceDetails,
+} from "../../../src/features/session/sessionDisplaySourceRuntime";
 import type { RepositoryAnalysis } from "../../../src/types/library";
 
 function makeSession(overrides: Partial<PersistedSession> = {}): PersistedSession {

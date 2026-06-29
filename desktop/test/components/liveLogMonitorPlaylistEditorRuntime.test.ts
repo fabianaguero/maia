@@ -122,10 +122,9 @@ describe("liveLogMonitorPlaylistEditorRuntime", () => {
 
   it("filters loaded playlists against available tracks", () => {
     const playlist = createPlaylist(["a", "b", "c"]);
-    expect(loadSavedLiveMonitorBasePlaylist(playlist, [createTrack("a"), createTrack("c")])?.trackIds).toEqual([
-      "a",
-      "c",
-    ]);
+    expect(
+      loadSavedLiveMonitorBasePlaylist(playlist, [createTrack("a"), createTrack("c")])?.trackIds,
+    ).toEqual(["a", "c"]);
   });
 
   it("moves tracks up and down within the playlist", () => {

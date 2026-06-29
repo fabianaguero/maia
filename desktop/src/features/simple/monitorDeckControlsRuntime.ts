@@ -42,8 +42,6 @@ export function updateMonitorDeckControls<K extends keyof MonitorDeckControls>(i
   });
 }
 
-export function applyMonitorDeckPreset(
-  presetId: MonitorDeckPresetId,
-): MonitorDeckControls {
+export function applyMonitorDeckPreset(presetId: MonitorDeckPresetId): MonitorDeckControls {
   return MONITOR_DECK_PRESETS[presetId];
 }

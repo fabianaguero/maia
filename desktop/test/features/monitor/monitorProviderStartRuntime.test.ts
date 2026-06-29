@@ -27,9 +27,7 @@ function createSession(): ActiveMonitorSession {
 
 describe("monitorProviderStartRuntime", () => {
   it("replaces an existing monitor session only when one is active", async () => {
-    const orchestration = await import(
-      "../../../src/features/monitor/monitorOrchestrationRuntime"
-    );
+    const orchestration = await import("../../../src/features/monitor/monitorOrchestrationRuntime");
     const replaceExistingMonitorSession = vi.mocked(orchestration.replaceExistingMonitorSession);
     replaceExistingMonitorSession.mockClear();
 
@@ -83,7 +81,9 @@ describe("monitorProviderStartRuntime", () => {
       setIsPlayback: vi.fn(),
       setMetrics: vi.fn(),
       resetReplayTelemetry: vi.fn(),
-      ensureAudioContext: vi.fn(async () => ({ sampleRate: 44100, state: "running" } as AudioContext)),
+      ensureAudioContext: vi.fn(
+        async () => ({ sampleRate: 44100, state: "running" }) as AudioContext,
+      ),
       emitProbe: vi.fn(),
       reloadPendingGuideTrack: vi.fn(),
       doPoll: vi.fn(),

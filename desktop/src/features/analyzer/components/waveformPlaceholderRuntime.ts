@@ -4,10 +4,7 @@ import type {
   VisualizationCuePoint,
   VisualizationRegionPoint,
 } from "../../../types/library";
-import {
-  deriveBeatGridGuideMarkers,
-  type BeatGridPhraseRange,
-} from "../../../utils/beatGrid";
+import { deriveBeatGridGuideMarkers, type BeatGridPhraseRange } from "../../../utils/beatGrid";
 
 export interface WaveformEditableCuePoint {
   id: string;
@@ -76,10 +73,7 @@ export function resolveDisplayBins(bins: number[]): number[] {
     : normalizedBins;
 }
 
-export function resolveVisibleBeats(
-  beatGrid: BeatGridPoint[],
-  durationSeconds: number | null,
-) {
+export function resolveVisibleBeats(beatGrid: BeatGridPoint[], durationSeconds: number | null) {
   return durationSeconds && durationSeconds > 0
     ? deriveBeatGridGuideMarkers(beatGrid, durationSeconds)
     : [];

@@ -1,10 +1,7 @@
 import type { MutableRefObject } from "react";
 
 import type { RepositoryAnalysis } from "../../types/library";
-import type {
-  StartSessionInput,
-  StreamSessionRecord,
-} from "../../types/monitor";
+import type { StartSessionInput, StreamSessionRecord } from "../../types/monitor";
 import type { ActiveMonitorSession } from "./monitorContextTypes";
 import {
   buildMonitorProviderLiveStartBaseInput,
@@ -13,20 +10,14 @@ import {
   type MonitorProviderLiveStartSharedInput,
 } from "./monitorProviderStartRuntime";
 import type { MonitorLiveLifecycleLogger } from "./monitorLiveLifecycleRuntime";
-import {
-  createActiveMonitorSession,
-  createLiveMonitorSession,
-} from "./monitorSessionRuntime";
+import { createActiveMonitorSession, createLiveMonitorSession } from "./monitorSessionRuntime";
 
 export const FILE_ONLY_MONITORING_ERROR =
   "Week 1 MVP only supports file-backed log monitoring. Use an imported log file as the live source.";
 
 export type MonitorProviderSessionLogger = Pick<MonitorLiveLifecycleLogger, "info">;
 
-type LiveStartInput = Omit<
-  MonitorProviderLiveStartBaseInput,
-  never
->;
+type LiveStartInput = Omit<MonitorProviderLiveStartBaseInput, never>;
 
 export async function startMonitorProviderSessionState(input: {
   repo: RepositoryAnalysis;
@@ -37,9 +28,7 @@ export async function startMonitorProviderSessionState(input: {
   resolveLiveMonitorPollMode: (input: {
     sessionInput: StartSessionInput;
   }) => Promise<ActiveMonitorSession["pollMode"]>;
-  startLiveMonitorSession: (
-    input: MonitorProviderLiveStartSharedInput,
-  ) => Promise<void>;
+  startLiveMonitorSession: (input: MonitorProviderLiveStartSharedInput) => Promise<void>;
   liveStartInput: LiveStartInput;
   logger: MonitorProviderSessionLogger;
 }): Promise<boolean> {
@@ -108,9 +97,7 @@ export async function attachMonitorProviderSessionState(input: {
   persistedSessionId?: string | null;
   sessionRef: MutableRefObject<ActiveMonitorSession | null>;
   replaceExistingSessionIfPresent: () => Promise<void>;
-  startLiveMonitorSession: (
-    input: MonitorProviderLiveStartSharedInput,
-  ) => Promise<void>;
+  startLiveMonitorSession: (input: MonitorProviderLiveStartSharedInput) => Promise<void>;
   liveStartInput: LiveStartInput;
   logger?: MonitorProviderSessionLogger;
 }): Promise<boolean> {

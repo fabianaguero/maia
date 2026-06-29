@@ -17,9 +17,7 @@ interface StopLiveMonitorAudioGraphInput {
   analyserRef: MutableRefObject<DisconnectableAudioNode | null>;
 }
 
-function disconnectNodeRef(
-  ref: MutableRefObject<DisconnectableAudioNode | null>,
-): void {
+function disconnectNodeRef(ref: MutableRefObject<DisconnectableAudioNode | null>): void {
   if (!ref.current) {
     return;
   }

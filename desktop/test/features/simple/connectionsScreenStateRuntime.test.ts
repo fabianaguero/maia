@@ -176,9 +176,7 @@ describe("connectionsScreenStateRuntime", () => {
 
     expect(invalidUpsert).not.toHaveBeenCalled();
     expect(invalidAfterSave).not.toHaveBeenCalled();
-    expect(invalidSetError).toHaveBeenLastCalledWith(
-      en.simpleMode.connections.chooseLogFileError,
-    );
+    expect(invalidSetError).toHaveBeenLastCalledWith(en.simpleMode.connections.chooseLogFileError);
     expect(invalidSetSaving).toHaveBeenLastCalledWith(false);
 
     const errorSetSaving = vi.fn();

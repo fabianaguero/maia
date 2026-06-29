@@ -75,7 +75,8 @@ export function ImportRepositoryForm({
       setError(null);
       await upsertLogSourceConnection({
         kind: "gcp_cloud_run",
-        label: normalizedLabel || `${serviceName} · ${t.simpleMode.connections.cloudRunLabelSuffix}`,
+        label:
+          normalizedLabel || `${serviceName} · ${t.simpleMode.connections.cloudRunLabelSuffix}`,
         config: {
           projectId,
           serviceName,
@@ -166,7 +167,11 @@ export function ImportRepositoryForm({
         <p className="support-copy">{t.library.forms.repository.description}</p>
       </div>
 
-      <div className="source-card-grid" role="tablist" aria-label={t.library.forms.repository.importTypeAria}>
+      <div
+        className="source-card-grid"
+        role="tablist"
+        aria-label={t.library.forms.repository.importTypeAria}
+      >
         {importModes.map((mode) => {
           const Icon = mode.icon;
           const active = mode.id === sourceKind;
@@ -283,7 +288,9 @@ export function ImportRepositoryForm({
         )}
 
         <label className="field maia-field">
-          <span className="field-label">{t.library.forms.repository.targetSessionLabelOptional}</span>
+          <span className="field-label">
+            {t.library.forms.repository.targetSessionLabelOptional}
+          </span>
           <input
             value={label}
             className="maia-input"
@@ -303,7 +310,8 @@ export function ImportRepositoryForm({
         <button type="submit" className="action primary-launch-btn" disabled={busy}>
           {busy ? (
             <>
-              <span className="spin-ring" aria-hidden="true" /> {t.library.forms.repository.analyzing}
+              <span className="spin-ring" aria-hidden="true" />{" "}
+              {t.library.forms.repository.analyzing}
             </>
           ) : (
             <>

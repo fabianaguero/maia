@@ -1,11 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { LiveLogMarker } from "../../../types/library";
-import type {
-  ArrangementTrack,
-  ArrangementVoice,
-  RoutedLiveCue,
-} from "./liveSonificationScene";
+import type { ArrangementTrack, ArrangementVoice, RoutedLiveCue } from "./liveSonificationScene";
 import { formatFrequency } from "./liveLogMonitorPanelRuntime";
 
 interface LiveLogMonitorPerformanceSummaryLabels {

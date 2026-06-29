@@ -228,8 +228,14 @@ export function resolveMonitorDeckPalette(
         backgroundMid: "rgba(4,10,17,0.99)",
         backgroundBottom: "rgba(1,4,8,1)",
         separatorLine: "rgba(168,221,255,0.06)",
-        trackGlow: withAlpha("rgba(125,227,255,1)", preset === "alert" ? 0.18 : preset === "passive" ? 0.1 : 0.14),
-        overviewBaseGlow: withAlpha("rgba(125,227,255,1)", preset === "alert" ? 0.24 : preset === "passive" ? 0.14 : 0.2),
+        trackGlow: withAlpha(
+          "rgba(125,227,255,1)",
+          preset === "alert" ? 0.18 : preset === "passive" ? 0.1 : 0.14,
+        ),
+        overviewBaseGlow: withAlpha(
+          "rgba(125,227,255,1)",
+          preset === "alert" ? 0.24 : preset === "passive" ? 0.14 : 0.2,
+        ),
         phraseCool: "rgba(173,238,255,0.88)",
         trackTopCool: "rgba(228,247,255,0.92)",
         trackBottomCool: "rgba(109,202,255,0.54)",
@@ -251,8 +257,14 @@ export function resolveMonitorDeckPalette(
         backgroundMid: "rgba(11,7,7,0.99)",
         backgroundBottom: "rgba(4,2,2,1)",
         separatorLine: "rgba(255,220,180,0.05)",
-        trackGlow: withAlpha("rgba(255,176,102,1)", preset === "alert" ? 0.18 : preset === "passive" ? 0.1 : 0.14),
-        overviewBaseGlow: withAlpha("rgba(255,176,102,1)", preset === "alert" ? 0.24 : preset === "passive" ? 0.14 : 0.2),
+        trackGlow: withAlpha(
+          "rgba(255,176,102,1)",
+          preset === "alert" ? 0.18 : preset === "passive" ? 0.1 : 0.14,
+        ),
+        overviewBaseGlow: withAlpha(
+          "rgba(255,176,102,1)",
+          preset === "alert" ? 0.24 : preset === "passive" ? 0.14 : 0.2,
+        ),
         overviewFillStops: [
           "rgba(255,132,102,0.86)",
           "rgba(255,182,96,0.9)",

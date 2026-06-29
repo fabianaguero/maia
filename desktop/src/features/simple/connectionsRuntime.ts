@@ -1,7 +1,5 @@
 import type { AppTranslations } from "../../i18n/en";
-import type {
-  StreamSessionPollResult,
-} from "../../types/monitor";
+import type { StreamSessionPollResult } from "../../types/monitor";
 import {
   buildConnectionsScreenHookState,
   buildConnectionsScreenViewModel,
@@ -58,7 +56,10 @@ export interface ConnectionTailStopState {
 
 export function formatConnectionTailStatus(
   t: AppTranslations,
-  result: Pick<StreamSessionPollResult, "hasData" | "lineCount" | "anomalyCount" | "dominantLevel" | "summary">,
+  result: Pick<
+    StreamSessionPollResult,
+    "hasData" | "lineCount" | "anomalyCount" | "dominantLevel" | "summary"
+  >,
 ): string {
   return result.hasData
     ? t.simpleMode.connections.testSummary

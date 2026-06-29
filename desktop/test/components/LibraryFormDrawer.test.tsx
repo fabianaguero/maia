@@ -8,10 +8,7 @@ const importRepositoryFormMock = vi.fn();
 const importBaseAssetFormMock = vi.fn();
 
 vi.mock("../../src/features/library/components/ImportTrackForm", () => ({
-  ImportTrackForm: (props: {
-    defaultMusicStyleId?: string;
-    onSeedDemo: () => Promise<void>;
-  }) => {
+  ImportTrackForm: (props: { defaultMusicStyleId?: string; onSeedDemo: () => Promise<void> }) => {
     importTrackFormMock(props);
     return (
       <button type="button" onClick={() => void props.onSeedDemo()}>

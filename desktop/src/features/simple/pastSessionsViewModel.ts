@@ -2,7 +2,11 @@ import type { PersistedSession } from "../../api/sessions";
 import type { AppTranslations } from "../../i18n/en";
 import { resolveSessionStatusLabel } from "../../utils/monitorLabels";
 import { getBasename, truncateMiddle } from "./monitorDisplay";
-import { formatSessionLineCount, formatSessionUpdatedAt, sortMonitorSessions } from "./monitorSessions";
+import {
+  formatSessionLineCount,
+  formatSessionUpdatedAt,
+  sortMonitorSessions,
+} from "./monitorSessions";
 
 export interface PastSessionRowViewModel {
   id: string;

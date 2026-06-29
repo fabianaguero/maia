@@ -28,7 +28,9 @@ function createConnection(input: {
 describe("libraryConnectionsViewModel", () => {
   it("builds file connection cards", () => {
     const model = buildLibraryConnectionsViewModel({
-      connections: [createConnection({ id: "tail-a", kind: "file_log", enabled: true, adapterKind: "file" })],
+      connections: [
+        createConnection({ id: "tail-a", kind: "file_log", enabled: true, adapterKind: "file" }),
+      ],
       t: en,
     });
 

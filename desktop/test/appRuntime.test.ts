@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { PersistedSession } from "../src/api/sessions";
-import type {
-  BaseTrackPlaylist,
-  LibraryTrack,
-  RepositoryAnalysis,
-} from "../src/types/library";
+import type { BaseTrackPlaylist, LibraryTrack, RepositoryAnalysis } from "../src/types/library";
 import {
   buildDiscoveredLogImportInputs,
   resolveLibraryMonitorGuideState,
@@ -139,13 +135,7 @@ describe("appRuntime", () => {
       playlistPaths: ["/music/track-a.wav", "/music/track-b.wav"],
     });
 
-    expect(
-      resolveSessionMonitorGuideState(
-        { trackId: "track-b" },
-        [playlist],
-        tracks,
-      ),
-    ).toEqual({
+    expect(resolveSessionMonitorGuideState({ trackId: "track-b" }, [playlist], tracks)).toEqual({
       trackPath: "/music/track-b.wav",
       playlistPaths: null,
     });
@@ -191,9 +181,7 @@ describe("appRuntime", () => {
         replaySessionId: "session-1",
       }),
     ).toBe(true);
-    expect(
-      buildDiscoveredLogImportInputs(["/logs/api.log", "/logs/worker.log"]),
-    ).toEqual([
+    expect(buildDiscoveredLogImportInputs(["/logs/api.log", "/logs/worker.log"])).toEqual([
       { sourceKind: "file", sourcePath: "/logs/api.log", label: "api.log" },
       { sourceKind: "file", sourcePath: "/logs/worker.log", label: "worker.log" },
     ]);

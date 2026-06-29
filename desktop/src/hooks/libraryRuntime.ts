@@ -106,9 +106,7 @@ export function replaceTrack(
   trackId: string,
   nextTrack: LibraryTrack,
 ): LibraryTrack[] {
-  return sortTracksByImportedAt(
-    tracks.map((track) => (track.id === trackId ? nextTrack : track)),
-  );
+  return sortTracksByImportedAt(tracks.map((track) => (track.id === trackId ? nextTrack : track)));
 }
 
 export function removeDeletedTrack(tracks: LibraryTrack[], trackId: string): LibraryTrack[] {
@@ -141,9 +139,7 @@ export function replaceRelinkedTracks(
   );
 }
 
-export function resolvePreferredRelinkSelection(
-  result: RelinkMissingTracksResult,
-): string | null {
+export function resolvePreferredRelinkSelection(result: RelinkMissingTracksResult): string | null {
   return result.relinkedTracks[0]?.id ?? null;
 }
 

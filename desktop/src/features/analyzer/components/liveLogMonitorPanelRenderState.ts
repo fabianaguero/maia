@@ -21,8 +21,12 @@ export interface BuildLiveLogMonitorPanelRenderStateInput {
   selectedStyleProfileId: string;
   selectedMutationProfileId: string;
   selectedStyleProfile: ComponentProps<typeof LiveLogMonitorSetupSection>["selectedStyleProfile"];
-  selectedMutationProfile: ComponentProps<typeof LiveLogMonitorSetupSection>["selectedMutationProfile"];
-  forcedLiveMutationState: ComponentProps<typeof LiveLogMonitorSetupSection>["forcedLiveMutationState"];
+  selectedMutationProfile: ComponentProps<
+    typeof LiveLogMonitorSetupSection
+  >["selectedMutationProfile"];
+  forcedLiveMutationState: ComponentProps<
+    typeof LiveLogMonitorSetupSection
+  >["forcedLiveMutationState"];
   hasBaseListeningBed: boolean;
   baseTrackCount: number;
   adapterConfigured: boolean;
@@ -33,18 +37,30 @@ export interface BuildLiveLogMonitorPanelRenderStateInput {
   pendingAddTrackId: string;
   pendingLoadPlaylistId: string;
   basePlaylist: ComponentProps<typeof LiveLogMonitorSetupSection>["basePlaylist"];
-  basePlaylistTrackOptions: ComponentProps<typeof LiveLogMonitorSetupSection>["basePlaylistTrackOptions"];
+  basePlaylistTrackOptions: ComponentProps<
+    typeof LiveLogMonitorSetupSection
+  >["basePlaylistTrackOptions"];
   savedPlaylistOptions: ComponentProps<typeof LiveLogMonitorSetupSection>["savedPlaylistOptions"];
-  basePlaylistEditorItems: ComponentProps<typeof LiveLogMonitorSetupSection>["basePlaylistEditorItems"];
+  basePlaylistEditorItems: ComponentProps<
+    typeof LiveLogMonitorSetupSection
+  >["basePlaylistEditorItems"];
   availablePlaylists: ComponentProps<typeof LiveLogMonitorSetupSection>["availablePlaylists"];
   availableTracks: ComponentProps<typeof LiveLogMonitorSetupSection>["availableTracks"];
   setBasePlaylist: ComponentProps<typeof LiveLogMonitorSetupSection>["setBasePlaylist"];
   setPendingAddTrackId: ComponentProps<typeof LiveLogMonitorSetupSection>["setPendingAddTrackId"];
-  setPendingLoadPlaylistId: ComponentProps<typeof LiveLogMonitorSetupSection>["setPendingLoadPlaylistId"];
+  setPendingLoadPlaylistId: ComponentProps<
+    typeof LiveLogMonitorSetupSection
+  >["setPendingLoadPlaylistId"];
   setAdapterKind: ComponentProps<typeof LiveLogMonitorSetupSection>["setAdapterKind"];
-  setSelectedStyleProfileId: ComponentProps<typeof LiveLogMonitorSetupSection>["setSelectedStyleProfileId"];
-  setSelectedMutationProfileId: ComponentProps<typeof LiveLogMonitorSetupSection>["setSelectedMutationProfileId"];
-  setForcedLiveMutationState: ComponentProps<typeof LiveLogMonitorSetupSection>["setForcedLiveMutationState"];
+  setSelectedStyleProfileId: ComponentProps<
+    typeof LiveLogMonitorSetupSection
+  >["setSelectedStyleProfileId"];
+  setSelectedMutationProfileId: ComponentProps<
+    typeof LiveLogMonitorSetupSection
+  >["setSelectedMutationProfileId"];
+  setForcedLiveMutationState: ComponentProps<
+    typeof LiveLogMonitorSetupSection
+  >["setForcedLiveMutationState"];
   ctaMetaLabel: string;
   deckStatusLabel: string;
   audioBadgeTone: string;

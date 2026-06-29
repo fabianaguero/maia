@@ -38,7 +38,9 @@ describe("SessionTemplatePresetStrip", () => {
   it("omits the selected hint when the chosen template does not exist", () => {
     renderStrip("missing-template");
 
-    expect(screen.queryByText("Ideal for Spring Boot / JVM log files during business hours.")).toBeNull();
+    expect(
+      screen.queryByText("Ideal for Spring Boot / JVM log files during business hours."),
+    ).toBeNull();
     expect(screen.getAllByRole("button").length).toBeGreaterThan(0);
   });
 });

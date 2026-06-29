@@ -242,10 +242,7 @@ beforeEach(() => {
   sessionsMock.updatePersistedSessionStatus.mockResolvedValue(undefined);
   sessionsMock.updatePersistedSessionCursor.mockResolvedValue(undefined);
   sessionsMock.insertSessionEvent.mockResolvedValue(1);
-  sessionsMock.listSessionEvents.mockResolvedValue([
-    createSessionEvent(0),
-    createSessionEvent(1),
-  ]);
+  sessionsMock.listSessionEvents.mockResolvedValue([createSessionEvent(0), createSessionEvent(1)]);
 });
 
 afterEach(() => {
@@ -297,10 +294,7 @@ describe("MonitorProvider", () => {
       trackTitle: "Base Pulse",
       sourceTemplateId: "house-file-tail",
     });
-    expect(sessionsMock.updatePersistedSessionStatus).toHaveBeenCalledWith(
-      "persisted-1",
-      "active",
-    );
+    expect(sessionsMock.updatePersistedSessionStatus).toHaveBeenCalledWith("persisted-1", "active");
     expect(sessionsMock.updatePersistedSessionCursor).toHaveBeenCalledWith(
       "persisted-1",
       128,
@@ -314,10 +308,7 @@ describe("MonitorProvider", () => {
       await latestMonitor!.stopSession();
     });
 
-    expect(sessionsMock.updatePersistedSessionStatus).toHaveBeenCalledWith(
-      "persisted-1",
-      "paused",
-    );
+    expect(sessionsMock.updatePersistedSessionStatus).toHaveBeenCalledWith("persisted-1", "paused");
     expect(repositoriesMock.stopStreamSession).toHaveBeenCalledWith("stream-1");
     expect(latestMonitor!.session).toBeNull();
 

@@ -148,7 +148,7 @@ export function LiveLogMonitorBasePlaylistPanel({
                 </button>
                 {item.label}
                 {item.lostTitle ? (
-                    <span className="track-lost-badge" title={item.lostTitle}>
+                  <span className="track-lost-badge" title={item.lostTitle}>
                     {labels.lost}
                   </span>
                 ) : null}

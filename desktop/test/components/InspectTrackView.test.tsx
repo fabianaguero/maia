@@ -272,7 +272,7 @@ function renderInspectTrackView(overrides?: {
         onUpdateTrackPerformance={onUpdateTrackPerformance}
         onUpdateTrackAnalysis={onUpdateTrackAnalysis}
       />
-    </I18nContext.Provider>
+    </I18nContext.Provider>,
   );
 }
 

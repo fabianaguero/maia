@@ -307,9 +307,27 @@ describe("spotifyRuntime", () => {
         ok: true,
         json: async () => ({
           items: [
-            { track: { id: "1", name: "Song 1", artists: [], duration_ms: 100000, external_urls: {}, is_playable: true } },
+            {
+              track: {
+                id: "1",
+                name: "Song 1",
+                artists: [],
+                duration_ms: 100000,
+                external_urls: {},
+                is_playable: true,
+              },
+            },
             { track: null },
-            { track: { id: "2", name: "Song 2", artists: [], duration_ms: 100000, external_urls: {}, is_playable: true } },
+            {
+              track: {
+                id: "2",
+                name: "Song 2",
+                artists: [],
+                duration_ms: 100000,
+                external_urls: {},
+                is_playable: true,
+              },
+            },
           ],
         }),
       });

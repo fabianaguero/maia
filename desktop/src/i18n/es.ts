@@ -136,8 +136,7 @@ export const es: AppTranslations = {
         trackTitlePlaceholder: "Night Drive",
         localPath: "Ruta local",
         localPathPlaceholder: "~/Music/night-drive.wav",
-        hint:
-          "Explorar usa el selector nativo del escritorio cuando está disponible. El análisis embebido actualmente decodifica WAV, MP3, FLAC y OGG/Vorbis dentro del analizador; otros formatos igual se importan con una ruta determinística alternativa.",
+        hint: "Explorar usa el selector nativo del escritorio cuando está disponible. El análisis embebido actualmente decodifica WAV, MP3, FLAC y OGG/Vorbis dentro del analizador; otros formatos igual se importan con una ruta determinística alternativa.",
         pathRequiredError: "Hace falta una ruta local de origen.",
         musicStyleRequiredError: "Elegí un estilo musical antes de importar la pista.",
         pickerFailed: "Falló el selector nativo de archivos. Ingresá la ruta manualmente.",
@@ -174,8 +173,10 @@ export const es: AppTranslations = {
         githubRepositoryUrlPlaceholder: "https://github.com/...",
         targetSessionLabelOptional: "Etiqueta de sesión destino (opcional)",
         targetSessionLabelPlaceholder: "maia-session-01",
-        gcpRequiresProjectAndService: "GCP Cloud Run requiere un ID de proyecto y un nombre de servicio.",
-        sourceRequiredError: "Hace falta una ruta local de código/log, una URL de GitHub o una fuente GCP Cloud Run.",
+        gcpRequiresProjectAndService:
+          "GCP Cloud Run requiere un ID de proyecto y un nombre de servicio.",
+        sourceRequiredError:
+          "Hace falta una ruta local de código/log, una URL de GitHub o una fuente GCP Cloud Run.",
         directoryPickerFailed: "Falló el selector nativo de carpetas. Ingresá la ruta manualmente.",
         filePickerFailed: "Falló el selector nativo de archivos. Ingresá la ruta manualmente.",
         pickerBusy: "...",
@@ -201,8 +202,7 @@ export const es: AppTranslations = {
         displayLabel: "Etiqueta visible",
         displayLabelPlaceholder: "Pack FX peak-time",
         markReusable: "Marcar como reutilizable en futuros flujos de composición",
-        hint:
-          "Las importaciones en Tauri capturan el archivo o carpeta elegidos dentro del almacenamiento administrado por Maia. La ruta alternativa del navegador conserva la forma pero no puede crear la copia nativa.",
+        hint: "Las importaciones en Tauri capturan el archivo o carpeta elegidos dentro del almacenamiento administrado por Maia. La ruta alternativa del navegador conserva la forma pero no puede crear la copia nativa.",
         pathRequiredError: "Hace falta una ruta de archivo o carpeta.",
         categoryRequiredError: "Elegí una categoría de activo base antes de importar.",
         pickerFailed: "Falló el selector nativo de activos base. Ingresá la ruta manualmente.",
@@ -913,11 +913,11 @@ export const es: AppTranslations = {
       medianBpm: "BPM mediano",
       structureLabel: "Código/Log (fuente estructural) - opcional",
       structureNone: "— Ninguno (usar solo el BPM de la pista) —",
-      structurePreview: "Fuente estructural en {bpm} BPM (las anomalías van a impulsar variaciones)",
+      structurePreview:
+        "Fuente estructural en {bpm} BPM (las anomalías van a impulsar variaciones)",
       compositionLabel: "Etiqueta de composición",
       compositionLabelPlaceholder: "Hora pico con motivos de error",
-      hint:
-        "Los resultados de composición son planes de arreglo con artefactos de vista previa, secciones de fraseo, puntos de cue y un archivo WAV interno de preescucha administrado. La pista o playlist base aporta el marco del groove, y las anomalías de la fuente de código/log modulan el arreglo.",
+      hint: "Los resultados de composición son planes de arreglo con artefactos de vista previa, secciones de fraseo, puntos de cue y un archivo WAV interno de preescucha administrado. La pista o playlist base aporta el marco del groove, y las anomalías de la fuente de código/log modulan el arreglo.",
       baseAssetRequiredError: "Elegí un activo base antes de componer.",
       trackRequiredError: "Elegí una pista como base musical.",
       playlistRequiredError: "Elegí una playlist como base musical.",
@@ -1537,13 +1537,17 @@ export const es: AppTranslations = {
         "Aplicá primero un perfil de deck y después afiná los controles del rack si necesitás una respuesta más específica.",
       presetHint: "Partí de un perfil de deck",
       presetPassive: "Pasivo",
-      presetPassiveDetail: "Poco movimiento, ducking suave y recuperación larga. Ideal para escucha pasiva.",
+      presetPassiveDetail:
+        "Poco movimiento, ducking suave y recuperación larga. Ideal para escucha pasiva.",
       presetBalanced: "Balanceado",
-      presetBalancedDetail: "Perfil base de Maia con anomalías claras pero reproducción de fondo estable.",
+      presetBalancedDetail:
+        "Perfil base de Maia con anomalías claras pero reproducción de fondo estable.",
       presetAlert: "Alerta",
-      presetAlertDetail: "Ducking más marcado, cues más rápidos y acentos más fuertes para vigilancia activa.",
+      presetAlertDetail:
+        "Ducking más marcado, cues más rápidos y acentos más fuertes para vigilancia activa.",
       presetCustom: "Personalizado",
-      presetCustomDetail: "Tu rack actual se aparta de los perfiles base y queda guardado como un setup propio.",
+      presetCustomDetail:
+        "Tu rack actual se aparta de los perfiles base y queda guardado como un setup propio.",
       presetApply: "Aplicar",
       presetCurrent: "Actual",
       presetEdited: "Editado",
@@ -1570,9 +1574,11 @@ export const es: AppTranslations = {
       tailWindowRows: "Filas visibles del tail",
       tailWindowRowsHelp: "Máximo de filas en vivo conservadas dentro del tail del deck",
       runtimeGroupCloudTitle: "Defaults para streams cloud",
-      runtimeGroupCloudHint: "Valores de lookback y arranque usados cuando se inicia una sesión remota.",
+      runtimeGroupCloudHint:
+        "Valores de lookback y arranque usados cuando se inicia una sesión remota.",
       runtimeGroupStreamTitle: "Ajustes en vivo del monitor",
-      runtimeGroupStreamHint: "Valores de reposo y retención del tail compartidos por el monitor y los carriles en vivo.",
+      runtimeGroupStreamHint:
+        "Valores de reposo y retención del tail compartidos por el monitor y los carriles en vivo.",
       editableControls: "Controles editables de transporte y respuesta",
       persistentProfile: "Perfil persistente",
       deckControls: "Controles del deck",

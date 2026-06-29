@@ -48,9 +48,7 @@ export async function hydrateReplayFromSourceState(input: {
     if (rebuiltEvents.length > input.replayEventsRef.current.length) {
       input.replayEventsRef.current = rebuiltEvents;
       input.replayMetricsRef.current = buildReplayCumulativeMetrics(rebuiltEvents);
-      input.syncReplayTelemetry(
-        Math.min(input.replayIndexRef.current, rebuiltEvents.length),
-      );
+      input.syncReplayTelemetry(Math.min(input.replayIndexRef.current, rebuiltEvents.length));
       input.logger.info(
         "playbackSession rebuilt replay windows from source → %d events",
         rebuiltEvents.length,

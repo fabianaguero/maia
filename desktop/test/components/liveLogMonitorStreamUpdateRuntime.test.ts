@@ -47,9 +47,7 @@ function explanation(id: string): LiveMutationExplanation {
 
 describe("liveLogMonitorStreamUpdateRuntime", () => {
   it("merges known components without duplicating them", () => {
-    expect(
-      mergeKnownMonitorComponents(["api"], ["api", "db", "cache"], 3),
-    ).toEqual({
+    expect(mergeKnownMonitorComponents(["api"], ["api", "db", "cache"], 3)).toEqual({
       knownComponents: ["api", "db", "cache"],
       changed: true,
     });
@@ -70,7 +68,11 @@ describe("liveLogMonitorStreamUpdateRuntime", () => {
     );
     expect(markers[0]?.excerpt).toBe("b");
 
-    const explanations = buildRecentExplanationHistory([explanation("old")], [explanation("new")], 2);
+    const explanations = buildRecentExplanationHistory(
+      [explanation("old")],
+      [explanation("new")],
+      2,
+    );
     expect(explanations.map((entry) => entry.id)).toEqual(["new", "old"]);
   });
 
@@ -80,6 +82,8 @@ describe("liveLogMonitorStreamUpdateRuntime", () => {
     expect(resolveSelectedMonitorExplanationId("keep", [explanation("x")], true)).toBe("x");
 
     expect(resolveActiveTailWindowId([{ windowId: "w-1" } as any])).toBe("w-1");
-    expect(buildRecentMonitorVoices([cue(1), cue(2, "error")], "full", 12).length).toBeGreaterThan(0);
+    expect(buildRecentMonitorVoices([cue(1), cue(2, "error")], "full", 12).length).toBeGreaterThan(
+      0,
+    );
   });
 });

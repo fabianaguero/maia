@@ -37,10 +37,7 @@ export function shouldSkipGuideTrackLoadState(input: {
   hasGuideTrack: boolean;
   hasPendingLoad: boolean;
 }): boolean {
-  return (
-    input.currentPath === input.nextPath &&
-    (input.hasGuideTrack || input.hasPendingLoad)
-  );
+  return input.currentPath === input.nextPath && (input.hasGuideTrack || input.hasPendingLoad);
 }
 
 export function clearGuideTrackState(input: {
@@ -129,7 +126,8 @@ export function loadGuideTrackPathState(input: {
     setGuideTrackReady: input.setGuideTrackReady,
   });
   const requestedPath = input.path;
-  const loadPromise = input.decodeGuideTrack(requestedPath)
+  const loadPromise = input
+    .decodeGuideTrack(requestedPath)
     .then((pcm) => {
       if (
         !acceptDecodedGuideTrackState({

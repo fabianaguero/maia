@@ -71,7 +71,9 @@ describe("RepositoriesTable", () => {
     expect(screen.getAllByText(en.library.tables.repositories.pending).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByText("maia-core"));
-    fireEvent.click(screen.getAllByRole("button", { name: en.library.tables.repositories.open })[0]!);
+    fireEvent.click(
+      screen.getAllByRole("button", { name: en.library.tables.repositories.open })[0]!,
+    );
     fireEvent.click(screen.getByRole("button", { name: en.library.tables.repositories.reanalyze }));
 
     expect(onSelectRepository).toHaveBeenCalledWith("repo-1");

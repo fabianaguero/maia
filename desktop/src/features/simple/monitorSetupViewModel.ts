@@ -327,9 +327,7 @@ export function buildMonitorSetupScreenViewModel(input: {
       {
         key: "contrast",
         label: input.t.simpleMode.deckSetup.previewAlertContrast,
-        value: Math.round(
-          (input.controls.anomalyEmphasis + input.controls.duckingIntensity) / 2,
-        ),
+        value: Math.round((input.controls.anomalyEmphasis + input.controls.duckingIntensity) / 2),
       },
       {
         key: "idle",

@@ -52,9 +52,7 @@ export async function browseConnectionFileState(input: {
       input.setDraft((current) => ({ ...current, sourcePath: pickedPath }));
     }
   } catch (error) {
-    input.setError(
-      error instanceof Error ? error.message : input.fallbackErrorMessage,
-    );
+    input.setError(error instanceof Error ? error.message : input.fallbackErrorMessage);
   } finally {
     input.setPickerBusy(false);
   }

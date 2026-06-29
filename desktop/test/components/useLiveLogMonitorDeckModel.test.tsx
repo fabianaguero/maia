@@ -18,8 +18,7 @@ vi.mock("../../src/features/analyzer/components/liveLogMonitorDeckPropsViewModel
   buildLiveLogMonitorDeckSectionContent: (...args: unknown[]) =>
     buildLiveLogMonitorDeckSectionContent(...args),
   buildLiveLogMonitorScenePanel: (...args: unknown[]) => buildLiveLogMonitorScenePanel(...args),
-  buildLiveLogMonitorRoutingPanel: (...args: unknown[]) =>
-    buildLiveLogMonitorRoutingPanel(...args),
+  buildLiveLogMonitorRoutingPanel: (...args: unknown[]) => buildLiveLogMonitorRoutingPanel(...args),
   buildLiveLogMonitorLiveDeckProps: (...args: unknown[]) =>
     buildLiveLogMonitorLiveDeckProps(...args),
 }));

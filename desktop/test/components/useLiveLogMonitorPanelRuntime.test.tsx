@@ -14,8 +14,7 @@ vi.mock("../../src/features/analyzer/components/useLiveLogMonitorPanelRuntimeSta
 }));
 
 vi.mock("../../src/features/analyzer/components/useLiveLogMonitorOrchestrator", () => ({
-  useLiveLogMonitorOrchestrator: (...args: unknown[]) =>
-    useLiveLogMonitorOrchestrator(...args),
+  useLiveLogMonitorOrchestrator: (...args: unknown[]) => useLiveLogMonitorOrchestrator(...args),
 }));
 
 vi.mock("../../src/features/analyzer/components/useLiveLogMonitorLifecycle", () => ({

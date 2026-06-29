@@ -224,9 +224,7 @@ describe("appV0MonitorRuntime", () => {
     expect(invalidTrackPlan).toEqual({ kind: "invalid", reason: "missing-track" });
     expect(invalidRepoPlan).toEqual({ kind: "invalid", reason: "missing-repository" });
     expect(resolveAppV0PlaybackLabel(null, "Unknown")).toBe("Unknown");
-    expect(resolveAppV0PlaybackLabel({ repoTitle: "services" } as any, "Unknown")).toBe(
-      "services",
-    );
+    expect(resolveAppV0PlaybackLabel({ repoTitle: "services" } as any, "Unknown")).toBe("services");
   });
 
   it("executes connection and repository launch plans through injected monitor deps", async () => {
@@ -345,10 +343,7 @@ describe("appV0MonitorRuntime", () => {
     };
 
     expect(
-      await executeAppV0MonitorLaunchPlan(
-        { kind: "invalid", reason: "missing-track" },
-        deps,
-      ),
+      await executeAppV0MonitorLaunchPlan({ kind: "invalid", reason: "missing-track" }, deps),
     ).toEqual({
       ok: false,
       reason: "missing-track",

@@ -41,11 +41,7 @@ vi.mock("../../src/features/analyzer/components/CompositionOverviewPanel", () =>
 }));
 
 vi.mock("../../src/features/analyzer/components/CompositionRenderPreviewPanel", () => ({
-  CompositionRenderPreviewPanel: ({
-    onTimeUpdate,
-  }: {
-    onTimeUpdate: (value: number) => void;
-  }) => (
+  CompositionRenderPreviewPanel: ({ onTimeUpdate }: { onTimeUpdate: (value: number) => void }) => (
     <button
       type="button"
       data-testid="composition-render-preview-panel"

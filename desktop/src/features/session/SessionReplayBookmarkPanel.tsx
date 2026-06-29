@@ -56,10 +56,7 @@ export function SessionReplayBookmarkPanel({
                 <div className="session-bookmark-card-head">
                   <strong>{bookmark.label}</strong>
                   <span>
-                    {t.session.windowShort.replace(
-                      "{index}",
-                      String(bookmark.replayWindowIndex),
-                    )}
+                    {t.session.windowShort.replace("{index}", String(bookmark.replayWindowIndex))}
                   </span>
                 </div>
                 <p>{bookmark.note || t.session.bookmarkNoNote}</p>

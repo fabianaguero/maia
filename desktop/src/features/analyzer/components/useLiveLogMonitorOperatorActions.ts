@@ -125,9 +125,12 @@ export function useLiveLogMonitorOperatorActions(input: UseLiveLogMonitorOperato
     }
   });
 
-  const handleSetMasterVolume = useCallback((nextVolume: number) => {
-    input.setMasterVolume(Math.max(0, Math.min(1, nextVolume)));
-  }, [input]);
+  const handleSetMasterVolume = useCallback(
+    (nextVolume: number) => {
+      input.setMasterVolume(Math.max(0, Math.min(1, nextVolume)));
+    },
+    [input],
+  );
 
   const handleToggleMute = useCallback(() => {
     input.setMasterVolume((current) => {

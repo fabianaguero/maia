@@ -64,7 +64,10 @@ function resolveTestStateLabel(
   return { label: t.simpleMode.connections.testFailed, tone: "error" };
 }
 
-function resolveAdapterKindLabel(t: AppTranslations, adapterKind: LogSourceConnection["adapterKind"]): string {
+function resolveAdapterKindLabel(
+  t: AppTranslations,
+  adapterKind: LogSourceConnection["adapterKind"],
+): string {
   switch (adapterKind) {
     case "file":
       return t.simpleMode.connections.adapterFile;
@@ -102,7 +105,11 @@ export function buildConnectionsSavedListViewModel(input: {
 
     const leftUpdated = Date.parse(left.updatedAt);
     const rightUpdated = Date.parse(right.updatedAt);
-    if (Number.isFinite(leftUpdated) && Number.isFinite(rightUpdated) && leftUpdated !== rightUpdated) {
+    if (
+      Number.isFinite(leftUpdated) &&
+      Number.isFinite(rightUpdated) &&
+      leftUpdated !== rightUpdated
+    ) {
       return rightUpdated - leftUpdated;
     }
 

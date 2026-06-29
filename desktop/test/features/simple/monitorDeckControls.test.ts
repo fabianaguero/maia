@@ -77,6 +77,8 @@ describe("monitorDeckControls", () => {
         cueCooldownMs: MONITOR_DECK_PRESETS.alert.cueCooldownMs + 100,
       }),
     ).toBe("custom");
-    expect(areMonitorDeckControlsEqual(MONITOR_DECK_PRESETS.balanced, DEFAULT_MONITOR_DECK_CONTROLS)).toBe(true);
+    expect(
+      areMonitorDeckControlsEqual(MONITOR_DECK_PRESETS.balanced, DEFAULT_MONITOR_DECK_CONTROLS),
+    ).toBe(true);
   });
 });

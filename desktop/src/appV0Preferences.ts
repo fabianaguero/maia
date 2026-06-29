@@ -4,11 +4,7 @@ import {
   MONITOR_SETUP_PREFERENCES_STORAGE_KEY,
   type MonitorSetupPreferences,
 } from "./features/simple/monitorSetupPreferences";
-import {
-  APP_V0_SKIN_STORAGE_KEY,
-  isAppSkin,
-  type AppSkin,
-} from "./features/simple/appSkin";
+import { APP_V0_SKIN_STORAGE_KEY, isAppSkin, type AppSkin } from "./features/simple/appSkin";
 
 export type AppV0Language = "en" | "es";
 
@@ -59,10 +55,7 @@ export function persistAppV0Language(
   storage?.setItem(APP_V0_LANG_STORAGE_KEY, lang);
 }
 
-export function persistAppV0Skin(
-  storage: StorageWriter | null | undefined,
-  skin: AppSkin,
-): void {
+export function persistAppV0Skin(storage: StorageWriter | null | undefined, skin: AppSkin): void {
   storage?.setItem(APP_V0_SKIN_STORAGE_KEY, skin);
 }
 

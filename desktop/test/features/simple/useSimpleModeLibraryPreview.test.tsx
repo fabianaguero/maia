@@ -252,10 +252,7 @@ describe("useSimpleModeLibraryPreview", () => {
 
     expect(result.current.previewTrackId).toBeNull();
     expect(state.revokePreviewAudioUrl).toHaveBeenCalledWith("blob:test-preview");
-    expect(warnSpy).toHaveBeenCalledWith(
-      "Library track preview failed",
-      expect.any(Error),
-    );
+    expect(warnSpy).toHaveBeenCalledWith("Library track preview failed", expect.any(Error));
 
     warnSpy.mockRestore();
   });

@@ -12,13 +12,8 @@ interface UseMonitorSetupScreenModelInput {
 }
 
 export function useMonitorSetupScreenModel(input: UseMonitorSetupScreenModelInput) {
-  const {
-    profile,
-    viewModel,
-    updateDeckControl,
-    resetDeckControls,
-    applyDeckPreset,
-  } = useMonitorSetupProfile(input);
+  const { profile, viewModel, updateDeckControl, resetDeckControls, applyDeckPreset } =
+    useMonitorSetupProfile(input);
   const screenModel = buildMonitorSetupScreenModel(viewModel);
 
   return {

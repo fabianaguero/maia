@@ -319,9 +319,7 @@ export function TrackPerformancePanel({
                   type="button"
                   className="compact-action"
                   disabled={
-                    !canEditPerformance ||
-                    !canAddLoop ||
-                    !canCreateBeatLoopAtPlacement(beatCount)
+                    !canEditPerformance || !canAddLoop || !canCreateBeatLoopAtPlacement(beatCount)
                   }
                   onClick={() => void addSavedLoop(beatCount)}
                 >

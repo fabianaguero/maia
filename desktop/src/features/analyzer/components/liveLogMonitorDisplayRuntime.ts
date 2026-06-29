@@ -1,7 +1,4 @@
-import type {
-  LiveLogMarker,
-  LiveLogStreamUpdate,
-} from "../../../types/library";
+import type { LiveLogMarker, LiveLogStreamUpdate } from "../../../types/library";
 import type { ActiveMonitorSession } from "../../monitor/monitorContextTypes";
 import { getStreamAdapterLabel } from "../../../utils/streamAdapter";
 import {
@@ -9,10 +6,7 @@ import {
   type AnomalySourceRow,
   type SyncTailRow,
 } from "./liveLogMonitorPanelRuntime";
-import type {
-  AudioEngineStatus,
-  SampleEngineStatus,
-} from "./liveLogMonitorViewModel";
+import type { AudioEngineStatus, SampleEngineStatus } from "./liveLogMonitorViewModel";
 
 export interface LiveMonitorDisplayLabels {
   replayLabel: string;
@@ -163,10 +157,7 @@ export function buildLiveMonitorDisplayState(input: {
   >;
 }): LiveMonitorDisplayState {
   const currentLevelCounts = input.lastUpdate?.levelCounts ?? {};
-  const anomalySourceRows = resolveAnomalySourceRows(
-    input.lastUpdate,
-    input.maxAnomalySourceLines,
-  );
+  const anomalySourceRows = resolveAnomalySourceRows(input.lastUpdate, input.maxAnomalySourceLines);
   const waveAnomalyMarkers = input.recentMarkers.slice(0, 4);
   const liveSourceLabel = input.lastUpdate?.sourcePath ?? input.repositorySourcePath;
   const recentSyncTailRows = input.syncTailRows.slice(-input.maxSyncTailLines);
@@ -288,9 +279,10 @@ export function buildMetricGridItems(input: {
     },
     {
       label: input.labels.windowsHeardLabel,
-      value: input.replayActive && input.playbackWindowLabel
-        ? input.playbackWindowLabel
-        : input.windowsHeard,
+      value:
+        input.replayActive && input.playbackWindowLabel
+          ? input.playbackWindowLabel
+          : input.windowsHeard,
     },
     {
       label: input.labels.cuesEmittedLabel,
@@ -306,7 +298,10 @@ export function buildMetricGridItems(input: {
     },
     {
       label: input.labels.beatClockLabel,
-      value: input.beatClockBpm !== null ? `${input.beatClockBpm.toFixed(0)} BPM` : input.labels.freeLabel,
+      value:
+        input.beatClockBpm !== null
+          ? `${input.beatClockBpm.toFixed(0)} BPM`
+          : input.labels.freeLabel,
     },
     {
       label: input.labels.voicesEmittedLabel,

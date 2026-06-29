@@ -4,9 +4,7 @@ import type { SessionEvent } from "../../api/sessions";
 import type { LiveLogStreamUpdate, RepositoryAnalysis } from "../../types/library";
 import type { StartSessionInput, StreamSessionRecord } from "../../types/monitor";
 import type { ActiveMonitorSession, MonitorMetrics } from "./monitorContextTypes";
-import {
-  rebuildReplayEventsFromSource,
-} from "./monitorReplayRuntime";
+import { rebuildReplayEventsFromSource } from "./monitorReplayRuntime";
 import {
   stopAllMonitorAudio,
   type CrossfadeHandle,
@@ -89,9 +87,7 @@ interface UseMonitorProviderSessionActionsInput {
   pollLogStream: PollLogStreamFn;
 }
 
-export function useMonitorProviderSessionActions(
-  input: UseMonitorProviderSessionActionsInput,
-) {
+export function useMonitorProviderSessionActions(input: UseMonitorProviderSessionActionsInput) {
   const replaceExistingSessionIfPresent = useCallback(async () => {
     await replaceExistingMonitorSessionIfPresent({
       sessionRef: input.sessionRef,
@@ -204,10 +200,7 @@ export function useMonitorProviderSessionActions(
             ? input.guideTrackLoadPromiseRef.current
             : undefined,
         replayTick: input.replayTick,
-        rebuildReplayEventsFromSource: ({
-          sessionId: targetSessionId,
-          sourcePath: targetPath,
-        }) =>
+        rebuildReplayEventsFromSource: ({ sessionId: targetSessionId, sourcePath: targetPath }) =>
           rebuildReplayEventsFromSource({
             sessionId: targetSessionId,
             sourcePath: targetPath,

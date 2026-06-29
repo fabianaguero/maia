@@ -62,9 +62,7 @@ export function syncReplayTelemetryState(input: {
   input.setPlaybackEventCount(total > 0 ? total : null);
   input.setPlaybackEventIndex(total > 0 ? clampedProcessed : null);
   input.setPlaybackProgress(total > 0 ? clampedProcessed / total : null);
-  input.setMetrics(
-    input.replayMetricsRef.current[clampedProcessed] ?? createEmptyMonitorMetrics(),
-  );
+  input.setMetrics(input.replayMetricsRef.current[clampedProcessed] ?? createEmptyMonitorMetrics());
 }
 
 export function buildReplayUpdateFromEvent(

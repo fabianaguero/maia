@@ -96,9 +96,7 @@ function createTrack(): LibraryTrack {
   };
 }
 
-function createMonitorValue(
-  overrides: Partial<MonitorContextValue> = {},
-): MonitorContextValue {
+function createMonitorValue(overrides: Partial<MonitorContextValue> = {}): MonitorContextValue {
   return {
     session: {
       sessionId: "stream-1",
@@ -154,9 +152,7 @@ function createMonitorValue(
   };
 }
 
-function createUpdate(
-  overrides: Partial<LiveLogStreamUpdate> = {},
-): LiveLogStreamUpdate {
+function createUpdate(overrides: Partial<LiveLogStreamUpdate> = {}): LiveLogStreamUpdate {
   return {
     sourcePath: "/logs/visits-service.log",
     fromOffset: 0,
@@ -179,10 +175,7 @@ function createUpdate(
     ],
     topComponents: [{ component: "visits-service", count: 2 }],
     sonificationCues: [],
-    parsedLines: [
-      "INFO boot complete",
-      "WARN Timeout while reading upstream response",
-    ],
+    parsedLines: ["INFO boot complete", "WARN Timeout while reading upstream response"],
     warnings: [],
     ...overrides,
   };

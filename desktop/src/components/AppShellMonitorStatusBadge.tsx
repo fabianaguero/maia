@@ -42,11 +42,7 @@ export function AppShellMonitorStatusBadge({
         <button type="button" className="btn-inspect-small" onClick={() => onInspect?.()}>
           {inspectLabel}
         </button>
-        <button
-          type="button"
-          className="btn-stop-small"
-          onClick={() => onStopMonitoring?.()}
-        >
+        <button type="button" className="btn-stop-small" onClick={() => onStopMonitoring?.()}>
           {stopLabel}
         </button>
       </div>

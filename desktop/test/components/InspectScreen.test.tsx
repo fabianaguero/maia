@@ -13,15 +13,21 @@ import type {
 } from "../../src/types/library";
 
 vi.mock("../../src/features/inspect/InspectContextBar", () => ({
-  InspectContextBar: ({ mode }: { mode: string }) => <div data-testid="inspect-context-bar">{mode}</div>,
+  InspectContextBar: ({ mode }: { mode: string }) => (
+    <div data-testid="inspect-context-bar">{mode}</div>
+  ),
 }));
 
 vi.mock("../../src/features/inspect/InspectEmptyState", () => ({
-  InspectEmptyState: ({ title }: { title: string }) => <div data-testid="inspect-empty-state">{title}</div>,
+  InspectEmptyState: ({ title }: { title: string }) => (
+    <div data-testid="inspect-empty-state">{title}</div>
+  ),
 }));
 
 vi.mock("../../src/features/inspect/InspectTrackView", () => ({
-  InspectTrackView: ({ track }: { track: { id: string } }) => <div data-testid="inspect-track-view">{track.id}</div>,
+  InspectTrackView: ({ track }: { track: { id: string } }) => (
+    <div data-testid="inspect-track-view">{track.id}</div>
+  ),
 }));
 
 vi.mock("../../src/features/inspect/InspectRepositoryView", () => ({

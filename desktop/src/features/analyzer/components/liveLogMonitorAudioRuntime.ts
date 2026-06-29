@@ -19,11 +19,7 @@ export interface ManagedBlobAudioElement {
   currentTime: number;
   pause: () => void;
   play: () => Promise<unknown>;
-  addEventListener: (
-    type: string,
-    listener: () => void,
-    options?: AddEventListenerOptions,
-  ) => void;
+  addEventListener: (type: string, listener: () => void, options?: AddEventListenerOptions) => void;
 }
 
 export interface ManagedBlobAudioRuntimeLogger {
@@ -93,9 +89,7 @@ export function resolveBackgroundMutationProfile(
   };
 }
 
-export function resolveLiveMutationState(
-  mutation: BackgroundMutationProfile,
-): LiveMutationState {
+export function resolveLiveMutationState(mutation: BackgroundMutationProfile): LiveMutationState {
   if (mutation.driveWet >= 0.58 || mutation.gatePulses >= 2) {
     return "critical";
   }
@@ -219,10 +213,7 @@ export function resolveManagedAudioSourceState(input: {
     return null;
   }
 
-  if (
-    input.audioPath.startsWith("browser-fallback://") ||
-    input.audioPath.startsWith("http")
-  ) {
+  if (input.audioPath.startsWith("browser-fallback://") || input.audioPath.startsWith("http")) {
     return input.audioPath.replace("browser-fallback://", "");
   }
 

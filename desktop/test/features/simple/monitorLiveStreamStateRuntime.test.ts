@@ -51,7 +51,7 @@ const baseUpdate: LiveLogStreamUpdate = {
     },
   ],
   parsedLines: [
-    "INFO 2026-06-24T21:11:36.467853Z HTTP Request: GET https://example.com \"HTTP/1.1 200 OK\"",
+    'INFO 2026-06-24T21:11:36.467853Z HTTP Request: GET https://example.com "HTTP/1.1 200 OK"',
     "WARNING 2026-06-24T21:11:38.209845Z Timeout while reading upstream response",
   ],
   warnings: [],
@@ -109,14 +109,26 @@ describe("monitorLiveStreamStateRuntime", () => {
   it("sanitizes updates and resolves waveform/anomaly state deterministically", () => {
     const sanitized = sanitizeLiveLogStreamUpdate(baseUpdate);
     const waveContext = resolveMonitorWaveContext({
-      activeAudio: { duration: 240, currentTime: 60 } as Pick<HTMLAudioElement, "duration" | "currentTime">,
+      activeAudio: { duration: 240, currentTime: 60 } as Pick<
+        HTMLAudioElement,
+        "duration" | "currentTime"
+      >,
       fallbackDurationSeconds: 200,
       fallbackProgress: 0.1,
       liveSuggestedBpm: 128,
       trackBpm: 126,
     });
     const markers = buildWaveformAnomalyMarkers({
-      previous: [{ id: "keep", lineId: "keep", timestamp: "00:10", message: "keep", severity: 0.5, progress: 0.2 }],
+      previous: [
+        {
+          id: "keep",
+          lineId: "keep",
+          timestamp: "00:10",
+          message: "keep",
+          severity: 0.5,
+          progress: 0.2,
+        },
+      ],
       parsedLines: anomalyLines,
       currentTrack: track,
       durationSeconds: 320,

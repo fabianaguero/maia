@@ -75,7 +75,11 @@ function createAudioRuntime() {
     ensureAudioReady: vi.fn(),
     playPanelTestTone: vi.fn(),
     backgroundDeckControl: { ensureBackgroundAudio: vi.fn(), stopBackgroundDeck: vi.fn() },
-    resetActions: { applyRepositoryReset: vi.fn(), applyStartReset: vi.fn(), applyStopReset: vi.fn() },
+    resetActions: {
+      applyRepositoryReset: vi.fn(),
+      applyStartReset: vi.fn(),
+      applyStopReset: vi.fn(),
+    },
     applyLogModulation: vi.fn(),
     playbackRuntime: { playWithCurrentEngine: vi.fn(), handleSequencerStepFire: vi.fn() },
   } as never;

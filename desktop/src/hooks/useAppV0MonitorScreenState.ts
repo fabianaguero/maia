@@ -6,14 +6,8 @@ import {
 import type { ActiveMonitorSession, MonitorMetrics } from "../features/monitor/monitorContextTypes";
 import type { AppSection } from "../features/simple/appSections";
 import type { AppV0Language } from "../appV0Preferences";
-import type {
-  LibraryTrack,
-  RepositoryAnalysis,
-} from "../types/library";
-import type {
-  StartSessionInput,
-  StreamSessionRecord,
-} from "../types/monitor";
+import type { LibraryTrack, RepositoryAnalysis } from "../types/library";
+import type { StartSessionInput, StreamSessionRecord } from "../types/monitor";
 
 interface UseAppV0MonitorScreenStateInput {
   lang: AppV0Language;

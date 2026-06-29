@@ -88,9 +88,7 @@ function createTrack(overrides: Partial<LibraryTrack> = {}): LibraryTrack {
   };
 }
 
-function createRepository(
-  overrides: Partial<RepositoryAnalysis> = {},
-): RepositoryAnalysis {
+function createRepository(overrides: Partial<RepositoryAnalysis> = {}): RepositoryAnalysis {
   return {
     id: overrides.id ?? "repo-1",
     title: overrides.title ?? "Repo",
@@ -216,9 +214,7 @@ describe("useLibraryScreenToolbarActions", () => {
     });
 
     const { result, rerender } = renderHook(
-      (props: {
-        tracks: LibraryTrack[];
-      }) =>
+      (props: { tracks: LibraryTrack[] }) =>
         useLibraryScreenToolbarActions({
           t: en,
           tab: "tracks",

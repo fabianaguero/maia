@@ -111,7 +111,7 @@ describe("liveLogMonitorBackgroundDeckRuntime", () => {
   });
 
   it("loads and caches background buffers", async () => {
-    const decodeAudioData = vi.fn(async () => ({ id: "decoded" } as unknown as AudioBuffer));
+    const decodeAudioData = vi.fn(async () => ({ id: "decoded" }) as unknown as AudioBuffer);
     const context = { decodeAudioData } as unknown as AudioContext;
     const fetchImpl = vi.fn(async () => ({
       ok: true,

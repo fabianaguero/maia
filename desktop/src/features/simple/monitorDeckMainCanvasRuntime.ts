@@ -1,15 +1,10 @@
-import type {
-  LogWaveOverlayPoint,
-} from "./monitorDeckViewModel";
+import type { LogWaveOverlayPoint } from "./monitorDeckViewModel";
 import {
   resolveCurrentMonitorDeckSkin,
   resolveMonitorDeckPalette,
   type MonitorDeckVisualPreset,
 } from "./monitorDeckCanvasPalette";
-import {
-  buildMonitorDeckLayout,
-  resolveMonitorDeckCanvasSize,
-} from "./monitorDeckCanvasRuntime";
+import { buildMonitorDeckLayout, resolveMonitorDeckCanvasSize } from "./monitorDeckCanvasRuntime";
 
 export interface BuildMonitorDeckMainCanvasStateInput {
   stageWidth: number;
@@ -20,9 +15,7 @@ export interface BuildMonitorDeckMainCanvasStateInput {
   logWaveOverlay: LogWaveOverlayPoint[];
 }
 
-export function buildMonitorDeckMainCanvasState(
-  input: BuildMonitorDeckMainCanvasStateInput,
-) {
+export function buildMonitorDeckMainCanvasState(input: BuildMonitorDeckMainCanvasStateInput) {
   const palette = resolveMonitorDeckPalette(
     input.visualPreset ?? "balanced",
     resolveCurrentMonitorDeckSkin(),

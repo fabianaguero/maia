@@ -102,13 +102,13 @@ describe("repositoriesRuntime", () => {
 
     expect(resolveRepositoryAnalysisPayload(response)).toBe(analyzed);
     expect(shouldAnalyzeImportedRepository(repository)).toBe(true);
-    expect(
-      applyAnalyzedRepositoryMetadata([repository], repository.id, analyzed)[0],
-    ).toMatchObject({
-      suggestedBpm: 128,
-      confidence: 0.8,
-      waveformBins: [1, 2],
-    });
+    expect(applyAnalyzedRepositoryMetadata([repository], repository.id, analyzed)[0]).toMatchObject(
+      {
+        suggestedBpm: 128,
+        confidence: 0.8,
+        waveformBins: [1, 2],
+      },
+    );
   });
 
   it("formats runtime errors and replaces a reanalyzed repository", () => {

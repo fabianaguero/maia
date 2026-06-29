@@ -53,9 +53,7 @@ export class AppErrorBoundary extends React.Component<
               {t.simpleMode.runtime.desktopRuntime}
             </span>
           </div>
-          <div className="app-error-boundary__banner">
-            {t.simpleMode.runtime.uiRuntimeError}
-          </div>
+          <div className="app-error-boundary__banner">{t.simpleMode.runtime.uiRuntimeError}</div>
           <div className="app-error-boundary__body">
             <div className="app-error-boundary__title">
               {t.simpleMode.runtime.crashedWhileRendering}
@@ -63,13 +61,9 @@ export class AppErrorBoundary extends React.Component<
             <div className="app-error-boundary__copy">
               {t.simpleMode.runtime.blackScreenReplacement}
             </div>
-            <pre className="app-error-boundary__stack">
-              {error.stack || error.message}
-            </pre>
+            <pre className="app-error-boundary__stack">{error.stack || error.message}</pre>
             {errorInfo?.componentStack ? (
-              <pre className="app-error-boundary__component-stack">
-                {errorInfo.componentStack}
-              </pre>
+              <pre className="app-error-boundary__component-stack">{errorInfo.componentStack}</pre>
             ) : null}
           </div>
         </div>

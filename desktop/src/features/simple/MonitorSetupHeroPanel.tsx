@@ -2,10 +2,7 @@ import type { ReactNode } from "react";
 
 import type { AppTranslations } from "../../i18n/en";
 import type { AppSkin } from "./appSkin";
-import {
-  MonitorSetupHeroIdentityBank,
-  MonitorSetupSummaryBank,
-} from "./MonitorSetupSections";
+import { MonitorSetupHeroIdentityBank, MonitorSetupSummaryBank } from "./MonitorSetupSections";
 import type {
   MonitorSetupCardViewModel,
   MonitorSetupOptionViewModel,

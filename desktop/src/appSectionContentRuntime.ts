@@ -18,8 +18,7 @@ export function buildAppSectionContentState(input: {
   hasMonitorSession: boolean;
   repositoryCount: number;
 }): AppSectionContentState {
-  const inCurateLibrary =
-    input.effectivePillar === "curate" && input.effectiveScreen === "library";
+  const inCurateLibrary = input.effectivePillar === "curate" && input.effectiveScreen === "library";
 
   return {
     showSimpleWizard:
@@ -27,8 +26,7 @@ export function buildAppSectionContentState(input: {
       input.userMode === "simple" &&
       !input.hasMonitorSession &&
       input.repositoryCount === 0,
-    showSimpleLibrary:
-      inCurateLibrary && input.userMode === "simple" && input.repositoryCount > 0,
+    showSimpleLibrary: inCurateLibrary && input.userMode === "simple" && input.repositoryCount > 0,
     showExpertLibrary: inCurateLibrary && input.userMode === "expert",
     showInspect:
       input.userMode === "expert" &&

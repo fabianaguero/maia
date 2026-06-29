@@ -1,8 +1,4 @@
-import type {
-  BeatGridPoint,
-  TrackCuePoint,
-  TrackSavedLoop,
-} from "../types/library";
+import type { BeatGridPoint, TrackCuePoint, TrackSavedLoop } from "../types/library";
 
 export const MAX_HOT_CUES = 8;
 export const MAX_SAVED_LOOPS = 8;

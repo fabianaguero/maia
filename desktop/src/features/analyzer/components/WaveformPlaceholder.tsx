@@ -6,10 +6,7 @@ import type {
   VisualizationCuePoint,
   VisualizationRegionPoint,
 } from "../../../types/library";
-import {
-  selectBeatGridPhrase,
-  type BeatGridPhraseRange,
-} from "../../../utils/beatGrid";
+import { selectBeatGridPhrase, type BeatGridPhraseRange } from "../../../utils/beatGrid";
 import {
   hasUsableBeatGrid,
   nudgeTrackSecond,

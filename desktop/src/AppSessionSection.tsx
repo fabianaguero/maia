@@ -1,11 +1,7 @@
 import type { PersistedSession, SessionBookmark } from "./api/sessions";
 import { SessionScreen } from "./features/session/SessionScreen";
 import type { SessionStartDraft } from "./features/session/sessionScreenRuntime";
-import type {
-  BaseTrackPlaylist,
-  LibraryTrack,
-  RepositoryAnalysis,
-} from "./types/library";
+import type { BaseTrackPlaylist, LibraryTrack, RepositoryAnalysis } from "./types/library";
 import type { StartSessionInput } from "./types/monitor";
 import type { ActiveMonitorSession } from "./features/monitor/monitorContextTypes";
 
@@ -30,10 +26,7 @@ interface AppSessionSectionProps {
   onStopSession: () => Promise<void>;
   onResumeSession: (sessionId: string) => void;
   onPlaybackSession: (session: PersistedSession) => Promise<boolean>;
-  onReplayBookmark: (
-    session: PersistedSession,
-    replayWindowIndex: number,
-  ) => Promise<boolean>;
+  onReplayBookmark: (session: PersistedSession, replayWindowIndex: number) => Promise<boolean>;
   onDeleteSession: (sessionId: string) => Promise<void>;
   onSelectSession: (sessionId: string) => void;
 }
@@ -56,9 +49,7 @@ export function AppSessionSection(props: AppSessionSectionProps) {
       activeSessionMode={
         props.monitorSession ? (props.monitorIsPlayback ? "playback" : "live") : null
       }
-      activePlaybackProgress={
-        props.monitorIsPlayback ? props.monitorPlaybackProgress : null
-      }
+      activePlaybackProgress={props.monitorIsPlayback ? props.monitorPlaybackProgress : null}
       onStartSession={props.onStartSession}
       onStopSession={props.onStopSession}
       onResume={props.onResumeSession}

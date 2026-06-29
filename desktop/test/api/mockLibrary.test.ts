@@ -167,7 +167,10 @@ describe("mock library storage", () => {
     });
 
     const playlists = await listMockPlaylists();
-    expect(playlists.map((playlist) => playlist.id)).toEqual([secondPlaylist.id, updatedPlaylist.id]);
+    expect(playlists.map((playlist) => playlist.id)).toEqual([
+      secondPlaylist.id,
+      updatedPlaylist.id,
+    ]);
     expect(secondPlaylist.name).toBe("Base playlist");
 
     await deleteMockPlaylist(updatedPlaylist.id);
@@ -522,10 +525,7 @@ describe("mock library storage", () => {
     expect(updatedPerformance.performance.rating).toBe(5);
     expect(updatedPerformance.performance.color).toBeNull();
     expect(updatedPerformance.performance.mainCueSecond).toBeNull();
-    expect(updatedPerformance.performance.hotCues.map((cue) => cue.id)).toEqual([
-      "cue-a",
-      "cue-b",
-    ]);
+    expect(updatedPerformance.performance.hotCues.map((cue) => cue.id)).toEqual(["cue-a", "cue-b"]);
     expect(updatedPerformance.performance.memoryCues.map((cue) => cue.id)).toEqual([
       "mem-a",
       "mem-b",

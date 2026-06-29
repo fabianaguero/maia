@@ -2,7 +2,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ComponentProps } from "react";
 
-import { ManagedAudioPlayer, type ManagedAudioCueRequest } from "../../src/features/analyzer/components/ManagedAudioPlayer";
+import {
+  ManagedAudioPlayer,
+  type ManagedAudioCueRequest,
+} from "../../src/features/analyzer/components/ManagedAudioPlayer";
 
 const { invokeMock, isTauriMock } = vi.hoisted(() => ({
   invokeMock: vi.fn(),
@@ -112,7 +115,9 @@ describe("ManagedAudioPlayer", () => {
     const harness = mountAudioHarness(audio as HTMLAudioElement);
 
     await waitFor(() =>
-      expect(invokeMock).toHaveBeenCalledWith("read_audio_bytes", { path: "/music/guide-track.wav" }),
+      expect(invokeMock).toHaveBeenCalledWith("read_audio_bytes", {
+        path: "/music/guide-track.wav",
+      }),
     );
     await waitFor(() => expect(audio?.getAttribute("src")).toBe("blob:managed-audio"));
 
@@ -155,13 +160,9 @@ describe("ManagedAudioPlayer", () => {
       />,
     );
 
-    await waitFor(() =>
-      expect(harness.currentTimeRef.current).toBeCloseTo(12.5, 2),
-    );
+    await waitFor(() => expect(harness.currentTimeRef.current).toBeCloseTo(12.5, 2));
     expect(onTimeUpdate).toHaveBeenLastCalledWith(12.5);
-    await waitFor(() =>
-      expect((audio as HTMLAudioElement).play).toHaveBeenCalled(),
-    );
+    await waitFor(() => expect((audio as HTMLAudioElement).play).toHaveBeenCalled());
     expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument();
 
     fireEvent(audio as HTMLAudioElement, new Event("ended"));
@@ -199,7 +200,9 @@ describe("ManagedAudioPlayer", () => {
     mountAudioHarness(audio as HTMLAudioElement);
 
     await waitFor(() =>
-      expect(invokeMock).toHaveBeenCalledWith("read_audio_bytes", { path: "/music/recovered-track.wav" }),
+      expect(invokeMock).toHaveBeenCalledWith("read_audio_bytes", {
+        path: "/music/recovered-track.wav",
+      }),
     );
 
     fireEvent(audio as HTMLAudioElement, new Event("canplay"));
@@ -222,8 +225,6 @@ describe("ManagedAudioPlayer", () => {
       />,
     );
 
-    expect(
-      await screen.findByText("play rejected"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("play rejected")).toBeInTheDocument();
   });
 });

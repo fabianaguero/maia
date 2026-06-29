@@ -45,26 +45,22 @@ describe("liveLogMonitorAudioRuntime", () => {
   });
 
   it("derives and forces background mutation profiles", () => {
-    const mutation = resolveBackgroundMutationProfile(
-      createUpdate(),
-      0.8,
-      300,
-      12000,
-      {
-        backgroundDucking: 0.4,
-        filterSweepMultiplier: 1.5,
-        anomalyBoostMultiplier: 1.2,
-        transitionTightness: 0.9,
-      },
-    );
+    const mutation = resolveBackgroundMutationProfile(createUpdate(), 0.8, 300, 12000, {
+      backgroundDucking: 0.4,
+      filterSweepMultiplier: 1.5,
+      anomalyBoostMultiplier: 1.2,
+      transitionTightness: 0.9,
+    });
 
     expect(mutation.driveWet).toBeGreaterThan(0);
     expect(resolveLiveMutationState(mutation)).toBe("warning");
-    expect(forceBackgroundMutationProfile("critical", {
-      backgroundGain: 0.8,
-      filterBaseHz: 300,
-      filterCeilingHz: 12000,
-    }).gatePulses).toBe(4);
+    expect(
+      forceBackgroundMutationProfile("critical", {
+        backgroundGain: 0.8,
+        filterBaseHz: 300,
+        filterCeilingHz: 12000,
+      }).gatePulses,
+    ).toBe(4);
   });
 
   it("manages blob audio volume and stop state", () => {

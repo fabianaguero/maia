@@ -28,10 +28,7 @@ function SessionNotice({ message, tone }: SessionNoticeProps) {
   );
 }
 
-export function SessionScreenNoticeStack({
-  error,
-  createError,
-}: SessionScreenNoticeStackProps) {
+export function SessionScreenNoticeStack({ error, createError }: SessionScreenNoticeStackProps) {
   return (
     <>
       {error ? <SessionNotice message={error} tone="error" /> : null}

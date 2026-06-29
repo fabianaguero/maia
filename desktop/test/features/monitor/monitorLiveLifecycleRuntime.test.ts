@@ -24,9 +24,7 @@ function createSessionInput(): StartSessionInput {
   };
 }
 
-function createActiveSession(
-  overrides: Partial<ActiveMonitorSession> = {},
-): ActiveMonitorSession {
+function createActiveSession(overrides: Partial<ActiveMonitorSession> = {}): ActiveMonitorSession {
   return {
     sessionId: "stream-1",
     persistedSessionId: "persisted-1",

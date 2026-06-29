@@ -6,8 +6,7 @@ import { useSimpleMonitorPlaybackState } from "../../../src/features/simple/useS
 describe("useSimpleMonitorPlaybackState", () => {
   it("tracks playback progress and syncs refs", () => {
     const { result, rerender } = renderHook(
-      ({ isListening }) =>
-        useSimpleMonitorPlaybackState({ isListening }),
+      ({ isListening }) => useSimpleMonitorPlaybackState({ isListening }),
       {
         initialProps: {
           isListening: true,
@@ -35,8 +34,7 @@ describe("useSimpleMonitorPlaybackState", () => {
 
   it("resets playback state when monitoring stops", () => {
     const { result, rerender } = renderHook(
-      ({ isListening }) =>
-        useSimpleMonitorPlaybackState({ isListening }),
+      ({ isListening }) => useSimpleMonitorPlaybackState({ isListening }),
       {
         initialProps: {
           isListening: true,

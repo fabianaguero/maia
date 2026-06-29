@@ -1,11 +1,7 @@
 import type { AppTranslations } from "../../i18n/en";
 import type { Dispatch, SetStateAction } from "react";
 import type { LogSourceConnection } from "../../types/monitor";
-import type {
-  ConnectionDraft,
-  ConnectionKind,
-  ConnectionTestStatus,
-} from "./connectionsViewModel";
+import type { ConnectionDraft, ConnectionKind, ConnectionTestStatus } from "./connectionsViewModel";
 
 export interface ConnectionsHeroStat {
   key: string;

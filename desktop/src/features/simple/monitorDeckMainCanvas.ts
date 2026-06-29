@@ -3,10 +3,7 @@ import type {
   LogWaveOverlayPoint,
   WaveformAnomalyMarker,
 } from "./monitorDeckViewModel";
-import {
-  withAlpha,
-  type MonitorDeckVisualPreset,
-} from "./monitorDeckCanvasPalette";
+import { withAlpha, type MonitorDeckVisualPreset } from "./monitorDeckCanvasPalette";
 import {
   drawAnomalyWash,
   drawDeckBurstRegions,

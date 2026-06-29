@@ -95,11 +95,7 @@ export function sanitizeMonitorDeckControls(
       100,
     ),
     idleMotion: clamp(value?.idleMotion ?? DEFAULT_MONITOR_DECK_CONTROLS.idleMotion, 0, 100),
-    masterVolume: clamp(
-      value?.masterVolume ?? DEFAULT_MONITOR_DECK_CONTROLS.masterVolume,
-      0,
-      1,
-    ),
+    masterVolume: clamp(value?.masterVolume ?? DEFAULT_MONITOR_DECK_CONTROLS.masterVolume, 0, 1),
     duckingIntensity: clamp(
       value?.duckingIntensity ?? DEFAULT_MONITOR_DECK_CONTROLS.duckingIntensity,
       0,
@@ -156,9 +152,9 @@ export function areMonitorDeckControlsEqual(
 export function resolveActiveMonitorDeckPreset(
   controls: MonitorDeckControls,
 ): MonitorDeckPresetId | "custom" {
-  const matchedPreset = (Object.entries(MONITOR_DECK_PRESETS) as Array<
-    [MonitorDeckPresetId, MonitorDeckControls]
-  >).find(([, preset]) => areMonitorDeckControlsEqual(controls, preset));
+  const matchedPreset = (
+    Object.entries(MONITOR_DECK_PRESETS) as Array<[MonitorDeckPresetId, MonitorDeckControls]>
+  ).find(([, preset]) => areMonitorDeckControlsEqual(controls, preset));
 
   return matchedPreset?.[0] ?? "custom";
 }

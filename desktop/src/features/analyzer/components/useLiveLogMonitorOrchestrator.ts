@@ -21,10 +21,7 @@ import {
   resolveBackgroundTrackSecond,
   type SyncTailRow,
 } from "./liveLogMonitorPanelRuntime";
-import {
-  resolveBeatClockLiveSync,
-  type BeatClock,
-} from "./liveLogMonitorBeatRuntime";
+import { resolveBeatClockLiveSync, type BeatClock } from "./liveLogMonitorBeatRuntime";
 import type { BackgroundDeckState } from "./liveLogMonitorBackgroundDeckRuntime";
 import type {
   ArrangementVoice,
@@ -159,45 +156,24 @@ export function useLiveLogMonitorOrchestrator(input: LiveLogMonitorOrchestratorI
 
       input.setEmittedCueCount((current) => current + routedCues.length);
       input.setRecentCues((current) =>
-        buildRecentCueHistory(
-          current,
-          routedCues,
-          updateDerivation.primaryLine,
-          MAX_RECENT_CUES,
-        ),
+        buildRecentCueHistory(current, routedCues, updateDerivation.primaryLine, MAX_RECENT_CUES),
       );
       input.setRecentMarkers((current) =>
-        buildRecentMarkerHistory(
-          current,
-          update.anomalyMarkers,
-          MAX_RECENT_MARKERS,
-        ),
+        buildRecentMarkerHistory(current, update.anomalyMarkers, MAX_RECENT_MARKERS),
       );
       input.setRecentExplanations((current) =>
-        buildRecentExplanationHistory(
-          current,
-          nextExplanations,
-          MAX_RECENT_EXPLANATIONS,
-        ),
+        buildRecentExplanationHistory(current, nextExplanations, MAX_RECENT_EXPLANATIONS),
       );
       if (typeof currentTrackSecond === "number") {
         input.setBackgroundPlayheadSecond(currentTrackSecond);
       }
       if (nextExplanations[0]) {
         input.setSelectedExplanationId((current) =>
-          resolveSelectedMonitorExplanationId(
-            current,
-            nextExplanations,
-            input.monitor.isPlayback,
-          ),
+          resolveSelectedMonitorExplanationId(current, nextExplanations, input.monitor.isPlayback),
         );
       }
       input.setRecentVoices(
-        buildRecentMonitorVoices(
-          routedCues,
-          input.scene.mutationProfile.arrangementDepth,
-          12,
-        ),
+        buildRecentMonitorVoices(routedCues, input.scene.mutationProfile.arrangementDepth, 12),
       );
     });
 
@@ -220,10 +196,7 @@ export function useLiveLogMonitorOrchestrator(input: LiveLogMonitorOrchestratorI
         routedCues.length,
         update.suggestedBpm,
       );
-      if (
-        !input.panelAudioProbePlayedRef.current &&
-        input.backgroundDeckRef.current === null
-      ) {
+      if (!input.panelAudioProbePlayedRef.current && input.backgroundDeckRef.current === null) {
         input.panelAudioProbePlayedRef.current = true;
         void input.playPanelTestTone();
       }

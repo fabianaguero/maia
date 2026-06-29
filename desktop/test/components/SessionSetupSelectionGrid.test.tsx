@@ -124,16 +124,20 @@ describe("SessionSetupSelectionGrid", () => {
     const view = renderWithI18n(
       <SessionSetupSelectionGrid
         {...props}
-        selectedTrack={{
-          id: "track-1",
-          tags: { title: "Night shift" },
-          analysis: { bpm: 126 },
-        } as never}
-        selectedSource={{
-          id: "repo-1",
-          title: "customers-service",
-          sourcePath: "/logs/customers-service.log",
-        } as never}
+        selectedTrack={
+          {
+            id: "track-1",
+            tags: { title: "Night shift" },
+            analysis: { bpm: 126 },
+          } as never
+        }
+        selectedSource={
+          {
+            id: "repo-1",
+            title: "customers-service",
+            sourcePath: "/logs/customers-service.log",
+          } as never
+        }
         selectedBaseLabel="Night shift"
         selectedBaseDetail="126 BPM"
       />,

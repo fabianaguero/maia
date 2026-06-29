@@ -162,8 +162,7 @@ export function useSessionScreenController(input: SessionScreenControllerInput) 
   });
 
   const selectedSessionBookmarks = useMemo(
-    () =>
-      selectedSession ? (input.sessionBookmarksBySessionId[selectedSession.id] ?? []) : [],
+    () => (selectedSession ? (input.sessionBookmarksBySessionId[selectedSession.id] ?? []) : []),
     [input.sessionBookmarksBySessionId, selectedSession],
   );
   const bookmarkContexts = useMemo(() => {
@@ -195,7 +194,11 @@ export function useSessionScreenController(input: SessionScreenControllerInput) 
     selectedSourceId,
     selectedTrackId,
   });
-  const activeBaseDetails = resolveBaseDetails(activeSession ?? null, input.tracks, input.playlists);
+  const activeBaseDetails = resolveBaseDetails(
+    activeSession ?? null,
+    input.tracks,
+    input.playlists,
+  );
   const selectedSessionBaseDetails = resolveBaseDetails(
     selectedSession,
     input.tracks,

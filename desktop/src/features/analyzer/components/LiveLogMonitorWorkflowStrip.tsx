@@ -7,9 +7,7 @@ interface LiveLogMonitorWorkflowStripProps {
   steps: WorkflowStep[];
 }
 
-export function LiveLogMonitorWorkflowStrip({
-  steps,
-}: LiveLogMonitorWorkflowStripProps) {
+export function LiveLogMonitorWorkflowStrip({ steps }: LiveLogMonitorWorkflowStripProps) {
   return (
     <div className="workflow-strip" aria-hidden="true">
       {steps.map((step, index) => (

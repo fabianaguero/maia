@@ -39,9 +39,7 @@ export function SessionSavedSessionCard({
   const t = useT();
 
   return (
-    <div
-      className={`session-card${selected ? " selected" : ""}${active ? " active" : ""}`}
-    >
+    <div className={`session-card${selected ? " selected" : ""}${active ? " active" : ""}`}>
       <div className="session-card-header" onClick={() => onSelectSession(session.id)}>
         <div className="session-card-title-row">
           <h4>{session.label || t.session.unnamedSession}</h4>
@@ -71,16 +69,21 @@ export function SessionSavedSessionCard({
       <div className="session-card-metrics">
         <div className="session-metric">
           <TrendingUp size={12} />
-          <span>{active && !playbackActive ? liveWindowCount : session.totalPolls} {t.session.polls}</span>
+          <span>
+            {active && !playbackActive ? liveWindowCount : session.totalPolls} {t.session.polls}
+          </span>
         </div>
         <div className="session-metric">
           <Clock size={12} />
-          <span>{active && !playbackActive ? liveProcessedLines : session.totalLines} {t.session.lines}</span>
+          <span>
+            {active && !playbackActive ? liveProcessedLines : session.totalLines} {t.session.lines}
+          </span>
         </div>
         <div className="session-metric">
           <AlertCircle size={12} />
           <span>
-            {active && !playbackActive ? liveTotalAnomalies : session.totalAnomalies} {t.session.anomalies}
+            {active && !playbackActive ? liveTotalAnomalies : session.totalAnomalies}{" "}
+            {t.session.anomalies}
           </span>
         </div>
         <div className="session-metric">

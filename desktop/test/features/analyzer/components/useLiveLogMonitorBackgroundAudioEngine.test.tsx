@@ -72,7 +72,11 @@ function createInput(overrides: Record<string, unknown> = {}) {
     currentTime: 12,
     destination: { id: "destination" },
     createBiquadFilter: vi.fn(() => filter),
-    createGain: vi.fn().mockImplementationOnce(() => dryGain).mockImplementationOnce(() => wetGain).mockImplementationOnce(() => backgroundGain),
+    createGain: vi
+      .fn()
+      .mockImplementationOnce(() => dryGain)
+      .mockImplementationOnce(() => wetGain)
+      .mockImplementationOnce(() => backgroundGain),
     createWaveShaper: vi.fn(() => drive),
   };
 
@@ -200,10 +204,9 @@ describe("useLiveLogMonitorBackgroundAudioEngine", () => {
       800,
       12.06,
     );
-    expect(input.backgroundDeckRef.current.source.playbackRate.linearRampToValueAtTime).toHaveBeenCalledWith(
-      0.96,
-      12.05,
-    );
+    expect(
+      input.backgroundDeckRef.current.source.playbackRate.linearRampToValueAtTime,
+    ).toHaveBeenCalledWith(0.96, 12.05);
     expect(input.backgroundDeckRef.current.gain.gain.linearRampToValueAtTime).toHaveBeenCalled();
   });
 });

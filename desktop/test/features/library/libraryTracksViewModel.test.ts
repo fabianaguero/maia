@@ -15,8 +15,7 @@ function createTrack(input: {
   availabilityState?: "available" | "missing";
 }): LibraryTrack {
   const importedAt = "2026-06-26T10:00:00.000Z";
-  const durationSeconds =
-    input.durationSeconds === undefined ? 180 : input.durationSeconds;
+  const durationSeconds = input.durationSeconds === undefined ? 180 : input.durationSeconds;
 
   return {
     id: input.id,

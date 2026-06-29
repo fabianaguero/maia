@@ -191,7 +191,9 @@ describe("liveLogMonitorPanelDeckRuntimeBridge", () => {
       onSelectExplanation: operatorActions.handleSelectTraceExplanation,
     });
 
-    expect(buildLiveLogMonitorPanelRenderStateInput(input, liveDeckProps, sessionActions)).toMatchObject({
+    expect(
+      buildLiveLogMonitorPanelRenderStateInput(input, liveDeckProps, sessionActions),
+    ).toMatchObject({
       activeAdapterLabel: "FILE_TAIL",
       deckStatusLabel: "Stable",
       onStop: expect.any(Function),

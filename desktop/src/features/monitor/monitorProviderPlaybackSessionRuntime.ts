@@ -24,35 +24,37 @@ type RebuildReplayEventsFromSourceFn = (input: {
   sourcePath: string;
 }) => Promise<SessionEvent[]>;
 
-export async function startMonitorProviderPlaybackSessionState(input: PlaybackSessionSelection & {
-  sessionRef: MutableRefObject<ActiveMonitorSession | null>;
-  stopPolling: () => void;
-  loadSessionEvents: (sessionId: string) => Promise<SessionEvent[]>;
-  activeRef: MutableRefObject<boolean>;
-  isPlaybackRef: MutableRefObject<boolean>;
-  playbackPausedRef: MutableRefObject<boolean>;
-  replayEventsRef: MutableRefObject<SessionEvent[]>;
-  replayMetricsRef: MutableRefObject<MonitorMetrics[]>;
-  replayIndexRef: MutableRefObject<number>;
-  replayHydratingRef: MutableRefObject<boolean>;
-  replayHydrationTokenRef: MutableRefObject<number>;
-  pollTimerRef: MutableRefObject<number | null>;
-  setSession: SetSessionState;
-  setIsPlayback: SetBooleanState;
-  setIsPlaybackPaused: SetBooleanState;
-  setMetrics: SetMetricsState;
-  syncReplayTelemetry: SyncReplayTelemetryFn;
-  ensureAudioContext: () => Promise<unknown>;
-  guideTrackPathRef: MutableRefObject<string | null>;
-  guideTrackQueueRef: MutableRefObject<string[]>;
-  guideTrackRef: MutableRefObject<GuideTrackPCM | null>;
-  guideTrackLoadPromiseRef: MutableRefObject<Promise<void> | null>;
-  awaitGuideTrack: () => Promise<void>;
-  replayTick: () => void;
-  rebuildReplayEventsFromSource: RebuildReplayEventsFromSourceFn;
-  setTimeoutFn: (handler: () => void, timeout: number) => number;
-  logger: MonitorPlaybackRuntimeLogger;
-}): Promise<boolean> {
+export async function startMonitorProviderPlaybackSessionState(
+  input: PlaybackSessionSelection & {
+    sessionRef: MutableRefObject<ActiveMonitorSession | null>;
+    stopPolling: () => void;
+    loadSessionEvents: (sessionId: string) => Promise<SessionEvent[]>;
+    activeRef: MutableRefObject<boolean>;
+    isPlaybackRef: MutableRefObject<boolean>;
+    playbackPausedRef: MutableRefObject<boolean>;
+    replayEventsRef: MutableRefObject<SessionEvent[]>;
+    replayMetricsRef: MutableRefObject<MonitorMetrics[]>;
+    replayIndexRef: MutableRefObject<number>;
+    replayHydratingRef: MutableRefObject<boolean>;
+    replayHydrationTokenRef: MutableRefObject<number>;
+    pollTimerRef: MutableRefObject<number | null>;
+    setSession: SetSessionState;
+    setIsPlayback: SetBooleanState;
+    setIsPlaybackPaused: SetBooleanState;
+    setMetrics: SetMetricsState;
+    syncReplayTelemetry: SyncReplayTelemetryFn;
+    ensureAudioContext: () => Promise<unknown>;
+    guideTrackPathRef: MutableRefObject<string | null>;
+    guideTrackQueueRef: MutableRefObject<string[]>;
+    guideTrackRef: MutableRefObject<GuideTrackPCM | null>;
+    guideTrackLoadPromiseRef: MutableRefObject<Promise<void> | null>;
+    awaitGuideTrack: () => Promise<void>;
+    replayTick: () => void;
+    rebuildReplayEventsFromSource: RebuildReplayEventsFromSourceFn;
+    setTimeoutFn: (handler: () => void, timeout: number) => number;
+    logger: MonitorPlaybackRuntimeLogger;
+  },
+): Promise<boolean> {
   if (input.sessionRef.current) {
     input.stopPolling();
     input.sessionRef.current = null;

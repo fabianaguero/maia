@@ -36,14 +36,9 @@ export interface UseLiveLogMonitorPanelRuntimeStateInput {
   surfaceState: LiveLogMonitorSurfaceState;
 }
 
-export function useLiveLogMonitorPanelRuntimeState(
-  input: UseLiveLogMonitorPanelRuntimeStateInput,
-) {
+export function useLiveLogMonitorPanelRuntimeState(input: UseLiveLogMonitorPanelRuntimeStateInput) {
   const viewModelInput = useMemo(() => buildLiveLogMonitorViewModelInput(input), [input]);
-  const viewState = useMemo(
-    () => buildLiveLogMonitorViewModel(viewModelInput),
-    [viewModelInput],
-  );
+  const viewState = useMemo(() => buildLiveLogMonitorViewModel(viewModelInput), [viewModelInput]);
 
   const audioRuntime = useLiveLogMonitorPanelAudioRuntime(
     buildLiveLogMonitorPanelAudioRuntimeInput(input, viewState, log),

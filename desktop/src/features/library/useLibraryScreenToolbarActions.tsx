@@ -111,10 +111,7 @@ export function useLibraryScreenToolbarActions({
                 }
                 if (
                   !confirm(
-                    t.library.confirmDeleteTracks.replace(
-                      "{count}",
-                      String(orphanTrackIds.length),
-                    ),
+                    t.library.confirmDeleteTracks.replace("{count}", String(orphanTrackIds.length)),
                   )
                 ) {
                   return;

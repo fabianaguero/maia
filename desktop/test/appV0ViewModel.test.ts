@@ -143,7 +143,10 @@ describe("appV0ViewModel", () => {
     const stopSession = vi.fn(async () => undefined);
     const importRepositorySource = vi.fn(async () => ({ id: "repo-1" }));
     const importLibraryBaseAsset = vi.fn(async () => null);
-    const startLibraryMonitoring = vi.fn(async () => ({ ok: false as const, reason: "start-failed" as const }));
+    const startLibraryMonitoring = vi.fn(async () => ({
+      ok: false as const,
+      reason: "start-failed" as const,
+    }));
     const startSourceMonitoring = vi.fn(async () => ({ ok: true as const }));
     const reportMonitorLaunchFailure = vi.fn();
     const resumeAudio = vi.fn(async () => undefined);

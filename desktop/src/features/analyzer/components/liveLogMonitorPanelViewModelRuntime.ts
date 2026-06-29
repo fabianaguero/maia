@@ -1,14 +1,7 @@
 import type { AppTranslations } from "../../../i18n/en";
-import type {
-  BaseTrackPlaylist,
-  LibraryTrack,
-  LiveLogStreamUpdate,
-} from "../../../types/library";
+import type { BaseTrackPlaylist, LibraryTrack, LiveLogStreamUpdate } from "../../../types/library";
 import type { ActiveMonitorSession, MonitorMetrics } from "../../monitor/monitorContextTypes";
-import type {
-  AudioEngineStatus,
-  SampleEngineStatus,
-} from "./liveLogMonitorViewModel";
+import type { AudioEngineStatus, SampleEngineStatus } from "./liveLogMonitorViewModel";
 import {
   buildMetricGridItems,
   resolveBounceActionLabel,
@@ -69,10 +62,7 @@ export interface LiveLogMonitorPanelStatusState {
 export function buildLiveLogMonitorPanelStatusState(
   input: LiveLogMonitorPanelStatusStateInput,
 ): LiveLogMonitorPanelStatusState {
-  const bounceAction = resolveBounceActionLabel(
-    input.bounceWindowCount,
-    input.bounceWindowSeconds,
-  );
+  const bounceAction = resolveBounceActionLabel(input.bounceWindowCount, input.bounceWindowSeconds);
   const cueEngineStateLabel = resolveCueEngineStateLabel({
     sampleStatus: input.sampleStatus,
     sampleSourceCount: input.sampleSourceCount,
@@ -134,46 +124,45 @@ export function buildLiveLogMonitorPanelStatusState(
       offLabel: input.t.inspect.off,
     },
   });
-  const windowMetricGridItems =
-    input.lastUpdate
-      ? [
-          {
-            label: input.t.inspect.suggestedBpm,
-            value:
-              typeof input.lastUpdate.suggestedBpm === "number"
-                ? input.lastUpdate.suggestedBpm.toFixed(0)
-                : (input.repositorySuggestedBpm?.toFixed(0) ?? input.t.inspect.pending),
-          },
-          {
-            label: input.t.session.confidence,
-            value: formatConfidence(input.lastUpdate.confidence),
-          },
-          {
-            label: input.t.session.dominantLevel,
-            value: input.lastUpdate.dominantLevel,
-          },
-          {
-            label: input.t.inspect.chunkLines,
-            value: String(input.lastUpdate.lineCount),
-          },
-          {
-            label: input.t.inspect.errors,
-            value: String(levelCount(input.currentLevelCounts, "error")),
-          },
-          {
-            label: input.t.inspect.warnings,
-            value: String(levelCount(input.currentLevelCounts, "warn")),
-          },
-          {
-            label: input.t.inspect.info,
-            value: String(levelCount(input.currentLevelCounts, "info")),
-          },
-          {
-            label: input.t.inspect.tailWindow,
-            value: `${formatCursor(input.lastUpdate.fromOffset)} -> ${formatCursor(input.lastUpdate.toOffset)}`,
-          },
-        ]
-      : [];
+  const windowMetricGridItems = input.lastUpdate
+    ? [
+        {
+          label: input.t.inspect.suggestedBpm,
+          value:
+            typeof input.lastUpdate.suggestedBpm === "number"
+              ? input.lastUpdate.suggestedBpm.toFixed(0)
+              : (input.repositorySuggestedBpm?.toFixed(0) ?? input.t.inspect.pending),
+        },
+        {
+          label: input.t.session.confidence,
+          value: formatConfidence(input.lastUpdate.confidence),
+        },
+        {
+          label: input.t.session.dominantLevel,
+          value: input.lastUpdate.dominantLevel,
+        },
+        {
+          label: input.t.inspect.chunkLines,
+          value: String(input.lastUpdate.lineCount),
+        },
+        {
+          label: input.t.inspect.errors,
+          value: String(levelCount(input.currentLevelCounts, "error")),
+        },
+        {
+          label: input.t.inspect.warnings,
+          value: String(levelCount(input.currentLevelCounts, "warn")),
+        },
+        {
+          label: input.t.inspect.info,
+          value: String(levelCount(input.currentLevelCounts, "info")),
+        },
+        {
+          label: input.t.inspect.tailWindow,
+          value: `${formatCursor(input.lastUpdate.fromOffset)} -> ${formatCursor(input.lastUpdate.toOffset)}`,
+        },
+      ]
+    : [];
   const ctaMetaLabel = resolveLiveMonitorCtaMeta({
     hasBaseListeningBed: input.hasBaseListeningBed,
     baseTrackCount: input.baseTrackCount,

@@ -23,35 +23,39 @@ export interface UseMonitorProviderPlaybackControlsInput {
   intervalMs: number;
 }
 
-export function useMonitorProviderPlaybackControls(
-  input: UseMonitorProviderPlaybackControlsInput,
-) {
-  const seekPlaybackProgress = useCallback((progress: number) => {
-    seekMonitorPlaybackProgressState({
-      isPlayback: input.isPlayback,
-      progress,
-      replayEventsRef: input.replayEventsRef,
-      replayIndexRef: input.replayIndexRef,
-      pollTimerRef: input.pollTimerRef,
-      playbackPausedRef: input.playbackPausedRef,
-      activeRef: input.activeRef,
-      guideTrackFinishedRef: input.guideTrackFinishedRef,
-      dispatchReplayEventAtIndex: input.dispatchReplayEventAtIndex,
-      clearTimeoutFn: window.clearTimeout,
-      setTimeoutFn: window.setTimeout,
-      intervalMs: input.intervalMs,
-      replayTick: input.replayTick,
-    });
-  }, [input]);
+export function useMonitorProviderPlaybackControls(input: UseMonitorProviderPlaybackControlsInput) {
+  const seekPlaybackProgress = useCallback(
+    (progress: number) => {
+      seekMonitorPlaybackProgressState({
+        isPlayback: input.isPlayback,
+        progress,
+        replayEventsRef: input.replayEventsRef,
+        replayIndexRef: input.replayIndexRef,
+        pollTimerRef: input.pollTimerRef,
+        playbackPausedRef: input.playbackPausedRef,
+        activeRef: input.activeRef,
+        guideTrackFinishedRef: input.guideTrackFinishedRef,
+        dispatchReplayEventAtIndex: input.dispatchReplayEventAtIndex,
+        clearTimeoutFn: window.clearTimeout,
+        setTimeoutFn: window.setTimeout,
+        intervalMs: input.intervalMs,
+        replayTick: input.replayTick,
+      });
+    },
+    [input],
+  );
 
-  const seekPlaybackWindow = useCallback((replayWindowIndex: number) => {
-    seekMonitorPlaybackWindowState({
-      isPlayback: input.isPlayback,
-      replayWindowIndex,
-      replayEventsRef: input.replayEventsRef,
-      seekPlaybackProgress,
-    });
-  }, [input.isPlayback, input.replayEventsRef, seekPlaybackProgress]);
+  const seekPlaybackWindow = useCallback(
+    (replayWindowIndex: number) => {
+      seekMonitorPlaybackWindowState({
+        isPlayback: input.isPlayback,
+        replayWindowIndex,
+        replayEventsRef: input.replayEventsRef,
+        seekPlaybackProgress,
+      });
+    },
+    [input.isPlayback, input.replayEventsRef, seekPlaybackProgress],
+  );
 
   const pausePlayback = useCallback(() => {
     pauseMonitorPlaybackState({
@@ -82,21 +86,24 @@ export function useMonitorProviderPlaybackControls(
     });
   }, [input]);
 
-  const stepPlaybackWindow = useCallback((direction: -1 | 1) => {
-    stepMonitorPlaybackWindowState({
-      isPlayback: input.isPlayback,
-      direction,
-      replayEventsRef: input.replayEventsRef,
-      replayIndexRef: input.replayIndexRef,
-      pollTimerRef: input.pollTimerRef,
-      playbackPausedRef: input.playbackPausedRef,
-      activeRef: input.activeRef,
-      guideTrackFinishedRef: input.guideTrackFinishedRef,
-      dispatchReplayEventAtIndex: input.dispatchReplayEventAtIndex,
-      setIsPlaybackPaused: input.setIsPlaybackPaused,
-      clearTimeoutFn: window.clearTimeout,
-    });
-  }, [input]);
+  const stepPlaybackWindow = useCallback(
+    (direction: -1 | 1) => {
+      stepMonitorPlaybackWindowState({
+        isPlayback: input.isPlayback,
+        direction,
+        replayEventsRef: input.replayEventsRef,
+        replayIndexRef: input.replayIndexRef,
+        pollTimerRef: input.pollTimerRef,
+        playbackPausedRef: input.playbackPausedRef,
+        activeRef: input.activeRef,
+        guideTrackFinishedRef: input.guideTrackFinishedRef,
+        dispatchReplayEventAtIndex: input.dispatchReplayEventAtIndex,
+        setIsPlaybackPaused: input.setIsPlaybackPaused,
+        clearTimeoutFn: window.clearTimeout,
+      });
+    },
+    [input],
+  );
 
   return {
     seekPlaybackProgress,

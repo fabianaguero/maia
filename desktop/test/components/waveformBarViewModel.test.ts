@@ -28,8 +28,6 @@ describe("waveformBarViewModel", () => {
     ]);
 
     const idleBars = buildAlertChannelBars(1, false, 0, () => 0.5);
-    expect(idleBars).toEqual([
-      { height: "10%", animationDelay: "0s", filter: "none" },
-    ]);
+    expect(idleBars).toEqual([{ height: "10%", animationDelay: "0s", filter: "none" }]);
   });
 });

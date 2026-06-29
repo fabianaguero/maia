@@ -16,9 +16,7 @@ describe("LibraryEmptyState", () => {
 
     expect(screen.getByTestId("empty-icon")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "No tracks yet" })).toBeInTheDocument();
-    expect(
-      screen.getByText("Import a guide track to start building a deck."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Import a guide track to start building a deck.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Import track" })).toBeInTheDocument();
   });
 });

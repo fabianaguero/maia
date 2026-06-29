@@ -143,14 +143,12 @@ const appState = vi.hoisted(() => {
     deletePlaylist: vi.fn(async () => true),
     seedLibrary: vi.fn(async () => undefined),
     discoveredLogs: ["/logs/one.log", "/logs/two.log"],
-    monitorSession: null as
-      | null
-      | {
-          sessionId: string;
-          persistedSessionId: string | null;
-          repoId: string;
-          sourcePath: string;
-        },
+    monitorSession: null as null | {
+      sessionId: string;
+      persistedSessionId: string | null;
+      repoId: string;
+      sourcePath: string;
+    },
     monitorPlaybackSession: vi.fn(async () => true),
     monitorStartSession: vi.fn(async () => true),
     monitorStopSession: vi.fn(async () => undefined),
@@ -347,7 +345,11 @@ vi.mock("../src/features/simple/SimpleModeWizard", () => ({
   SimpleModeWizard: ({
     onImportRepository,
   }: {
-    onImportRepository: (input: { sourceKind: "directory"; sourcePath: string; label: string }) => Promise<boolean>;
+    onImportRepository: (input: {
+      sourceKind: "directory";
+      sourcePath: string;
+      label: string;
+    }) => Promise<boolean>;
   }) => (
     <button
       onClick={() =>

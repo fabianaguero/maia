@@ -46,7 +46,8 @@ export function buildPlaylistSummaryItems(
       return {
         id,
         title: formatTrackWithBpm(track),
-        lostTitle: track.file.availabilityState === "missing" ? getTrackAvailabilityLabel(track) : null,
+        lostTitle:
+          track.file.availabilityState === "missing" ? getTrackAvailabilityLabel(track) : null,
       };
     })
     .filter((item): item is LiveLogMonitorPlaylistSummaryItem => item !== null);
@@ -66,7 +67,8 @@ export function buildPlaylistEditorItems(
       return {
         id,
         label: formatTrackWithBpm(track),
-        lostTitle: track.file.availabilityState === "missing" ? getTrackAvailabilityLabel(track) : null,
+        lostTitle:
+          track.file.availabilityState === "missing" ? getTrackAvailabilityLabel(track) : null,
         canMoveUp: index > 0,
         canMoveDown: index < ids.length - 1,
       };

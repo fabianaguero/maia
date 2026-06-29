@@ -25,9 +25,7 @@ export function PastSessionsPanel({ sessions, onReplaySession }: PastSessionsPan
       </div>
       <div className="sessions-list">
         {viewModel.rows.length === 0 ? (
-          <p className="text-muted sessions-empty">
-            {viewModel.emptyStateLabel}
-          </p>
+          <p className="text-muted sessions-empty">{viewModel.emptyStateLabel}</p>
         ) : (
           viewModel.rows.map((session) => (
             <div key={session.id} className="session-row">
@@ -37,7 +35,9 @@ export function PastSessionsPanel({ sessions, onReplaySession }: PastSessionsPan
               <div className="session-info">
                 <div className="session-row__top">
                   <span className="session-name">{session.name}</span>
-                  <span className={`session-status-chip ${session.status}`}>{session.statusLabel}</span>
+                  <span className={`session-status-chip ${session.status}`}>
+                    {session.statusLabel}
+                  </span>
                 </div>
                 <div className="session-row__identity">
                   <span className="session-track-chip">{session.trackLabel}</span>
@@ -50,8 +50,12 @@ export function PastSessionsPanel({ sessions, onReplaySession }: PastSessionsPan
               </div>
               <div className="session-side">
                 <div className="session-stats">
-                  <div className={`session-stat-card ${session.totalAnomalies > 0 ? "is-alert" : ""}`}>
-                    <span className="session-stat-card__label">{t.simpleMode.monitor.anomalies}</span>
+                  <div
+                    className={`session-stat-card ${session.totalAnomalies > 0 ? "is-alert" : ""}`}
+                  >
+                    <span className="session-stat-card__label">
+                      {t.simpleMode.monitor.anomalies}
+                    </span>
                     <span className="session-stat-card__value">{session.totalAnomalies}</span>
                   </div>
                   <div className="session-stat-card">
@@ -64,7 +68,11 @@ export function PastSessionsPanel({ sessions, onReplaySession }: PastSessionsPan
                     className="btn-ghost"
                     title={t.simpleMode.common.replay}
                     onClick={() =>
-                      onReplaySession(session.id, session.replaySourcePath, session.replaySourceTitle)
+                      onReplaySession(
+                        session.id,
+                        session.replaySourcePath,
+                        session.replaySourceTitle,
+                      )
                     }
                   >
                     <Play size={14} />

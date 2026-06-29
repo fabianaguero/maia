@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  buildAppMonitorOverviewState,
-  buildAppTopbarState,
-} from "../src/appShellRuntime";
+import { buildAppMonitorOverviewState, buildAppTopbarState } from "../src/appShellRuntime";
 
 describe("appShellRuntime", () => {
   it("shows the expert topbar subtitle and simple lockup in the right modes", () => {

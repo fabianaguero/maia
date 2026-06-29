@@ -385,9 +385,7 @@ const BALANCED_PRESET: SequencerPreset = {
 const COMPONENT_PAN_SPREAD = [-0.72, -0.36, -0.12, 0.12, 0.42, 0.74];
 const COMPONENT_NOTE_SPREAD = [0.92, 0.96, 1.0, 1.04, 1.08, 1.12];
 
-export function fallbackSequencerPreset(
-  presetId: string | null | undefined,
-): SequencerPreset {
+export function fallbackSequencerPreset(presetId: string | null | undefined): SequencerPreset {
   return SEQUENCER_PRESETS[presetId ?? ""] ?? SEQUENCER_PRESETS.balanced ?? BALANCED_PRESET;
 }
 

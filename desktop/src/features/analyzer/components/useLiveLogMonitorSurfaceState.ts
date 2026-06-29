@@ -11,25 +11,18 @@ import type {
 } from "../../../types/library";
 import type { PlaylistTransitionPlan } from "../../../utils/playlistTransition";
 import type { LiveMutationExplanation } from "../../../utils/liveMutationExplainability";
-import {
-  createBasePlaylist,
-  loadMonitorPrefs,
-} from "../../../utils/monitorPrefs";
+import { createBasePlaylist, loadMonitorPrefs } from "../../../utils/monitorPrefs";
 import type { AudioEngineStatus, ForcedLiveMutationState } from "./liveLogMonitorViewModel";
-import {
-  preferredBaseAssetId,
-  preferredCompositionId,
-} from "./liveLogMonitorViewModel";
-import type {
-  ArrangementVoice,
-  ComponentOverride,
-  RoutedLiveCue,
-} from "./liveSonificationScene";
+import { preferredBaseAssetId, preferredCompositionId } from "./liveLogMonitorViewModel";
+import type { ArrangementVoice, ComponentOverride, RoutedLiveCue } from "./liveSonificationScene";
 import type { BeatClock, BeatLooperState } from "./liveLogMonitorBeatRuntime";
 import type { LiveMutationState } from "./liveLogMonitorAudioRuntime";
 import type { BackgroundDeckState } from "./liveLogMonitorBackgroundDeckRuntime";
 import type { SyncTailRow } from "./liveLogMonitorPanelRuntime";
-import { DEFAULT_MUTATION_PROFILE_ID, DEFAULT_STYLE_PROFILE_ID } from "../../../config/liveProfiles";
+import {
+  DEFAULT_MUTATION_PROFILE_ID,
+  DEFAULT_STYLE_PROFILE_ID,
+} from "../../../config/liveProfiles";
 
 export type LiveLogMonitorSampleStatus = "unavailable" | "loading" | "ready" | "error";
 
@@ -56,8 +49,7 @@ export function useLiveLogMonitorSurfaceState(input: UseLiveLogMonitorSurfaceSta
   );
   const [adapterKind, setAdapterKind] = useState<StreamAdapterKind>("file");
   const [selectedStyleProfileId, setSelectedStyleProfileId] = useState(
-    () =>
-      loadMonitorPrefs(input.repository.id)?.selectedStyleProfileId ?? DEFAULT_STYLE_PROFILE_ID,
+    () => loadMonitorPrefs(input.repository.id)?.selectedStyleProfileId ?? DEFAULT_STYLE_PROFILE_ID,
   );
   const [selectedMutationProfileId, setSelectedMutationProfileId] = useState(
     () =>
@@ -92,16 +84,10 @@ export function useLiveLogMonitorSurfaceState(input: UseLiveLogMonitorSurfaceSta
     () => new Map(),
   );
   const [sceneBaseAssetId, setSceneBaseAssetId] = useState(
-    preferredBaseAssetId(
-      input.availableBaseAssets,
-      input.preferredBaseAssetId,
-    ) ?? "",
+    preferredBaseAssetId(input.availableBaseAssets, input.preferredBaseAssetId) ?? "",
   );
   const [sceneCompositionId, setSceneCompositionId] = useState(
-    preferredCompositionId(
-      input.availableCompositions,
-      input.preferredCompositionId,
-    ) ?? "",
+    preferredCompositionId(input.availableCompositions, input.preferredCompositionId) ?? "",
   );
   const [audioStatus, setAudioStatus] = useState<AudioEngineStatus>("idle");
   const [sampleStatus, setSampleStatus] = useState<LiveLogMonitorSampleStatus>("unavailable");

@@ -16,16 +16,12 @@ import {
   setMonitorGuideTrackState,
   type MonitorProviderGuideTrackLogger as MonitorProviderGuideTrackRuntimeLogger,
 } from "./monitorProviderGuideTrackRuntime";
-import {
-  decodeGuideTrackFile,
-  isTauriRuntime,
-} from "./monitorGuideTrackDecodeRuntime";
+import { decodeGuideTrackFile, isTauriRuntime } from "./monitorGuideTrackDecodeRuntime";
 import type { CrossfadeHandle, GuideTrackPCM } from "./monitorContextRuntime";
 import type { SourceTemplate } from "../../config/sourceTemplates";
 
 export interface MonitorProviderGuideTrackLogger
-  extends MonitorProviderGuideTrackRuntimeLogger,
-    MonitorStartupRuntimeLogger {
+  extends MonitorProviderGuideTrackRuntimeLogger, MonitorStartupRuntimeLogger {
   debug?: (message: string, ...args: unknown[]) => void;
   warn?: (message: string, ...args: unknown[]) => void;
 }
@@ -53,77 +49,92 @@ export interface UseMonitorProviderGuideTrackInput {
 }
 
 export function useMonitorProviderGuideTrack(input: UseMonitorProviderGuideTrackInput) {
-  const setActiveTemplate = useCallback((id: string) => {
-    setMonitorActiveTemplateState({
-      id,
-      resolveSourceTemplate: input.resolveSourceTemplate,
-      activeTemplateRef: input.activeTemplateRef,
-      setActiveTemplateState: input.setActiveTemplateState,
-      logger: input.logger,
-    });
-  }, [input]);
+  const setActiveTemplate = useCallback(
+    (id: string) => {
+      setMonitorActiveTemplateState({
+        id,
+        resolveSourceTemplate: input.resolveSourceTemplate,
+        activeTemplateRef: input.activeTemplateRef,
+        setActiveTemplateState: input.setActiveTemplateState,
+        logger: input.logger,
+      });
+    },
+    [input],
+  );
 
-  const seekGuideTrack = useCallback((second: number) => {
-    seekMonitorGuideTrackState({
-      second,
-      guideTrack: input.guideTrackRef.current,
-      guideTrackCursorRef: input.guideTrackCursorRef,
-      guideTrackFinishedRef: input.guideTrackFinishedRef,
-      logger: input.logger,
-    });
-  }, [input]);
+  const seekGuideTrack = useCallback(
+    (second: number) => {
+      seekMonitorGuideTrackState({
+        second,
+        guideTrack: input.guideTrackRef.current,
+        guideTrackCursorRef: input.guideTrackCursorRef,
+        guideTrackFinishedRef: input.guideTrackFinishedRef,
+        logger: input.logger,
+      });
+    },
+    [input],
+  );
 
-  const loadGuideTrackPath = useCallback((path: string | null) => {
-    loadGuideTrackPathState({
-      path,
-      currentPath: input.guideTrackPathRef.current,
-      hasGuideTrack: input.guideTrackRef.current !== null,
-      hasPendingLoad: input.guideTrackLoadPromiseRef.current !== null,
-      audioContextRef: input.audioContextRef,
-      currentSegmentRef: input.currentSegmentRef,
-      guideTrackPathRef: input.guideTrackPathRef,
-      guideTrackRef: input.guideTrackRef,
-      guideTrackCursorRef: input.guideTrackCursorRef,
-      guideTrackFinishedRef: input.guideTrackFinishedRef,
-      guideTrackLoadPromiseRef: input.guideTrackLoadPromiseRef,
-      setGuideTrackReady: input.setGuideTrackReady,
-      setGuideTrackPathState: input.setGuideTrackPathState,
-      setGuideTrackDurationSec: input.setGuideTrackDurationSec,
-      decodeGuideTrack: async (targetPath) =>
-        decodeGuideTrackFile(targetPath, {
-          cache: input.decodedAudioCache,
-          logger: input.logger,
-          isTauri: isTauriRuntime,
-          convertFileSrc,
-          fetchAudio: async (url) => fetch(url),
-          invokeReadAudioBytes: async (decodePath) =>
-            invoke<string>("read_audio_bytes", { path: decodePath }),
-          decodeBase64: (value) => atob(value),
-          createOfflineAudioContext: (channels, frameCount, sampleRate) =>
-            new OfflineAudioContext(channels, frameCount, sampleRate),
-        }),
-      logger: input.logger,
-    });
-  }, [input]);
+  const loadGuideTrackPath = useCallback(
+    (path: string | null) => {
+      loadGuideTrackPathState({
+        path,
+        currentPath: input.guideTrackPathRef.current,
+        hasGuideTrack: input.guideTrackRef.current !== null,
+        hasPendingLoad: input.guideTrackLoadPromiseRef.current !== null,
+        audioContextRef: input.audioContextRef,
+        currentSegmentRef: input.currentSegmentRef,
+        guideTrackPathRef: input.guideTrackPathRef,
+        guideTrackRef: input.guideTrackRef,
+        guideTrackCursorRef: input.guideTrackCursorRef,
+        guideTrackFinishedRef: input.guideTrackFinishedRef,
+        guideTrackLoadPromiseRef: input.guideTrackLoadPromiseRef,
+        setGuideTrackReady: input.setGuideTrackReady,
+        setGuideTrackPathState: input.setGuideTrackPathState,
+        setGuideTrackDurationSec: input.setGuideTrackDurationSec,
+        decodeGuideTrack: async (targetPath) =>
+          decodeGuideTrackFile(targetPath, {
+            cache: input.decodedAudioCache,
+            logger: input.logger,
+            isTauri: isTauriRuntime,
+            convertFileSrc,
+            fetchAudio: async (url) => fetch(url),
+            invokeReadAudioBytes: async (decodePath) =>
+              invoke<string>("read_audio_bytes", { path: decodePath }),
+            decodeBase64: (value) => atob(value),
+            createOfflineAudioContext: (channels, frameCount, sampleRate) =>
+              new OfflineAudioContext(channels, frameCount, sampleRate),
+          }),
+        logger: input.logger,
+      });
+    },
+    [input],
+  );
 
-  const setGuideTrack = useCallback((path: string | null) => {
-    setMonitorGuideTrackState({
-      path,
-      guideTrackQueueRef: input.guideTrackQueueRef,
-      guideTrackQueueIndexRef: input.guideTrackQueueIndexRef,
-      loadGuideTrackPath,
-    });
-  }, [input.guideTrackQueueIndexRef, input.guideTrackQueueRef, loadGuideTrackPath]);
+  const setGuideTrack = useCallback(
+    (path: string | null) => {
+      setMonitorGuideTrackState({
+        path,
+        guideTrackQueueRef: input.guideTrackQueueRef,
+        guideTrackQueueIndexRef: input.guideTrackQueueIndexRef,
+        loadGuideTrackPath,
+      });
+    },
+    [input.guideTrackQueueIndexRef, input.guideTrackQueueRef, loadGuideTrackPath],
+  );
 
-  const setGuideTrackPlaylist = useCallback((paths: string[]) => {
-    setMonitorGuideTrackPlaylistState({
-      paths,
-      buildGuideTrackQueue,
-      guideTrackQueueRef: input.guideTrackQueueRef,
-      guideTrackQueueIndexRef: input.guideTrackQueueIndexRef,
-      loadGuideTrackPath,
-    });
-  }, [input.guideTrackQueueIndexRef, input.guideTrackQueueRef, loadGuideTrackPath]);
+  const setGuideTrackPlaylist = useCallback(
+    (paths: string[]) => {
+      setMonitorGuideTrackPlaylistState({
+        paths,
+        buildGuideTrackQueue,
+        guideTrackQueueRef: input.guideTrackQueueRef,
+        guideTrackQueueIndexRef: input.guideTrackQueueIndexRef,
+        loadGuideTrackPath,
+      });
+    },
+    [input.guideTrackQueueIndexRef, input.guideTrackQueueRef, loadGuideTrackPath],
+  );
 
   const buildReloadPendingGuideTrack = useCallback(
     (reason: "session-start" | "attach-session") => () => {

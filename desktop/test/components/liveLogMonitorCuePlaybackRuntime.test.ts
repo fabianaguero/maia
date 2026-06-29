@@ -55,18 +55,18 @@ describe("liveLogMonitorCuePlaybackRuntime", () => {
     });
 
     expect(plan.allowExternalCueLayer).toBe(true);
-    expect(resolveExternalCueLayerVolume({ preferGuideTrackMutation: false, masterVolume: 0.5 })).toBe(
-      0.675,
-    );
-    expect(resolveExternalCueLayerVolume({ preferGuideTrackMutation: false, masterVolume: 0.05 })).toBe(
-      0.22,
-    );
-    expect(resolveExternalCueLayerVolume({ preferGuideTrackMutation: false, masterVolume: 2 })).toBe(
-      0.92,
-    );
-    expect(resolveExternalCueLayerVolume({ preferGuideTrackMutation: true, masterVolume: 0.9 })).toBe(
-      0.14,
-    );
+    expect(
+      resolveExternalCueLayerVolume({ preferGuideTrackMutation: false, masterVolume: 0.5 }),
+    ).toBe(0.675);
+    expect(
+      resolveExternalCueLayerVolume({ preferGuideTrackMutation: false, masterVolume: 0.05 }),
+    ).toBe(0.22);
+    expect(
+      resolveExternalCueLayerVolume({ preferGuideTrackMutation: false, masterVolume: 2 }),
+    ).toBe(0.92);
+    expect(
+      resolveExternalCueLayerVolume({ preferGuideTrackMutation: true, masterVolume: 0.9 }),
+    ).toBe(0.14);
   });
 
   it("chooses sample, track-slice, or oscillator playback engines", () => {
@@ -137,10 +137,12 @@ describe("liveLogMonitorCuePlaybackRuntime", () => {
 
     expect(plan.cappedCues).toHaveLength(2);
     expect(plan.cueIntensityMultiplier).toBe(0.08);
-    expect(plan.audibleVoiceEntries.every((entry) => entry.voicedCue.routeKey !== "info")).toBe(true);
-    expect(plan.audibleVoiceEntriesForPlayback.some((entry) => entry.voicedCue.accent === "anomaly")).toBe(
+    expect(plan.audibleVoiceEntries.every((entry) => entry.voicedCue.routeKey !== "info")).toBe(
       true,
     );
+    expect(
+      plan.audibleVoiceEntriesForPlayback.some((entry) => entry.voicedCue.accent === "anomaly"),
+    ).toBe(true);
     expect(plan.audibleVoicedCues.every((entry) => entry.gain >= 0.002)).toBe(true);
   });
 

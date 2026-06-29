@@ -44,9 +44,7 @@ export function useLibraryBootstrap({
           setTracks(sorted);
           setPlaylists(sortedPlaylists);
           setSelectedTrackId((current) => resolveSelectedTrackId(current, sorted));
-          setSelectedPlaylistId((current) =>
-            resolveSelectedPlaylistId(current, sortedPlaylists),
-          );
+          setSelectedPlaylistId((current) => resolveSelectedPlaylistId(current, sortedPlaylists));
           setError(null);
           setLoading(false);
         });

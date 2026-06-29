@@ -4,10 +4,7 @@ import {
   stopStreamSession,
 } from "../../api/repositories";
 import type { AppTranslations } from "../../i18n/en";
-import {
-  buildConnectionKindLabelMap,
-  type ConnectionKind,
-} from "./connectionsViewModel";
+import { buildConnectionKindLabelMap, type ConnectionKind } from "./connectionsViewModel";
 import {
   buildConnectionsScreenHookState,
   buildConnectionsScreenViewModel,
@@ -64,14 +61,13 @@ export function useConnectionsScreenState(input: {
     stopStreamSession,
   });
 
-  const { testStatusById, testMessageById, handleTestConnection } =
-    useConnectionTestController({
-      t: input.t,
-      setError,
-      startLogSourceConnection,
-      pollStreamSession,
-      stopStreamSession,
-    });
+  const { testStatusById, testMessageById, handleTestConnection } = useConnectionTestController({
+    t: input.t,
+    setError,
+    startLogSourceConnection,
+    pollStreamSession,
+    stopStreamSession,
+  });
 
   return buildConnectionsScreenHookState({
     screenViewModel,

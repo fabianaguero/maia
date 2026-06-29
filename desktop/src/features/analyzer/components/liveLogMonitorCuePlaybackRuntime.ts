@@ -50,9 +50,7 @@ export function buildCuePlaybackPlan(input: {
   const voicedCues: RoutedLiveCue[] = voices.map((voice) => ({
     ...voice.cue,
     noteHz: Number((voice.cue.noteHz * voice.noteMultiplier).toFixed(2)),
-    gain: Number(
-      Math.min(0.34, Math.max(0.005, voice.cue.gain * voice.gainMultiplier)).toFixed(3),
-    ),
+    gain: Number(Math.min(0.34, Math.max(0.005, voice.cue.gain * voice.gainMultiplier)).toFixed(3)),
     pan: clampPan(voice.cue.pan + voice.panOffset),
   }));
 
@@ -78,9 +76,7 @@ export function buildCuePlaybackPlan(input: {
               ...voicedCue,
               noteHz: Number((voicedCue.noteHz * 0.42).toFixed(2)),
               gain: Number(
-                Math.min(0.08, Math.max(0.002, voicedCue.gain * cueIntensityMultiplier)).toFixed(
-                  3,
-                ),
+                Math.min(0.08, Math.max(0.002, voicedCue.gain * cueIntensityMultiplier)).toFixed(3),
               ),
               waveform: voicedCue.accent === "anomaly" ? "triangle" : voicedCue.waveform,
               durationMs:
@@ -157,8 +153,7 @@ export function resolveCuePlaybackEngine(input: {
     (input.effectiveLiveMutationState === "critical" ||
       input.voicedCue.accent === "anomaly" ||
       input.voicedCue.routeKey === "error" ||
-      (input.effectiveLiveMutationState === "warning" &&
-        input.voiceTrack === "foundation"));
+      (input.effectiveLiveMutationState === "warning" && input.voiceTrack === "foundation"));
 
   return shouldUseTrackSlice ? "track-slice" : "oscillator";
 }

@@ -188,11 +188,9 @@ describe("SongMetadataPanel", () => {
     );
 
     await waitFor(() =>
-      expect(fetchSongMetadataMock).toHaveBeenCalledWith(
-        "Daft Punk",
-        "Around The World.wav",
-        { sources: ["musicbrainz"] },
-      ),
+      expect(fetchSongMetadataMock).toHaveBeenCalledWith("Daft Punk", "Around The World.wav", {
+        sources: ["musicbrainz"],
+      }),
     );
   });
 });

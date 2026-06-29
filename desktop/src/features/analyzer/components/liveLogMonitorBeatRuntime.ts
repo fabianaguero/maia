@@ -50,13 +50,7 @@ export function resolveBeatClockLiveSync(input: {
   audioCurrentTime: number | null;
   driftThreshold?: number;
 }): BeatClockLiveSyncPlan {
-  const {
-    currentClock,
-    liveBpm,
-    useBeatGrid,
-    audioCurrentTime,
-    driftThreshold = 0.12,
-  } = input;
+  const { currentClock, liveBpm, useBeatGrid, audioCurrentTime, driftThreshold = 0.12 } = input;
 
   if (!useBeatGrid || typeof liveBpm !== "number" || liveBpm <= 0) {
     return {

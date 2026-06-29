@@ -16,16 +16,10 @@ export interface LiveBackgroundMutationResolution {
 
 export function resolveLiveBackgroundMutation(input: {
   update: LiveLogStreamUpdate;
-  styleProfile: Pick<
-    StyleProfileOption,
-    "backgroundGain" | "filterBaseHz" | "filterCeilingHz"
-  >;
+  styleProfile: Pick<StyleProfileOption, "backgroundGain" | "filterBaseHz" | "filterCeilingHz">;
   mutationProfile: Pick<
     MutationProfileOption,
-    | "backgroundDucking"
-    | "filterSweepMultiplier"
-    | "anomalyBoostMultiplier"
-    | "transitionTightness"
+    "backgroundDucking" | "filterSweepMultiplier" | "anomalyBoostMultiplier" | "transitionTightness"
   >;
   forcedLiveMutationState: "auto" | LiveMutationState;
 }): LiveBackgroundMutationResolution {
@@ -118,10 +112,7 @@ export function buildBackgroundMutationAutomationPlan(input: {
           const at = input.now + 0.07 + pulse * 0.12;
           return {
             at,
-            gateFloor: Math.max(
-              0.06,
-              input.mutation.deckGain * (1 - input.mutation.gateDepth),
-            ),
+            gateFloor: Math.max(0.06, input.mutation.deckGain * (1 - input.mutation.gateDepth)),
             recoverAt: at + 0.05,
           };
         })

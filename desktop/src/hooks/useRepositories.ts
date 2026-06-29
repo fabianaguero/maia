@@ -108,7 +108,9 @@ export function useRepositories() {
         // Just update metadata, don't change analyzerStatus
         // Status change requires re-import from backend to persist to DB
         startTransition(() => {
-          setRepositories((current) => applyAnalyzedRepositoryMetadata(current, repository.id, analyzed));
+          setRepositories((current) =>
+            applyAnalyzedRepositoryMetadata(current, repository.id, analyzed),
+          );
         });
       }
     } catch (err) {
@@ -133,7 +135,9 @@ export function useRepositories() {
       const nextRepository = await importRepository(resolveReanalyzeRepositoryInput(repository));
 
       startTransition(() => {
-        setRepositories((current) => replaceReanalyzedRepository(current, repositoryId, nextRepository));
+        setRepositories((current) =>
+          replaceReanalyzedRepository(current, repositoryId, nextRepository),
+        );
         setError(null);
       });
 

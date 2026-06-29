@@ -101,13 +101,7 @@ function createProps() {
 describe("AppCurateSection", () => {
   it("renders only the enabled surfaces and wires the simple wizard callback", async () => {
     const props = createProps();
-    render(
-      <AppCurateSection
-        {...props}
-        showSimpleWizard={true}
-        showSimpleLibrary={true}
-      />,
-    );
+    render(<AppCurateSection {...props} showSimpleWizard={true} showSimpleLibrary={true} />);
 
     expect(screen.getByTestId("simple-wizard")).toBeInTheDocument();
     expect(screen.getByTestId("simple-library")).toBeInTheDocument();

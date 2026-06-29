@@ -56,8 +56,15 @@ export function TracksTable({
                 </td>
                 <td title={track.file.sourcePath}>{getTrackSourcePath(track)}</td>
                 <td>
-                  {track.analysis.bpm ? Math.round(track.analysis.bpm) : t.library.tables.tracks.pending}
-                  <small>{t.library.tables.tracks.confidence.replace("{value}", String(Math.round(track.analysis.bpmConfidence * 100)))}</small>
+                  {track.analysis.bpm
+                    ? Math.round(track.analysis.bpm)
+                    : t.library.tables.tracks.pending}
+                  <small>
+                    {t.library.tables.tracks.confidence.replace(
+                      "{value}",
+                      String(Math.round(track.analysis.bpmConfidence * 100)),
+                    )}
+                  </small>
                 </td>
                 <td>{track.analysis.repoSuggestedBpm ?? t.library.tables.tracks.pending}</td>
                 <td>

@@ -1,7 +1,4 @@
-import type {
-  LiveLogMarker,
-  LiveLogStreamUpdate,
-} from "../../../types/library";
+import type { LiveLogMarker, LiveLogStreamUpdate } from "../../../types/library";
 
 export type ParsedLineTone = "error" | "warn" | "anomaly" | "info";
 
@@ -73,10 +70,7 @@ export function levelCount(levelCounts: Record<string, number>, level: string): 
   return levelCounts[level] ?? 0;
 }
 
-export function resolveParsedLineTone(
-  line: string,
-  markers: LiveLogMarker[],
-): ParsedLineTone {
+export function resolveParsedLineTone(line: string, markers: LiveLogMarker[]): ParsedLineTone {
   const normalizedLine = line.trim().toLowerCase();
   const matchesMarker = markers.some((marker) => {
     const excerpt = marker.excerpt.trim().toLowerCase();
@@ -159,10 +153,7 @@ export function resolveAnomalySourceRows(
   return rows;
 }
 
-export function resolveTailComponent(
-  line: string,
-  markers: LiveLogMarker[],
-): string {
+export function resolveTailComponent(line: string, markers: LiveLogMarker[]): string {
   const normalized = line.trim().toLowerCase();
   const marker = markers.find((entry) => {
     const excerpt = entry.excerpt.trim().toLowerCase();

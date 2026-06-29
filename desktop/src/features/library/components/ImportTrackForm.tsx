@@ -86,13 +86,11 @@ export function ImportTrackForm({
       }
 
       setSourcePath(pickedPath);
-      setTitle((current) => current.trim() || deriveTitle(pickedPath, t.library.forms.track.fallbackTitle));
-    } catch (nextError) {
-      setError(
-        nextError instanceof Error
-          ? nextError.message
-          : t.library.forms.track.pickerFailed,
+      setTitle(
+        (current) => current.trim() || deriveTitle(pickedPath, t.library.forms.track.fallbackTitle),
       );
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : t.library.forms.track.pickerFailed);
     } finally {
       setPickerBusy(false);
     }

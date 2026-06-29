@@ -1,7 +1,11 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { BaseTrackPlaylist, LibraryTrack, RelinkMissingTracksResult } from "../../src/types/library";
+import type {
+  BaseTrackPlaylist,
+  LibraryTrack,
+  RelinkMissingTracksResult,
+} from "../../src/types/library";
 import { useLibrary } from "../../src/hooks/useLibrary";
 
 const analyzerMock = vi.hoisted(() => ({
@@ -28,7 +32,11 @@ const libraryApiMock = vi.hoisted(() => ({
 vi.mock("../../src/api/analyzer", () => analyzerMock);
 vi.mock("../../src/api/library", () => libraryApiMock);
 
-function createTrack(id: string, importedAt: string, availabilityState: "available" | "missing" = "available"): LibraryTrack {
+function createTrack(
+  id: string,
+  importedAt: string,
+  availabilityState: "available" | "missing" = "available",
+): LibraryTrack {
   return {
     id,
     title: id,
@@ -124,7 +132,9 @@ describe("useLibrary", () => {
   beforeEach(() => {
     libraryApiMock.listTracks.mockResolvedValue([]);
     libraryApiMock.listPlaylists.mockResolvedValue([]);
-    libraryApiMock.importTrack.mockResolvedValue(createTrack("track-new", "2026-06-25T11:00:00.000Z"));
+    libraryApiMock.importTrack.mockResolvedValue(
+      createTrack("track-new", "2026-06-25T11:00:00.000Z"),
+    );
     libraryApiMock.deleteTrack.mockResolvedValue(undefined);
     libraryApiMock.saveBaseTrackPlaylist.mockResolvedValue(
       createPlaylist("playlist-new", "2026-06-25T11:00:00.000Z"),

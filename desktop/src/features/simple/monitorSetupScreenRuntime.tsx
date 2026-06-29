@@ -20,9 +20,7 @@ export function buildMonitorSetupScreenModel(
 ): MonitorSetupScreenModel {
   return {
     presetCards: viewModel.presetCards.filter(
-      (
-        preset,
-      ): preset is MonitorSetupOptionViewModel<MonitorSetupSelectablePresetId> =>
+      (preset): preset is MonitorSetupOptionViewModel<MonitorSetupSelectablePresetId> =>
         preset.id !== "custom",
     ),
     customPresetCard:

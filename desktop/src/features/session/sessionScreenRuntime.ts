@@ -99,8 +99,7 @@ export function createSessionStartPlan(
 ): SessionStartPlanResult {
   if (!input.selectedSourceId) {
     return {
-      error:
-        input.mode === "log" ? copy.session.selectLogSource : copy.session.selectRepoSource,
+      error: input.mode === "log" ? copy.session.selectLogSource : copy.session.selectRepoSource,
     };
   }
 
@@ -272,7 +271,7 @@ export function resolveReadyToRun(input: {
 }): boolean {
   return Boolean(
     input.selectedSourceId &&
-      (input.baseMode === "track" ? input.selectedTrackId : input.selectedPlaylistId),
+    (input.baseMode === "track" ? input.selectedTrackId : input.selectedPlaylistId),
   );
 }
 

@@ -185,7 +185,14 @@ describe("waveformPlaceholderRuntime", () => {
     expect(
       resolveWaveformSummaryFlags(
         [{ id: "loop-1", startSecond: 0, endSecond: 4, label: "Loop A", type: "loop" }],
-        { startSecond: 0, endSecond: 8, startBeatIndex: 0, endBeatIndex: 16, beatCount: 16, label: "Phrase 1" },
+        {
+          startSecond: 0,
+          endSecond: 8,
+          startBeatIndex: 0,
+          endBeatIndex: 16,
+          beatCount: 16,
+          label: "Phrase 1",
+        },
       ),
     ).toEqual({
       showRegionSummary: true,

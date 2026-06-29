@@ -87,7 +87,9 @@ function createTrack(): LibraryTrack {
   };
 }
 
-function createExplanation(overrides: Partial<LiveMutationExplanation> = {}): LiveMutationExplanation {
+function createExplanation(
+  overrides: Partial<LiveMutationExplanation> = {},
+): LiveMutationExplanation {
   return {
     id: "exp-1",
     eventIndex: 14,

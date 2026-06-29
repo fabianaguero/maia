@@ -3,11 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import React from "react";
 
 import { SimpleModeLibraryView } from "../../src/features/simple/SimpleModeLibraryView";
-import type {
-  BaseAssetRecord,
-  LibraryTrack,
-  RepositoryAnalysis,
-} from "../../src/types/library";
+import type { BaseAssetRecord, LibraryTrack, RepositoryAnalysis } from "../../src/types/library";
 
 const state = vi.hoisted(() => ({
   adapter: {
@@ -248,7 +244,10 @@ describe("SimpleModeLibraryView", () => {
   });
 
   it("imports the first log from the empty state prompt", async () => {
-    vi.stubGlobal("prompt", vi.fn(() => "/logs/orders.log"));
+    vi.stubGlobal(
+      "prompt",
+      vi.fn(() => "/logs/orders.log"),
+    );
 
     render(
       <SimpleModeLibraryView

@@ -106,7 +106,10 @@ describe("useLibraryScreenController", () => {
     vi.clearAllMocks();
     useLibraryScreenState.mockReturnValue(createState());
     vi.stubGlobal("alert", vi.fn());
-    vi.stubGlobal("confirm", vi.fn(() => true));
+    vi.stubGlobal(
+      "confirm",
+      vi.fn(() => true),
+    );
   });
 
   it("closes the form and refreshes connections after importing a file source", async () => {

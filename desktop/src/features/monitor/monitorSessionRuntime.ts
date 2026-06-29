@@ -1,9 +1,6 @@
 import type { MutableRefObject } from "react";
 
-import type {
-  LiveLogStreamUpdate,
-  StreamSessionPollResult,
-} from "../../types/monitor";
+import type { LiveLogStreamUpdate, StreamSessionPollResult } from "../../types/monitor";
 import type { RepositoryAnalysis } from "../../types/library";
 import type { StartSessionInput } from "../../types/monitor";
 import type { ActiveMonitorSession } from "./monitorContextTypes";
@@ -31,10 +28,7 @@ type PollLogStreamFn = (
 ) => Promise<LiveLogStreamUpdate>;
 
 type PollStreamSessionFn = (sessionId: string) => Promise<StreamSessionPollResult>;
-type IngestStreamChunkFn = (
-  sessionId: string,
-  chunk: string,
-) => Promise<StreamSessionPollResult>;
+type IngestStreamChunkFn = (sessionId: string, chunk: string) => Promise<StreamSessionPollResult>;
 
 export function stopMonitorPollingState(
   input: MonitorPollingRefs & {
@@ -157,10 +151,7 @@ export async function runMonitorPollCycle(input: {
         input.emptyWindowsRef.current = 0;
       } else {
         input.emptyWindowsRef.current += 1;
-        input.logger.trace(
-          "direct poll → empty (%d consecutive)",
-          input.emptyWindowsRef.current,
-        );
+        input.logger.trace("direct poll → empty (%d consecutive)", input.emptyWindowsRef.current);
         if (input.emptyWindowsRef.current >= 3) {
           input.directCursorRef.current = undefined;
           input.emptyWindowsRef.current = 0;
@@ -189,8 +180,7 @@ export async function runMonitorPollCycle(input: {
 
     input.emitUpdate(update);
   } catch (error) {
-    const message =
-      error instanceof Error ? `${error.message}\n${error.stack}` : String(error);
+    const message = error instanceof Error ? `${error.message}\n${error.stack}` : String(error);
     input.logger.error("poll error (non-fatal, will retry): " + message);
   } finally {
     input.scheduleNext();

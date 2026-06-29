@@ -12,9 +12,7 @@ import {
   syncMonitorWaveformCanvasSize,
 } from "../../src/components/monitorWaveformBarRuntime";
 
-function createUpdate(
-  overrides: Partial<LiveLogStreamUpdate> = {},
-): LiveLogStreamUpdate {
+function createUpdate(overrides: Partial<LiveLogStreamUpdate> = {}): LiveLogStreamUpdate {
   return {
     sourcePath: "/logs/services.log",
     fromOffset: 0,
@@ -50,10 +48,7 @@ function createUpdate(
         accent: "anomaly",
       },
     ],
-    parsedLines: [
-      "INFO boot complete",
-      "ERROR Timeout upstream",
-    ],
+    parsedLines: ["INFO boot complete", "ERROR Timeout upstream"],
     warnings: [],
     ...overrides,
   };

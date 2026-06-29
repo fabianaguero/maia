@@ -75,8 +75,30 @@ describe("ExportCompositionPanel", () => {
     exportCompositionStemsMock.mockResolvedValue({
       status: "ok",
       stems: [
-        { stemId: "a", label: "A", role: "foundation", gainDb: -6, pan: 0, path: "a.wav", format: "wav", sampleRateHz: 48000, channels: 2, durationSeconds: 10 },
-        { stemId: "b", label: "B", role: "glue", gainDb: -9, pan: 0, path: "b.wav", format: "wav", sampleRateHz: 48000, channels: 2, durationSeconds: 10 },
+        {
+          stemId: "a",
+          label: "A",
+          role: "foundation",
+          gainDb: -6,
+          pan: 0,
+          path: "a.wav",
+          format: "wav",
+          sampleRateHz: 48000,
+          channels: 2,
+          durationSeconds: 10,
+        },
+        {
+          stemId: "b",
+          label: "B",
+          role: "glue",
+          gainDb: -9,
+          pan: 0,
+          path: "b.wav",
+          format: "wav",
+          sampleRateHz: 48000,
+          channels: 2,
+          durationSeconds: 10,
+        },
       ],
     });
 
@@ -123,9 +145,7 @@ describe("ExportCompositionPanel", () => {
       });
 
     pickExportSavePathMock.mockResolvedValue("/exports/plan.json");
-    exportCompositionFileMock.mockRejectedValue(
-      new Error("missing __TAURI_INTERNALS__ bridge"),
-    );
+    exportCompositionFileMock.mockRejectedValue(new Error("missing __TAURI_INTERNALS__ bridge"));
 
     render(<ExportCompositionPanel composition={createComposition()} />);
 
@@ -206,10 +226,7 @@ describe("ExportCompositionPanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Export preview WAV" }));
     await screen.findByText("Saved to /exports/audio.wav");
-    expect(pickExportSavePathMock).toHaveBeenNthCalledWith(
-      2,
-      "Peak_hour___final_preview.wav",
-    );
+    expect(pickExportSavePathMock).toHaveBeenNthCalledWith(2, "Peak_hour___final_preview.wav");
     expect(exportCompositionFileMock).toHaveBeenNthCalledWith(
       1,
       "/renders/peak-hour/preview.wav",
@@ -252,9 +269,7 @@ describe("ExportCompositionPanel", () => {
     );
 
     expect(screen.queryByRole("button", { name: "Export plan.json" })).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Export preview WAV" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Export preview WAV" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Export stems as WAV" })).toBeInTheDocument();
   });
 });

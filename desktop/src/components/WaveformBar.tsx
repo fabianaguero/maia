@@ -44,11 +44,7 @@ export function WaveformBar({
           <span className="channel-tag cyan">{t.simpleMode.shell.logChannel}</span>
           <div className="mini-bars">
             {viewModel.logBars.map((style, i) => (
-              <div
-                key={i}
-                className="mini-bar cyan"
-                style={style}
-              />
+              <div key={i} className="mini-bar cyan" style={style} />
             ))}
           </div>
         </div>
@@ -74,11 +70,7 @@ export function WaveformBar({
       </div>
 
       <div className="bar-section controls">
-        <button
-          type="button"
-          className="btn-professional-inspect"
-          onClick={onInspect}
-        >
+        <button type="button" className="btn-professional-inspect" onClick={onInspect}>
           {t.simpleMode.common.inspect}
         </button>
         <button

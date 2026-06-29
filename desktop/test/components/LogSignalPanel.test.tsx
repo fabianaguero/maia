@@ -83,7 +83,9 @@ describe("LogSignalPanel", () => {
 
     expect(screen.getAllByText("0").length).toBeGreaterThan(1);
     expect(screen.getByText("unknown")).toBeInTheDocument();
-    expect(screen.getByText("No anomaly markers were emitted for this log source.")).toBeInTheDocument();
+    expect(
+      screen.getByText("No anomaly markers were emitted for this log source."),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/Line 42/)).not.toBeInTheDocument();
     expect(container.querySelectorAll(".log-cadence-bar")).toHaveLength(16);
   });

@@ -18,8 +18,7 @@ vi.mock("../../src/features/analyzer/components/liveLogMonitorAudioRuntime", () 
 }));
 
 vi.mock("../../src/features/analyzer/components/useLiveLogMonitorAudioBootstrap", () => ({
-  useLiveLogMonitorAudioBootstrap: (...args: unknown[]) =>
-    useLiveLogMonitorAudioBootstrap(...args),
+  useLiveLogMonitorAudioBootstrap: (...args: unknown[]) => useLiveLogMonitorAudioBootstrap(...args),
 }));
 
 vi.mock("../../src/features/analyzer/components/useLiveLogMonitorAuxPlayback", () => ({
@@ -31,13 +30,10 @@ vi.mock("../../src/features/analyzer/components/useLiveLogMonitorBackgroundAudio
     useLiveLogMonitorBackgroundAudioEngine(...args),
 }));
 
-vi.mock(
-  "../../src/features/analyzer/components/useLiveLogMonitorBackgroundDeckControl",
-  () => ({
-    useLiveLogMonitorBackgroundDeckControl: (...args: unknown[]) =>
-      useLiveLogMonitorBackgroundDeckControl(...args),
-  }),
-);
+vi.mock("../../src/features/analyzer/components/useLiveLogMonitorBackgroundDeckControl", () => ({
+  useLiveLogMonitorBackgroundDeckControl: (...args: unknown[]) =>
+    useLiveLogMonitorBackgroundDeckControl(...args),
+}));
 
 vi.mock("../../src/features/analyzer/components/useLiveLogMonitorResetActions", () => ({
   useLiveLogMonitorResetActions: (...args: unknown[]) => useLiveLogMonitorResetActions(...args),
@@ -51,13 +47,10 @@ vi.mock("../../src/features/analyzer/components/useLiveLogMonitorSurfaceSync", (
   useLiveLogMonitorSurfaceSync: (...args: unknown[]) => useLiveLogMonitorSurfaceSync(...args),
 }));
 
-vi.mock(
-  "../../src/features/analyzer/components/useLiveLogMonitorBackgroundLifecycle",
-  () => ({
-    useLiveLogMonitorBackgroundLifecycle: (...args: unknown[]) =>
-      useLiveLogMonitorBackgroundLifecycle(...args),
-  }),
-);
+vi.mock("../../src/features/analyzer/components/useLiveLogMonitorBackgroundLifecycle", () => ({
+  useLiveLogMonitorBackgroundLifecycle: (...args: unknown[]) =>
+    useLiveLogMonitorBackgroundLifecycle(...args),
+}));
 
 vi.mock("../../src/features/analyzer/components/useLiveLogMonitorPlayback", () => ({
   useLiveLogMonitorPlayback: (...args: unknown[]) => useLiveLogMonitorPlayback(...args),
@@ -216,6 +209,8 @@ describe("useLiveLogMonitorPanelAudioRuntime", () => {
         effectiveLiveMutationState: "steady",
       }),
     );
-    expect(result.current.playbackRuntime).toEqual({ handleSequencerStepFire: expect.any(Function) });
+    expect(result.current.playbackRuntime).toEqual({
+      handleSequencerStepFire: expect.any(Function),
+    });
   });
 });

@@ -82,9 +82,7 @@ describe("appMonitorActionsRuntime", () => {
 
   it("finds the monitored repository from the active monitor session", () => {
     const repository = createRepository();
-    expect(
-      resolveMonitoredRepository({ repoId: "repo-1" }, [repository]),
-    ).toEqual(repository);
+    expect(resolveMonitoredRepository({ repoId: "repo-1" }, [repository])).toEqual(repository);
     expect(resolveMonitoredRepository(null, [repository])).toBeNull();
   });
 });

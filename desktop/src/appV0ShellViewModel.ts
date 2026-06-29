@@ -1,7 +1,4 @@
-import type {
-  ActiveMonitorSession,
-  MonitorMetrics,
-} from "./features/monitor/monitorContextTypes";
+import type { ActiveMonitorSession, MonitorMetrics } from "./features/monitor/monitorContextTypes";
 import type { AppSection } from "./features/simple/appSections";
 import type { AppTranslations } from "./i18n/en";
 
@@ -36,7 +33,9 @@ export function resolveAppV0SelectedItemLabel(input: {
     case "monitor":
       return input.session?.repoTitle || input.t.simpleMode.nav.monitor;
     case "library":
-      return input.selectedRepositoryTitle || input.selectedTrackTitle || input.t.simpleMode.nav.files;
+      return (
+        input.selectedRepositoryTitle || input.selectedTrackTitle || input.t.simpleMode.nav.files
+      );
     case "connections":
       return input.t.simpleMode.nav.connections;
     case "setup":

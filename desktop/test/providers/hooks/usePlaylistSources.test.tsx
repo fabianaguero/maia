@@ -2,10 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { usePlaylistSources } from "../../../src/providers/hooks/usePlaylistSources";
-import type {
-  PlaylistMetadata,
-  PlaylistSourceAuth,
-} from "../../../src/providers/runtime/types";
+import type { PlaylistMetadata, PlaylistSourceAuth } from "../../../src/providers/runtime/types";
 
 function createSource(overrides: Partial<PlaylistSourceAuth> = {}): PlaylistSourceAuth {
   return {

@@ -54,7 +54,7 @@ export function MonitorActiveHeader({
       </div>
       <div className="monitor-header-actions">
         <div className="metrics-row-hd">
-          {metrics.map((metric) => (
+          {metrics.map((metric) =>
             metric.key === "anomalies" ? (
               <button
                 key={metric.key}
@@ -80,8 +80,8 @@ export function MonitorActiveHeader({
                   {metric.value}
                 </span>
               </div>
-            )
-          ))}
+            ),
+          )}
         </div>
         <button className="btn-stop-hd" onClick={onStop}>
           {t.simpleMode.common.stop}

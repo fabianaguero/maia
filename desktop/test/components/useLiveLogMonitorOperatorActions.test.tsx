@@ -27,10 +27,7 @@ describe("useLiveLogMonitorOperatorActions", () => {
   it("toggles mute while preserving the previous audible volume", () => {
     let masterVolume = 0.42;
     const setMasterVolume = vi.fn((updater) => {
-      masterVolume =
-        typeof updater === "function"
-          ? updater(masterVolume)
-          : updater;
+      masterVolume = typeof updater === "function" ? updater(masterVolume) : updater;
     });
 
     const { result } = renderHook(() =>

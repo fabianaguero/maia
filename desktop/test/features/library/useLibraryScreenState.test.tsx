@@ -42,13 +42,11 @@ function createConnection(overrides: Partial<LogSourceConnection> = {}): LogSour
 
 interface HookProps {
   activeTab?: "tracks" | "repositories" | "playlists" | "base-assets" | "connections";
-  onSavePlaylist: (input: {
-    id?: string;
-    name: string;
-    trackIds: string[];
-  }) => Promise<boolean>;
+  onSavePlaylist: (input: { id?: string; name: string; trackIds: string[] }) => Promise<boolean>;
   onSelectPlaylist: (playlistId: string) => void;
-  onTabChange?: (tab: "tracks" | "repositories" | "playlists" | "base-assets" | "connections") => void;
+  onTabChange?: (
+    tab: "tracks" | "repositories" | "playlists" | "base-assets" | "connections",
+  ) => void;
   playlists: BaseTrackPlaylist[];
   selectedPlaylistId: string | null;
 }

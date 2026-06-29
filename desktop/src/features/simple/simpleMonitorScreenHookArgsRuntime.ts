@@ -25,9 +25,7 @@ export interface BuildSimpleMonitorHookArgsSharedInput {
   collections: SimpleMonitorCollectionsState;
 }
 
-export function buildSimpleMonitorScreenMeta(
-  input: BuildSimpleMonitorHookArgsSharedInput,
-) {
+export function buildSimpleMonitorScreenMeta(input: BuildSimpleMonitorHookArgsSharedInput) {
   return buildSimpleMonitorScreenViewModel({
     session: input.session,
     launchingSource: input.launchState.selectedSourceOption,

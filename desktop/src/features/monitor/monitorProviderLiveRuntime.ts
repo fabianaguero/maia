@@ -1,19 +1,13 @@
 import type { MutableRefObject } from "react";
 
 import type { InsertSessionEventInput } from "../../api/sessions";
-import type {
-  LiveLogStreamUpdate,
-  StreamSessionPollResult,
-} from "../../types/monitor";
+import type { LiveLogStreamUpdate, StreamSessionPollResult } from "../../types/monitor";
 import {
   applyMonitorStreamUpdateState,
   type MonitorListenerRuntimeLogger,
   type PersistedMonitorCursorUpdate,
 } from "./monitorUpdateRuntime";
-import {
-  runMonitorPollCycle,
-  type MonitorSessionRuntimeLogger,
-} from "./monitorSessionRuntime";
+import { runMonitorPollCycle, type MonitorSessionRuntimeLogger } from "./monitorSessionRuntime";
 import type { ActiveMonitorSession, MonitorMetrics, StreamListener } from "./monitorContextTypes";
 
 type SetMetricsState = (
@@ -73,10 +67,7 @@ export async function runMonitorProviderPollState(input: {
     cursor?: number,
     maxBytes?: number,
   ) => Promise<LiveLogStreamUpdate>;
-  ingestStreamChunk: (
-    sessionId: string,
-    chunk: string,
-  ) => Promise<StreamSessionPollResult>;
+  ingestStreamChunk: (sessionId: string, chunk: string) => Promise<StreamSessionPollResult>;
   fetchText: (url: string) => Promise<string>;
   emitUpdate: (update: LiveLogStreamUpdate) => void;
   schedulePoll: (doPoll: () => Promise<void>) => void;

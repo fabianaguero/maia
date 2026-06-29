@@ -53,10 +53,7 @@ export function buildMonitorOverviewLayout(
   };
 }
 
-export function buildMonitorDeckLayout(
-  width: number,
-  height: number,
-): MonitorDeckMainLayout {
+export function buildMonitorDeckLayout(width: number, height: number): MonitorDeckMainLayout {
   const safeHeight = Math.max(1, height);
   const headerInset = Math.max(46, safeHeight * 0.16);
   const footerInset = Math.max(10, safeHeight * 0.08);
@@ -83,10 +80,7 @@ export function resolveMonitorDeckRelativePosition(
   return 0.5 + (progress - currentProgress) * multiplier;
 }
 
-export function isMonitorDeckRelativePositionVisible(
-  relative: number,
-  padding = 0.08,
-): boolean {
+export function isMonitorDeckRelativePositionVisible(relative: number, padding = 0.08): boolean {
   return relative >= -padding && relative <= 1 + padding;
 }
 

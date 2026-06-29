@@ -185,9 +185,7 @@ export function MonitorSetupSignalBank(input: {
 
 export function MonitorSetupPresetCards(input: {
   t: AppTranslations;
-  presetCards: Array<
-    MonitorSetupOptionViewModel<"passive" | "balanced" | "alert"> | null
-  >;
+  presetCards: Array<MonitorSetupOptionViewModel<"passive" | "balanced" | "alert"> | null>;
   customPresetCard: MonitorSetupOptionViewModel<"custom"> | null;
   activePreset: "passive" | "balanced" | "alert" | "custom";
   applyDeckPreset: (preset: "passive" | "balanced" | "alert") => void;
@@ -311,7 +309,11 @@ export function MonitorSetupRuntimeDefaultsBank(input: {
       </div>
 
       <div className="monitor-control-rack__grid" role="group">
-        {(input.runtimeDefaultGroups ?? [{ key: "stream-runtime", label: "", hint: "", fields: input.runtimeDefaultFields }]).map((group) => (
+        {(
+          input.runtimeDefaultGroups ?? [
+            { key: "stream-runtime", label: "", hint: "", fields: input.runtimeDefaultFields },
+          ]
+        ).map((group) => (
           <div key={group.key} className="monitor-setup-screen__runtime-group">
             {group.label ? (
               <div className="monitor-setup-screen__runtime-group-copy">
@@ -319,9 +321,16 @@ export function MonitorSetupRuntimeDefaultsBank(input: {
                 <span className="monitor-setup-screen__microcopy">{group.hint}</span>
               </div>
             ) : null}
-            <div className="monitor-control-rack__grid" role="group" aria-label={group.label || undefined}>
+            <div
+              className="monitor-control-rack__grid"
+              role="group"
+              aria-label={group.label || undefined}
+            >
               {group.fields.map((field) => (
-                <label key={field.key} className="monitor-control-field monitor-control-field--compact">
+                <label
+                  key={field.key}
+                  className="monitor-control-field monitor-control-field--compact"
+                >
                   <span className="monitor-control-field__label">{field.label}</span>
                   <div className="monitor-control-field__meta">
                     <span>{field.help}</span>

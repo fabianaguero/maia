@@ -32,7 +32,9 @@ vi.mock("../src/features/simple/ConnectionsScreen", () => ({
 
 vi.mock("../src/features/simple/MonitorSetupScreen", () => ({
   MonitorSetupScreen: (props: { lang: string; skin: string }) => (
-    <div data-testid="setup">setup::{props.lang}::{props.skin}</div>
+    <div data-testid="setup">
+      setup::{props.lang}::{props.skin}
+    </div>
   ),
 }));
 
@@ -41,9 +43,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-function renderSection(
-  overrides: Partial<React.ComponentProps<typeof AppV0SectionContent>> = {},
-) {
+function renderSection(overrides: Partial<React.ComponentProps<typeof AppV0SectionContent>> = {}) {
   return render(
     <AppV0SectionContent
       currentSection="monitor"

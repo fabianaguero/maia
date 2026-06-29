@@ -48,17 +48,22 @@ export function useSimpleMonitorDeckVisualState({
   waveformScale,
   safeRuntime = false,
 }: UseSimpleMonitorDeckVisualStateInput) {
-  const { visibleWindowSeconds, trackWaveSamples, deckTimelineMarkers, deckBeatMarkers, derivedDeckState } =
-    buildSimpleMonitorDeckVisualDerivedState({
-      waveformBins,
-      waveformAnomalies,
-      trackWaveProgress,
-      deckDurationSeconds,
-      deckBpm,
-      activeBeatGrid,
-      logSignalBuffer,
-      selectedAnomalyId,
-    });
+  const {
+    visibleWindowSeconds,
+    trackWaveSamples,
+    deckTimelineMarkers,
+    deckBeatMarkers,
+    derivedDeckState,
+  } = buildSimpleMonitorDeckVisualDerivedState({
+    waveformBins,
+    waveformAnomalies,
+    trackWaveProgress,
+    deckDurationSeconds,
+    deckBpm,
+    activeBeatGrid,
+    logSignalBuffer,
+    selectedAnomalyId,
+  });
   const scrub = useMonitorDeckScrub(
     buildMonitorDeckScrubHookInput({
       backgroundAudioRef,

@@ -63,23 +63,18 @@ export function useAppContentController() {
     refreshSessionBookmarks,
   });
 
-  const {
-    armTrackBase,
-    armPlaylistBase,
-    startReplaySession,
-    startLiveSession,
-    openMonitoredRepo,
-  } = useAppMonitorActions({
-    t,
-    library,
-    repositories,
-    sessions,
-    monitor,
-    notify,
-    setAnalysisMode,
-    setScreen,
-    setPillar,
-  });
+  const { armTrackBase, armPlaylistBase, startReplaySession, startLiveSession, openMonitoredRepo } =
+    useAppMonitorActions({
+      t,
+      library,
+      repositories,
+      sessions,
+      monitor,
+      notify,
+      setAnalysisMode,
+      setScreen,
+      setPillar,
+    });
   const {
     handleImportTrack,
     handleImportRepository,
@@ -133,18 +128,15 @@ export function useAppContentController() {
     setPillar,
     setScreen,
   });
-  const {
-    handleOpenConnections,
-    handlePillarChange,
-    handleHideToBackground,
-  } = useAppContentNavigationActions({
-    userMode,
-    notify,
-    t,
-    setPillar,
-    setScreen,
-    setLibraryTab,
-  });
+  const { handleOpenConnections, handlePillarChange, handleHideToBackground } =
+    useAppContentNavigationActions({
+      userMode,
+      notify,
+      t,
+      setPillar,
+      setScreen,
+      setLibraryTab,
+    });
 
   const { analyzerLabel, detailDeckLabel, screenLabel, selectedItemTitle } =
     buildAppContentStatusViewModel(

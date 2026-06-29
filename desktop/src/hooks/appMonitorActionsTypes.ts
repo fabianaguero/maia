@@ -59,11 +59,7 @@ export interface UseAppMonitorActionsInput {
       persistedSessionId?: string,
     ) => Promise<boolean>;
   };
-  notify: (
-    tone: "success" | "error" | "info",
-    title: string,
-    body: string,
-  ) => void;
+  notify: (tone: "success" | "error" | "info", title: string, body: string) => void;
   setAnalysisMode: (mode: AnalyzerViewMode) => void;
   setScreen: (screen: AppScreen) => void;
   setPillar: (pillar: AppPillar) => void;

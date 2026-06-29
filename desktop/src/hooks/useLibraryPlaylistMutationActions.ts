@@ -1,13 +1,7 @@
 import { startTransition } from "react";
 
-import {
-  deleteBaseTrackPlaylist,
-  saveBaseTrackPlaylist,
-} from "../api/library";
-import type {
-  BaseTrackPlaylist,
-  SaveBaseTrackPlaylistInput,
-} from "../types/library";
+import { deleteBaseTrackPlaylist, saveBaseTrackPlaylist } from "../api/library";
+import type { BaseTrackPlaylist, SaveBaseTrackPlaylistInput } from "../types/library";
 import {
   appendSavedPlaylist,
   clearDeletedPlaylistSelection,
@@ -18,10 +12,7 @@ import type { UseLibraryMutationActionsInput } from "./libraryMutationActionsTyp
 
 type PlaylistMutationActionsInput = Pick<
   UseLibraryMutationActionsInput,
-  | "setPlaylists"
-  | "setSelectedPlaylistId"
-  | "setMutating"
-  | "setError"
+  "setPlaylists" | "setSelectedPlaylistId" | "setMutating" | "setError"
 >;
 
 export function useLibraryPlaylistMutationActions({

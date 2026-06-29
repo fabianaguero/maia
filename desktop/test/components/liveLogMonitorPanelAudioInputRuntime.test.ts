@@ -174,12 +174,7 @@ describe("liveLogMonitorPanelAudioInputRuntime", () => {
     });
 
     expect(
-      buildLiveLogMonitorPlaybackInput(
-        surfaceState as never,
-        viewState as never,
-        vi.fn(),
-        logger,
-      ),
+      buildLiveLogMonitorPlaybackInput(surfaceState as never, viewState as never, vi.fn(), logger),
     ).toMatchObject({
       masterVolume: 0.7,
       effectiveLiveMutationState: "steady",

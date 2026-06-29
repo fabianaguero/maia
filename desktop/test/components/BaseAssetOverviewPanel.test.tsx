@@ -35,7 +35,9 @@ describe("BaseAssetOverviewPanel", () => {
   it("renders summary, paths and tags for the selected base asset", () => {
     render(<BaseAssetOverviewPanel baseAsset={createBaseAsset()} />);
 
-    expect(screen.getByText("Layered percussion transients for live cue design.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Layered percussion transients for live cue design."),
+    ).toBeInTheDocument();
     expect(screen.getByText("/assets/percussion")).toBeInTheDocument();
     expect(screen.getByText("/storage/percussion")).toBeInTheDocument();
     expect(screen.getByText("drums")).toBeInTheDocument();
@@ -45,7 +47,9 @@ describe("BaseAssetOverviewPanel", () => {
   it("renders an empty tag strip without crashing when no tags exist", () => {
     render(<BaseAssetOverviewPanel baseAsset={createBaseAsset({ tags: [] })} />);
 
-    expect(screen.getByText("Layered percussion transients for live cue design.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Layered percussion transients for live cue design."),
+    ).toBeInTheDocument();
     expect(screen.queryByText("drums")).not.toBeInTheDocument();
     expect(screen.queryByText("transients")).not.toBeInTheDocument();
   });

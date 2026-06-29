@@ -11,11 +11,7 @@ import type { PlaylistTransitionPlan } from "../../../utils/playlistTransition";
 import { getStreamAdapterDescription, getStreamAdapterLabel } from "../../../utils/streamAdapter";
 import { getTrackTitle, resolvePlayableTrackPath } from "../../../utils/track";
 import type { LiveMutationState } from "./liveLogMonitorAudioRuntime";
-import {
-  blendAnchors,
-  deriveReferenceAnchor,
-  type ReferenceAnchor,
-} from "./liveSonificationScene";
+import { blendAnchors, deriveReferenceAnchor, type ReferenceAnchor } from "./liveSonificationScene";
 
 function resolveReferenceAnchor(
   basePlaylist: BaseTrackPlaylist | null,
@@ -39,9 +35,10 @@ export interface BuildLiveLogMonitorTrackSelectionStateInput {
 export function buildLiveLogMonitorTrackSelectionState(
   input: BuildLiveLogMonitorTrackSelectionStateInput,
 ) {
-  const playableBaseTracks = resolvePlaylistTracks(input.basePlaylist, input.availableTracks).filter(
-    (track) => Boolean(resolvePlayableTrackPath(track)),
-  );
+  const playableBaseTracks = resolvePlaylistTracks(
+    input.basePlaylist,
+    input.availableTracks,
+  ).filter((track) => Boolean(resolvePlayableTrackPath(track)));
   const availableBaseTrackOptions = input.availableTracks
     .filter((track) => !(input.basePlaylist?.trackIds ?? []).includes(track.id))
     .sort((left, right) => {
@@ -99,8 +96,9 @@ export function buildLiveLogMonitorExplanationState(
       )
     : [];
   const selectedTraceExplanation =
-    traceWaveformExplanations.find((explanation) => explanation.id === input.selectedExplanationId) ??
-    null;
+    traceWaveformExplanations.find(
+      (explanation) => explanation.id === input.selectedExplanationId,
+    ) ?? null;
   const traceWaveformCues = toLiveMutationVisualizationCues(traceWaveformExplanations);
   const currentReplayExplanation =
     input.replayActive && input.playbackEventIndex !== null

@@ -1,4 +1,7 @@
-import { DEFAULT_MUTATION_PROFILE_ID, DEFAULT_STYLE_PROFILE_ID } from "../../../config/liveProfiles";
+import {
+  DEFAULT_MUTATION_PROFILE_ID,
+  DEFAULT_STYLE_PROFILE_ID,
+} from "../../../config/liveProfiles";
 import type {
   BaseAssetRecord,
   BaseTrackPlaylist,
@@ -67,17 +70,12 @@ export function buildRepoResetMonitorState(input: {
   prefs: MonitorPrefs | null;
 }): RepoResetMonitorState {
   return {
-    sceneBaseAssetId: preferredBaseAssetId(
-      input.availableBaseAssets,
-      input.preferredBaseAssetIdProp,
-    ) ?? "",
-    sceneCompositionId: preferredCompositionId(
-      input.availableCompositions,
-      input.preferredCompositionIdProp,
-    ) ?? "",
+    sceneBaseAssetId:
+      preferredBaseAssetId(input.availableBaseAssets, input.preferredBaseAssetIdProp) ?? "",
+    sceneCompositionId:
+      preferredCompositionId(input.availableCompositions, input.preferredCompositionIdProp) ?? "",
     basePlaylist: input.prefs?.basePlaylist ?? createBasePlaylist([]),
-    selectedStyleProfileId:
-      input.prefs?.selectedStyleProfileId ?? DEFAULT_STYLE_PROFILE_ID,
+    selectedStyleProfileId: input.prefs?.selectedStyleProfileId ?? DEFAULT_STYLE_PROFILE_ID,
     selectedMutationProfileId:
       input.prefs?.selectedMutationProfileId ?? DEFAULT_MUTATION_PROFILE_ID,
     masterVolume: input.prefs?.masterVolume ?? 0.45,

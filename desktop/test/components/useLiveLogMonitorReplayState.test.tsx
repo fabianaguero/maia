@@ -12,8 +12,7 @@ vi.mock("../../src/hooks/useReplayBookmarks", () => ({
 }));
 
 vi.mock("../../src/hooks/useReplayFeedbackRecommendation", () => ({
-  useReplayFeedbackRecommendation: (...args: unknown[]) =>
-    useReplayFeedbackRecommendation(...args),
+  useReplayFeedbackRecommendation: (...args: unknown[]) => useReplayFeedbackRecommendation(...args),
 }));
 
 vi.mock("../../src/utils/track", () => ({
@@ -76,13 +75,10 @@ describe("useLiveLogMonitorReplayState", () => {
         fallbackTrackSecond: 18,
       }),
     );
-    expect(useReplayFeedbackRecommendation).toHaveBeenCalledWith(
-      [{ id: 1 }],
-      {
-        currentStyleProfileId: "club",
-        currentMutationProfileId: "reactive",
-      },
-    );
+    expect(useReplayFeedbackRecommendation).toHaveBeenCalledWith([{ id: 1 }], {
+      currentStyleProfileId: "club",
+      currentMutationProfileId: "reactive",
+    });
     expect(result.current.replaySessionId).toBe("session-1");
     expect(result.current.replayFeedbackRecommendation).toEqual({ suggestion: "tighten" });
   });

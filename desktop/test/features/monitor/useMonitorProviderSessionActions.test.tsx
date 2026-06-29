@@ -35,9 +35,7 @@ vi.mock("../../../src/features/monitor/monitorProviderPlaybackSessionRuntime", (
 }));
 
 vi.mock("../../../src/features/monitor/monitorProviderStartRuntime", async () => {
-  const actual = await vi.importActual(
-    "../../../src/features/monitor/monitorProviderStartRuntime",
-  );
+  const actual = await vi.importActual("../../../src/features/monitor/monitorProviderStartRuntime");
 
   return {
     ...actual,

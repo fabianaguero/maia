@@ -137,7 +137,8 @@ export function InspectTrackView({
       });
     }
 
-    const cueCollection = cue.kind === "hot" ? track.performance.hotCues : track.performance.memoryCues;
+    const cueCollection =
+      cue.kind === "hot" ? track.performance.hotCues : track.performance.memoryCues;
     const nextCues = setTrackCuePointSecond(cueCollection, cue.id, second, {
       durationSeconds: track.analysis.durationSeconds,
       beatGrid: track.analysis.beatGrid,

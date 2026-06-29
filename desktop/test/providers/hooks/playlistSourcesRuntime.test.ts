@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { PlaylistMetadata, PlaylistSourceAuth, ProviderError } from "../../../src/providers/runtime/types";
+import type {
+  PlaylistMetadata,
+  PlaylistSourceAuth,
+  ProviderError,
+} from "../../../src/providers/runtime/types";
 
 const { listSpotifyPlaylistsMock, listSoundCloudPlaylistsMock } = vi.hoisted(() => ({
   listSpotifyPlaylistsMock: vi.fn(),
@@ -76,18 +80,15 @@ describe("playlistSourcesRuntime", () => {
       sourceName: "SoundCloud",
     });
 
-    expect(resolvePlaylistsForSource([spotifyPlaylist, soundcloudPlaylist], "spotify-source")).toEqual([
-      spotifyPlaylist,
-    ]);
+    expect(
+      resolvePlaylistsForSource([spotifyPlaylist, soundcloudPlaylist], "spotify-source"),
+    ).toEqual([spotifyPlaylist]);
 
     expect(
       mergeSourcePlaylists([spotifyPlaylist, soundcloudPlaylist], "spotify-source", [
         createPlaylist({ id: "playlist-3", name: "Fresh Sync" }),
       ]),
-    ).toEqual([
-      soundcloudPlaylist,
-      createPlaylist({ id: "playlist-3", name: "Fresh Sync" }),
-    ]);
+    ).toEqual([soundcloudPlaylist, createPlaylist({ id: "playlist-3", name: "Fresh Sync" })]);
   });
 
   it("filters disconnected source state", () => {

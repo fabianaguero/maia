@@ -1,16 +1,11 @@
 import type { AppTranslations } from "../../i18n/en";
 import type { PersistedSession } from "../../api/sessions";
 import type { LibraryTrack, RepositoryAnalysis } from "../../types/library";
-import type {
-  ActiveMonitorSession,
-  MonitorMetrics,
-} from "../monitor/monitorContextTypes";
+import type { ActiveMonitorSession, MonitorMetrics } from "../monitor/monitorContextTypes";
 import { getTrackTitle as getLibraryTrackTitle } from "../../utils/track";
 import type { useSimpleMonitorDeckRuntime } from "./useSimpleMonitorDeckRuntime";
 import type { useSimpleMonitorLaunchState } from "./useSimpleMonitorLaunchState";
-import {
-  coerceSimpleMonitorCollection,
-} from "./simpleMonitorViewModel";
+import { coerceSimpleMonitorCollection } from "./simpleMonitorViewModel";
 import type { BuildSimpleMonitorScreenHookStateArgs } from "./simpleMonitorScreenRuntime";
 import {
   buildSimpleMonitorActiveHookArgs,

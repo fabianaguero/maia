@@ -1,10 +1,11 @@
 import type { PersistedSession } from "../../api/sessions";
 import type { AppTranslations } from "../../i18n/en";
+import type { ActiveMonitorSession, MonitorMetrics } from "../monitor/monitorContextTypes";
 import type {
-  ActiveMonitorSession,
-  MonitorMetrics,
-} from "../monitor/monitorContextTypes";
-import type { LiveLogComponentCount, LiveLogMarker, LiveLogStreamUpdate } from "../../types/monitor";
+  LiveLogComponentCount,
+  LiveLogMarker,
+  LiveLogStreamUpdate,
+} from "../../types/monitor";
 import { getStreamAdapterLabel } from "../../utils/streamAdapter";
 import {
   formatMonitorConfidence,

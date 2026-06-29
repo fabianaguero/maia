@@ -27,7 +27,9 @@ describe("monitorFooterViewModel", () => {
         value: "Audio active",
       },
     ]);
-    expect(viewModel.actions.map((action) => action.label)).toEqual([en.simpleMode.common.audioActive]);
+    expect(viewModel.actions.map((action) => action.label)).toEqual([
+      en.simpleMode.common.audioActive,
+    ]);
   });
 
   it("switches the audio action label when the context is suspended", () => {

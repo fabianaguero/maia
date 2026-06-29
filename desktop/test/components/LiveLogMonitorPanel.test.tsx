@@ -26,7 +26,9 @@ vi.mock("../../src/features/analyzer/components/LiveLogMonitorLiveDeck", () => (
   LiveLogMonitorLiveDeck: () => <div data-testid="monitor-live-deck">deck</div>,
 }));
 
-function createControllerState(overrides: Partial<ReturnType<typeof useLiveLogMonitorPanelController>> = {}) {
+function createControllerState(
+  overrides: Partial<ReturnType<typeof useLiveLogMonitorPanelController>> = {},
+) {
   return {
     liveEnabled: true,
     expanded: true,

@@ -28,7 +28,8 @@ describe("ProMonitorScreen", () => {
     const { container } = render(<ProMonitorScreen />);
     const bookmarkCount = () => container.querySelector(".bookmark-count")?.textContent;
     const bookmarkRows = () => container.querySelectorAll(".bookmark-row");
-    const addBookmarkButton = () => container.querySelector(".btn-add-bookmark") as HTMLButtonElement;
+    const addBookmarkButton = () =>
+      container.querySelector(".btn-add-bookmark") as HTMLButtonElement;
 
     expect(bookmarkCount()).toBe(String(mockData.bookmarks.length));
     expect(bookmarkRows()).toHaveLength(mockData.bookmarks.length);

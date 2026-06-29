@@ -13,7 +13,8 @@ vi.mock("../../../src/utils/audioPreview", () => ({
 }));
 
 vi.mock("../../../src/utils/track", () => ({
-  resolvePlayableTrackPath: (track: LibraryTrack) => track.file.storagePath ?? track.file.sourcePath,
+  resolvePlayableTrackPath: (track: LibraryTrack) =>
+    track.file.storagePath ?? track.file.sourcePath,
 }));
 
 class MockAudioElement {
@@ -229,7 +230,9 @@ describe("useMonitorTrackAudio", () => {
     });
 
     expect(ensureBackgroundGraph).toHaveBeenCalledTimes(1);
-    expect(result.current.backgroundAudioRef.current).toBe(audioInstances[0] as unknown as HTMLAudioElement);
+    expect(result.current.backgroundAudioRef.current).toBe(
+      audioInstances[0] as unknown as HTMLAudioElement,
+    );
 
     audioInstances[0]!.currentTime = 30;
     audioInstances[0]!.duration = 120;

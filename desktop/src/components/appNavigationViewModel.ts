@@ -90,8 +90,15 @@ export function buildSidebarNavItems(input: {
   repositoryCount: number;
   compositionCount: number;
 }): SidebarNavItemViewModel[] {
-  const { t, userMode, liveStatusLabel, monitorActive, trackCount, repositoryCount, compositionCount } =
-    input;
+  const {
+    t,
+    userMode,
+    liveStatusLabel,
+    monitorActive,
+    trackCount,
+    repositoryCount,
+    compositionCount,
+  } = input;
   const itemCount = trackCount + repositoryCount;
 
   return userMode === "simple"

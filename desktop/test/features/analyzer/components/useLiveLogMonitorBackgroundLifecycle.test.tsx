@@ -3,27 +3,25 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useLiveLogMonitorBackgroundLifecycle } from "../../../../src/features/analyzer/components/useLiveLogMonitorBackgroundLifecycle";
 
-const {
-  resolveBackgroundDeckLifecyclePlanMock,
-  snapshotBackgroundDeckStateMock,
-} = vi.hoisted(() => ({
-  resolveBackgroundDeckLifecyclePlanMock: vi.fn(),
-  snapshotBackgroundDeckStateMock: vi.fn(),
-}));
+const { resolveBackgroundDeckLifecyclePlanMock, snapshotBackgroundDeckStateMock } = vi.hoisted(
+  () => ({
+    resolveBackgroundDeckLifecyclePlanMock: vi.fn(),
+    snapshotBackgroundDeckStateMock: vi.fn(),
+  }),
+);
 
 vi.mock("../../../../src/features/analyzer/components/liveLogMonitorBackgroundRuntime", () => ({
   resolveBackgroundDeckLifecyclePlan: (...args: unknown[]) =>
     resolveBackgroundDeckLifecyclePlanMock(...args),
 }));
 
-vi.mock(
-  "../../../../src/features/analyzer/components/liveLogMonitorBackgroundDeckRuntime",
-  () => ({
-    snapshotBackgroundDeckState: (...args: unknown[]) => snapshotBackgroundDeckStateMock(...args),
-  }),
-);
+vi.mock("../../../../src/features/analyzer/components/liveLogMonitorBackgroundDeckRuntime", () => ({
+  snapshotBackgroundDeckState: (...args: unknown[]) => snapshotBackgroundDeckStateMock(...args),
+}));
 
-function createInput(overrides: Partial<Parameters<typeof useLiveLogMonitorBackgroundLifecycle>[0]> = {}) {
+function createInput(
+  overrides: Partial<Parameters<typeof useLiveLogMonitorBackgroundLifecycle>[0]> = {},
+) {
   return {
     liveEnabled: true,
     playableBaseTracks: [{ id: "track-1" }],
@@ -77,10 +75,9 @@ describe("useLiveLogMonitorBackgroundLifecycle", () => {
       },
     });
 
-    const { rerender } = renderHook(
-      ({ value }) => useLiveLogMonitorBackgroundLifecycle(value),
-      { initialProps: { value: input } },
-    );
+    const { rerender } = renderHook(({ value }) => useLiveLogMonitorBackgroundLifecycle(value), {
+      initialProps: { value: input },
+    });
 
     expect(input.audioContextRef.current?.resume).toHaveBeenCalled();
     expect(input.startBackgroundDeck).toHaveBeenCalledWith(input.audioContextRef.current, 2);

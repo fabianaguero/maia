@@ -6,13 +6,6 @@ describe("appSections", () => {
   it("exports the supported simple app sections in a stable order", () => {
     const sections: AppSection[] = [...APP_SECTIONS];
 
-    expect(sections).toEqual([
-      "monitor",
-      "library",
-      "inspect",
-      "compose",
-      "connections",
-      "setup",
-    ]);
+    expect(sections).toEqual(["monitor", "library", "inspect", "compose", "connections", "setup"]);
   });
 });

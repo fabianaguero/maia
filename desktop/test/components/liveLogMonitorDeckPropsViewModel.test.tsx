@@ -134,8 +134,25 @@ describe("liveLogMonitorDeckPropsViewModel", () => {
 
   it("builds scene and routing panels as focused component nodes", () => {
     const scenePanel = buildLiveLogMonitorScenePanel({
-      availableBaseAssets: [{ id: "asset-1", name: "Pulse", storagePath: "/asset.wav", sourcePath: "/asset.wav", kind: "sample-pack", importedAt: "2026-06-28T00:00:00.000Z" }] as never,
-      availableCompositions: [{ id: "comp-1", name: "Hybrid", storagePath: "/comp", exportedAt: "2026-06-28T00:00:00.000Z", stemPaths: [] }] as never,
+      availableBaseAssets: [
+        {
+          id: "asset-1",
+          name: "Pulse",
+          storagePath: "/asset.wav",
+          sourcePath: "/asset.wav",
+          kind: "sample-pack",
+          importedAt: "2026-06-28T00:00:00.000Z",
+        },
+      ] as never,
+      availableCompositions: [
+        {
+          id: "comp-1",
+          name: "Hybrid",
+          storagePath: "/comp",
+          exportedAt: "2026-06-28T00:00:00.000Z",
+          stemPaths: [],
+        },
+      ] as never,
       sceneBaseAssetId: "asset-1",
       sceneCompositionId: "comp-1",
       scene: { genreId: "house" } as never,

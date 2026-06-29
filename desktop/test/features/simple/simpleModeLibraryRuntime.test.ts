@@ -10,9 +10,7 @@ describe("simpleModeLibraryRuntime", () => {
   it("builds import requests from entered paths", () => {
     expect(resolveSimpleModeRepositorySourceKind("/logs/app.log")).toBe("file");
     expect(resolveSimpleModeRepositorySourceKind("/logs/folder")).toBe("directory");
-    expect(
-      buildSimpleModeImportRepositoryInput("/logs/app.log", "fallback"),
-    ).toEqual({
+    expect(buildSimpleModeImportRepositoryInput("/logs/app.log", "fallback")).toEqual({
       label: "app.log",
       sourcePath: "/logs/app.log",
       sourceKind: "file",

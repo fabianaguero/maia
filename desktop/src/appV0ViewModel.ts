@@ -52,7 +52,10 @@ export function createAppV0SessionId(input?: {
   return `session-${nowMs}-${randomValue}`;
 }
 
-export function formatAppV0Uptime(startedAt: number | null | undefined, nowMs = Date.now()): string {
+export function formatAppV0Uptime(
+  startedAt: number | null | undefined,
+  nowMs = Date.now(),
+): string {
   if (typeof startedAt !== "number" || !Number.isFinite(startedAt) || startedAt <= 0) {
     return "0s";
   }
@@ -76,8 +79,7 @@ export function resolveAppV0MonitorWaveformBins(input: {
   sessionTrackName?: string | null;
 }): number[] | undefined {
   return input.tracks.find(
-    (track) =>
-      track.id === input.sessionTrackId || getTrackTitle(track) === input.sessionTrackName,
+    (track) => track.id === input.sessionTrackId || getTrackTitle(track) === input.sessionTrackName,
   )?.analysis?.waveformBins;
 }
 

@@ -14,7 +14,9 @@ interface LiveLogMonitorDeckSectionProps {
   windowMetrics: ComponentProps<typeof LiveLogMonitorActiveDeck>["windowInsightsProps"]["metrics"];
   activeComponentsTitle: string;
   activeComponentsCopy: string;
-  activeComponents: ComponentProps<typeof LiveLogMonitorActiveDeck>["windowInsightsProps"]["activeComponents"];
+  activeComponents: ComponentProps<
+    typeof LiveLogMonitorActiveDeck
+  >["windowInsightsProps"]["activeComponents"];
   tracePanelProps: ComponentProps<typeof LiveMonitorMutationTracePanel>;
   performanceSummaryProps: Omit<
     ComponentProps<typeof LiveLogMonitorPerformanceSummary>,

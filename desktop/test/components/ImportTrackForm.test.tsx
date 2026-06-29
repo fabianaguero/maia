@@ -39,9 +39,7 @@ describe("ImportTrackForm", () => {
     expect(await screen.findByText(en.library.forms.track.pathRequiredError)).toBeInTheDocument();
     expect(onImportTrack).not.toHaveBeenCalled();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: en.library.forms.track.loadDemoTracks }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: en.library.forms.track.loadDemoTracks }));
     expect(onSeedDemo).toHaveBeenCalledTimes(1);
   });
 

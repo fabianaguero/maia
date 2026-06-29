@@ -35,10 +35,7 @@ export function AppTopbar({
       <div className="topbar-brand">
         {state.showWordmark ? <BrandWordmark className="topbar-wordmark" /> : null}
         {state.showLockup ? (
-          <BrandLockup
-            className="topbar-brand-lockup"
-            wordmarkClassName="topbar-wordmark"
-          />
+          <BrandLockup className="topbar-brand-lockup" wordmarkClassName="topbar-wordmark" />
         ) : null}
         {state.showWorkspaceSubtitle ? (
           <div className="topbar-copy">
@@ -55,9 +52,7 @@ export function AppTopbar({
           title={controls.lang}
         >
           <Globe2 size={16} />
-          <span className="sr-only">
-            {lang === "en" ? controls.spanish : controls.english}
-          </span>
+          <span className="sr-only">{lang === "en" ? controls.spanish : controls.english}</span>
         </button>
         <button
           type="button"

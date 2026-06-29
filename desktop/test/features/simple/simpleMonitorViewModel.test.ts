@@ -101,17 +101,22 @@ describe("simpleMonitorViewModel", () => {
   it("resolves the active track from explicit track name or session fallback", () => {
     const tracks = [makeTrack("track-1", "Around The World"), makeTrack("track-2", "Sweet Dreams")];
 
-    expect(resolveSimpleMonitorActiveTrack(tracks, "track-2", undefined, undefined, undefined)?.id)
-      .toBe("track-2");
-    expect(resolveSimpleMonitorActiveTrack(tracks, undefined, "Sweet Dreams", undefined, undefined)?.id)
-      .toBe("track-2");
-    expect(resolveSimpleMonitorActiveTrack(tracks, undefined, undefined, "track-1", undefined)?.id)
-      .toBe("track-1");
+    expect(
+      resolveSimpleMonitorActiveTrack(tracks, "track-2", undefined, undefined, undefined)?.id,
+    ).toBe("track-2");
+    expect(
+      resolveSimpleMonitorActiveTrack(tracks, undefined, "Sweet Dreams", undefined, undefined)?.id,
+    ).toBe("track-2");
+    expect(
+      resolveSimpleMonitorActiveTrack(tracks, undefined, undefined, "track-1", undefined)?.id,
+    ).toBe("track-1");
     expect(
       resolveSimpleMonitorActiveTrack(tracks, undefined, undefined, undefined, "Around The World")
         ?.id,
     ).toBe("track-1");
-    expect(resolveSimpleMonitorActiveTrack(tracks, undefined, undefined, undefined, undefined)).toBeNull();
+    expect(
+      resolveSimpleMonitorActiveTrack(tracks, undefined, undefined, undefined, undefined),
+    ).toBeNull();
   });
 
   it("formats uptime for seconds and minute boundaries", () => {

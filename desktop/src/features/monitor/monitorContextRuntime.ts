@@ -69,8 +69,7 @@ export function sliceGuideTrackBar(
   const anomCount = cues.filter((c) => c.accent === "anomaly").length;
   const anomRatio = anomCount / Math.max(1, cues.length);
   const intensity = Math.min(1, avgGain * 3);
-  const masterGain =
-    anomRatio > 0.1 ? volume * (0.5 + intensity * 0.5) : volume;
+  const masterGain = anomRatio > 0.1 ? volume * (0.5 + intensity * 0.5) : volume;
   const filterStrength = anomRatio > 0.4 ? 0.1 + anomRatio * 0.25 : 0;
   const sixteenthSamples = Math.floor((beatSec / 4) * pcm.sampleRate);
 
@@ -181,8 +180,7 @@ export function renderSynthFallback(
       const samples = Math.min(totalSamples - startSample, Math.ceil(RENDER_SAMPLE_RATE * dur));
       for (let i = 0; i < samples; i++) {
         const tt = i / RENDER_SAMPLE_RATE;
-        const env =
-          tt < 0.01 ? tt / 0.01 : Math.max(0, 1 - (tt - dur * 0.6) / (dur * 0.4));
+        const env = tt < 0.01 ? tt / 0.01 : Math.max(0, 1 - (tt - dur * 0.6) / (dur * 0.4));
         mix[startSample + i] += Math.sin(2 * Math.PI * bFreq * tt) * env * 0.22 * volume;
       }
     }

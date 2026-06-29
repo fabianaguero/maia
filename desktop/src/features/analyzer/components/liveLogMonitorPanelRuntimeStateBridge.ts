@@ -12,7 +12,15 @@ type LiveLogMonitorReplayRuntime = ReturnType<typeof useLiveLogMonitorReplayStat
 export function buildLiveLogMonitorViewModelInput(
   input: UseLiveLogMonitorPanelRuntimeStateInput,
 ): LiveLogMonitorViewModelInput {
-  const { repository, availableBaseAssets, availableCompositions, availableTracks, monitor, replayActive, surfaceState } = input;
+  const {
+    repository,
+    availableBaseAssets,
+    availableCompositions,
+    availableTracks,
+    monitor,
+    replayActive,
+    surfaceState,
+  } = input;
 
   return {
     repository,

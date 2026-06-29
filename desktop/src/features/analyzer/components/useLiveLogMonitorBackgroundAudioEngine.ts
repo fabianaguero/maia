@@ -1,4 +1,10 @@
-import { useEffect, useEffectEvent, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  type Dispatch,
+  type MutableRefObject,
+  type SetStateAction,
+} from "react";
 
 import type { LiveLogStreamUpdate } from "../../../types/library";
 import {
@@ -50,7 +56,10 @@ export function useLiveLogMonitorBackgroundAudioEngine(input: {
     if (!input.filterNodeRef.current) {
       const filter = context.createBiquadFilter();
       filter.type = "lowpass";
-      filter.frequency.setValueAtTime(input.selectedStyleProfile.filterCeilingHz, context.currentTime);
+      filter.frequency.setValueAtTime(
+        input.selectedStyleProfile.filterCeilingHz,
+        context.currentTime,
+      );
       input.filterNodeRef.current = filter;
       createdFilter = true;
     }
@@ -171,7 +180,10 @@ export function useLiveLogMonitorBackgroundAudioEngine(input: {
       driveWetGain.gain.setValueAtTime(automationPlan.wetGain.start, now);
       dryGain.gain.linearRampToValueAtTime(automationPlan.dryGain.target, now + 0.04);
       driveWetGain.gain.linearRampToValueAtTime(automationPlan.wetGain.target, now + 0.04);
-      dryGain.gain.linearRampToValueAtTime(automationPlan.dryGain.recover, automationPlan.recoverAt);
+      dryGain.gain.linearRampToValueAtTime(
+        automationPlan.dryGain.recover,
+        automationPlan.recoverAt,
+      );
       driveWetGain.gain.linearRampToValueAtTime(
         automationPlan.wetGain.recover,
         automationPlan.recoverAt,

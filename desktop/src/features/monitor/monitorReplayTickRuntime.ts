@@ -163,10 +163,7 @@ export function seekReplayWindowState(input: {
   seekPlaybackProgress: (progress: number) => void;
 }): void {
   input.seekPlaybackProgress(
-    resolveReplayProgressForWindow(
-      input.replayWindowIndex,
-      input.replayEventsRef.current.length,
-    ),
+    resolveReplayProgressForWindow(input.replayWindowIndex, input.replayEventsRef.current.length),
   );
 }
 

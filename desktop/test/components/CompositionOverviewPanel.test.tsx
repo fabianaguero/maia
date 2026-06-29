@@ -72,10 +72,7 @@ describe("CompositionOverviewPanel", () => {
   it("falls back to pending materialization and hides the plan when absent", () => {
     render(
       <CompositionOverviewPanel
-        composition={createComposition(
-          { exportPath: null },
-          { arrangementPlan: undefined },
-        )}
+        composition={createComposition({ exportPath: null }, { arrangementPlan: undefined })}
       />,
     );
 

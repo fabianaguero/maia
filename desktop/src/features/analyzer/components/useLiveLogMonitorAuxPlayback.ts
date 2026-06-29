@@ -84,10 +84,7 @@ export function useLiveLogMonitorAuxPlayback(input: {
       oscillator.type = index === tones.length - 1 ? "triangle" : "sawtooth";
       oscillator.frequency.setValueAtTime(frequency, startAt);
       gain.gain.setValueAtTime(0.0001, startAt);
-      gain.gain.linearRampToValueAtTime(
-        Math.max(0.08, input.masterVolume * 0.55),
-        startAt + 0.01,
-      );
+      gain.gain.linearRampToValueAtTime(Math.max(0.08, input.masterVolume * 0.55), startAt + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.22);
       oscillator.connect(gain);
       gain.connect(destination);

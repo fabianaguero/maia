@@ -130,7 +130,10 @@ export function LibraryPlaylistsPanel({
           ))}
         </div>
       ) : (
-        <div className="support-copy" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <div
+          className="support-copy"
+          style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+        >
           <ListMusic size={14} />
           <span>{viewModel.emptyMessage}</span>
         </div>

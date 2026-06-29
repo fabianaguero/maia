@@ -1,4 +1,9 @@
-import type { PlaylistSourceInput, PlaylistMetadata, RemoteTrackMetadata, ProviderError } from "./types";
+import type {
+  PlaylistSourceInput,
+  PlaylistMetadata,
+  RemoteTrackMetadata,
+  ProviderError,
+} from "./types";
 import { normalizePlaylistId, normalizeTrackId, normalizeIsoTimestamp } from "./normalization";
 
 const SPOTIFY_API_BASE = "https://api.spotify.com/v1";
@@ -39,7 +44,11 @@ export async function listSpotifyPlaylists(
   input: PlaylistSourceInput,
 ): Promise<PlaylistMetadata[]> {
   if (!input.auth.oauthToken) {
-    throw { kind: "auth_expired", sourceType: "spotify", message: "Token missing" } as ProviderError;
+    throw {
+      kind: "auth_expired",
+      sourceType: "spotify",
+      message: "Token missing",
+    } as ProviderError;
   }
 
   const response = await fetch(`${SPOTIFY_API_BASE}/me/playlists`, {
@@ -50,7 +59,11 @@ export async function listSpotifyPlaylists(
   });
 
   if (response.status === 401) {
-    throw { kind: "auth_expired", sourceType: "spotify", message: "Token invalid" } as ProviderError;
+    throw {
+      kind: "auth_expired",
+      sourceType: "spotify",
+      message: "Token invalid",
+    } as ProviderError;
   }
 
   if (response.status === 429) {
@@ -73,7 +86,11 @@ export async function listTracksInSpotifyPlaylist(
   input: PlaylistSourceInput & { playlistId: string },
 ): Promise<RemoteTrackMetadata[]> {
   if (!input.auth.oauthToken) {
-    throw { kind: "auth_expired", sourceType: "spotify", message: "Token missing" } as ProviderError;
+    throw {
+      kind: "auth_expired",
+      sourceType: "spotify",
+      message: "Token missing",
+    } as ProviderError;
   }
 
   const response = await fetch(`${SPOTIFY_API_BASE}/playlists/${input.playlistId}/tracks`, {

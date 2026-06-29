@@ -1,9 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 
-import type {
-  BaseTrackPlaylist,
-  LibraryTrack,
-} from "../types/library";
+import type { BaseTrackPlaylist, LibraryTrack } from "../types/library";
 
 export interface UseLibraryMutationActionsInput {
   tracks: LibraryTrack[];

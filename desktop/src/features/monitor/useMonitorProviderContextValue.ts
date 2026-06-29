@@ -2,17 +2,13 @@ import { useCallback, useMemo, type MutableRefObject } from "react";
 
 import { subscribeToMonitorStreamState } from "./monitorUpdateRuntime";
 import { buildMonitorContextValue } from "./monitorContextValue";
-import type {
-  MonitorContextValue,
-  StreamListener,
-} from "./monitorContextTypes";
+import type { MonitorContextValue, StreamListener } from "./monitorContextTypes";
 
 interface MonitorProviderContextLogger {
   info: (message: string, ...args: unknown[]) => void;
 }
 
-interface UseMonitorProviderContextValueInput
-  extends Omit<MonitorContextValue, "subscribe"> {
+interface UseMonitorProviderContextValueInput extends Omit<MonitorContextValue, "subscribe"> {
   listenersRef: MutableRefObject<Set<StreamListener>>;
   logger: MonitorProviderContextLogger;
 }
@@ -20,13 +16,16 @@ interface UseMonitorProviderContextValueInput
 export function useMonitorProviderContextValue(
   input: UseMonitorProviderContextValueInput,
 ): MonitorContextValue {
-  const subscribe = useCallback((listener: StreamListener): (() => void) => {
-    return subscribeToMonitorStreamState({
-      listeners: input.listenersRef.current,
-      listener,
-      logger: input.logger,
-    });
-  }, [input.listenersRef, input.logger]);
+  const subscribe = useCallback(
+    (listener: StreamListener): (() => void) => {
+      return subscribeToMonitorStreamState({
+        listeners: input.listenersRef.current,
+        listener,
+        logger: input.logger,
+      });
+    },
+    [input.listenersRef, input.logger],
+  );
 
   return useMemo(
     () =>

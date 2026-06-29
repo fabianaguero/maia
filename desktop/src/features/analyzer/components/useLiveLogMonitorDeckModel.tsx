@@ -13,11 +13,7 @@ import type {
 } from "../../../types/library";
 import type { LiveMutationExplanation } from "../../../utils/liveMutationExplainability";
 import type { ReplayFeedbackRecommendation } from "../../../utils/replayFeedback";
-import type {
-  ArrangementVoice,
-  ComponentOverride,
-  RoutedLiveCue,
-} from "./liveSonificationScene";
+import type { ArrangementVoice, ComponentOverride, RoutedLiveCue } from "./liveSonificationScene";
 import type { SyncTailRow } from "./liveLogMonitorPanelRuntime";
 import type { AudioEngineStatus, LiveLogMonitorViewModel } from "./liveLogMonitorViewModel";
 import {
@@ -128,7 +124,11 @@ export interface UseLiveLogMonitorDeckModelInput {
   setSceneCompositionId: Dispatch<SetStateAction<string>>;
   onSelectExplanation: (explanation: LiveMutationExplanation) => void;
   onSequencerStepFire: (
-    firings: Array<{ track: "foundation" | "motion" | "accent"; step: number; humanizeOffsetMs: number }>,
+    firings: Array<{
+      track: "foundation" | "motion" | "accent";
+      step: number;
+      humanizeOffsetMs: number;
+    }>,
   ) => void;
   onSetMasterVolume: (nextVolume: number) => void;
   onToggleMute: () => void;

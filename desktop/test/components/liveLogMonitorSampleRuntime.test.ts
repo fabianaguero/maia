@@ -21,7 +21,7 @@ describe("liveLogMonitorSampleRuntime", () => {
   });
 
   it("fetches and decodes sample sources through the provided context", async () => {
-    const decodeAudioData = vi.fn(async () => ({ id: "decoded-buffer" } as unknown as AudioBuffer));
+    const decodeAudioData = vi.fn(async () => ({ id: "decoded-buffer" }) as unknown as AudioBuffer);
     const context = { decodeAudioData } as unknown as AudioContext;
     const fetchImpl = vi.fn(async () => ({
       ok: true,

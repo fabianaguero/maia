@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  CONTRACT_VERSION,
-  type AnalyzerResponse,
-} from "../src/contracts";
+import { CONTRACT_VERSION, type AnalyzerResponse } from "../src/contracts";
 import { en } from "../src/i18n/en";
 import type {
   BaseAssetRecord,

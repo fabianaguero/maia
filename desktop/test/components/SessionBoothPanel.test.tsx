@@ -47,9 +47,7 @@ function createBooth(overrides: Partial<SessionBoothViewModel> = {}): SessionBoo
   };
 }
 
-function createSelectedSession(
-  overrides: Partial<PersistedSession> = {},
-): PersistedSession {
+function createSelectedSession(overrides: Partial<PersistedSession> = {}): PersistedSession {
   return {
     id: "session-1",
     label: "Night watch",
@@ -76,9 +74,7 @@ function createSelectedSession(
   };
 }
 
-function createLatestUpdate(
-  overrides: Partial<LiveLogStreamUpdate> = {},
-): LiveLogStreamUpdate {
+function createLatestUpdate(overrides: Partial<LiveLogStreamUpdate> = {}): LiveLogStreamUpdate {
   return {
     sourcePath: "/logs/customers-service.log",
     fromOffset: 0,

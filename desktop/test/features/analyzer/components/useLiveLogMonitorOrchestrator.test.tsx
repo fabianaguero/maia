@@ -39,9 +39,12 @@ vi.mock("../../../../src/features/analyzer/components/liveLogMonitorStreamUpdate
     resolveSelectedMonitorExplanationIdMock(...args),
 }));
 
-vi.mock("../../../../src/features/analyzer/components/liveLogMonitorUpdateDerivationRuntime", () => ({
-  buildMonitorUpdateDerivation: (...args: unknown[]) => buildMonitorUpdateDerivationMock(...args),
-}));
+vi.mock(
+  "../../../../src/features/analyzer/components/liveLogMonitorUpdateDerivationRuntime",
+  () => ({
+    buildMonitorUpdateDerivation: (...args: unknown[]) => buildMonitorUpdateDerivationMock(...args),
+  }),
+);
 
 vi.mock("../../../../src/features/analyzer/components/liveLogMonitorPanelRuntime", () => ({
   appendSyncTailRows: (...args: unknown[]) => appendSyncTailRowsMock(...args),

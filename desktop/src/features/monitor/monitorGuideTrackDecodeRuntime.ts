@@ -105,10 +105,7 @@ async function decodeGuideTrackFileImpl(
       bytes[index] = binary.charCodeAt(index);
     }
     arrayBuffer = bytes.buffer;
-    dependencies.logger.info(
-      "audio file loaded %d bytes via IPC",
-      arrayBuffer.byteLength,
-    );
+    dependencies.logger.info("audio file loaded %d bytes via IPC", arrayBuffer.byteLength);
   }
 
   const offlineContext = dependencies.createOfflineAudioContext(

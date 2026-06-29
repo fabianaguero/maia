@@ -9,7 +9,9 @@ interface ConnectionsSavedRowProps {
   onStartTail: (connection: ConnectionsSavedListRowViewModel["connection"]) => void | Promise<void>;
   onStopTail: () => void | Promise<void>;
   onEditConnection: (connection: ConnectionsSavedListRowViewModel["connection"]) => void;
-  onTestConnection: (connection: ConnectionsSavedListRowViewModel["connection"]) => void | Promise<void>;
+  onTestConnection: (
+    connection: ConnectionsSavedListRowViewModel["connection"],
+  ) => void | Promise<void>;
   onDeleteConnection: (connectionId: string) => void | Promise<void>;
 }
 

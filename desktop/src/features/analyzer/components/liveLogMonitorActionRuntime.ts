@@ -36,10 +36,7 @@ export function resolveLiveMonitorBounceFilename(input: {
 }
 
 export function resolveBookmarkSuggestionSelection(
-  bookmark: Pick<
-    SessionBookmark,
-    "suggestedStyleProfileId" | "suggestedMutationProfileId"
-  >,
+  bookmark: Pick<SessionBookmark, "suggestedStyleProfileId" | "suggestedMutationProfileId">,
 ): LiveMonitorPrefsSelection {
   return {
     selectedStyleProfileId: bookmark.suggestedStyleProfileId ?? null,

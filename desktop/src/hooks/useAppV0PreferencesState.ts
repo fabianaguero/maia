@@ -71,11 +71,12 @@ export function useAppV0PreferencesState(): UseAppV0PreferencesStateResult {
     key: K,
     value: MonitorSetupPreferences[K],
   ) => {
-    setSetupPreferences((current) =>
-      ({
-        ...current,
-        [key]: sanitizeMonitorSetupPreferenceValue(key, value),
-      }) as MonitorSetupPreferences,
+    setSetupPreferences(
+      (current) =>
+        ({
+          ...current,
+          [key]: sanitizeMonitorSetupPreferenceValue(key, value),
+        }) as MonitorSetupPreferences,
     );
   };
 

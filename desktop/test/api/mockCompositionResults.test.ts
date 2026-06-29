@@ -5,7 +5,11 @@ import {
   importMockCompositionResult,
   listMockCompositionResults,
 } from "../../src/api/mockCompositionResults";
-import { importMockTrack, saveMockPlaylist, updateMockTrackAnalysis } from "../../src/api/mockLibrary";
+import {
+  importMockTrack,
+  saveMockPlaylist,
+  updateMockTrackAnalysis,
+} from "../../src/api/mockLibrary";
 import { importMockRepository } from "../../src/api/mockRepositories";
 
 const COMPOSITIONS_STORAGE_KEY = "maia.library.compositions.v1";

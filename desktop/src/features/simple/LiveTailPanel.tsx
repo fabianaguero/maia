@@ -3,10 +3,7 @@ import { RefreshCw } from "lucide-react";
 import { useT } from "../../i18n/I18nContext";
 
 import type { MonitorLogLine } from "./monitorLogParsing";
-import {
-  buildLiveTailPanelViewModel,
-  getMonitorLevelBadgeLabel,
-} from "./liveTailPanelViewModel";
+import { buildLiveTailPanelViewModel, getMonitorLevelBadgeLabel } from "./liveTailPanelViewModel";
 import { formatAnomalyCueCode } from "./monitorDisplay";
 
 export interface LiveTailPanelProps {

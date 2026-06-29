@@ -8,9 +8,7 @@ export interface SessionMonitorDraft {
 
 export type SessionPersistenceAction = "create" | "select";
 
-export function resolveReplayMonitorDraft(
-  session: PersistedSession,
-): SessionMonitorDraft {
+export function resolveReplayMonitorDraft(session: PersistedSession): SessionMonitorDraft {
   return {
     trackId: session.trackId ?? undefined,
     playlistId: session.playlistId ?? undefined,

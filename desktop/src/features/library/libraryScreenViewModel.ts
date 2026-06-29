@@ -54,10 +54,7 @@ export interface LibraryScreenViewModel {
   error: string | null;
 }
 
-export function resolveLibrarySourceKindLabel(
-  sourceKind: string,
-  t: AppTranslations,
-): string {
+export function resolveLibrarySourceKindLabel(sourceKind: string, t: AppTranslations): string {
   const labels: Record<string, string> = {
     directory: t.library.directory,
     file: t.library.logFile,

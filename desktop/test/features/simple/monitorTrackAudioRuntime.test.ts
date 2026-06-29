@@ -42,21 +42,19 @@ describe("monitorTrackAudioRuntime", () => {
     expect(readMonitorTrackAudioSnapshot(null)).toBeNull();
     expect(readMonitorTrackAudioSnapshot(createAudio({ duration: Number.NaN }))).toBeNull();
 
-    expect(
-      readMonitorTrackAudioSnapshot(createAudio({ currentTime: 30, duration: 120 })),
-    ).toEqual({
+    expect(readMonitorTrackAudioSnapshot(createAudio({ currentTime: 30, duration: 120 }))).toEqual({
       progress: 0.25,
       elapsedSeconds: 30,
       durationSeconds: 120,
     });
 
-    expect(
-      readMonitorTrackAudioSnapshot(createAudio({ currentTime: 300, duration: 120 })),
-    ).toEqual({
-      progress: 1,
-      elapsedSeconds: 300,
-      durationSeconds: 120,
-    });
+    expect(readMonitorTrackAudioSnapshot(createAudio({ currentTime: 300, duration: 120 }))).toEqual(
+      {
+        progress: 1,
+        elapsedSeconds: 300,
+        durationSeconds: 120,
+      },
+    );
   });
 
   it("configures background track playback and swaps sources deterministically", () => {

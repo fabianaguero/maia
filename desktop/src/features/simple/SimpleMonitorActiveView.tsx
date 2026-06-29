@@ -76,9 +76,7 @@ export interface SimpleMonitorActiveViewProps {
   onResumeAudio: () => Promise<void> | void;
 }
 
-export function SimpleMonitorActiveView({
-  ...props
-}: SimpleMonitorActiveViewProps) {
+export function SimpleMonitorActiveView({ ...props }: SimpleMonitorActiveViewProps) {
   const t = useT();
   const { headerProps, deckSectionProps, liveTailProps, footerProps } =
     buildSimpleMonitorActiveViewSections({

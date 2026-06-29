@@ -56,12 +56,30 @@ vi.mock(
     };
   },
 );
-vi.mock("../../../../src/features/analyzer/components/useLiveLogMonitorAudioBootstrap", () => audioBootstrapMock);
-vi.mock("../../../../src/features/analyzer/components/useLiveLogMonitorAuxPlayback", () => auxPlaybackMock);
-vi.mock("../../../../src/features/analyzer/components/useLiveLogMonitorBackgroundAudioEngine", () => backgroundEngineMock);
-vi.mock("../../../../src/features/analyzer/components/useLiveLogMonitorBackgroundDeckControl", () => backgroundDeckMock);
-vi.mock("../../../../src/features/analyzer/components/useLiveLogMonitorResetActions", () => resetActionsMock);
-vi.mock("../../../../src/features/analyzer/components/useLiveLogMonitorPlayback", () => playbackMock);
+vi.mock(
+  "../../../../src/features/analyzer/components/useLiveLogMonitorAudioBootstrap",
+  () => audioBootstrapMock,
+);
+vi.mock(
+  "../../../../src/features/analyzer/components/useLiveLogMonitorAuxPlayback",
+  () => auxPlaybackMock,
+);
+vi.mock(
+  "../../../../src/features/analyzer/components/useLiveLogMonitorBackgroundAudioEngine",
+  () => backgroundEngineMock,
+);
+vi.mock(
+  "../../../../src/features/analyzer/components/useLiveLogMonitorBackgroundDeckControl",
+  () => backgroundDeckMock,
+);
+vi.mock(
+  "../../../../src/features/analyzer/components/useLiveLogMonitorResetActions",
+  () => resetActionsMock,
+);
+vi.mock(
+  "../../../../src/features/analyzer/components/useLiveLogMonitorPlayback",
+  () => playbackMock,
+);
 
 function createInput() {
   return {

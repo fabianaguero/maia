@@ -22,12 +22,9 @@ vi.mock("@tauri-apps/api/core", () => ({
   isTauri: () => isTauriMock(),
 }));
 
-vi.mock(
-  "../../../../src/features/analyzer/components/liveLogMonitorBackgroundDeckRuntime",
-  () => ({
-    loadCachedBackgroundBuffer: (...args: unknown[]) => loadCachedBackgroundBufferMock(...args),
-  }),
-);
+vi.mock("../../../../src/features/analyzer/components/liveLogMonitorBackgroundDeckRuntime", () => ({
+  loadCachedBackgroundBuffer: (...args: unknown[]) => loadCachedBackgroundBufferMock(...args),
+}));
 
 vi.mock("../../../../src/features/analyzer/components/liveLogMonitorBackgroundRuntime", () => ({
   resolveBackgroundDeckStartPlan: (...args: unknown[]) =>

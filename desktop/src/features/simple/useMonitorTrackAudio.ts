@@ -217,13 +217,7 @@ export function useMonitorTrackAudio({
     return () => {
       cancelled = true;
     };
-  }, [
-    audioContext,
-    activeTrack,
-    ensureBackgroundGraph,
-    isListening,
-    safeRuntime,
-  ]);
+  }, [audioContext, activeTrack, ensureBackgroundGraph, isListening, safeRuntime]);
 
   useEffect(() => {
     if (!audioContext || audioContext.state !== "running") {

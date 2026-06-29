@@ -80,12 +80,10 @@ export function useLiveLogMonitorPanelAudioCore({
     toMessage,
   });
 
-  const { ensureBackgroundBus, applyLogModulation } = useLiveLogMonitorBackgroundAudioEngine(
-    {
-      ...buildLiveLogMonitorBackgroundAudioEngineInput(surfaceState, viewState),
-      liveEnabled,
-    },
-  );
+  const { ensureBackgroundBus, applyLogModulation } = useLiveLogMonitorBackgroundAudioEngine({
+    ...buildLiveLogMonitorBackgroundAudioEngineInput(surfaceState, viewState),
+    liveEnabled,
+  });
 
   const backgroundDeckControl = useLiveLogMonitorBackgroundDeckControl({
     ...buildLiveLogMonitorBackgroundDeckControlInput(
@@ -108,12 +106,7 @@ export function useLiveLogMonitorPanelAudioCore({
   );
 
   const playbackRuntime = useLiveLogMonitorPlayback(
-    buildLiveLogMonitorPlaybackInput(
-      surfaceState,
-      viewState,
-      playRenderedBlobThroughGraph,
-      logger,
-    ),
+    buildLiveLogMonitorPlaybackInput(surfaceState, viewState, playRenderedBlobThroughGraph, logger),
   );
 
   return {

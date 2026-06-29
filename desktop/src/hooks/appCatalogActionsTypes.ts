@@ -17,11 +17,7 @@ export type AppTranslations = typeof en;
 
 export interface UseAppCatalogActionsInput {
   t: AppTranslations;
-  notify: (
-    tone: "success" | "error" | "info",
-    title: string,
-    body: string,
-  ) => void;
+  notify: (tone: "success" | "error" | "info", title: string, body: string) => void;
   setNewlyImportedId: (id: string | null) => void;
   setAnalysisMode: (mode: "track" | "repo" | "base") => void;
   setScreen: (screen: "inspect" | "compose") => void;
@@ -48,11 +44,11 @@ export interface UseAppCatalogActionsInput {
     deleteLibraryRepository: (repositoryId: string) => Promise<boolean>;
   };
   baseAssets: {
-    importLibraryBaseAsset: (input: ImportBaseAssetInput) => Promise<{ id: string; title: string } | null>;
+    importLibraryBaseAsset: (
+      input: ImportBaseAssetInput,
+    ) => Promise<{ id: string; title: string } | null>;
   };
   compositions: {
-    importLibraryComposition: (
-      input: ImportCompositionInput,
-    ) => Promise<{ title: string } | null>;
+    importLibraryComposition: (input: ImportCompositionInput) => Promise<{ title: string } | null>;
   };
 }

@@ -1,7 +1,4 @@
-import type {
-  AudibleVoiceEntry,
-  CuePlaybackPlan,
-} from "./liveLogMonitorCuePlaybackRuntime";
+import type { AudibleVoiceEntry, CuePlaybackPlan } from "./liveLogMonitorCuePlaybackRuntime";
 import { nextBeatTime, type BeatClock } from "./liveLogMonitorBeatRuntime";
 import type { RoutedLiveCue, SequencerPreset } from "./liveSonificationScene";
 
@@ -28,8 +25,7 @@ export interface CueGraphSchedulePlan {
 
 export function buildExternalCueLayerPlan(playbackPlan: CuePlaybackPlan): ExternalCueLayerPlan {
   return {
-    shouldRender:
-      playbackPlan.allowExternalCueLayer && playbackPlan.audibleVoicedCues.length > 0,
+    shouldRender: playbackPlan.allowExternalCueLayer && playbackPlan.audibleVoicedCues.length > 0,
     cueCount: playbackPlan.audibleVoicedCues.length,
   };
 }
@@ -71,8 +67,7 @@ export function buildCueGraphSchedulePlan(input: {
   const activeBpm =
     input.beatClock?.bpm ??
     (typeof input.liveBpm === "number" && input.liveBpm > 0 ? input.liveBpm : null);
-  const useBeatGrid =
-    input.preset.useBeatGrid && activeBpm !== null && input.beatClock !== null;
+  const useBeatGrid = input.preset.useBeatGrid && activeBpm !== null && input.beatClock !== null;
   const firstCueAt = useBeatGrid
     ? nextBeatTime(
         currentTime,

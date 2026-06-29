@@ -7,7 +7,10 @@ import type { MonitorLaunchSource } from "./features/simple/monitorSourceOptions
 import type { MonitorSetupPreferences } from "./features/simple/monitorSetupPreferences";
 import type { UserMode } from "./features/simple/UserModeContext";
 import type { AppV0Language } from "./appV0Preferences";
-import { resolveAppV0SectionContentKind, type AppV0SectionContentKind } from "./appV0SectionViewModel";
+import {
+  resolveAppV0SectionContentKind,
+  type AppV0SectionContentKind,
+} from "./appV0SectionViewModel";
 import type {
   BaseAssetRecord,
   ImportBaseAssetInput,

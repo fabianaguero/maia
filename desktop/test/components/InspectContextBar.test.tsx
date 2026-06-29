@@ -86,7 +86,9 @@ describe("InspectContextBar", () => {
     fireEvent.change(screen.getByDisplayValue("Repo One"), {
       target: { value: "repo-2" },
     });
-    fireEvent.click(screen.getAllByRole("button").find((button) => button.textContent?.includes("Bases"))!);
+    fireEvent.click(
+      screen.getAllByRole("button").find((button) => button.textContent?.includes("Bases"))!,
+    );
 
     rerender(
       <InspectContextBar

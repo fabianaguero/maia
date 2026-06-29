@@ -14,9 +14,7 @@ type LiveLogMonitorScenePanelState = ReturnType<typeof buildLiveLogMonitorSceneP
 type LiveLogMonitorRoutingPanelState = ReturnType<typeof buildLiveLogMonitorRoutingPanel>;
 type LiveLogMonitorLiveDeckPropsState = ReturnType<typeof buildLiveLogMonitorLiveDeckProps>;
 
-export function buildLiveLogMonitorPanelViewModelInput(
-  input: UseLiveLogMonitorDeckModelInput,
-) {
+export function buildLiveLogMonitorPanelViewModelInput(input: UseLiveLogMonitorDeckModelInput) {
   return {
     t: input.t,
     lastUpdate: input.lastUpdate,
@@ -96,9 +94,7 @@ export function buildLiveLogMonitorDeckSectionContentInput(
   };
 }
 
-export function buildLiveLogMonitorScenePanelInput(
-  input: UseLiveLogMonitorDeckModelInput,
-) {
+export function buildLiveLogMonitorScenePanelInput(input: UseLiveLogMonitorDeckModelInput) {
   return {
     availableBaseAssets: input.availableBaseAssets,
     availableCompositions: input.availableCompositions,
@@ -143,7 +139,7 @@ export function buildLiveLogMonitorLiveDeckPropsInput(
     isPlaybackPaused: input.isPlaybackPaused,
     playbackEventCount: input.playbackEventCount,
     playbackEventIndex: input.playbackEventIndex,
-    replaySessionId: input.replayActive ? input.persistedSessionId ?? null : null,
+    replaySessionId: input.replayActive ? (input.persistedSessionId ?? null) : null,
     sessionRepoTitle: input.sessionRepoTitle,
     sessionCardDisplay: panelViewState.sessionCardDisplay,
     metricGridItems: panelViewState.metricGridItems,

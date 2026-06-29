@@ -19,10 +19,7 @@ import {
   scheduleMonitorPoll,
   stopMonitorPollingState,
 } from "./monitorSessionRuntime";
-import {
-  dispatchReplayEventAtIndexState,
-  runReplayTickState,
-} from "./monitorPlaybackRuntime";
+import { dispatchReplayEventAtIndexState, runReplayTickState } from "./monitorPlaybackRuntime";
 import { resumeMonitorAudioContextState } from "./monitorLiveLifecycleRuntime";
 import { buildMonitorProviderLiveStartBaseInput } from "./monitorProviderStartRuntime";
 import {
@@ -39,10 +36,7 @@ type PollLogStreamFn = (
   cursor?: number,
   maxBytes?: number,
 ) => Promise<LiveLogStreamUpdate>;
-type IngestStreamChunkFn = (
-  sessionId: string,
-  chunk: string,
-) => Promise<StreamSessionPollResult>;
+type IngestStreamChunkFn = (sessionId: string, chunk: string) => Promise<StreamSessionPollResult>;
 
 export interface MonitorProviderRuntimeLogger {
   info: (message: string, ...args: unknown[]) => void;
@@ -137,15 +131,18 @@ export function useMonitorProviderRuntimeOrchestration(
     });
   }, [input]);
 
-  const schedulePoll = useCallback((doPoll: () => Promise<void>) => {
-    scheduleMonitorPoll({
-      activeRef: input.activeRef,
-      pollTimerRef: input.pollTimerRef,
-      intervalMs: POLL_INTERVAL_MS,
-      setTimeoutFn: window.setTimeout,
-      doPoll,
-    });
-  }, [input.activeRef, input.pollTimerRef]);
+  const schedulePoll = useCallback(
+    (doPoll: () => Promise<void>) => {
+      scheduleMonitorPoll({
+        activeRef: input.activeRef,
+        pollTimerRef: input.pollTimerRef,
+        intervalMs: POLL_INTERVAL_MS,
+        setTimeoutFn: window.setTimeout,
+        doPoll,
+      });
+    },
+    [input.activeRef, input.pollTimerRef],
+  );
 
   const resetReplayTelemetry = useCallback(() => {
     resetReplayTelemetryState({
@@ -162,26 +159,32 @@ export function useMonitorProviderRuntimeOrchestration(
     });
   }, [input]);
 
-  const syncReplayTelemetry = useCallback((processedEvents: number) => {
-    syncReplayTelemetryState({
-      processedEvents,
-      replayEventsRef: input.replayEventsRef,
-      replayMetricsRef: input.replayMetricsRef,
-      setPlaybackEventCount: input.setPlaybackEventCount,
-      setPlaybackEventIndex: input.setPlaybackEventIndex,
-      setPlaybackProgress: input.setPlaybackProgress,
-      setMetrics: input.setMetrics,
-    });
-  }, [input]);
+  const syncReplayTelemetry = useCallback(
+    (processedEvents: number) => {
+      syncReplayTelemetryState({
+        processedEvents,
+        replayEventsRef: input.replayEventsRef,
+        replayMetricsRef: input.replayMetricsRef,
+        setPlaybackEventCount: input.setPlaybackEventCount,
+        setPlaybackEventIndex: input.setPlaybackEventIndex,
+        setPlaybackProgress: input.setPlaybackProgress,
+        setMetrics: input.setMetrics,
+      });
+    },
+    [input],
+  );
 
-  const syncGuideTrackToReplayProgress = useCallback((progress: number) => {
-    syncGuideTrackCursorToReplayProgress({
-      pcm: input.guideTrackRef.current,
-      cursorRef: input.guideTrackCursorRef,
-      finishedRef: input.guideTrackFinishedRef,
-      progress,
-    });
-  }, [input.guideTrackCursorRef, input.guideTrackFinishedRef, input.guideTrackRef]);
+  const syncGuideTrackToReplayProgress = useCallback(
+    (progress: number) => {
+      syncGuideTrackCursorToReplayProgress({
+        pcm: input.guideTrackRef.current,
+        cursorRef: input.guideTrackCursorRef,
+        finishedRef: input.guideTrackFinishedRef,
+        progress,
+      });
+    },
+    [input.guideTrackCursorRef, input.guideTrackFinishedRef, input.guideTrackRef],
+  );
 
   const emitUpdate = useCallback(
     (
@@ -278,13 +281,7 @@ export function useMonitorProviderRuntimeOrchestration(
         reloadPendingGuideTrack: input.buildReloadPendingGuideTrack(reason),
         doPoll: runProviderPoll,
       }),
-    [
-      emitLiveStartProbe,
-      ensureProviderAudioContext,
-      input,
-      resetReplayTelemetry,
-      runProviderPoll,
-    ],
+    [emitLiveStartProbe, ensureProviderAudioContext, input, resetReplayTelemetry, runProviderPoll],
   );
 
   const dispatchReplayEventAtIndex = useCallback(
@@ -299,7 +296,14 @@ export function useMonitorProviderRuntimeOrchestration(
         syncGuideTrackToReplayProgress,
         syncGuideTrack: options?.syncGuideTrack,
       }),
-    [emitUpdate, input.replayEventsRef, input.replayIndexRef, input.sessionRef, syncGuideTrackToReplayProgress, syncReplayTelemetry],
+    [
+      emitUpdate,
+      input.replayEventsRef,
+      input.replayIndexRef,
+      input.sessionRef,
+      syncGuideTrackToReplayProgress,
+      syncReplayTelemetry,
+    ],
   );
 
   const replayTick = useCallback(() => {

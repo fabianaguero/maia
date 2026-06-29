@@ -77,12 +77,18 @@ export function buildActiveMonitorDeckViewModel(input: {
     : input.t.simpleMode.monitor.systemActive;
 
   const streamStatusLabel = input.isConnectingMonitor
-    ? input.t.simpleMode.monitor.sourceStatusConnecting.replace("{adapter}", input.streamAdapterLabel)
+    ? input.t.simpleMode.monitor.sourceStatusConnecting.replace(
+        "{adapter}",
+        input.streamAdapterLabel,
+      )
     : input.liveLineCount > 0
       ? input.t.simpleMode.monitor.sourceStatusLive
           .replace("{adapter}", input.streamAdapterLabel)
           .replace("{count}", String(input.liveLineCount))
-      : input.t.simpleMode.monitor.sourceStatusActive.replace("{adapter}", input.streamAdapterLabel);
+      : input.t.simpleMode.monitor.sourceStatusActive.replace(
+          "{adapter}",
+          input.streamAdapterLabel,
+        );
 
   const audioStatusLabel =
     input.audioStatus === "running"

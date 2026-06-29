@@ -131,7 +131,9 @@ describe("LiveTailPanel", () => {
     expect(screen.getAllByText(en.simpleMode.monitor.levelInfoShort).length).toBeGreaterThan(0);
     expect(screen.getAllByText(en.simpleMode.monitor.levelErrorShort).length).toBeGreaterThan(0);
     expect(screen.getByText(anomalyCode)).toBeInTheDocument();
-    expect(screen.getByTitle(`${anomalyCode} · ${en.simpleMode.monitor.linked}`)).toBeInTheDocument();
+    expect(
+      screen.getByTitle(`${anomalyCode} · ${en.simpleMode.monitor.linked}`),
+    ).toBeInTheDocument();
 
     const anomalyLine = container.querySelector(".terminal-line.anomaly-line.linked-anomaly");
     expect(anomalyLine).not.toBeNull();

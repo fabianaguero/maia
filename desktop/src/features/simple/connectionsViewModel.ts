@@ -1,7 +1,5 @@
 import type { AppTranslations } from "../../i18n/en";
-import type {
-  UpsertLogSourceConnectionInput,
-} from "../../types/monitor";
+import type { UpsertLogSourceConnectionInput } from "../../types/monitor";
 import type { LogSourceConnection, LogSourceConnectionKind } from "../../types/monitor";
 
 export type ConnectionKind = LogSourceConnectionKind;

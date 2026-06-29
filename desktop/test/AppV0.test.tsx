@@ -358,10 +358,7 @@ describe("AppContentV0", () => {
       );
     });
     await waitFor(() => {
-      expect(consoleError).toHaveBeenCalledWith(
-        "🎵 Failed to start monitor launch",
-        "boom",
-      );
+      expect(consoleError).toHaveBeenCalledWith("🎵 Failed to start monitor launch", "boom");
     });
 
     consoleError.mockRestore();

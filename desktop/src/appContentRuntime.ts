@@ -1,7 +1,4 @@
-import type {
-  AnalyzerResponse,
-  HealthResponse,
-} from "./contracts";
+import type { AnalyzerResponse, HealthResponse } from "./contracts";
 import type {
   AnalyzerViewMode,
   AppPillar,
@@ -64,9 +61,7 @@ export interface AppContentStatusViewModel {
   selectedItemTitle: string | null;
 }
 
-export function isAppHealthResponse(
-  response: AnalyzerResponse | null,
-): response is HealthResponse {
+export function isAppHealthResponse(response: AnalyzerResponse | null): response is HealthResponse {
   return Boolean(response && response.status === "ok" && "analyzerVersion" in response.payload);
 }
 
@@ -78,9 +73,7 @@ export function resolveAppContentRouteState(
   return {
     effectivePillar: userMode === "simple" && pillar === "design" ? "curate" : pillar,
     effectiveScreen:
-      userMode === "simple" && (screen === "inspect" || screen === "compose")
-        ? "library"
-        : screen,
+      userMode === "simple" && (screen === "inspect" || screen === "compose") ? "library" : screen,
   };
 }
 
@@ -177,12 +170,12 @@ export function buildAppContentStatusViewModel(
 
   const selectedItemTitle =
     input.screen === "compose"
-      ? input.composition?.title ?? null
+      ? (input.composition?.title ?? null)
       : input.screen === "inspect" && input.analysisMode === "repo"
-        ? input.repository?.title ?? null
+        ? (input.repository?.title ?? null)
         : input.screen === "inspect" && input.analysisMode === "base"
-          ? input.baseAsset?.title ?? null
-          : input.playlistName ?? input.track?.tags.title ?? null;
+          ? (input.baseAsset?.title ?? null)
+          : (input.playlistName ?? input.track?.tags.title ?? null);
 
   return {
     analyzerLabel,

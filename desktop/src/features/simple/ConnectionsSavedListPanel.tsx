@@ -1,10 +1,7 @@
 import { Cable, RefreshCw } from "lucide-react";
 
 import type { LogSourceConnection } from "../../types/monitor";
-import {
-  type ConnectionKind,
-  type ConnectionTestStatus,
-} from "./connectionsViewModel";
+import { type ConnectionKind, type ConnectionTestStatus } from "./connectionsViewModel";
 import { buildConnectionsSavedListViewModel } from "./connectionsSavedListViewModel";
 import { ConnectionsSavedRow } from "./ConnectionsSavedRow";
 import { ConnectionsTailConsole } from "./ConnectionsTailConsole";

@@ -65,7 +65,9 @@ function createInput() {
             }
           : null,
       ),
-      deleteLibraryRepository: vi.fn(async (repositoryId: string) => repositoryId === "repo-delete"),
+      deleteLibraryRepository: vi.fn(
+        async (repositoryId: string) => repositoryId === "repo-delete",
+      ),
     },
   };
 }
@@ -184,9 +186,7 @@ describe("useAppCatalogLibraryActions", () => {
     );
     input.repositories.reanalyzeRepository.mockRejectedValueOnce(new Error("repo boom"));
     input.library.deleteLibraryTrack.mockRejectedValueOnce(new Error("delete track boom"));
-    input.repositories.deleteLibraryRepository.mockRejectedValueOnce(
-      new Error("delete repo boom"),
-    );
+    input.repositories.deleteLibraryRepository.mockRejectedValueOnce(new Error("delete repo boom"));
     input.library.updateTrackPerformance.mockRejectedValueOnce(new Error("perf boom"));
     input.library.updateTrackAnalysis.mockRejectedValueOnce(new Error("analysis boom"));
     input.library.savePlaylist.mockRejectedValueOnce(new Error("save playlist boom"));
@@ -201,14 +201,12 @@ describe("useAppCatalogLibraryActions", () => {
       await expect(result.current.handleReanalyzeRepository("repo-ok")).resolves.toBe(false);
       await expect(result.current.handleDeleteTrack("track-delete")).resolves.toBe(false);
       await expect(result.current.handleDeleteRepository("repo-delete")).resolves.toBe(false);
-      await result.current.handleUpdateTrackPerformance(
-        "track-performance",
-        { color: "red" } as UpdateTrackPerformanceInput,
-      );
-      await result.current.handleUpdateTrackAnalysis(
-        "track-analysis",
-        { bpm: 124 } as UpdateTrackAnalysisInput,
-      );
+      await result.current.handleUpdateTrackPerformance("track-performance", {
+        color: "red",
+      } as UpdateTrackPerformanceInput);
+      await result.current.handleUpdateTrackAnalysis("track-analysis", {
+        bpm: 124,
+      } as UpdateTrackAnalysisInput);
       await expect(
         result.current.handleSavePlaylist({ name: "House Set", trackIds: [] }),
       ).resolves.toBe(false);

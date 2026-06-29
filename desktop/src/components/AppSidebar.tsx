@@ -1,9 +1,6 @@
 import { Activity, AudioWaveform, Cable, Library } from "lucide-react";
 import type React from "react";
-import type {
-  ActiveMonitorSession,
-  MonitorMetrics,
-} from "../features/monitor/monitorContextTypes";
+import type { ActiveMonitorSession, MonitorMetrics } from "../features/monitor/monitorContextTypes";
 import { useT } from "../i18n/I18nContext";
 import { useUserMode } from "../features/simple/UserModeContext";
 import type { AppPillar } from "../types/library";
@@ -127,9 +124,7 @@ export function AppSidebar({
         <div className="monitor-status-card">
           <div className="monitor-status-header">
             <span className="monitor-pulse" aria-hidden="true" />
-            <span className="monitor-status-label">
-              {liveStatusLabel}
-            </span>
+            <span className="monitor-status-label">{liveStatusLabel}</span>
             <span className="monitor-mode-badge">{monitorAdapterLabel}</span>
           </div>
           <p className="monitor-repo-title" title={monitorSession.repoTitle}>

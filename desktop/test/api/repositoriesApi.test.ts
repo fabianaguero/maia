@@ -176,7 +176,9 @@ describe("repositories api", () => {
     await expect(ingestStreamChunk("stream-1", "INFO hello")).resolves.toEqual(pollResult);
     await expect(readAudioBytes("/tmp/pulse.wav")).resolves.toBe("base64-audio");
 
-    expect(invokeMock).toHaveBeenNthCalledWith(1, "discover_repository_logs", { path: "/srv/repo" });
+    expect(invokeMock).toHaveBeenNthCalledWith(1, "discover_repository_logs", {
+      path: "/srv/repo",
+    });
     expect(invokeMock).toHaveBeenNthCalledWith(2, "list_log_source_connections", undefined);
     expect(invokeMock).toHaveBeenNthCalledWith(3, "upsert_log_source_connection", {
       input: upsertInput,
@@ -202,7 +204,9 @@ describe("repositories api", () => {
       sessionId: "stream-1",
     });
     expect(invokeMock).toHaveBeenNthCalledWith(10, "list_stream_sessions", undefined);
-    expect(invokeMock).toHaveBeenNthCalledWith(11, "poll_stream_session", { sessionId: "stream-1" });
+    expect(invokeMock).toHaveBeenNthCalledWith(11, "poll_stream_session", {
+      sessionId: "stream-1",
+    });
     expect(invokeMock).toHaveBeenNthCalledWith(12, "ingest_stream_chunk", {
       sessionId: "stream-1",
       chunk: "INFO hello",
@@ -236,11 +240,13 @@ describe("repositories api", () => {
         sessionId: "stream-1",
       }),
     ).rejects.toThrow("Persistent log connections require the native desktop shell.");
-    await expect(startStreamSession({
-      sessionId: "stream-1",
-      adapterKind: "file",
-      source: "/logs/app.log",
-    })).rejects.toThrow("Stream sessions require the native desktop shell.");
+    await expect(
+      startStreamSession({
+        sessionId: "stream-1",
+        adapterKind: "file",
+        source: "/logs/app.log",
+      }),
+    ).rejects.toThrow("Stream sessions require the native desktop shell.");
     await expect(pollStreamSession("stream-1")).rejects.toThrow(
       "Stream sessions require the native desktop shell.",
     );

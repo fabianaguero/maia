@@ -11,16 +11,14 @@ const { useLiveLogMonitorPanelAudioCoreMock, useLiveLogMonitorPanelAudioEffectsM
 );
 
 vi.mock("../../../../src/features/analyzer/components/useLiveLogMonitorPanelAudioCore", () => ({
-  useLiveLogMonitorPanelAudioCore: (...args: unknown[]) => useLiveLogMonitorPanelAudioCoreMock(...args),
+  useLiveLogMonitorPanelAudioCore: (...args: unknown[]) =>
+    useLiveLogMonitorPanelAudioCoreMock(...args),
 }));
 
-vi.mock(
-  "../../../../src/features/analyzer/components/useLiveLogMonitorPanelAudioEffects",
-  () => ({
-    useLiveLogMonitorPanelAudioEffects: (...args: unknown[]) =>
-      useLiveLogMonitorPanelAudioEffectsMock(...args),
-  }),
-);
+vi.mock("../../../../src/features/analyzer/components/useLiveLogMonitorPanelAudioEffects", () => ({
+  useLiveLogMonitorPanelAudioEffects: (...args: unknown[]) =>
+    useLiveLogMonitorPanelAudioEffectsMock(...args),
+}));
 
 function createInput() {
   return {

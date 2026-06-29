@@ -145,7 +145,13 @@ describe("trackPerformancePanelRuntime", () => {
       "Drop · 0:24.25 · Slot 1",
     );
     expect(
-      renderLoopLabel(track.performance.savedLoops[0]!, "Slot {slot}", "Loop", "Locked", "Editable"),
+      renderLoopLabel(
+        track.performance.savedLoops[0]!,
+        "Slot {slot}",
+        "Loop",
+        "Locked",
+        "Editable",
+      ),
     ).toBe("Loop A · 1:04.00 -> 1:12.00 · Slot 1 · Locked");
   });
 

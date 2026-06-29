@@ -1,4 +1,10 @@
-import { useCallback, useEffectEvent, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
+import {
+  useCallback,
+  useEffectEvent,
+  type Dispatch,
+  type MutableRefObject,
+  type SetStateAction,
+} from "react";
 import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
 
 import type { LibraryTrack } from "../../../types/library";

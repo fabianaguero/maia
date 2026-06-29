@@ -3,10 +3,7 @@ import { useUserMode } from "../features/simple/UserModeContext";
 import type { AppSection } from "../features/simple/appSections";
 import { Radio, Library, AudioWaveform, Cable, Users, Sliders } from "lucide-react";
 import { BrandIcon, BrandLockup } from "./Branding";
-import {
-  getMonitorAnomaliesInlineLabel,
-  getMonitorLiveStatusLabel,
-} from "../utils/monitorLabels";
+import { getMonitorAnomaliesInlineLabel, getMonitorLiveStatusLabel } from "../utils/monitorLabels";
 import { buildShellNavItems } from "./appNavigationViewModel";
 import { AppShellMonitorStatusBadge } from "./AppShellMonitorStatusBadge";
 import { AppShellStatsFooter } from "./AppShellStatsFooter";
@@ -73,10 +70,7 @@ export function AppShell({
             {isCollapsed ? (
               <BrandIcon className="logo-main" />
             ) : (
-              <BrandLockup
-                className="sidebar-brand-lockup"
-                wordmarkClassName="sidebar-wordmark"
-              />
+              <BrandLockup className="sidebar-brand-lockup" wordmarkClassName="sidebar-wordmark" />
             )}
           </div>
           <button className="btn-collapse" onClick={onToggleCollapse}>

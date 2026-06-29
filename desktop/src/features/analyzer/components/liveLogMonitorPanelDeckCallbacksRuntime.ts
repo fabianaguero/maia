@@ -17,7 +17,9 @@ export function buildLiveLogMonitorDeckPlaybackCallbacks(
   return {
     onStepWindow: (direction: -1 | 1) => input.monitor.stepPlaybackWindow(direction),
     onTogglePause: () =>
-      input.monitor.isPlaybackPaused ? input.monitor.resumePlayback() : input.monitor.pausePlayback(),
+      input.monitor.isPlaybackPaused
+        ? input.monitor.resumePlayback()
+        : input.monitor.pausePlayback(),
     onSeekProgress: (progress: number) => input.monitor.seekPlaybackProgress(progress),
   };
 }
@@ -31,8 +33,10 @@ export function buildLiveLogMonitorDeckBookmarkCallbacks(
     onBookmarkNoteChange: (value: string) => input.setBookmarkNoteDraft(value),
     onBookmarkTagToggle: (tagId: string) =>
       input.setBookmarkTagDraft((current) => (current === tagId ? null : tagId)),
-    onBookmarkStyleProfileChange: (value: string | null) => input.setBookmarkStyleProfileIdDraft(value),
-    onBookmarkMutationProfileChange: (value: string | null) => input.setBookmarkMutationProfileIdDraft(value),
+    onBookmarkStyleProfileChange: (value: string | null) =>
+      input.setBookmarkStyleProfileIdDraft(value),
+    onBookmarkMutationProfileChange: (value: string | null) =>
+      input.setBookmarkMutationProfileIdDraft(value),
     onCaptureCurrentScene: input.captureCurrentScene,
     onSaveBookmark: () => void input.saveReplayBookmark(),
     onDeleteCurrentBookmark: () => {
@@ -44,7 +48,8 @@ export function buildLiveLogMonitorDeckBookmarkCallbacks(
     onJumpToBookmark: operatorActions.handleJumpToBookmark,
     onApplyBookmarkSuggestion: operatorActions.handleApplyBookmarkSuggestion,
     onDeleteBookmark: (bookmark: SessionBookmark) => void input.deleteReplayBookmark(bookmark),
-    onApplyReplayFeedbackRecommendation: () => operatorActions.handleApplyReplayFeedbackRecommendation(),
+    onApplyReplayFeedbackRecommendation: () =>
+      operatorActions.handleApplyReplayFeedbackRecommendation(),
     onSelectExplanation: operatorActions.handleSelectTraceExplanation,
     onSetMasterVolume: operatorActions.handleSetMasterVolume,
     onToggleMute: operatorActions.handleToggleMute,

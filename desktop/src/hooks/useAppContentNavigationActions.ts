@@ -9,11 +9,7 @@ import type { AppPillar } from "../types/library";
 
 interface UseAppContentNavigationActionsInput {
   userMode: "simple" | "expert";
-  notify: (
-    tone: "success" | "error" | "info",
-    title: string,
-    body: string,
-  ) => void;
+  notify: (tone: "success" | "error" | "info", title: string, body: string) => void;
   t: {
     appShell: {
       monitoringBackgroundTitle: string;
@@ -55,11 +51,7 @@ export function useAppContentNavigationActions({
     }
 
     void invoke("hide_window").catch(() => {});
-    notify(
-      "info",
-      t.appShell.monitoringBackgroundTitle,
-      t.appShell.monitoringBackgroundBody,
-    );
+    notify("info", t.appShell.monitoringBackgroundTitle, t.appShell.monitoringBackgroundBody);
   }, [notify, t]);
 
   return {

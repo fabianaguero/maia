@@ -47,10 +47,7 @@ describe("RepositoryMetricsPanel", () => {
 
   it("renders repo-oriented BPM and AST metrics for repository sources", () => {
     render(
-      <RepositoryMetricsPanel
-        repository={createRepository()}
-        analyzerLabel="Python analyzer"
-      />,
+      <RepositoryMetricsPanel repository={createRepository()} analyzerLabel="Python analyzer" />,
     );
 
     expect(screen.getByText("Code BPM status")).toBeInTheDocument();

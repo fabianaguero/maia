@@ -11,9 +11,7 @@ import {
 
 type SetBooleanState = (value: boolean) => void;
 
-export function hasReplayEvents(
-  replayEventsRef: MutableRefObject<SessionEvent[]>,
-): boolean {
+export function hasReplayEvents(replayEventsRef: MutableRefObject<SessionEvent[]>): boolean {
   return replayEventsRef.current.length > 0;
 }
 
@@ -26,7 +24,10 @@ export function seekMonitorPlaybackProgressState(input: {
   playbackPausedRef: MutableRefObject<boolean>;
   activeRef: MutableRefObject<boolean>;
   guideTrackFinishedRef: MutableRefObject<boolean>;
-  dispatchReplayEventAtIndex: (eventIndex: number, options?: { syncGuideTrack?: boolean }) => boolean;
+  dispatchReplayEventAtIndex: (
+    eventIndex: number,
+    options?: { syncGuideTrack?: boolean },
+  ) => boolean;
   clearTimeoutFn: (timer: number) => void;
   setTimeoutFn: (handler: () => void, timeout: number) => number;
   intervalMs: number;
@@ -102,7 +103,10 @@ export function resumeMonitorPlaybackState(input: {
   playbackPausedRef: MutableRefObject<boolean>;
   activeRef: MutableRefObject<boolean>;
   guideTrackFinishedRef: MutableRefObject<boolean>;
-  dispatchReplayEventAtIndex: (eventIndex: number, options?: { syncGuideTrack?: boolean }) => boolean;
+  dispatchReplayEventAtIndex: (
+    eventIndex: number,
+    options?: { syncGuideTrack?: boolean },
+  ) => boolean;
   setIsPlaybackPaused: SetBooleanState;
   clearTimeoutFn: (timer: number) => void;
   setTimeoutFn: (handler: () => void, timeout: number) => number;
@@ -140,7 +144,10 @@ export function stepMonitorPlaybackWindowState(input: {
   playbackPausedRef: MutableRefObject<boolean>;
   activeRef: MutableRefObject<boolean>;
   guideTrackFinishedRef: MutableRefObject<boolean>;
-  dispatchReplayEventAtIndex: (eventIndex: number, options?: { syncGuideTrack?: boolean }) => boolean;
+  dispatchReplayEventAtIndex: (
+    eventIndex: number,
+    options?: { syncGuideTrack?: boolean },
+  ) => boolean;
   setIsPlaybackPaused: SetBooleanState;
   clearTimeoutFn: (timer: number) => void;
 }): boolean {

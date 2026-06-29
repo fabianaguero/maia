@@ -6,7 +6,10 @@ import { I18nContext } from "../../../src/i18n/I18nContext";
 import { en } from "../../../src/i18n/en";
 import { DEFAULT_MONITOR_SETUP_PREFERENCES } from "../../../src/features/simple/monitorSetupPreferences";
 import { useSimpleMonitorScreenState } from "../../../src/features/simple/useSimpleMonitorScreenState";
-import type { ActiveMonitorSession, MonitorMetrics } from "../../../src/features/monitor/monitorContextTypes";
+import type {
+  ActiveMonitorSession,
+  MonitorMetrics,
+} from "../../../src/features/monitor/monitorContextTypes";
 import type { PersistedSession } from "../../../src/api/sessions";
 import type { LibraryTrack, RepositoryAnalysis } from "../../../src/types/library";
 

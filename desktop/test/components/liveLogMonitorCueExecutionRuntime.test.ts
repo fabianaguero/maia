@@ -88,7 +88,9 @@ describe("liveLogMonitorCueExecutionRuntime", () => {
     });
 
     expect(
-      buildExternalCueLayerPlan(createPlaybackPlan({ audibleVoicedCues: [], allowExternalCueLayer: true })),
+      buildExternalCueLayerPlan(
+        createPlaybackPlan({ audibleVoicedCues: [], allowExternalCueLayer: true }),
+      ),
     ).toEqual({
       shouldRender: false,
       cueCount: 0,

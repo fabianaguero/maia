@@ -145,16 +145,21 @@ function createAnalyzedAsset(trackId: string): MusicalAsset {
   };
 }
 
-function createHarness(initialTracks: LibraryTrack[] = [], initialPlaylists: BaseTrackPlaylist[] = []) {
+function createHarness(
+  initialTracks: LibraryTrack[] = [],
+  initialPlaylists: BaseTrackPlaylist[] = [],
+) {
   let trackState = [...initialTracks];
   let playlistState = [...initialPlaylists];
   let selectedTrackId: string | null = null;
   let mutatingState = false;
   let errorState: string | null = "stale";
 
-  const setTracks = vi.fn((updater: ((current: LibraryTrack[]) => LibraryTrack[]) | LibraryTrack[]) => {
-    trackState = typeof updater === "function" ? updater(trackState) : updater;
-  });
+  const setTracks = vi.fn(
+    (updater: ((current: LibraryTrack[]) => LibraryTrack[]) | LibraryTrack[]) => {
+      trackState = typeof updater === "function" ? updater(trackState) : updater;
+    },
+  );
   const setPlaylists = vi.fn(
     (updater: ((current: BaseTrackPlaylist[]) => BaseTrackPlaylist[]) | BaseTrackPlaylist[]) => {
       playlistState = typeof updater === "function" ? updater(playlistState) : updater;
@@ -281,7 +286,9 @@ describe("useLibraryTrackMutationActions", () => {
 
     await expect(harness.actions.relinkMissingTracksFromDirectory()).resolves.toEqual(relinkResult);
 
-    expect(libraryApiMock.pickTrackSourceDirectory).toHaveBeenCalledWith("/music/track-missing.wav");
+    expect(libraryApiMock.pickTrackSourceDirectory).toHaveBeenCalledWith(
+      "/music/track-missing.wav",
+    );
     expect(harness.trackState[0]?.file.availabilityState).toBe("available");
     expect(harness.selectedTrackId).toBe("track-missing");
     expect(harness.errorState).toBeNull();

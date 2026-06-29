@@ -55,7 +55,10 @@ export function MonitorDeckHeader({
           </div>
         </div>
         <div className="monitor-deck-meta">
-          <div className="monitor-deck-legend" aria-label={t.simpleMode.monitor.anomalySeverityLegend}>
+          <div
+            className="monitor-deck-legend"
+            aria-label={t.simpleMode.monitor.anomalySeverityLegend}
+          >
             {legendItems.map((item) => (
               <span key={item.key} className="monitor-deck-legend__item">
                 <span className={`monitor-deck-legend__swatch ${item.tone}`} />
@@ -64,7 +67,10 @@ export function MonitorDeckHeader({
             ))}
           </div>
           {metaChips.map((chip) => (
-            <span key={chip.key} className={`monitor-deck-meta__chip${chip.subtle ? " subtle" : ""}`}>
+            <span
+              key={chip.key}
+              className={`monitor-deck-meta__chip${chip.subtle ? " subtle" : ""}`}
+            >
               {chip.label}
             </span>
           ))}
@@ -83,9 +89,7 @@ export function MonitorDeckHeader({
               {focusBadgeLabel}
             </span>
             <span className="monitor-deck-focusbar__time">{focusTimestamp}</span>
-            <span className="monitor-deck-focusbar__cue">
-              {formatAnomalyCueCode(focusCueCode)}
-            </span>
+            <span className="monitor-deck-focusbar__cue">{formatAnomalyCueCode(focusCueCode)}</span>
           </div>
           <span className="monitor-deck-focusbar__text">{focusMessage}</span>
           {focusBurstLabel ? (

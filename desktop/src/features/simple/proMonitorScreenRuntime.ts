@@ -1,5 +1,9 @@
 import type { AppTranslations } from "../../i18n/en";
-import type { ProMonitorBookmark, ProMonitorLogLine, ProMonitorMockData } from "./proMonitorMockData";
+import type {
+  ProMonitorBookmark,
+  ProMonitorLogLine,
+  ProMonitorMockData,
+} from "./proMonitorMockData";
 
 export interface ProMonitorLogLineViewModel extends ProMonitorLogLine {
   levelBadgeClassName: string;

@@ -4,9 +4,7 @@ import { updateLiveLogMonitorComponentOverrides } from "../../src/features/analy
 
 describe("liveLogMonitorRoutingRuntime", () => {
   it("returns a new overrides map while preserving existing entries", () => {
-    const current = new Map([
-      ["api", { gainMult: 0.8, muted: false }],
-    ]);
+    const current = new Map([["api", { gainMult: 0.8, muted: false }]]);
 
     const next = updateLiveLogMonitorComponentOverrides(current, "worker", {
       gainMult: 0.6,

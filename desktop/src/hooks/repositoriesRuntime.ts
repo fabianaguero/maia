@@ -79,7 +79,9 @@ export function replaceReanalyzedRepository(
   nextRepository: RepositoryAnalysis,
 ): RepositoryAnalysis[] {
   return sortRepositoriesByImportedAt(
-    repositories.map((repository) => (repository.id === repositoryId ? nextRepository : repository)),
+    repositories.map((repository) =>
+      repository.id === repositoryId ? nextRepository : repository,
+    ),
   );
 }
 
@@ -97,9 +99,7 @@ export function clearDeletedSelectedRepositoryId(
   return selectedRepositoryId === repositoryId ? null : selectedRepositoryId;
 }
 
-export function resolveRepositoryAnalysisPayload(
-  response: AnalyzerResponse,
-): MusicalAsset | null {
+export function resolveRepositoryAnalysisPayload(response: AnalyzerResponse): MusicalAsset | null {
   return response.status === "ok" && "musicalAsset" in response.payload
     ? response.payload.musicalAsset
     : null;

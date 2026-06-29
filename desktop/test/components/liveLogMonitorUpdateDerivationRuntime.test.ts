@@ -1,16 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type {
-  LibraryTrack,
-  LiveLogCue,
-  LiveLogStreamUpdate,
-} from "../../src/types/library";
-import {
-  buildMonitorUpdateDerivation,
-} from "../../src/features/analyzer/components/liveLogMonitorUpdateDerivationRuntime";
-import {
-  resolveLiveSonificationScene,
-} from "../../src/features/analyzer/components/liveSonificationScene";
+import type { LibraryTrack, LiveLogCue, LiveLogStreamUpdate } from "../../src/types/library";
+import { buildMonitorUpdateDerivation } from "../../src/features/analyzer/components/liveLogMonitorUpdateDerivationRuntime";
+import { resolveLiveSonificationScene } from "../../src/features/analyzer/components/liveSonificationScene";
 
 function createTrack(id: string): LibraryTrack {
   return {

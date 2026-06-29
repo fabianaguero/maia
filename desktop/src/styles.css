@@ -3631,11 +3631,7 @@ dd {
   border: 1px solid rgba(var(--color-accent-rgb), 0.1);
   background:
     linear-gradient(90deg, rgba(var(--color-accent-rgb), 0.05), transparent 18%),
-    linear-gradient(
-      180deg,
-      rgba(var(--panel-rgb), 0.96),
-      rgba(var(--panel-soft-rgb), 0.94)
-    );
+    linear-gradient(180deg, rgba(var(--panel-rgb), 0.96), rgba(var(--panel-soft-rgb), 0.94));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
   cursor: pointer;
   transition: all var(--duration-short) ease;
@@ -3645,11 +3641,7 @@ dd {
   border-color: rgba(var(--color-accent-rgb), 0.2);
   background:
     linear-gradient(90deg, rgba(var(--color-accent-rgb), 0.08), transparent 18%),
-    linear-gradient(
-      180deg,
-      rgba(var(--panel-soft-rgb), 0.98),
-      rgba(var(--panel-black-rgb), 0.96)
-    );
+    linear-gradient(180deg, rgba(var(--panel-soft-rgb), 0.98), rgba(var(--panel-black-rgb), 0.96));
   transform: translateY(-1px);
 }
 
@@ -9495,11 +9487,7 @@ dd {
   border: 1px solid rgba(var(--color-accent-rgb), 0.1);
   background:
     radial-gradient(circle at top right, rgba(var(--shell-glow-rgb), 0.08), transparent 32%),
-    linear-gradient(
-      180deg,
-      rgba(var(--panel-black-rgb), 0.96),
-      rgba(var(--panel-deep-rgb), 0.92)
-    );
+    linear-gradient(180deg, rgba(var(--panel-black-rgb), 0.96), rgba(var(--panel-deep-rgb), 0.92));
 }
 
 .sessions-title {
@@ -9561,11 +9549,7 @@ dd {
   padding: 14px 15px;
   background:
     linear-gradient(90deg, rgba(var(--color-accent-rgb), 0.05), transparent 20%),
-    linear-gradient(
-      180deg,
-      rgba(var(--panel-rgb), 0.96),
-      rgba(var(--panel-soft-rgb), 0.94)
-    );
+    linear-gradient(180deg, rgba(var(--panel-rgb), 0.96), rgba(var(--panel-soft-rgb), 0.94));
   border: 1px solid rgba(var(--color-accent-rgb), 0.1);
   border-radius: 16px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
@@ -9575,11 +9559,7 @@ dd {
 .session-row:hover {
   background:
     linear-gradient(90deg, rgba(var(--color-accent-rgb), 0.08), transparent 24%),
-    linear-gradient(
-      180deg,
-      rgba(var(--panel-soft-rgb), 0.98),
-      rgba(var(--panel-black-rgb), 0.96)
-    );
+    linear-gradient(180deg, rgba(var(--panel-soft-rgb), 0.98), rgba(var(--panel-black-rgb), 0.96));
   border-color: rgba(var(--color-accent-rgb), 0.22);
   transform: translateY(-1px);
 }

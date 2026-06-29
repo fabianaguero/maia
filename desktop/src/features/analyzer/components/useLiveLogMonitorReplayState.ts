@@ -33,13 +33,9 @@ export function useLiveLogMonitorReplayState(input: UseLiveLogMonitorReplayState
         }
       : null,
     fallbackTrackId: input.traceWaveformTrack?.id ?? null,
-    fallbackTrackTitle: input.traceWaveformTrack
-      ? getTrackTitle(input.traceWaveformTrack)
-      : null,
+    fallbackTrackTitle: input.traceWaveformTrack ? getTrackTitle(input.traceWaveformTrack) : null,
     fallbackTrackSecond:
-      typeof input.backgroundPlayheadSecond === "number"
-        ? input.backgroundPlayheadSecond
-        : null,
+      typeof input.backgroundPlayheadSecond === "number" ? input.backgroundPlayheadSecond : null,
   });
 
   const replayFeedbackRecommendation = useReplayFeedbackRecommendation(

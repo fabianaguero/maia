@@ -188,9 +188,10 @@ describe("monitorStartupRuntime", () => {
     expect(guideTrackLoadPromiseRef.current).toBeNull();
     expect(setGuideTrackReady).toHaveBeenCalledWith(false);
 
-    expect(
-      buildGuideTrackQueue([" /audio/a.wav ", "/audio/b.wav", "/audio/a.wav", ""]),
-    ).toEqual(["/audio/a.wav", "/audio/b.wav"]);
+    expect(buildGuideTrackQueue([" /audio/a.wav ", "/audio/b.wav", "/audio/a.wav", ""])).toEqual([
+      "/audio/a.wav",
+      "/audio/b.wav",
+    ]);
 
     const guideTrackQueueRef = { current: ["/audio/a.wav", "/audio/b.wav"] };
     const guideTrackQueueIndexRef = { current: 0 };
@@ -210,7 +211,9 @@ describe("monitorStartupRuntime", () => {
     const audioContextRef = { current: null as AudioContext | null };
     const currentSegmentRef = { current: null as never };
     const guideTrackPathRef = { current: null as string | null };
-    const guideTrackRef = { current: null as { samples: Float32Array; sampleRate: number; durationSec: number } | null };
+    const guideTrackRef = {
+      current: null as { samples: Float32Array; sampleRate: number; durationSec: number } | null,
+    };
     const guideTrackCursorRef = { current: { current: 0 } };
     const guideTrackFinishedRef = { current: false };
     const guideTrackLoadPromiseRef = { current: null as Promise<void> | null };
@@ -306,7 +309,9 @@ describe("monitorStartupRuntime", () => {
       shouldAwaitGuideTrackForPlayback({
         guideTrackPathRef: { current: null },
         guideTrackQueueRef: { current: [] },
-        guideTrackRef: { current: { samples: new Float32Array(0), sampleRate: 44100, durationSec: 0 } },
+        guideTrackRef: {
+          current: { samples: new Float32Array(0), sampleRate: 44100, durationSec: 0 },
+        },
         guideTrackLoadPromiseRef: { current: null },
       }),
     ).toBe(false);

@@ -12,7 +12,8 @@ vi.mock("../../src/features/analyzer/components/liveLogMonitorViewModel", () => 
 }));
 
 vi.mock("../../src/features/analyzer/components/useLiveLogMonitorPanelAudioRuntime", () => ({
-  useLiveLogMonitorPanelAudioRuntime: (...args: unknown[]) => useLiveLogMonitorPanelAudioRuntime(...args),
+  useLiveLogMonitorPanelAudioRuntime: (...args: unknown[]) =>
+    useLiveLogMonitorPanelAudioRuntime(...args),
 }));
 
 vi.mock("../../src/features/analyzer/components/useLiveLogMonitorReplayState", () => ({
@@ -86,7 +87,11 @@ describe("useLiveLogMonitorPanelRuntimeState", () => {
       ensureAudioReady: vi.fn(),
       playPanelTestTone: vi.fn(),
       backgroundDeckControl: { ensureBackgroundAudio: vi.fn(), stopBackgroundDeck: vi.fn() },
-      resetActions: { applyRepositoryReset: vi.fn(), applyStartReset: vi.fn(), applyStopReset: vi.fn() },
+      resetActions: {
+        applyRepositoryReset: vi.fn(),
+        applyStartReset: vi.fn(),
+        applyStopReset: vi.fn(),
+      },
       applyLogModulation: vi.fn(),
       playbackRuntime: { playWithCurrentEngine: vi.fn(), handleSequencerStepFire: vi.fn() },
     });
@@ -126,12 +131,9 @@ describe("useLiveLogMonitorPanelRuntimeState", () => {
 
   it("reuses memoized state on rerender with the same input reference and recomputes on change", () => {
     const input = createInput();
-    const { rerender } = renderHook(
-      ({ value }) => useLiveLogMonitorPanelRuntimeState(value),
-      {
-        initialProps: { value: input },
-      },
-    );
+    const { rerender } = renderHook(({ value }) => useLiveLogMonitorPanelRuntimeState(value), {
+      initialProps: { value: input },
+    });
 
     expect(buildLiveLogMonitorViewModel).toHaveBeenCalledTimes(1);
 

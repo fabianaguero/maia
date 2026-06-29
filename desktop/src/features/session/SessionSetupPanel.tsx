@@ -79,7 +79,10 @@ export function SessionSetupPanel({
         onTemplateSelect={onTemplateSelect}
       />
 
-      <SessionWorkflowStrip baseReady={Boolean(baseReady)} sourceReady={Boolean(selectedSourceId)} />
+      <SessionWorkflowStrip
+        baseReady={Boolean(baseReady)}
+        sourceReady={Boolean(selectedSourceId)}
+      />
 
       <SessionSetupSelectionGrid
         tracks={tracks}

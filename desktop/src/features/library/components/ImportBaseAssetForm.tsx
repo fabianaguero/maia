@@ -101,12 +101,13 @@ export function ImportBaseAssetForm({
       }
 
       setSourcePath(pickedPath);
-      setLabel((current) => current.trim() || deriveLabel(pickedPath, t.library.forms.baseAsset.fallbackLabel));
+      setLabel(
+        (current) =>
+          current.trim() || deriveLabel(pickedPath, t.library.forms.baseAsset.fallbackLabel),
+      );
     } catch (nextError) {
       setError(
-        nextError instanceof Error
-          ? nextError.message
-          : t.library.forms.baseAsset.pickerFailed,
+        nextError instanceof Error ? nextError.message : t.library.forms.baseAsset.pickerFailed,
       );
     } finally {
       setPickerBusy(false);
@@ -122,7 +123,11 @@ export function ImportBaseAssetForm({
         </div>
       </div>
 
-      <div className="mode-toggle" role="tablist" aria-label={t.library.forms.baseAsset.sourceTypeAria}>
+      <div
+        className="mode-toggle"
+        role="tablist"
+        aria-label={t.library.forms.baseAsset.sourceTypeAria}
+      >
         {sourceModes.map((mode) => (
           <button
             key={mode.id}
@@ -159,7 +164,11 @@ export function ImportBaseAssetForm({
       ) : null}
 
       <label className="field">
-        <span>{sourceKind === "directory" ? t.library.forms.baseAsset.folderPath : t.library.forms.baseAsset.filePath}</span>
+        <span>
+          {sourceKind === "directory"
+            ? t.library.forms.baseAsset.folderPath
+            : t.library.forms.baseAsset.filePath}
+        </span>
         <input
           value={sourcePath}
           onChange={(event) => setSourcePath(event.target.value)}
@@ -207,14 +216,17 @@ export function ImportBaseAssetForm({
           ) : (
             <>
               <FolderOpen size={14} />{" "}
-              {sourceKind === "directory" ? t.library.forms.baseAsset.browseFolder : t.library.forms.baseAsset.browseFile}
+              {sourceKind === "directory"
+                ? t.library.forms.baseAsset.browseFolder
+                : t.library.forms.baseAsset.browseFile}
             </>
           )}
         </button>
         <button type="submit" className="action" disabled={busy}>
           {busy ? (
             <>
-              <span className="spin-ring" aria-hidden="true" /> {t.library.forms.baseAsset.registering}
+              <span className="spin-ring" aria-hidden="true" />{" "}
+              {t.library.forms.baseAsset.registering}
             </>
           ) : (
             <>

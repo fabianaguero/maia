@@ -5,10 +5,7 @@ interface SessionWorkflowStripProps {
   sourceReady: boolean;
 }
 
-export function SessionWorkflowStrip({
-  baseReady,
-  sourceReady,
-}: SessionWorkflowStripProps) {
+export function SessionWorkflowStrip({ baseReady, sourceReady }: SessionWorkflowStripProps) {
   const t = useT();
 
   return (

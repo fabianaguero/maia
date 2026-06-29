@@ -6,10 +6,7 @@ import type {
   LiveLogStreamUpdate,
 } from "../../../types/library";
 import type { ActiveMonitorSession, MonitorMetrics } from "../../monitor/monitorContextTypes";
-import type {
-  AudioEngineStatus,
-  SampleEngineStatus,
-} from "./liveLogMonitorViewModel";
+import type { AudioEngineStatus, SampleEngineStatus } from "./liveLogMonitorViewModel";
 import {
   buildLiveMonitorDisplayState,
   type MetricGridItem,

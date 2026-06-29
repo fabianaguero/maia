@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type {
-  LiveLogMarker,
-  LiveLogStreamUpdate,
-} from "../../../../src/types/library";
+import type { LiveLogMarker, LiveLogStreamUpdate } from "../../../../src/types/library";
 import {
   buildLiveMonitorDisplayState,
   resolveAudioStateLabel,
@@ -37,11 +34,7 @@ function createUpdate(overrides: Partial<LiveLogStreamUpdate> = {}): LiveLogStre
     anomalyMarkers: [createMarker()],
     topComponents: [],
     sonificationCues: [],
-    parsedLines: [
-      "INFO connected",
-      "WARN retry in progress",
-      "ERROR HTTP 500 while syncing",
-    ],
+    parsedLines: ["INFO connected", "WARN retry in progress", "ERROR HTTP 500 while syncing"],
     warnings: [],
     replayWindowIndex: 2,
     ...overrides,

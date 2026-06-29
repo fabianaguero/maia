@@ -86,10 +86,7 @@ describe("useMonitorDeckScrub", () => {
     } as unknown as React.MouseEvent<HTMLButtonElement>;
 
     act(() => {
-      result.current.handleOverviewAnomalyClick(
-        { id: "marker-2", progress: 0.7 },
-        event,
-      );
+      result.current.handleOverviewAnomalyClick({ id: "marker-2", progress: 0.7 }, event);
     });
 
     expect(audio.currentTime).toBe(70);

@@ -30,9 +30,7 @@ describe("ImportCompositionForm", () => {
       />,
     );
 
-    expect(
-      screen.getByRole("button", { name: en.compose.forms.createComposition }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: en.compose.forms.createComposition })).toBeDisabled();
 
     rerender(
       <I18nContext.Provider value={en}>
@@ -147,13 +145,10 @@ describe("ImportCompositionForm", () => {
       </I18nContext.Provider>,
     );
 
-    fireEvent.change(
-      screen.getByPlaceholderText(en.compose.forms.compositionLabelPlaceholder),
-      { target: { value: "Night shift" } },
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: en.compose.forms.createComposition }),
-    );
+    fireEvent.change(screen.getByPlaceholderText(en.compose.forms.compositionLabelPlaceholder), {
+      target: { value: "Night shift" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: en.compose.forms.createComposition }));
 
     await waitFor(() => {
       expect(onImportComposition).toHaveBeenCalledWith({
@@ -231,9 +226,7 @@ describe("ImportCompositionForm", () => {
     fireEvent.change(screen.getByDisplayValue(en.compose.forms.structureNone), {
       target: { value: "repo-1" },
     });
-    fireEvent.click(
-      screen.getByRole("button", { name: en.compose.forms.createComposition }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: en.compose.forms.createComposition }));
 
     await waitFor(() => {
       expect(onImportComposition).toHaveBeenCalledWith({

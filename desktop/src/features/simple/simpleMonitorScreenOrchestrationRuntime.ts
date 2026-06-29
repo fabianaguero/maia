@@ -1,8 +1,5 @@
 import type { AppTranslations } from "../../i18n/en";
-import type {
-  ActiveMonitorSession,
-  MonitorMetrics,
-} from "../monitor/monitorContextTypes";
+import type { ActiveMonitorSession, MonitorMetrics } from "../monitor/monitorContextTypes";
 import type { LibraryTrack, RepositoryAnalysis } from "../../types/library";
 import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { MonitorSetupPreferences } from "./monitorSetupPreferences";

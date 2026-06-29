@@ -1,10 +1,7 @@
 import type { BaseTrackPlaylist, LibraryTrack } from "../../../types/library";
 import { createBasePlaylist } from "../../../utils/monitorPrefs";
 
-function withUpdatedTrackIds(
-  playlist: BaseTrackPlaylist,
-  trackIds: string[],
-): BaseTrackPlaylist {
+function withUpdatedTrackIds(playlist: BaseTrackPlaylist, trackIds: string[]): BaseTrackPlaylist {
   return {
     ...playlist,
     trackIds,

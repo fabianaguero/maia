@@ -132,8 +132,7 @@ export const en = {
         trackTitlePlaceholder: "Night Drive",
         localPath: "Local path",
         localPathPlaceholder: "~/Music/night-drive.wav",
-        hint:
-          "Browse uses the native desktop picker when available. Embedded analysis currently decodes WAV, MP3, FLAC, and OGG/Vorbis inside the analyzer; other formats still import with a deterministic fallback.",
+        hint: "Browse uses the native desktop picker when available. Embedded analysis currently decodes WAV, MP3, FLAC, and OGG/Vorbis inside the analyzer; other formats still import with a deterministic fallback.",
         pathRequiredError: "A local source path is required.",
         musicStyleRequiredError: "Select a music style before importing the track.",
         pickerFailed: "Native file picker failed. Enter the path manually.",
@@ -171,7 +170,8 @@ export const en = {
         targetSessionLabelOptional: "Target session label (optional)",
         targetSessionLabelPlaceholder: "maia-session-01",
         gcpRequiresProjectAndService: "GCP Cloud Run requires a project ID and service name.",
-        sourceRequiredError: "A local code/log path, GitHub URL, or GCP Cloud Run source is required.",
+        sourceRequiredError:
+          "A local code/log path, GitHub URL, or GCP Cloud Run source is required.",
         directoryPickerFailed: "Native directory picker failed. Enter the path manually.",
         filePickerFailed: "Native file picker failed. Enter the path manually.",
         pickerBusy: "...",
@@ -197,8 +197,7 @@ export const en = {
         displayLabel: "Display label",
         displayLabelPlaceholder: "Peak-time FX pack",
         markReusable: "Mark as reusable in future composition flows",
-        hint:
-          "Tauri imports snapshot the selected file or folder into managed Maia storage. Browser fallback keeps the same shape but cannot create the native copy.",
+        hint: "Tauri imports snapshot the selected file or folder into managed Maia storage. Browser fallback keeps the same shape but cannot create the native copy.",
         pathRequiredError: "A file or directory path is required.",
         categoryRequiredError: "Select a base asset category before importing.",
         pickerFailed: "Native base asset picker failed. Enter the path manually.",
@@ -892,8 +891,7 @@ export const en = {
       structurePreview: "Structure source at {bpm} BPM (anomalies will drive variations)",
       compositionLabel: "Composition label",
       compositionLabelPlaceholder: "Peak-hour with error motifs",
-      hint:
-        "Composition results are arrangement plans with preview artifacts, phrase sections, cue points, and a managed internal `preview.wav`. The chosen base track or playlist provides the groove frame, and anomalies from the code/log source modulate the arrangement.",
+      hint: "Composition results are arrangement plans with preview artifacts, phrase sections, cue points, and a managed internal `preview.wav`. The chosen base track or playlist provides the groove frame, and anomalies from the code/log source modulate the arrangement.",
       baseAssetRequiredError: "Select a base asset before composing.",
       trackRequiredError: "Select a track as the musical base.",
       playlistRequiredError: "Select a playlist as the musical base.",
@@ -1270,7 +1268,8 @@ export const en = {
       sourceStatusActive: "{adapter}: active (0 lines detected)",
       sourceStatusLive: "{adapter}: {count} visible lines",
       noAnomalyLines: "No anomaly lines in the current window",
-      noAnomalyLinesHint: "The live stream is active. Switch to the full stream to inspect every row.",
+      noAnomalyLinesHint:
+        "The live stream is active. Switch to the full stream to inspect every row.",
       filterAnomalies: "Focus anomaly rows",
       showFullStream: "Show full live stream",
       sessionReplay: "Session replay",
@@ -1507,13 +1506,17 @@ export const en = {
         "Apply a deck profile first, then refine the rack controls if you need a more specific response.",
       presetHint: "Start from a deck profile",
       presetPassive: "Passive",
-      presetPassiveDetail: "Low movement, gentle ducking, long recovery. Best for calm passive listening.",
+      presetPassiveDetail:
+        "Low movement, gentle ducking, long recovery. Best for calm passive listening.",
       presetBalanced: "Balanced",
-      presetBalancedDetail: "Default Maia profile with clear anomalies but stable background playback.",
+      presetBalancedDetail:
+        "Default Maia profile with clear anomalies but stable background playback.",
       presetAlert: "Alert",
-      presetAlertDetail: "Sharper ducking, faster cueing and stronger anomaly accents for active watch duty.",
+      presetAlertDetail:
+        "Sharper ducking, faster cueing and stronger anomaly accents for active watch duty.",
       presetCustom: "Custom",
-      presetCustomDetail: "Your current rack diverges from the stock profiles and is stored as a personalized setup.",
+      presetCustomDetail:
+        "Your current rack diverges from the stock profiles and is stored as a personalized setup.",
       presetApply: "Apply",
       presetCurrent: "Current",
       presetEdited: "Edited",
@@ -1540,9 +1543,11 @@ export const en = {
       tailWindowRows: "Tail window rows",
       tailWindowRowsHelp: "Maximum live rows kept visible in the deck tail",
       runtimeGroupCloudTitle: "Cloud stream defaults",
-      runtimeGroupCloudHint: "Lookback and bootstrap values used when a remote stream session starts.",
+      runtimeGroupCloudHint:
+        "Lookback and bootstrap values used when a remote stream session starts.",
       runtimeGroupStreamTitle: "Live runtime defaults",
-      runtimeGroupStreamHint: "Idle and tail retention values shared by monitor playback and live lanes.",
+      runtimeGroupStreamHint:
+        "Idle and tail retention values shared by monitor playback and live lanes.",
       editableControls: "Editable transport and response controls",
       persistentProfile: "Persistent profile",
       deckControls: "Deck controls",

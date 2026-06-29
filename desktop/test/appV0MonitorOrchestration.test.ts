@@ -196,9 +196,7 @@ describe("appV0MonitorOrchestration", () => {
 
     await orchestrator.replaySession("session-9", "/tmp/visits-service.log", "visits-service");
 
-    expect(calls).toEqual([
-      "replay:session-9:/tmp/visits-service.log:visits-service",
-    ]);
+    expect(calls).toEqual(["replay:session-9:/tmp/visits-service.log:visits-service"]);
   });
 
   it("surfaces invalid repository launches without executing runtime deps", async () => {

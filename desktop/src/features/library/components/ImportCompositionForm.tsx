@@ -213,7 +213,12 @@ export function ImportCompositionForm({
           {selectedTrack ? (
             <div className="style-preview">
               <strong>{selectedTrack.tags.title}</strong>
-              <p>{t.compose.forms.trackPreview.replace("{bpm}", selectedTrack.analysis.bpm?.toFixed(0) ?? "?")}</p>
+              <p>
+                {t.compose.forms.trackPreview.replace(
+                  "{bpm}",
+                  selectedTrack.analysis.bpm?.toFixed(0) ?? "?",
+                )}
+              </p>
             </div>
           ) : null}
         </>
@@ -239,8 +244,8 @@ export function ImportCompositionForm({
             <div className="style-preview">
               <strong>{selectedPlaylist.name}</strong>
               <p>
-                {selectedPlaylist.trackIds.length} {t.compose.forms.tracks} · {t.compose.forms.medianBpm}{" "}
-                {selectedPlaylistBpm?.toFixed(0) ?? "?"}
+                {selectedPlaylist.trackIds.length} {t.compose.forms.tracks} ·{" "}
+                {t.compose.forms.medianBpm} {selectedPlaylistBpm?.toFixed(0) ?? "?"}
               </p>
               <p>{summarizePlaylistTracks(selectedPlaylist, tracks)}</p>
             </div>

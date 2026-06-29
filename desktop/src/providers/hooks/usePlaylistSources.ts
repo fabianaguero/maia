@@ -28,9 +28,7 @@ interface PlaylistSourcesDependencies {
 
 const defaultLoadSources = async (): Promise<PlaylistSourceAuth[]> => [];
 
-const defaultInitiateOAuthFlow = async (
-  sourceType: "spotify" | "soundcloud",
-): Promise<void> => {
+const defaultInitiateOAuthFlow = async (sourceType: "spotify" | "soundcloud"): Promise<void> => {
   console.log(`Initiating OAuth for ${sourceType}`);
 };
 
@@ -114,51 +112,57 @@ export function usePlaylistSources(
     [initiateOAuthFlow],
   );
 
-  const addLocalDirectory = useCallback(async (dirPath: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      await addLocalDirectoryEntry(dirPath);
-    } catch (err) {
-      console.error("Error adding local directory:", err);
-      setError({
-        kind: "unknown",
-        message: "Failed to add local directory",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [addLocalDirectoryEntry]);
-
-  const syncSource = useCallback(async (sourceId: string) => {
-    setLoading(true);
-    setError(null);
-    abortControllerRef.current = createAbortController();
-
-    try {
-      const source = sources.find((s) => s.id === sourceId);
-      if (!source) {
-        throw { kind: "not_found", resourceId: sourceId } as ProviderError;
-      }
-
-      const newPlaylists = await syncSourcePlaylists({
-        source,
-        signal: abortControllerRef.current.signal,
-      });
-
-      setPlaylists((prev) => {
-        return mergeSourcePlaylists(prev, sourceId, newPlaylists);
-      });
-
-      // TODO: Save to DB
+  const addLocalDirectory = useCallback(
+    async (dirPath: string) => {
+      setLoading(true);
       setError(null);
-    } catch (err) {
-      console.error("Sync error:", err);
-      setError(normalizePlaylistSourceError(err, "Unknown sync error"));
-    } finally {
-      setLoading(false);
-    }
-  }, [createAbortController, sources, syncSourcePlaylists]);
+      try {
+        await addLocalDirectoryEntry(dirPath);
+      } catch (err) {
+        console.error("Error adding local directory:", err);
+        setError({
+          kind: "unknown",
+          message: "Failed to add local directory",
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [addLocalDirectoryEntry],
+  );
+
+  const syncSource = useCallback(
+    async (sourceId: string) => {
+      setLoading(true);
+      setError(null);
+      abortControllerRef.current = createAbortController();
+
+      try {
+        const source = sources.find((s) => s.id === sourceId);
+        if (!source) {
+          throw { kind: "not_found", resourceId: sourceId } as ProviderError;
+        }
+
+        const newPlaylists = await syncSourcePlaylists({
+          source,
+          signal: abortControllerRef.current.signal,
+        });
+
+        setPlaylists((prev) => {
+          return mergeSourcePlaylists(prev, sourceId, newPlaylists);
+        });
+
+        // TODO: Save to DB
+        setError(null);
+      } catch (err) {
+        console.error("Sync error:", err);
+        setError(normalizePlaylistSourceError(err, "Unknown sync error"));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [createAbortController, sources, syncSourcePlaylists],
+  );
 
   const listPlaylistsForSource = useCallback(
     async (sourceId: string): Promise<PlaylistMetadata[]> => {
@@ -167,23 +171,26 @@ export function usePlaylistSources(
     [playlists],
   );
 
-  const disconnectSource = useCallback(async (sourceId: string) => {
-    setLoading(true);
-    try {
-      await disconnectSourceEntry(sourceId);
-      setSources((prev) => disconnectPlaylistSourceState(prev, [], sourceId).sources);
-      setPlaylists((prev) => disconnectPlaylistSourceState([], prev, sourceId).playlists);
-      setError(null);
-    } catch (err) {
-      console.error("Disconnect error:", err);
-      setError({
-        kind: "unknown",
-        message: "Failed to disconnect source",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [disconnectSourceEntry]);
+  const disconnectSource = useCallback(
+    async (sourceId: string) => {
+      setLoading(true);
+      try {
+        await disconnectSourceEntry(sourceId);
+        setSources((prev) => disconnectPlaylistSourceState(prev, [], sourceId).sources);
+        setPlaylists((prev) => disconnectPlaylistSourceState([], prev, sourceId).playlists);
+        setError(null);
+      } catch (err) {
+        console.error("Disconnect error:", err);
+        setError({
+          kind: "unknown",
+          message: "Failed to disconnect source",
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [disconnectSourceEntry],
+  );
 
   const clearError = useCallback(() => {
     setError(null);

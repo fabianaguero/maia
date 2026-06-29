@@ -240,24 +240,26 @@ describe("sessions api", () => {
     await expect(updatePersistedSessionStatus("session-1", "paused")).resolves.toBeUndefined();
     await expect(updatePersistedSessionCursor("session-1", 10, 1, 0, 120)).resolves.toBeUndefined();
     await expect(deletePersistedSession("session-1")).resolves.toBe(false);
-    await expect(insertSessionEvent({
-      sessionId: "session-1",
-      pollIndex: 1,
-      fromOffset: 0,
-      toOffset: 1,
-      summary: "noop",
-      suggestedBpm: null,
-      confidence: 0,
-      dominantLevel: "info",
-      lineCount: 0,
-      anomalyCount: 0,
-      levelCountsJson: "{}",
-      anomalyMarkersJson: "[]",
-      topComponentsJson: "[]",
-      sonificationCuesJson: "[]",
-      parsedLinesJson: "[]",
-      warningsJson: "[]",
-    })).resolves.toBe(-1);
+    await expect(
+      insertSessionEvent({
+        sessionId: "session-1",
+        pollIndex: 1,
+        fromOffset: 0,
+        toOffset: 1,
+        summary: "noop",
+        suggestedBpm: null,
+        confidence: 0,
+        dominantLevel: "info",
+        lineCount: 0,
+        anomalyCount: 0,
+        levelCountsJson: "{}",
+        anomalyMarkersJson: "[]",
+        topComponentsJson: "[]",
+        sonificationCuesJson: "[]",
+        parsedLinesJson: "[]",
+        warningsJson: "[]",
+      }),
+    ).resolves.toBe(-1);
     await expect(listSessionEvents("session-1")).resolves.toEqual([]);
     await expect(
       upsertSessionBookmark({
