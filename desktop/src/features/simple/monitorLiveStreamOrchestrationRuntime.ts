@@ -112,9 +112,6 @@ export function buildSimulatedMonitorState(input: {
   return {
     mock,
     nextLiveLines: [mock, ...input.previousLiveLines].slice(0, input.maxLiveLines ?? 50),
-    nextLogSignalBuffer: advanceSimulatedLogSignalBuffer(
-      input.previousLogSignalBuffer,
-      mock.level,
-    ),
+    nextLogSignalBuffer: advanceSimulatedLogSignalBuffer(input.previousLogSignalBuffer, mock.level),
   };
 }

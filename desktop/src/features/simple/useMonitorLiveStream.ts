@@ -242,17 +242,17 @@ export function useMonitorLiveStream({
       const effectiveBpm = liveSuggestedBpmRef.current ?? trackBpm;
 
       setLogSignalBuffer((prev) => {
-          const nextBuffer = buildMonitorLiveStreamIdleState({
-            previous: prev,
-            nowMs: now,
-            idleForMs,
-            idleHoldMs,
-            idleMix,
-            effectiveBpm,
-          });
-          logSignalBufferRef.current = nextBuffer;
-          return nextBuffer;
+        const nextBuffer = buildMonitorLiveStreamIdleState({
+          previous: prev,
+          nowMs: now,
+          idleForMs,
+          idleHoldMs,
+          idleMix,
+          effectiveBpm,
         });
+        logSignalBufferRef.current = nextBuffer;
+        return nextBuffer;
+      });
     }, 450);
 
     return () => {
