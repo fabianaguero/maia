@@ -12,7 +12,6 @@ import {
   buildWaveformSummaryPills,
   buildRenderedCueMarkers,
   buildRenderedRegions,
-  formatDuration,
   resolveAnchorPosition,
   resolveDisplayBins,
   resolveVisibleBeats,
@@ -23,7 +22,10 @@ import {
   type WaveformEditableCuePoint,
 } from "./waveformPlaceholderRuntime";
 import { WaveformCueOverlay } from "./WaveformCueOverlay";
+import { WaveformPanelHeader } from "./WaveformPanelHeader";
 import { WaveformRegionOverlay } from "./WaveformRegionOverlay";
+import { WaveformStageBase } from "./WaveformStageBase";
+import { WaveformSummaryFooter } from "./WaveformSummaryFooter";
 import { useWaveformPlaceholderInteractions } from "./useWaveformPlaceholderInteractions";
 
 interface WaveformPlaceholderProps {
@@ -162,36 +164,23 @@ export function WaveformPlaceholder({
 
   return (
     <section className={`panel waveform-panel${hero ? " waveform-panel--hero" : ""}`}>
-      <div className="panel-header">
-        <div>
-          <h2>{t.inspect.waveformBeatGridTitle}</h2>
-          <p className="support-copy">{t.inspect.waveformBeatGridCopy}</p>
-        </div>
-        {onSetDownbeatAtSecond || onSelectPhraseRange ? (
-          <div className="waveform-panel-actions">
-            {onSetDownbeatAtSecond ? (
-              <button
-                type="button"
-                className={`compact-action${gridClickArmed ? " waveform-grid-arm-active" : ""}`}
-                disabled={!canEditBeatGrid || !durationSeconds || durationSeconds <= 0}
-                onClick={toggleGridClickArmed}
-              >
-                {gridClickArmed ? t.inspect.cancelGridClick : t.inspect.armDownbeatClick}
-              </button>
-            ) : null}
-            {onSelectPhraseRange ? (
-              <button
-                type="button"
-                className={`compact-action${phraseSelectArmed ? " waveform-grid-arm-active" : ""}`}
-                disabled={!canSelectPhrase || !durationSeconds || durationSeconds <= 0}
-                onClick={togglePhraseSelectArmed}
-              >
-                {phraseSelectArmed ? t.inspect.cancelPhraseSelect : t.inspect.armPhraseSelectButton}
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+      <WaveformPanelHeader
+        title={t.inspect.waveformBeatGridTitle}
+        copy={t.inspect.waveformBeatGridCopy}
+        showActions={Boolean(onSetDownbeatAtSecond || onSelectPhraseRange)}
+        showGridButton={Boolean(onSetDownbeatAtSecond)}
+        gridClickArmed={gridClickArmed}
+        disableGridButton={!canEditBeatGrid || !durationSeconds || durationSeconds <= 0}
+        armDownbeatLabel={t.inspect.armDownbeatClick}
+        cancelGridClickLabel={t.inspect.cancelGridClick}
+        onToggleGridClickArmed={toggleGridClickArmed}
+        showPhraseButton={Boolean(onSelectPhraseRange)}
+        phraseSelectArmed={phraseSelectArmed}
+        disablePhraseButton={!canSelectPhrase || !durationSeconds || durationSeconds <= 0}
+        armPhraseSelectLabel={t.inspect.armPhraseSelectButton}
+        cancelPhraseSelectLabel={t.inspect.cancelPhraseSelect}
+        onTogglePhraseSelectArmed={togglePhraseSelectArmed}
+      />
 
       <div
         ref={stageRef}
@@ -223,48 +212,14 @@ export function WaveformPlaceholder({
             {interactionHints.dragHint}
           </div>
         ) : null}
-
-        <div
-          className="waveform-bars"
-          aria-label={t.inspect.waveformOverview}
-          style={
-            {
-              gridTemplateColumns: `repeat(${displayBins.length}, minmax(0, 1fr))`,
-            } as CSSProperties
-          }
-        >
-          {displayBins.map((bin, index) => (
-            <span
-              key={`${index}-${bin}`}
-              className="waveform-bar"
-              style={{ "--bar-scale": String(bin) } as CSSProperties}
-            />
-          ))}
-        </div>
-
-        <div className="beat-grid-overlay" aria-label={t.inspect.beatGridMarkers}>
-          {visibleBeats.map((beat) => {
-            const position =
-              durationSeconds && durationSeconds > 0
-                ? Math.min(100, (beat.second / durationSeconds) * 100)
-                : 0;
-
-            return (
-              <span
-                key={`${beat.index}-${beat.second}`}
-                className={`beat-grid-marker is-${beat.emphasis}`}
-                style={{ "--beat-position": `${position}%` } as CSSProperties}
-                title={t.inspect.beatAtSecond
-                  .replace("{label}", beat.label)
-                  .replace("{second}", beat.second.toFixed(2))}
-              >
-                {beat.emphasis !== "beat" ? (
-                  <span className="beat-grid-marker-label">{beat.label}</span>
-                ) : null}
-              </span>
-            );
-          })}
-        </div>
+        <WaveformStageBase
+          displayBins={displayBins}
+          visibleBeats={visibleBeats}
+          durationSeconds={durationSeconds}
+          waveformOverviewLabel={t.inspect.waveformOverview}
+          beatGridMarkersLabel={t.inspect.beatGridMarkers}
+          beatAtSecondTitle={t.inspect.beatAtSecond}
+        />
 
         {regions.length > 0 || selectedPhraseRange ? (
           <WaveformRegionOverlay
@@ -347,19 +302,7 @@ export function WaveformPlaceholder({
         </div>
       </div>
 
-      <div className="waveform-summary">
-        {summaryPills.map((pill) => (
-          <div key={pill.key} className="waveform-meta-pill">
-            <span>{pill.label}</span>
-            <strong>{pill.value}</strong>
-          </div>
-        ))}
-      </div>
-
-      <div className="waveform-footer">
-        <span>00:00</span>
-        <span>{formatDuration(durationSeconds)}</span>
-      </div>
+      <WaveformSummaryFooter summaryPills={summaryPills} durationSeconds={durationSeconds} />
     </section>
   );
 }

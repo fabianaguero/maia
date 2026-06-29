@@ -92,6 +92,43 @@ export function resolveManagedAudioScrubberRange(input: {
   };
 }
 
+export function resolveManagedAudioCueTargetSecond(input: {
+  cueSecond: number;
+  resolvedDurationSeconds: number;
+  durationSeconds: number | null;
+}): number {
+  const maxDuration =
+    input.resolvedDurationSeconds > 0
+      ? input.resolvedDurationSeconds
+      : (input.durationSeconds ?? 0);
+
+  return maxDuration > 0
+    ? Math.min(Math.max(0, input.cueSecond), maxDuration)
+    : Math.max(0, input.cueSecond);
+}
+
+export function shouldManagedAudioResetBeforeReplay(input: {
+  resolvedDurationSeconds: number;
+  currentTimeSeconds: number;
+}): boolean {
+  return (
+    input.resolvedDurationSeconds > 0 &&
+    input.currentTimeSeconds >= input.resolvedDurationSeconds - 0.1
+  );
+}
+
+export function resolveManagedAudioLoadError(error: unknown): string {
+  return `Cannot load audio: ${String(error)}`;
+}
+
+export function resolveManagedAudioCueError(error: unknown): string {
+  return error instanceof Error ? error.message : "Maia could not jump to the requested cue.";
+}
+
+export function resolveManagedAudioToggleError(error: unknown): string {
+  return error instanceof Error ? error.message : "Maia could not start local audio playback.";
+}
+
 export function resolveManagedAudioNote(input: {
   audioPath: string | null;
   blobReady: boolean;

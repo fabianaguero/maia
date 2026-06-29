@@ -163,7 +163,6 @@ export function useMonitorProviderController() {
     guideTrackFinishedRef,
     activeTemplateRef,
     setActiveTemplateState,
-    currentSegmentRef,
     buildReloadPendingGuideTrack,
   });
 

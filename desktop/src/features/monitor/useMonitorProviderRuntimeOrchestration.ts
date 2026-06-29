@@ -5,7 +5,6 @@ import {
   emitMonitorAudioProbe,
   ensureMonitorAudioContext,
   stopAllMonitorAudio,
-  type CrossfadeHandle,
   type GuideTrackPCM,
 } from "./monitorContextRuntime";
 import type { ActiveMonitorSession, MonitorMetrics, StreamListener } from "./monitorContextTypes";
@@ -21,6 +20,16 @@ import {
 } from "./monitorSessionRuntime";
 import { dispatchReplayEventAtIndexState, runReplayTickState } from "./monitorPlaybackRuntime";
 import { resumeMonitorAudioContextState } from "./monitorLiveLifecycleRuntime";
+import {
+  buildDispatchReplayEventAtIndexStateInput,
+  buildEmitMonitorProviderUpdateStateInput,
+  buildResumeMonitorAudioContextStateInput,
+  buildRunMonitorProviderPollStateInput,
+  buildRunReplayTickStateInput,
+  buildSyncGuideTrackCursorStateInput,
+  buildSyncReplayTelemetryStateInput,
+  type MonitorProviderRuntimeLogger,
+} from "./monitorProviderOrchestrationRuntime";
 import { buildMonitorProviderLiveStartBaseInput } from "./monitorProviderStartRuntime";
 import {
   emitMonitorProviderUpdateState,
@@ -37,14 +46,6 @@ type PollLogStreamFn = (
   maxBytes?: number,
 ) => Promise<LiveLogStreamUpdate>;
 type IngestStreamChunkFn = (sessionId: string, chunk: string) => Promise<StreamSessionPollResult>;
-
-export interface MonitorProviderRuntimeLogger {
-  info: (message: string, ...args: unknown[]) => void;
-  warn: (message: string, ...args: unknown[]) => void;
-  trace: (message: string, ...args: unknown[]) => void;
-  debug: (message: string, ...args: unknown[]) => void;
-  error: (message: string, ...args: unknown[]) => void;
-}
 
 interface UseMonitorProviderRuntimeOrchestrationInput {
   logger: MonitorProviderRuntimeLogger;
@@ -112,8 +113,6 @@ interface UseMonitorProviderRuntimeOrchestrationInput {
   guideTrackFinishedRef: MutableRefObject<boolean>;
   activeTemplateRef: MutableRefObject<SourceTemplate>;
   setActiveTemplateState: Dispatch<SetStateAction<SourceTemplate>>;
-  currentSegmentRef: MutableRefObject<CrossfadeHandle | null>;
-  ensureAudioContextLogger?: MonitorProviderRuntimeLogger;
   buildReloadPendingGuideTrack: (reason: "session-start" | "attach-session") => () => void;
 }
 
@@ -161,27 +160,31 @@ export function useMonitorProviderRuntimeOrchestration(
 
   const syncReplayTelemetry = useCallback(
     (processedEvents: number) => {
-      syncReplayTelemetryState({
-        processedEvents,
-        replayEventsRef: input.replayEventsRef,
-        replayMetricsRef: input.replayMetricsRef,
-        setPlaybackEventCount: input.setPlaybackEventCount,
-        setPlaybackEventIndex: input.setPlaybackEventIndex,
-        setPlaybackProgress: input.setPlaybackProgress,
-        setMetrics: input.setMetrics,
-      });
+      syncReplayTelemetryState(
+        buildSyncReplayTelemetryStateInput({
+          processedEvents,
+          replayEventsRef: input.replayEventsRef,
+          replayMetricsRef: input.replayMetricsRef,
+          setPlaybackEventCount: input.setPlaybackEventCount,
+          setPlaybackEventIndex: input.setPlaybackEventIndex,
+          setPlaybackProgress: input.setPlaybackProgress,
+          setMetrics: input.setMetrics,
+        }),
+      );
     },
     [input],
   );
 
   const syncGuideTrackToReplayProgress = useCallback(
     (progress: number) => {
-      syncGuideTrackCursorToReplayProgress({
-        pcm: input.guideTrackRef.current,
-        cursorRef: input.guideTrackCursorRef,
-        finishedRef: input.guideTrackFinishedRef,
-        progress,
-      });
+      syncGuideTrackCursorToReplayProgress(
+        buildSyncGuideTrackCursorStateInput({
+          pcm: input.guideTrackRef.current,
+          cursorRef: input.guideTrackCursorRef,
+          finishedRef: input.guideTrackFinishedRef,
+          progress,
+        }),
+      );
     },
     [input.guideTrackCursorRef, input.guideTrackFinishedRef, input.guideTrackRef],
   );
@@ -194,48 +197,43 @@ export function useMonitorProviderRuntimeOrchestration(
         persistPlaybackEvent?: boolean;
       },
     ) => {
-      emitMonitorProviderUpdateState({
-        update,
-        listenersRef: input.listenersRef,
-        sessionRef: input.sessionRef,
-        pollIndexRef: input.pollIndexRef,
-        audioContextRef: input.audioContextRef,
-        setMetrics: input.setMetrics,
-        updatePersistedCursor: (payload) =>
-          void input.updatePersistedSessionCursor(
-            payload.sessionId,
-            payload.toOffset,
-            payload.lineCount,
-            payload.anomalyCount,
-            payload.suggestedBpm,
-          ),
-        insertPersistedEvent: (payload) => {
-          void input.insertSessionEvent(payload);
-        },
-        logger: input.logger,
-        options,
-      });
+      emitMonitorProviderUpdateState(
+        buildEmitMonitorProviderUpdateStateInput({
+          update,
+          listenersRef: input.listenersRef,
+          sessionRef: input.sessionRef,
+          pollIndexRef: input.pollIndexRef,
+          audioContextRef: input.audioContextRef,
+          setMetrics: input.setMetrics,
+          updatePersistedSessionCursor: input.updatePersistedSessionCursor,
+          insertSessionEvent: input.insertSessionEvent,
+          logger: input.logger,
+          options,
+        }),
+      );
     },
     [input],
   );
 
   const doPoll = useCallback(async () => {
-    await runMonitorProviderPollState({
-      sessionRef: input.sessionRef,
-      activeRef: input.activeRef,
-      directCursorRef: input.directCursorRef,
-      emptyWindowsRef: input.emptyWindowsRef,
-      wsLineBufferRef: input.wsLineBufferRef,
-      httpUrlRef: input.httpUrlRef,
-      pollStreamSession: input.pollStreamSession,
-      pollLogStream: input.pollLogStream,
-      ingestStreamChunk: input.ingestStreamChunk,
-      fetchText: input.fetchText,
-      emitUpdate,
-      schedulePoll,
-      doPoll,
-      logger: input.logger,
-    });
+    await runMonitorProviderPollState(
+      buildRunMonitorProviderPollStateInput({
+        sessionRef: input.sessionRef,
+        activeRef: input.activeRef,
+        directCursorRef: input.directCursorRef,
+        emptyWindowsRef: input.emptyWindowsRef,
+        wsLineBufferRef: input.wsLineBufferRef,
+        httpUrlRef: input.httpUrlRef,
+        pollStreamSession: input.pollStreamSession,
+        pollLogStream: input.pollLogStream,
+        ingestStreamChunk: input.ingestStreamChunk,
+        fetchText: input.fetchText,
+        emitUpdate,
+        schedulePoll,
+        doPoll,
+        logger: input.logger,
+      }),
+    );
   }, [emitUpdate, input, schedulePoll]);
 
   const ensureProviderAudioContext = useCallback(
@@ -286,16 +284,18 @@ export function useMonitorProviderRuntimeOrchestration(
 
   const dispatchReplayEventAtIndex = useCallback(
     (eventIndex: number, options?: { syncGuideTrack?: boolean }) =>
-      dispatchReplayEventAtIndexState({
-        eventIndex,
-        replayEventsRef: input.replayEventsRef,
-        replayIndexRef: input.replayIndexRef,
-        sessionRef: input.sessionRef,
-        emitUpdate,
-        syncReplayTelemetry,
-        syncGuideTrackToReplayProgress,
-        syncGuideTrack: options?.syncGuideTrack,
-      }),
+      dispatchReplayEventAtIndexState(
+        buildDispatchReplayEventAtIndexStateInput({
+          eventIndex,
+          replayEventsRef: input.replayEventsRef,
+          replayIndexRef: input.replayIndexRef,
+          sessionRef: input.sessionRef,
+          emitUpdate,
+          syncReplayTelemetry,
+          syncGuideTrackToReplayProgress,
+          syncGuideTrack: options?.syncGuideTrack,
+        }),
+      ),
     [
       emitUpdate,
       input.replayEventsRef,
@@ -307,42 +307,35 @@ export function useMonitorProviderRuntimeOrchestration(
   );
 
   const replayTick = useCallback(() => {
-    runReplayTickState({
-      activeRef: input.activeRef,
-      playbackPausedRef: input.playbackPausedRef,
-      replayEventsRef: input.replayEventsRef,
-      replayIndexRef: input.replayIndexRef,
-      replayHydratingRef: input.replayHydratingRef,
-      pollTimerRef: input.pollTimerRef,
-      setTimeoutFn: window.setTimeout,
-      intervalMs: POLL_INTERVAL_MS,
-      dispatchReplayEventAtIndex: (eventIndex) => dispatchReplayEventAtIndex(eventIndex),
-      syncReplayTelemetry,
-      setIsPlaybackPaused: input.setIsPlaybackPaused,
-      stopAllMonitorAudio,
-      logger: input.logger,
-      replayTick,
-    });
+    runReplayTickState(
+      buildRunReplayTickStateInput({
+        activeRef: input.activeRef,
+        playbackPausedRef: input.playbackPausedRef,
+        replayEventsRef: input.replayEventsRef,
+        replayIndexRef: input.replayIndexRef,
+        replayHydratingRef: input.replayHydratingRef,
+        pollTimerRef: input.pollTimerRef,
+        intervalMs: POLL_INTERVAL_MS,
+        dispatchReplayEventAtIndex: (eventIndex) => dispatchReplayEventAtIndex(eventIndex),
+        syncReplayTelemetry,
+        setIsPlaybackPaused: input.setIsPlaybackPaused,
+        stopAllMonitorAudio,
+        logger: input.logger,
+        replayTick,
+      }),
+    );
   }, [dispatchReplayEventAtIndex, input, syncReplayTelemetry]);
 
   const resumeAudio = useCallback(async () => {
-    await resumeMonitorAudioContextState({
-      ensureAudioContext: () =>
-        ensureMonitorAudioContext({
-          audioContextRef: input.audioContextRef,
-          setAudioContext: input.setAudioContext,
-          logger: input.logger,
-          reason: "manual-resume",
-        }),
-      emitProbe: (context) => {
-        emitMonitorAudioProbe({
-          context,
-          frequency: 440,
-          attackGain: 0.15,
-          releaseTimeSec: 0.3,
-        });
-      },
+    const resumeState = buildResumeMonitorAudioContextStateInput({
+      audioContextRef: input.audioContextRef,
+      setAudioContext: input.setAudioContext,
       logger: input.logger,
+    });
+    await resumeMonitorAudioContextState({
+      ensureAudioContext: () => ensureMonitorAudioContext(resumeState.ensureAudioContext()),
+      emitProbe: (context) => emitMonitorAudioProbe(resumeState.emitProbe(context)),
+      logger: resumeState.logger,
     });
   }, [input]);
 
