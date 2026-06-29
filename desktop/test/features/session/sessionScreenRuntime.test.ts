@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import type { PersistedSession, SessionBookmark, SessionEvent } from "../../../src/api/sessions";
 import { en } from "../../../src/i18n/en";
-import type { RepositoryAnalysis } from "../../../src/types/library";
+import type {
+  BaseTrackPlaylist,
+  LibraryTrack,
+  RepositoryAnalysis,
+} from "../../../src/types/library";
 import {
   buildSessionLabelPlaceholder,
   createDirectSessionStartPlan,
@@ -15,6 +19,7 @@ import {
   resolveReplayBookmarkError,
   resolveReplaySessionError,
   resolveReplaySessionFailure,
+  resolveSessionControllerDerivedState,
   resolveSourceOptions,
 } from "../../../src/features/session/sessionScreenRuntime";
 
@@ -63,6 +68,77 @@ const session: PersistedSession = {
   createdAt: "2026-06-25T00:00:00.000Z",
   updatedAt: "2026-06-25T00:00:00.000Z",
   sourceTemplateId: null,
+};
+
+const track = {
+  id: "track-1",
+  file: {
+    sourcePath: "/music/base-pulse.wav",
+    storagePath: "/music/base-pulse.wav",
+    playbackSource: "source_file",
+    availabilityState: "available",
+  },
+  tags: {
+    title: "Base Pulse",
+    artist: "MAIA",
+    album: null,
+    genre: "House",
+    year: null,
+    durationSec: 240,
+  },
+  analysis: {
+    bpm: 126,
+    keySignature: null,
+    energy: 0.8,
+    danceability: 0.7,
+    durationSeconds: 240,
+    beatGrid: [],
+    bpmCurve: [],
+    waveformBins: [],
+    notes: [],
+  },
+  performance: {
+    rating: 0,
+    color: null,
+    bpmLock: false,
+    gridLock: false,
+    mainCueSecond: null,
+    hotCues: [],
+    memoryCues: [],
+    savedLoops: [],
+    lastPlayedAt: null,
+    playCount: 0,
+  },
+  title: "Base Pulse",
+  sourcePath: "/music/base-pulse.wav",
+  storagePath: "/music/base-pulse.wav",
+  importedAt: "2026-06-25T00:00:00.000Z",
+  bpm: 126,
+  bpmConfidence: 0.92,
+  durationSeconds: 240,
+  waveformBins: [],
+  beatGrid: [],
+  bpmCurve: [],
+  analyzerStatus: "ready",
+  repoSuggestedBpm: null,
+  repoSuggestedStatus: "idle",
+  notes: [],
+  fileExtension: "wav",
+  analysisMode: "full",
+  musicStyleId: "house",
+  musicStyleLabel: "House",
+  keySignature: null,
+  energyLevel: 0.8,
+  danceability: 0.7,
+  structuralPatterns: [],
+} as unknown as LibraryTrack;
+
+const playlist: BaseTrackPlaylist = {
+  id: "playlist-1",
+  name: "Night drive",
+  trackIds: ["track-1"],
+  createdAt: "2026-06-25T00:00:00.000Z",
+  updatedAt: "2026-06-25T00:00:00.000Z",
 };
 
 describe("sessionScreenRuntime", () => {
@@ -198,5 +274,69 @@ describe("sessionScreenRuntime", () => {
     expect(resolveSourceOptions("log", [repository, repoSource])).toEqual([repository]);
     expect(resolveSourceOptions("repo", [repository, repoSource])).toEqual([repoSource]);
     expect(createSessionTimestampId("session", 123)).toBe("session_123");
+  });
+
+  it("derives controller state for the active session booth", () => {
+    const derived = resolveSessionControllerDerivedState({
+      activePlaybackProgress: 0.42,
+      activeSessionId: "session-1",
+      activeSessionMode: "live",
+      baseMode: "track",
+      mode: "log",
+      monitorHasSession: true,
+      playlists: [playlist],
+      repositories: [repository],
+      selectedPlaylistId: null,
+      selectedSessionEvents: [
+        {
+          suggestedBpm: 124,
+          dominantLevel: "warn",
+          anomalyCount: 2,
+          parsedLinesJson: JSON.stringify(["warn checkout"]),
+        },
+      ] as SessionEvent[],
+      selectedSessionId: "session-1",
+      selectedSourceId: "repo-1",
+      selectedTrackId: "track-1",
+      sessionBookmarksBySessionId: {
+        "session-1": [{ id: 7, eventIndex: 0 } as SessionBookmark],
+      },
+      sessionPlaceholderFallback: en.session.sessionPlaceholder,
+      sessions: [session],
+      templateGenre: "House",
+      templateLabel: "Night monitor",
+      tracks: [track],
+    });
+
+    expect(derived.sourceOptions).toEqual([repository]);
+    expect(derived.selectedSource?.id).toBe("repo-1");
+    expect(derived.selectedTrack?.id).toBe("track-1");
+    expect(derived.selectedBaseDetails).toEqual({
+      label: "Base Pulse",
+      detail: "126 BPM",
+    });
+    expect(derived.activeSession?.id).toBe("session-1");
+    expect(derived.selectedSession?.id).toBe("session-1");
+    expect(derived.selectedSessionIdForEvents).toBe("session-1");
+    expect(derived.playbackActive).toBe(false);
+    expect(derived.liveMonitorActive).toBe(true);
+    expect(derived.selectedSessionBookmarks).toHaveLength(1);
+    expect(derived.bookmarkContexts[7]).toEqual({
+      bpm: 124,
+      dominantLevel: "warn",
+      anomalyCount: 2,
+      logExcerpt: "warn checkout",
+    });
+    expect(derived.sessionLabelPlaceholder).toBe("production.log · Base Pulse · House");
+    expect(derived.playbackPercent).toBe(42);
+    expect(derived.readyToRun).toBe(true);
+    expect(derived.activeBaseDetails).toEqual({
+      label: "Base Pulse",
+      detail: "126 BPM",
+    });
+    expect(derived.selectedSessionSourceDetails).toEqual({
+      label: "production.log",
+      path: "/logs/production.log",
+    });
   });
 });

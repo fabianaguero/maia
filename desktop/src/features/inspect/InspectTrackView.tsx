@@ -5,19 +5,11 @@ import type {
   UpdateTrackAnalysisInput,
   UpdateTrackPerformanceInput,
 } from "../../types/library";
-import {
-  createAnchoredBeatGridUpdate,
-  isEditableBpm,
-  type BeatGridPhraseRange,
-} from "../../utils/beatGrid";
+import type { BeatGridPhraseRange } from "../../utils/beatGrid";
 import {
   getTrackWaveformCues,
   getTrackWaveformRegions,
   hasUsableBeatGrid,
-  moveTrackSavedLoop,
-  resolveTrackPlacementSecond,
-  setTrackCuePointSecond,
-  setTrackSavedLoopBoundary,
   type TrackCompareAuditionPoint,
 } from "../../utils/track";
 import { useT } from "../../i18n/I18nContext";
@@ -36,9 +28,14 @@ import { InspectTrackHeader } from "./InspectTrackHeader";
 import { InspectTrackMetadataPanel } from "./InspectTrackMetadataPanel";
 import { InspectTrackSidebarTabs } from "./InspectTrackSidebarTabs";
 import {
+  buildInspectTrackAnchoredBeatGridAnalysisPatch,
   buildInspectTrackMetadataDetails,
+  buildInspectTrackMovedCuePerformancePatch,
+  buildInspectTrackMoveLoopBoundaryPerformancePatch,
+  buildInspectTrackMoveLoopPerformancePatch,
   buildInspectTrackSummaryPills,
   buildInspectTrackTabViewModel,
+  buildInspectTrackWaveformModel,
   type InspectTrackTabId,
 } from "./inspectTrackViewRuntime";
 
@@ -78,6 +75,10 @@ export function InspectTrackView({
   const tabs = buildInspectTrackTabViewModel(t);
   const summaryPills = buildInspectTrackSummaryPills(track, t);
   const metadataDetails = buildInspectTrackMetadataDetails(track, t);
+  const waveformModel = buildInspectTrackWaveformModel({
+    track,
+    trackMutating,
+  });
 
   useEffect(() => {
     setSelectedPhraseRange(null);
@@ -85,36 +86,6 @@ export function InspectTrackView({
     setActiveCompareAuditionId(null);
     setActiveCompareAuditionLabel(null);
   }, [activeBeatGridLength, activeFirstBeatSecond, activeTrackDurationSeconds, activeTrackId]);
-
-  const editableTrackBpm = isEditableBpm(track.analysis.bpm) ? track.analysis.bpm : null;
-  const waveformEditableCues = [
-    ...(track.performance.mainCueSecond !== null
-      ? [
-          {
-            id: "main-cue",
-            second: track.performance.mainCueSecond,
-            label: "Main",
-            kind: "main" as const,
-            color: track.performance.color,
-          },
-        ]
-      : []),
-    ...track.performance.hotCues.map((cue) => ({
-      id: cue.id,
-      second: cue.second,
-      label: cue.label,
-      kind: cue.kind,
-      color: cue.color,
-    })),
-    ...track.performance.memoryCues.map((cue) => ({
-      id: cue.id,
-      second: cue.second,
-      label: cue.label,
-      kind: cue.kind,
-      color: cue.color,
-    })),
-  ];
-  const quantizeWaveformEdits = hasUsableBeatGrid(track.analysis.beatGrid);
 
   const handleMoveWaveformCue = (
     cue: {
@@ -125,28 +96,15 @@ export function InspectTrackView({
     },
     second: number,
   ) => {
-    if (cue.kind === "main") {
-      return void onUpdateTrackPerformance(track.id, {
-        mainCueSecond: resolveTrackPlacementSecond(
-          second,
-          track.analysis.durationSeconds,
-          track.analysis.beatGrid,
-          quantizeWaveformEdits,
-        ),
-      });
-    }
-
-    const cueCollection =
-      cue.kind === "hot" ? track.performance.hotCues : track.performance.memoryCues;
-    const nextCues = setTrackCuePointSecond(cueCollection, cue.id, second, {
-      durationSeconds: track.analysis.durationSeconds,
-      beatGrid: track.analysis.beatGrid,
-      quantizeEnabled: quantizeWaveformEdits,
-    });
-
-    return void onUpdateTrackPerformance(track.id, {
-      [cue.kind === "hot" ? "hotCues" : "memoryCues"]: nextCues,
-    });
+    return void onUpdateTrackPerformance(
+      track.id,
+      buildInspectTrackMovedCuePerformancePatch({
+        track,
+        cue,
+        second,
+        quantizeWaveformEdits: waveformModel.quantizeWaveformEdits,
+      }),
+    );
   };
 
   const handleCompareAudition = (point: TrackCompareAuditionPoint) => {
@@ -178,29 +136,25 @@ export function InspectTrackView({
           durationSeconds={track.analysis.durationSeconds}
           hotCues={getTrackWaveformCues(track)}
           regions={getTrackWaveformRegions(track)}
-          editableCues={waveformEditableCues}
+          editableCues={waveformModel.editableCues}
           editableLoops={track.performance.savedLoops}
           currentTime={currentTime}
           hero
           onSeek={monitor.seekGuideTrack}
           analysisProgress={monitor.playbackProgress}
-          canEditBeatGrid={
-            !trackMutating &&
-            !track.performance.gridLock &&
-            editableTrackBpm !== null &&
-            track.analysis.durationSeconds !== null
-          }
+          canEditBeatGrid={waveformModel.canEditBeatGrid}
           onSetDownbeatAtSecond={
-            editableTrackBpm !== null
-              ? (second) =>
-                  void onUpdateTrackAnalysis(
-                    track.id,
-                    createAnchoredBeatGridUpdate(
-                      editableTrackBpm,
-                      track.analysis.durationSeconds,
-                      second,
-                    ),
-                  )
+            waveformModel.editableTrackBpm !== null
+              ? (second) => {
+                  const patch = buildInspectTrackAnchoredBeatGridAnalysisPatch({
+                    track,
+                    second,
+                    editableTrackBpm: waveformModel.editableTrackBpm,
+                  });
+                  if (patch) {
+                    void onUpdateTrackAnalysis(track.id, patch);
+                  }
+                }
               : undefined
           }
           canSelectPhrase={hasUsableBeatGrid(track.analysis.beatGrid)}
@@ -210,29 +164,28 @@ export function InspectTrackView({
           onMoveCue={handleMoveWaveformCue}
           onNudgeCue={handleMoveWaveformCue}
           onMoveLoopBoundary={(loopId, boundary, second) =>
-            void onUpdateTrackPerformance(track.id, {
-              savedLoops: setTrackSavedLoopBoundary(
-                track.performance.savedLoops,
+            void onUpdateTrackPerformance(
+              track.id,
+              buildInspectTrackMoveLoopBoundaryPerformancePatch({
+                track,
                 loopId,
                 boundary,
                 second,
-                {
-                  bpm: editableTrackBpm,
-                  durationSeconds: track.analysis.durationSeconds,
-                  beatGrid: track.analysis.beatGrid,
-                  quantizeEnabled: quantizeWaveformEdits,
-                },
-              ),
-            })
+                editableTrackBpm: waveformModel.editableTrackBpm,
+                quantizeWaveformEdits: waveformModel.quantizeWaveformEdits,
+              }),
+            )
           }
           onMoveLoop={(loopId, second) =>
-            void onUpdateTrackPerformance(track.id, {
-              savedLoops: moveTrackSavedLoop(track.performance.savedLoops, loopId, second, {
-                durationSeconds: track.analysis.durationSeconds,
-                beatGrid: track.analysis.beatGrid,
-                quantizeEnabled: quantizeWaveformEdits,
+            void onUpdateTrackPerformance(
+              track.id,
+              buildInspectTrackMoveLoopPerformancePatch({
+                track,
+                loopId,
+                second,
+                quantizeWaveformEdits: waveformModel.quantizeWaveformEdits,
               }),
-            })
+            )
           }
         />
         <TrackOriginalComparePanel

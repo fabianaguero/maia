@@ -1,18 +1,11 @@
-import {
-  Activity,
-  AlertCircle,
-  Pause,
-  Play,
-  Radio,
-  SkipBack,
-  SkipForward,
-  TrendingUp,
-} from "lucide-react";
 import { useT } from "../../i18n/I18nContext";
 import type { PersistedSession } from "../../api/sessions";
 import type { LiveLogStreamUpdate } from "../../types/monitor";
-import { formatMonitorLevel, resolveModeLabel, type QuickSessionMode } from "./sessionDisplay";
+import { resolveModeLabel, type QuickSessionMode } from "./sessionDisplay";
 import type { SessionBoothViewModel } from "./sessionBoothViewModel";
+import { SessionBoothActionBar } from "./SessionBoothActionBar";
+import { SessionBoothSignalCard } from "./SessionBoothSignalCard";
+import { SessionBoothWatchCard } from "./SessionBoothWatchCard";
 
 interface SessionBoothPanelProps {
   booth: SessionBoothViewModel;
@@ -75,99 +68,39 @@ export function SessionBoothPanel({
           <p className="support-copy">{booth.summary}</p>
         </div>
 
-        <div className="session-booth-actions">
-          {playbackActive ? (
-            <>
-              <button
-                type="button"
-                className="secondary-action"
-                onClick={() => onStepPlaybackWindow(-1)}
-                disabled={mutating}
-              >
-                <SkipBack size={14} />
-                {t.session.prevWindow}
-              </button>
-              <button
-                type="button"
-                className="secondary-action"
-                onClick={onToggleReplayPlayback}
-                disabled={mutating}
-              >
-                {isPlaybackPaused ? <Play size={14} /> : <Pause size={14} />}
-                {isPlaybackPaused ? t.session.resumeReplay : t.session.pauseReplay}
-              </button>
-              <button
-                type="button"
-                className="secondary-action"
-                onClick={() => onStepPlaybackWindow(1)}
-                disabled={mutating}
-              >
-                <SkipForward size={14} />
-                {t.session.nextWindow}
-              </button>
-              <button type="button" className="action" onClick={onStopSession} disabled={mutating}>
-                <Pause size={14} />
-                {t.session.exitReplay}
-              </button>
-            </>
-          ) : liveMonitorActive ? (
-            <button type="button" className="action" onClick={onStopSession} disabled={mutating}>
-              <Pause size={14} />
-              {t.session.stopSession}
-            </button>
-          ) : (
-            <>
-              <div className="direct-feed-input-group">
-                <input
-                  type="text"
-                  className="direct-feed-input"
-                  placeholder={t.session.pastePath}
-                  value={directPath}
-                  onChange={(event) => onDirectPathChange(event.target.value)}
-                  onKeyDown={(event) => event.key === "Enter" && onDirectLaunch()}
-                />
-                <button
-                  className="direct-launch-btn"
-                  onClick={onDirectLaunch}
-                  disabled={isDirectLoading || !directPath.trim()}
-                >
-                  {isDirectLoading ? t.session.launching : t.session.launch}
-                </button>
-              </div>
-              {selectedSession && selectedSession.status === "paused" && (
-                <button
-                  type="button"
-                  className="secondary-action"
-                  onClick={onResumeSelected}
-                  disabled={mutating}
-                >
-                  <Play size={14} />
-                  {t.session.resumeSelected}
-                </button>
-              )}
-              {selectedSession && selectedSession.totalPolls > 0 && (
-                <button
-                  type="button"
-                  className="secondary-action"
-                  onClick={onReplaySelected}
-                  disabled={mutating}
-                >
-                  <Radio size={14} />
-                  {t.session.replaySelected}
-                </button>
-              )}
-              <button
-                type="button"
-                className="action"
-                onClick={onCreateSession}
-                disabled={creating || mutating || !readyToRun}
-              >
-                <Play size={14} />
-                {t.session.startSession}
-              </button>
-            </>
-          )}
-        </div>
+        <SessionBoothActionBar
+          playbackActive={playbackActive}
+          liveMonitorActive={liveMonitorActive}
+          mutating={mutating}
+          readyToRun={readyToRun}
+          isPlaybackPaused={isPlaybackPaused}
+          directPath={directPath}
+          isDirectLoading={isDirectLoading}
+          selectedSession={selectedSession}
+          creating={creating}
+          labels={{
+            prevWindow: t.session.prevWindow,
+            nextWindow: t.session.nextWindow,
+            resumeReplay: t.session.resumeReplay,
+            pauseReplay: t.session.pauseReplay,
+            exitReplay: t.session.exitReplay,
+            stopSession: t.session.stopSession,
+            pastePath: t.session.pastePath,
+            launching: t.session.launching,
+            launch: t.session.launch,
+            resumeSelected: t.session.resumeSelected,
+            replaySelected: t.session.replaySelected,
+            startSession: t.session.startSession,
+          }}
+          onDirectPathChange={onDirectPathChange}
+          onDirectLaunch={onDirectLaunch}
+          onResumeSelected={onResumeSelected}
+          onReplaySelected={onReplaySelected}
+          onCreateSession={onCreateSession}
+          onStepPlaybackWindow={onStepPlaybackWindow}
+          onToggleReplayPlayback={onToggleReplayPlayback}
+          onStopSession={onStopSession}
+        />
       </div>
 
       {(playbackActive || liveMonitorActive) && (
@@ -218,79 +151,34 @@ export function SessionBoothPanel({
       </div>
 
       <div className="session-booth-detail-grid">
-        <section className="session-booth-card">
-          <div className="session-booth-card-header">
-            <strong>{t.session.signalSnapshot}</strong>
-            <span>
-              {latestUpdate?.hasData
-                ? t.session.latestWindowLines.replace("{count}", String(latestUpdate.lineCount))
-                : t.session.waitingStreamData}
-            </span>
-          </div>
-          <div className="session-signal-chip-row">
-            {booth.levelCountEntries.length > 0 ? (
-              booth.levelCountEntries.map(([level, count]) => (
-                <span key={level} className="session-signal-chip">
-                  {formatMonitorLevel(level, t.session.awaitingInput)} · {count}
-                </span>
-              ))
-            ) : (
-              <span className="session-signal-chip muted">{t.session.noLevelBreakdown}</span>
-            )}
-          </div>
-          <div className="session-signal-chip-row">
-            {booth.topComponents.length > 0 ? (
-              booth.topComponents.map((component) => (
-                <span key={component.component} className="session-signal-chip">
-                  {component.component} · {component.count}
-                </span>
-              ))
-            ) : (
-              <span className="session-signal-chip muted">{t.session.topComponentsSoon}</span>
-            )}
-          </div>
-        </section>
+        <SessionBoothSignalCard
+          booth={booth}
+          latestUpdate={latestUpdate}
+          labels={{
+            signalSnapshot: t.session.signalSnapshot,
+            latestWindowLines: t.session.latestWindowLines,
+            waitingStreamData: t.session.waitingStreamData,
+            awaitingInput: t.session.awaitingInput,
+            noLevelBreakdown: t.session.noLevelBreakdown,
+            topComponentsSoon: t.session.topComponentsSoon,
+          }}
+        />
 
-        <section className="session-booth-card">
-          <div className="session-booth-card-header">
-            <strong>{playbackActive ? t.session.replayNotes : t.session.watchouts}</strong>
-            <span>
-              {latestUpdate?.anomalyCount
-                ? t.session.latestWindowAnomalies.replace(
-                    "{count}",
-                    String(latestUpdate.anomalyCount),
-                  )
-                : t.session.noCurrentBurst}
-            </span>
-          </div>
-          {booth.warningItems.length > 0 || booth.anomalyMarkers.length > 0 ? (
-            <div className="session-booth-list">
-              {booth.warningItems.map((warning) => (
-                <div key={warning} className="session-booth-list-item">
-                  <AlertCircle size={14} />
-                  <span>{warning}</span>
-                </div>
-              ))}
-              {booth.anomalyMarkers.map((marker) => (
-                <div
-                  key={`${marker.eventIndex}-${marker.component}-${marker.excerpt}`}
-                  className="session-booth-list-item"
-                >
-                  <TrendingUp size={14} />
-                  <span>
-                    {formatMonitorLevel(marker.level, t.session.awaitingInput)} · {marker.component}{" "}
-                    · {marker.excerpt}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="session-booth-list-item muted">
-              <Activity size={14} />
-              <span>{readyToRun ? t.session.runBoothHint : t.session.sourceActiveHint}</span>
-            </div>
-          )}
-        </section>
+        <SessionBoothWatchCard
+          booth={booth}
+          latestUpdate={latestUpdate}
+          playbackActive={playbackActive}
+          readyToRun={readyToRun}
+          labels={{
+            replayNotes: t.session.replayNotes,
+            watchouts: t.session.watchouts,
+            latestWindowAnomalies: t.session.latestWindowAnomalies,
+            noCurrentBurst: t.session.noCurrentBurst,
+            awaitingInput: t.session.awaitingInput,
+            runBoothHint: t.session.runBoothHint,
+            sourceActiveHint: t.session.sourceActiveHint,
+          }}
+        />
       </div>
     </section>
   );

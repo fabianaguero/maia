@@ -87,7 +87,9 @@ export function buildSessionScreenViewModel(
         }
       },
       onReplaySelected: async () => {
-        await controller.handlePlaybackSession(controller.selectedSession);
+        if (controller.selectedSession) {
+          await controller.handlePlaybackSession(controller.selectedSession);
+        }
       },
       onCreateSession: controller.handleCreateSession,
       onStepPlaybackWindow: (direction) => controller.monitor.stepPlaybackWindow(direction),

@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildInspectTrackAnchoredBeatGridAnalysisPatch,
   buildInspectTrackMetadataDetails,
+  buildInspectTrackMovedCuePerformancePatch,
+  buildInspectTrackMoveLoopBoundaryPerformancePatch,
+  buildInspectTrackMoveLoopPerformancePatch,
   buildInspectTrackSummaryPills,
   buildInspectTrackTabViewModel,
+  buildInspectTrackWaveformModel,
   formatInspectTrackAnalysisMode,
 } from "../../src/features/inspect/inspectTrackViewRuntime";
 import { en } from "../../src/i18n/en";
@@ -165,5 +170,108 @@ describe("inspectTrackViewRuntime", () => {
         value: "/managed/source.wav",
       },
     ]);
+  });
+
+  it("builds waveform editing state and movement patches", () => {
+    const track = createTrack();
+    track.analysis.beatGrid = [
+      { index: 0, second: 0 },
+      { index: 1, second: 0.5 },
+    ];
+    track.performance.hotCues = [
+      {
+        id: "hot-1",
+        slot: 1,
+        second: 24.25,
+        label: "Drop",
+        kind: "hot",
+        color: null,
+      },
+    ];
+    track.performance.memoryCues = [
+      {
+        id: "memory-1",
+        slot: null,
+        second: 48,
+        label: "Breakdown",
+        kind: "memory",
+        color: null,
+      },
+    ];
+    track.performance.savedLoops = [
+      {
+        id: "loop-1",
+        slot: 1,
+        startSecond: 64,
+        endSecond: 72,
+        label: "Loop A",
+        color: null,
+        locked: false,
+      },
+    ];
+
+    const waveformModel = buildInspectTrackWaveformModel({
+      track,
+      trackMutating: false,
+    });
+
+    expect(waveformModel.editableTrackBpm).toBe(126);
+    expect(waveformModel.quantizeWaveformEdits).toBe(true);
+    expect(waveformModel.canEditBeatGrid).toBe(true);
+    expect(waveformModel.editableCues.map((cue) => cue.id)).toEqual([
+      "main-cue",
+      "hot-1",
+      "memory-1",
+    ]);
+
+    expect(
+      buildInspectTrackAnchoredBeatGridAnalysisPatch({
+        track,
+        second: 8,
+        editableTrackBpm: waveformModel.editableTrackBpm,
+      }),
+    ).toMatchObject({
+      bpm: 126,
+    });
+
+    expect(
+      buildInspectTrackMovedCuePerformancePatch({
+        track,
+        cue: {
+          id: "main-cue",
+          second: 12.5,
+          label: "Main",
+          kind: "main",
+        },
+        second: 16,
+        quantizeWaveformEdits: false,
+      }),
+    ).toMatchObject({
+      mainCueSecond: 16,
+    });
+
+    expect(
+      buildInspectTrackMoveLoopBoundaryPerformancePatch({
+        track,
+        loopId: "loop-1",
+        boundary: "end",
+        second: 80,
+        editableTrackBpm: waveformModel.editableTrackBpm,
+        quantizeWaveformEdits: waveformModel.quantizeWaveformEdits,
+      }).savedLoops?.[0],
+    ).toMatchObject({
+      id: "loop-1",
+    });
+
+    expect(
+      buildInspectTrackMoveLoopPerformancePatch({
+        track,
+        loopId: "loop-1",
+        second: 68,
+        quantizeWaveformEdits: waveformModel.quantizeWaveformEdits,
+      }).savedLoops?.[0],
+    ).toMatchObject({
+      id: "loop-1",
+    });
   });
 });

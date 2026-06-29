@@ -97,4 +97,81 @@ describe("sessionScreenViewModel", () => {
     viewModel.boothProps.onStopSession();
     expect(onStopSession).toHaveBeenCalled();
   });
+
+  it("skips replay when no selected session is available", async () => {
+    const controller = {
+      activeSession: null,
+      createError: null,
+      playbackActive: false,
+      liveMonitorActive: false,
+      creating: false,
+      readyToRun: false,
+      mode: "log",
+      latestUpdate: null,
+      monitor: {
+        session: null,
+        isPlaybackPaused: false,
+        stepPlaybackWindow: vi.fn(),
+        resumePlayback: vi.fn(),
+        pausePlayback: vi.fn(),
+        metrics: {
+          windowCount: 0,
+          processedLines: 0,
+          totalAnomalies: 0,
+        },
+      },
+      directPath: "",
+      isDirectLoading: false,
+      selectedSession: null,
+      setDirectPath: vi.fn(),
+      handleDirectLaunch: vi.fn(),
+      handleResumeSession: vi.fn(async (_sessionId: string) => undefined),
+      handlePlaybackSession: vi.fn(async (_session: unknown) => undefined),
+      handleCreateSession: vi.fn(),
+      selectedTemplateId: "deep-house",
+      baseMode: "track",
+      selectedSourceId: null,
+      selectedTrackId: null,
+      selectedPlaylistId: null,
+      selectedSource: null,
+      selectedTrack: null,
+      selectedPlaylist: null,
+      selectedBaseDetails: { label: null, detail: null },
+      sessionLabel: "",
+      sessionLabelPlaceholder: "Session",
+      sourceOptions: [],
+      selectedSessionBookmarks: [],
+      selectedSessionReplayFeedbackRecommendation: null,
+      bookmarkContexts: {},
+      setSelectedTemplateId: vi.fn(),
+      setBaseMode: vi.fn(),
+      setSelectedTrackId: vi.fn(),
+      setSelectedPlaylistId: vi.fn(),
+      setMode: vi.fn(),
+      setSelectedSourceId: vi.fn(),
+      setSessionLabel: vi.fn(),
+      handleReplayBookmark: vi.fn(async () => undefined),
+    } as never;
+
+    const viewModel = buildSessionScreenViewModel({
+      sessionsCount: 0,
+      selectedSessionId: null,
+      loading: false,
+      mutating: false,
+      error: null,
+      activeSessionId: null,
+      activeSessionMode: null,
+      tracks: [] as never,
+      playlists: [] as never,
+      sessions: [] as never,
+      sessionBookmarksBySessionId: {},
+      onStopSession: vi.fn(async () => undefined),
+      onDelete: vi.fn(async (_sessionId: string) => undefined),
+      onSelectSession: vi.fn(),
+      controller,
+    });
+
+    await expect(viewModel.boothProps.onReplaySelected()).resolves.toBeUndefined();
+    expect(controller.handlePlaybackSession).not.toHaveBeenCalled();
+  });
 });

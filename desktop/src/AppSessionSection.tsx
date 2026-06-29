@@ -5,7 +5,7 @@ import type { BaseTrackPlaylist, LibraryTrack, RepositoryAnalysis } from "./type
 import type { StartSessionInput } from "./types/monitor";
 import type { ActiveMonitorSession } from "./features/monitor/monitorContextTypes";
 
-interface AppSessionSectionProps {
+export interface AppSessionSectionProps {
   monitorSession: ActiveMonitorSession | null;
   monitorIsPlayback: boolean;
   monitorPlaybackProgress: number | null;

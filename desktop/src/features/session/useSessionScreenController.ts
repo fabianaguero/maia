@@ -12,23 +12,9 @@ import type { BaseTrackPlaylist, LibraryTrack, RepositoryAnalysis } from "../../
 import type { LiveLogStreamUpdate, StartSessionInput } from "../../types/monitor";
 import { useMonitor } from "../monitor/MonitorContext";
 import { buildSessionBoothViewModel } from "./sessionBoothViewModel";
+import { type QuickSessionMode, type SessionBaseMode } from "./sessionDisplay";
 import {
-  resolveBaseDetails,
-  resolveSelectedBaseDetails,
-  resolveSessionBedPath,
-  resolveSessionBedUrl,
-  resolveSourceDetails,
-  type QuickSessionMode,
-  type SessionBaseMode,
-} from "./sessionDisplay";
-import {
-  buildSessionLabelPlaceholder,
-  resolveBookmarkContext,
-  resolvePlaybackPercent,
-  resolveReadyToRun,
-  resolveSelectedEntities,
-  resolveSourceOptions,
-  type SessionBookmarkContext,
+  resolveSessionControllerDerivedState,
   type SessionStartDraft,
 } from "./sessionScreenRuntime";
 import { useSessionScreenActions } from "./useSessionScreenActions";
@@ -76,35 +62,6 @@ export function useSessionScreenController(input: SessionScreenControllerInput) 
   const [selectedSessionEvents, setSelectedSessionEvents] = useState<SessionEvent[]>([]);
   const boothBedAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  const sourceOptions = useMemo(
-    () => resolveSourceOptions(mode, input.repositories),
-    [mode, input.repositories],
-  );
-  const { selectedSource, selectedTrack, selectedPlaylist } = useMemo(
-    () =>
-      resolveSelectedEntities({
-        playlists: input.playlists,
-        repositories: input.repositories,
-        selectedPlaylistId,
-        selectedSourceId,
-        selectedTrackId,
-        tracks: input.tracks,
-      }),
-    [
-      input.playlists,
-      input.repositories,
-      input.tracks,
-      selectedPlaylistId,
-      selectedSourceId,
-      selectedTrackId,
-    ],
-  );
-  const selectedBaseDetails = resolveSelectedBaseDetails(
-    baseMode,
-    selectedTrack,
-    selectedPlaylist,
-    input.tracks,
-  );
   const {
     handleCreateSession,
     handleDirectLaunch,
@@ -137,20 +94,80 @@ export function useSessionScreenController(input: SessionScreenControllerInput) 
     setDirectPath,
   });
 
-  const activeSession = input.sessions.find((session) => session.id === input.activeSessionId);
-  const selectedSession =
-    input.sessions.find((session) => session.id === input.selectedSessionId) ??
-    activeSession ??
-    input.sessions[0] ??
-    null;
-  const selectedSessionIdForEvents = selectedSession?.id ?? null;
-  const playbackActive = input.activeSessionMode === "playback" && Boolean(activeSession);
-  const liveMonitorActive = Boolean(monitor.session) && !playbackActive;
-  const activeBedUrl = resolveSessionBedUrl(
-    liveMonitorActive && !playbackActive
-      ? resolveSessionBedPath(activeSession ?? null, input.tracks, input.playlists)
-      : null,
+  const selectedTemplate =
+    SOURCE_TEMPLATES.find((template) => template.id === selectedTemplateId) ?? null;
+  const selectedTemplatePresentation = selectedTemplate
+    ? resolveSourceTemplatePresentation(selectedTemplate, t)
+    : null;
+  const derivedState = useMemo(
+    () =>
+      resolveSessionControllerDerivedState({
+        activePlaybackProgress: input.activePlaybackProgress,
+        activeSessionId: input.activeSessionId,
+        activeSessionMode: input.activeSessionMode,
+        baseMode,
+        mode,
+        monitorHasSession: Boolean(monitor.session),
+        playlists: input.playlists,
+        repositories: input.repositories,
+        selectedPlaylistId,
+        selectedSessionEvents,
+        selectedSessionId: input.selectedSessionId,
+        selectedSourceId,
+        selectedTrackId,
+        sessionBookmarksBySessionId: input.sessionBookmarksBySessionId,
+        sessionPlaceholderFallback: t.session.sessionPlaceholder,
+        templateGenre: selectedTemplatePresentation?.genre ?? selectedTemplate?.genre ?? null,
+        templateLabel: selectedTemplatePresentation?.label ?? selectedTemplate?.label ?? null,
+        sessions: input.sessions,
+        tracks: input.tracks,
+      }),
+    [
+      input.activePlaybackProgress,
+      input.activeSessionId,
+      input.activeSessionMode,
+      input.playlists,
+      input.repositories,
+      input.selectedSessionId,
+      input.sessionBookmarksBySessionId,
+      input.sessions,
+      input.tracks,
+      baseMode,
+      mode,
+      monitor.session,
+      selectedPlaylistId,
+      selectedSessionEvents,
+      selectedSourceId,
+      selectedTemplate?.genre,
+      selectedTemplate?.label,
+      selectedTemplatePresentation?.genre,
+      selectedTemplatePresentation?.label,
+      selectedTrackId,
+      t.session.sessionPlaceholder,
+    ],
   );
+  const {
+    sourceOptions,
+    selectedSource,
+    selectedTrack,
+    selectedPlaylist,
+    selectedBaseDetails,
+    activeSession,
+    selectedSession,
+    selectedSessionIdForEvents,
+    playbackActive,
+    liveMonitorActive,
+    activeBedUrl,
+    selectedSessionBookmarks,
+    bookmarkContexts,
+    sessionLabelPlaceholder,
+    playbackPercent,
+    readyToRun,
+    activeBaseDetails,
+    selectedSessionBaseDetails,
+    activeSourceDetails,
+    selectedSessionSourceDetails,
+  } = derivedState;
   useSessionScreenEffects({
     monitorSessionId: monitor.session?.sessionId ?? null,
     subscribeToMonitor,
@@ -160,52 +177,8 @@ export function useSessionScreenController(input: SessionScreenControllerInput) 
     activeBedUrl,
     boothBedAudioRef,
   });
-
-  const selectedSessionBookmarks = useMemo(
-    () => (selectedSession ? (input.sessionBookmarksBySessionId[selectedSession.id] ?? []) : []),
-    [input.sessionBookmarksBySessionId, selectedSession],
-  );
-  const bookmarkContexts = useMemo(() => {
-    const contexts: Record<number, SessionBookmarkContext> = {};
-    for (const bookmark of selectedSessionBookmarks) {
-      contexts[bookmark.id] = resolveBookmarkContext(bookmark, selectedSessionEvents);
-    }
-    return contexts;
-  }, [selectedSessionBookmarks, selectedSessionEvents]);
-
   const selectedSessionReplayFeedbackRecommendation =
     useReplayFeedbackRecommendation(selectedSessionBookmarks);
-  const selectedTemplate =
-    SOURCE_TEMPLATES.find((template) => template.id === selectedTemplateId) ?? null;
-  const selectedTemplatePresentation = selectedTemplate
-    ? resolveSourceTemplatePresentation(selectedTemplate, t)
-    : null;
-  const sessionLabelPlaceholder = buildSessionLabelPlaceholder({
-    selectedBaseLabel: selectedBaseDetails.label,
-    selectedSourceTitle: selectedSource?.title ?? null,
-    templateGenre: selectedTemplatePresentation?.genre ?? selectedTemplate?.genre ?? null,
-    templateLabel: selectedTemplatePresentation?.label ?? selectedTemplate?.label ?? null,
-    fallbackLabel: t.session.sessionPlaceholder,
-  });
-  const playbackPercent = resolvePlaybackPercent(input.activePlaybackProgress);
-  const readyToRun = resolveReadyToRun({
-    baseMode,
-    selectedPlaylistId,
-    selectedSourceId,
-    selectedTrackId,
-  });
-  const activeBaseDetails = resolveBaseDetails(
-    activeSession ?? null,
-    input.tracks,
-    input.playlists,
-  );
-  const selectedSessionBaseDetails = resolveBaseDetails(
-    selectedSession,
-    input.tracks,
-    input.playlists,
-  );
-  const activeSourceDetails = resolveSourceDetails(activeSession ?? null, input.repositories);
-  const selectedSessionSourceDetails = resolveSourceDetails(selectedSession, input.repositories);
   const booth = buildSessionBoothViewModel({
     t,
     mode,
@@ -214,7 +187,7 @@ export function useSessionScreenController(input: SessionScreenControllerInput) 
     liveMonitorActive,
     readyToRun,
     playbackPercent,
-    activeSession: activeSession ?? null,
+    activeSession,
     selectedSourceTitle: selectedSource?.title ?? null,
     selectedSourcePath: selectedSource?.sourcePath ?? null,
     selectedSourceSuggestedBpm: selectedSource?.suggestedBpm ?? null,

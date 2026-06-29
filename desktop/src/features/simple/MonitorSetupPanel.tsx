@@ -5,140 +5,9 @@ import type { LibraryTrack } from "../../types/library";
 import { BrandIcon } from "../../components/Branding";
 import { TrackWaveformMini } from "../../components/TrackWaveformMini";
 import { useT } from "../../i18n/I18nContext";
+import { MonitorSetupModernSelector } from "./MonitorSetupModernSelector";
+import { buildMonitorSetupSourceFilterOptions } from "./monitorSetupPanelRuntime";
 import type { MonitorLaunchSource, MonitorSourceFilter } from "./monitorSourceOptions";
-
-function MiniWave({ color = "var(--color-accent)", count = 20, active = true, seed = "maia" }) {
-  const getHeights = (s: string) => {
-    let hash = 0;
-    for (let i = 0; i < s.length; i++) {
-      hash = s.charCodeAt(i) + ((hash << 5) - hash);
-    }
-
-    let t = Math.abs(hash);
-    return Array.from({ length: count }).map(() => {
-      t = (t * 1664525 + 1013904223) >>> 0;
-      return (t % 70) + 15;
-    });
-  };
-
-  const heights = getHeights(seed);
-
-  return (
-    <div className={`visual-wave-static ${active ? "active" : ""}`}>
-      {heights.map((h, i) => (
-        <div
-          key={i}
-          className="wave-bar-static"
-          style={{
-            backgroundColor: active ? color : "var(--text-muted)",
-            height: `${h}%`,
-            opacity: active ? 1 : 0.3,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
-interface ModernSelectorProps<T> {
-  label: string;
-  items: T[];
-  selectedId: string;
-  onSelect: (id: string) => void;
-  headerAside?: React.ReactNode;
-  renderTitle: (item: T) => string;
-  renderSub: (item: T) => string;
-  color: string;
-  seedPrefix?: string;
-  renderLeading?: (item: T, isSelected: boolean) => React.ReactNode;
-  renderAction?: (item: T, isSelected: boolean) => React.ReactNode;
-  renderWave?: (item: T, isSelected: boolean) => React.ReactNode;
-  renderBadge?: (item: T, isSelected: boolean) => React.ReactNode;
-  emptyMessage: string;
-}
-
-function ModernSelector<T extends { id: string }>({
-  label,
-  items,
-  selectedId,
-  onSelect,
-  headerAside,
-  renderTitle,
-  renderSub,
-  color,
-  seedPrefix = "item",
-  renderLeading,
-  renderAction,
-  renderWave,
-  renderBadge,
-  emptyMessage,
-}: ModernSelectorProps<T>) {
-  return (
-    <div className="modern-selector">
-      <div className="modern-selector__header">
-        <div className="modern-selector__header-copy">
-          <label className="setup-label">{label}</label>
-          <span className="modern-selector__count">{items.length}</span>
-        </div>
-        {headerAside ? <div className="modern-selector__header-aside">{headerAside}</div> : null}
-      </div>
-      <div className="selector-grid">
-        {items.length === 0 ? (
-          <div className="selector-empty">
-            <span>{emptyMessage}</span>
-          </div>
-        ) : (
-          items.map((item) => {
-            const isSelected = item.id === selectedId;
-            return (
-              <div
-                key={item.id}
-                className={`selector-card ${isSelected ? "selected" : ""}`}
-                role="button"
-                tabIndex={0}
-                aria-pressed={isSelected}
-                aria-label={renderTitle(item)}
-                onClick={() => onSelect(item.id)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    onSelect(item.id);
-                  }
-                }}
-              >
-                {renderLeading ? renderLeading(item, isSelected) : null}
-                <div className="card-content">
-                  <div className="card-head">
-                    <span className="card-title">{renderTitle(item)}</span>
-                    {renderBadge ? renderBadge(item, isSelected) : null}
-                  </div>
-                  <span className="card-sub">{renderSub(item)}</span>
-                </div>
-                {renderAction ? (
-                  <div
-                    onClick={(event) => event.stopPropagation()}
-                    style={{ display: "flex", alignItems: "center" }}
-                  >
-                    {renderAction(item, isSelected)}
-                  </div>
-                ) : renderWave ? (
-                  renderWave(item, isSelected)
-                ) : (
-                  <MiniWave
-                    color={color}
-                    count={isSelected ? 14 : 6}
-                    active={isSelected}
-                    seed={`${seedPrefix}-${item.id}`}
-                  />
-                )}
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
-}
 
 interface MonitorSetupPanelProps {
   sourceFilter: MonitorSourceFilter;
@@ -178,12 +47,7 @@ export function MonitorSetupPanel({
   onStartMonitoringRequest,
 }: MonitorSetupPanelProps) {
   const t = useT();
-  const sourceFilterOptions: Array<{ id: MonitorSourceFilter; label: string }> = [
-    { id: "all", label: t.simpleMode.setup.all },
-    { id: "file", label: t.simpleMode.setup.logFile },
-    { id: "folder", label: t.simpleMode.setup.folder },
-    { id: "cloud", label: t.simpleMode.setup.cloud },
-  ];
+  const sourceFilterOptions = buildMonitorSetupSourceFilterOptions(t);
 
   return (
     <>
@@ -214,7 +78,7 @@ export function MonitorSetupPanel({
       </div>
 
       <div className="setup-container-modern">
-        <ModernSelector
+        <MonitorSetupModernSelector
           label={t.simpleMode.setup.logSource}
           items={filteredMonitorSourceOptions}
           selectedId={selectedSourceId}
@@ -256,7 +120,7 @@ export function MonitorSetupPanel({
           seedPrefix="repo"
         />
 
-        <ModernSelector
+        <MonitorSetupModernSelector
           label={t.simpleMode.setup.soundProfile}
           items={tracks}
           selectedId={selectedSoundId}

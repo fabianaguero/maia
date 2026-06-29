@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import type { CSSProperties } from "react";
+
 import { useT } from "../../../i18n/I18nContext";
 import type {
   BeatGridPoint,
@@ -6,8 +7,7 @@ import type {
   VisualizationCuePoint,
   VisualizationRegionPoint,
 } from "../../../types/library";
-import { selectBeatGridPhrase, type BeatGridPhraseRange } from "../../../utils/beatGrid";
-import { hasUsableBeatGrid, resolveTrackPlacementSecond } from "../../../utils/track";
+import type { BeatGridPhraseRange } from "../../../utils/beatGrid";
 import {
   buildWaveformSummaryPills,
   buildRenderedCueMarkers,
@@ -15,16 +15,16 @@ import {
   formatDuration,
   resolveAnchorPosition,
   resolveDisplayBins,
-  resolveWaveformInteractionHints,
-  resolveWaveformPlayheadOverlayState,
   resolveVisibleBeats,
   resolveWaveformCursor,
+  resolveWaveformInteractionHints,
+  resolveWaveformPlayheadOverlayState,
   resolveWaveformSummaryFlags,
-  type DragTarget,
   type WaveformEditableCuePoint,
 } from "./waveformPlaceholderRuntime";
 import { WaveformCueOverlay } from "./WaveformCueOverlay";
 import { WaveformRegionOverlay } from "./WaveformRegionOverlay";
+import { useWaveformPlaceholderInteractions } from "./useWaveformPlaceholderInteractions";
 
 interface WaveformPlaceholderProps {
   bins: number[];
@@ -37,7 +37,7 @@ interface WaveformPlaceholderProps {
   currentTime?: number;
   hero?: boolean;
   onSeek?: (second: number) => void;
-  analysisProgress?: number | null; // 0-1, null if not applicable
+  analysisProgress?: number | null;
   canEditBeatGrid?: boolean;
   onSetDownbeatAtSecond?: (second: number) => void;
   canSelectPhrase?: boolean;
@@ -76,265 +76,38 @@ export function WaveformPlaceholder({
   onMoveLoop,
 }: WaveformPlaceholderProps) {
   const t = useT();
-  const [gridClickArmed, setGridClickArmed] = useState(false);
-  const [phraseSelectArmed, setPhraseSelectArmed] = useState(false);
-  const [gridAnchorDragging, setGridAnchorDragging] = useState(false);
-  const [dragAnchorSecond, setDragAnchorSecond] = useState<number | null>(null);
-  const [dragTarget, setDragTarget] = useState<DragTarget | null>(null);
-  const [dragEditSecond, setDragEditSecond] = useState<number | null>(null);
-  const stageRef = useRef<HTMLDivElement | null>(null);
-  const dragAnchorSecondRef = useRef<number | null>(null);
-  const dragEditSecondRef = useRef<number | null>(null);
-  const dragMovedRef = useRef(false);
-  const dragStartClientXRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (!canEditBeatGrid) {
-      setGridClickArmed(false);
-      setGridAnchorDragging(false);
-      setDragAnchorSecond(null);
-      dragAnchorSecondRef.current = null;
-    }
-  }, [canEditBeatGrid]);
-
-  useEffect(() => {
-    if (!canSelectPhrase) {
-      setPhraseSelectArmed(false);
-    }
-  }, [canSelectPhrase]);
-
-  useEffect(() => {
-    if (!canEditPerformance) {
-      setDragTarget(null);
-      setDragEditSecond(null);
-      dragEditSecondRef.current = null;
-      dragMovedRef.current = false;
-      dragStartClientXRef.current = null;
-    }
-  }, [canEditPerformance]);
-
-  const resolveSecondFromClientX = useCallback(
-    (clientX: number): number | null => {
-      if (!durationSeconds || durationSeconds <= 0 || !stageRef.current) {
-        return null;
-      }
-
-      const rect = stageRef.current.getBoundingClientRect();
-      const clickX = clientX - rect.left;
-      const percentage = Math.max(0, Math.min(1, clickX / rect.width));
-      return percentage * durationSeconds;
-    },
-    [durationSeconds],
-  );
-
-  useEffect(() => {
-    if (!gridAnchorDragging || !onSetDownbeatAtSecond) {
-      return;
-    }
-
-    const handleMouseMove = (event: MouseEvent) => {
-      const nextSecond = resolveSecondFromClientX(event.clientX);
-      if (nextSecond === null) {
-        return;
-      }
-
-      dragAnchorSecondRef.current = nextSecond;
-      setDragAnchorSecond(nextSecond);
-    };
-
-    const handleMouseUp = () => {
-      const nextSecond = dragAnchorSecondRef.current;
-      if (nextSecond !== null) {
-        onSetDownbeatAtSecond(nextSecond);
-      }
-      dragAnchorSecondRef.current = null;
-      setDragAnchorSecond(null);
-      setGridAnchorDragging(false);
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp, { once: true });
-
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [gridAnchorDragging, onSetDownbeatAtSecond, resolveSecondFromClientX]);
-
-  useEffect(() => {
-    if (!dragTarget) {
-      return;
-    }
-
-    const handleMouseMove = (event: MouseEvent) => {
-      const rawSecond = resolveSecondFromClientX(event.clientX);
-      if (rawSecond === null) {
-        return;
-      }
-
-      if (
-        dragStartClientXRef.current !== null &&
-        Math.abs(event.clientX - dragStartClientXRef.current) > 3
-      ) {
-        dragMovedRef.current = true;
-      }
-
-      let nextSecond = resolveTrackPlacementSecond(
-        rawSecond,
-        durationSeconds,
-        beatGrid,
-        hasUsableBeatGrid(beatGrid),
-      );
-
-      if (dragTarget.type === "loop") {
-        nextSecond = resolveTrackPlacementSecond(
-          rawSecond - dragTarget.pointerOffsetSecond,
-          durationSeconds,
-          beatGrid,
-          hasUsableBeatGrid(beatGrid),
-        );
-      }
-
-      dragEditSecondRef.current = nextSecond;
-      setDragEditSecond(nextSecond);
-    };
-
-    const handleMouseUp = () => {
-      const nextSecond = dragEditSecondRef.current;
-      if (dragTarget.type === "cue" && nextSecond !== null && dragMovedRef.current) {
-        onMoveCue?.(dragTarget.cue, nextSecond);
-      }
-
-      if (dragTarget.type === "loop-boundary" && nextSecond !== null && dragMovedRef.current) {
-        onMoveLoopBoundary?.(dragTarget.loopId, dragTarget.boundary, nextSecond);
-      }
-
-      if (dragTarget.type === "loop" && nextSecond !== null && dragMovedRef.current) {
-        onMoveLoop?.(dragTarget.loopId, nextSecond);
-      }
-
-      dragEditSecondRef.current = null;
-      setDragEditSecond(null);
-      setDragTarget(null);
-      dragStartClientXRef.current = null;
-
-      window.setTimeout(() => {
-        dragMovedRef.current = false;
-      }, 0);
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp, { once: true });
-
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [
-    beatGrid,
+  const {
+    stageRef,
+    gridClickArmed,
+    phraseSelectArmed,
+    gridAnchorDragging,
+    dragAnchorSecond,
     dragTarget,
-    durationSeconds,
-    onMoveCue,
-    onMoveLoop,
-    onMoveLoopBoundary,
+    dragEditSecond,
+    dragMovedRef,
     resolveSecondFromClientX,
-  ]);
-
-  const handleWaveformClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const seekTime = resolveSecondFromClientX(e.clientX);
-    if (seekTime === null) return;
-
-    if (gridClickArmed && onSetDownbeatAtSecond) {
-      onSetDownbeatAtSecond(seekTime);
-      setGridClickArmed(false);
-      return;
-    }
-
-    if (phraseSelectArmed && onSelectPhraseRange) {
-      const nextPhraseRange = selectBeatGridPhrase(
-        seekTime,
-        beatGrid,
-        durationSeconds,
-        phraseBeatCount,
-      );
-      if (nextPhraseRange) {
-        onSelectPhraseRange(nextPhraseRange);
-      }
-      setPhraseSelectArmed(false);
-      return;
-    }
-
-    onSeek?.(seekTime);
-  };
-
-  const beginPerformanceDrag = useCallback((clientX: number) => {
-    dragMovedRef.current = false;
-    dragStartClientXRef.current = clientX;
-    setGridClickArmed(false);
-    setPhraseSelectArmed(false);
-  }, []);
-
-  const handleBeginCueDrag = useCallback(
-    (input: { eventClientX: number; cue: WaveformEditableCuePoint; second: number }) => {
-      beginPerformanceDrag(input.eventClientX);
-      setDragTarget({
-        type: "cue",
-        cue: input.cue,
-      });
-      dragEditSecondRef.current = input.second;
-      setDragEditSecond(input.second);
-    },
-    [beginPerformanceDrag],
-  );
-
-  const handleBeginLoopDrag = useCallback(
-    (input: {
-      eventClientX: number;
-      loopId: string;
-      startSecond: number;
-      endSecond: number;
-      pointerOffsetSecond: number;
-    }) => {
-      beginPerformanceDrag(input.eventClientX);
-      setDragTarget({
-        type: "loop",
-        loopId: input.loopId,
-        startSecond: input.startSecond,
-        endSecond: input.endSecond,
-        pointerOffsetSecond: input.pointerOffsetSecond,
-      });
-      dragEditSecondRef.current = input.startSecond;
-      setDragEditSecond(input.startSecond);
-    },
-    [beginPerformanceDrag],
-  );
-
-  const handleBeginLoopBoundaryDrag = useCallback(
-    (input: {
-      eventClientX: number;
-      loopId: string;
-      boundary: "start" | "end";
-      second: number;
-    }) => {
-      beginPerformanceDrag(input.eventClientX);
-      setDragTarget({
-        type: "loop-boundary",
-        loopId: input.loopId,
-        boundary: input.boundary,
-      });
-      dragEditSecondRef.current = input.second;
-      setDragEditSecond(input.second);
-    },
-    [beginPerformanceDrag],
-  );
-
-  const consumeDraggedClick = useCallback(() => {
-    if (!dragMovedRef.current) {
-      return false;
-    }
-    dragMovedRef.current = false;
-    return true;
-  }, []);
+    handleWaveformClick,
+    handleBeginCueDrag,
+    handleBeginLoopDrag,
+    handleBeginLoopBoundaryDrag,
+    consumeDraggedClick,
+    toggleGridClickArmed,
+    togglePhraseSelectArmed,
+    beginAnchorDrag,
+  } = useWaveformPlaceholderInteractions({
+    beatGrid,
+    durationSeconds,
+    canEditBeatGrid,
+    canSelectPhrase,
+    canEditPerformance,
+    phraseBeatCount,
+    onSeek,
+    onSetDownbeatAtSecond,
+    onSelectPhraseRange,
+    onMoveCue,
+    onMoveLoopBoundary,
+    onMoveLoop,
+  });
 
   const displayBins = resolveDisplayBins(bins);
   const visibleBeats = resolveVisibleBeats(beatGrid, durationSeconds);
@@ -401,10 +174,7 @@ export function WaveformPlaceholder({
                 type="button"
                 className={`compact-action${gridClickArmed ? " waveform-grid-arm-active" : ""}`}
                 disabled={!canEditBeatGrid || !durationSeconds || durationSeconds <= 0}
-                onClick={() => {
-                  setPhraseSelectArmed(false);
-                  setGridClickArmed((current) => !current);
-                }}
+                onClick={toggleGridClickArmed}
               >
                 {gridClickArmed ? t.inspect.cancelGridClick : t.inspect.armDownbeatClick}
               </button>
@@ -414,10 +184,7 @@ export function WaveformPlaceholder({
                 type="button"
                 className={`compact-action${phraseSelectArmed ? " waveform-grid-arm-active" : ""}`}
                 disabled={!canSelectPhrase || !durationSeconds || durationSeconds <= 0}
-                onClick={() => {
-                  setGridClickArmed(false);
-                  setPhraseSelectArmed((current) => !current);
-                }}
+                onClick={togglePhraseSelectArmed}
               >
                 {phraseSelectArmed ? t.inspect.cancelPhraseSelect : t.inspect.armPhraseSelectButton}
               </button>
@@ -429,7 +196,7 @@ export function WaveformPlaceholder({
       <div
         ref={stageRef}
         className="waveform-stage"
-        onClick={handleWaveformClick}
+        onClick={(event) => handleWaveformClick(event.clientX)}
         aria-label={t.inspect.waveformStage}
         style={{
           cursor: resolveWaveformCursor({
@@ -456,6 +223,7 @@ export function WaveformPlaceholder({
             {interactionHints.dragHint}
           </div>
         ) : null}
+
         <div
           className="waveform-bars"
           aria-label={t.inspect.waveformOverview}
@@ -525,10 +293,7 @@ export function WaveformPlaceholder({
             onMouseDown={(event) => {
               event.preventDefault();
               event.stopPropagation();
-              setGridClickArmed(false);
-              setGridAnchorDragging(true);
-              dragAnchorSecondRef.current = anchorSecond;
-              setDragAnchorSecond(anchorSecond);
+              beginAnchorDrag(anchorSecond);
             }}
           >
             <span className="waveform-grid-anchor-label">{t.inspect.beatOne}</span>

@@ -18,7 +18,7 @@ import type {
   SaveBaseTrackPlaylistInput,
 } from "./types/library";
 
-interface AppCurateSectionProps {
+export interface AppCurateSectionProps {
   userMode: "simple" | "expert";
   showSimpleWizard: boolean;
   showSimpleLibrary: boolean;
