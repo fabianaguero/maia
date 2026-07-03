@@ -5,9 +5,6 @@ import type {
   MonitorLiveStreamControllerSetters,
 } from "./monitorLiveStreamControllerRuntime";
 import {
-  buildMonitorLiveStreamControllerRefs,
-  buildMonitorLiveStreamControllerSetters,
-  buildMonitorLiveStreamControllerStateHookState,
   createMonitorLiveStreamSimulateLogHandler,
 } from "./monitorLiveStreamControllerStateHookRuntime";
 import { createMonitorSignalBuffer, type MonitorLogSignalPoint } from "./monitorLiveStreamRuntime";
@@ -47,7 +44,7 @@ export function useMonitorLiveStreamControllerState({
     selectedAnomalyId,
   });
 
-  const refs: MonitorLiveStreamControllerRefs = buildMonitorLiveStreamControllerRefs({
+  const refs: MonitorLiveStreamControllerRefs = {
     liveSuggestedBpmRef,
     liveLinesRef,
     logSignalBufferRef,
@@ -56,15 +53,15 @@ export function useMonitorLiveStreamControllerState({
     audioProbePlayedRef,
     lastCueAccentAtRef,
     lastStreamEventAtRef,
-  });
+  };
 
-  const setters: MonitorLiveStreamControllerSetters = buildMonitorLiveStreamControllerSetters({
+  const setters: MonitorLiveStreamControllerSetters = {
     setLiveLines,
     setLogSignalBuffer,
     setLiveSuggestedBpm,
     setWaveformAnomalies,
     setSelectedAnomalyId,
-  });
+  };
 
   const simulateLog = useCallback(() => {
     createMonitorLiveStreamSimulateLogHandler({
@@ -80,7 +77,7 @@ export function useMonitorLiveStreamControllerState({
     })();
   }, [maxLiveLines, refs.liveLinesRef, refs.logSignalBufferRef]);
 
-  return buildMonitorLiveStreamControllerStateHookState({
+  return {
     liveLines,
     logSignalBuffer,
     liveSuggestedBpm,
@@ -90,5 +87,5 @@ export function useMonitorLiveStreamControllerState({
     refs,
     setters,
     simulateLog,
-  });
+  };
 }
