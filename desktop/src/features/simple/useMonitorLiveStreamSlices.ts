@@ -1,4 +1,3 @@
-import { buildMonitorLiveStreamControllerState } from "./monitorLiveStreamHookRuntime";
 import type { UseMonitorLiveStreamOptions } from "./monitorLiveStreamHookTypes";
 import { useMonitorLiveStreamControllerState } from "./useMonitorLiveStreamControllerState";
 import { useMonitorLiveStreamRuntimeEffects } from "./useMonitorLiveStreamRuntimeEffects";
@@ -8,7 +7,7 @@ export function useMonitorLiveStreamSlices(input: UseMonitorLiveStreamOptions) {
     maxLiveLines: input.maxLiveLines,
   });
 
-  const controllerState = buildMonitorLiveStreamControllerState(input);
+  const controllerState = input;
 
   useMonitorLiveStreamRuntimeEffects({
     state: controllerState,
