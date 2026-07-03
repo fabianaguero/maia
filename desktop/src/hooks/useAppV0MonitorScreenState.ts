@@ -1,12 +1,11 @@
+import { useMemo } from "react";
 import type { AppV0MonitorLaunchExecutionResult } from "../appV0MonitorRuntime";
 import {
   buildAppV0MonitorOrchestrator,
   buildAppV0MonitorStateModel,
 } from "./appV0MonitorScreenStateRuntime";
 import {
-  buildAppV0MonitorOrchestratorInput,
   buildAppV0MonitorScreenStateHookResult,
-  buildAppV0MonitorStateModelInput,
 } from "./appV0MonitorScreenStateHookRuntime";
 import type { ActiveMonitorSession, MonitorMetrics } from "../features/monitor/monitorContextTypes";
 import type { AppSection } from "../features/simple/appSections";
@@ -57,14 +56,77 @@ export function reportAppV0MonitorLaunchFailure(
 }
 
 export function useAppV0MonitorScreenState(input: UseAppV0MonitorScreenStateInput) {
-  const stateModel = buildAppV0MonitorStateModel(buildAppV0MonitorStateModelInput(input));
-  const monitorOrchestrator = buildAppV0MonitorOrchestrator(
-    buildAppV0MonitorOrchestratorInput(input),
+  const {
+    lang,
+    currentSection,
+    selectedRepositoryTitle,
+    selectedTrack,
+    tracks,
+    session,
+    metrics,
+    repositories,
+    setGuideTrack,
+    resumeAudio,
+    attachSession,
+    startSession,
+    playbackSession,
+    setCurrentSection,
+  } = input;
+
+  const stateModel = useMemo(
+    () =>
+      buildAppV0MonitorStateModel({
+        lang,
+        currentSection,
+        selectedRepositoryTitle: selectedRepositoryTitle ?? null,
+        selectedTrack,
+        tracks,
+        session,
+        metrics,
+      }),
+    [
+      lang,
+      currentSection,
+      selectedRepositoryTitle,
+      selectedTrack,
+      tracks,
+      session,
+      metrics,
+    ],
+  );
+  const monitorOrchestrator = useMemo(
+    () =>
+      buildAppV0MonitorOrchestrator({
+        repositories,
+        tracks,
+        selectedTrack,
+        setGuideTrack,
+        resumeAudio,
+        attachSession,
+        startSession,
+        playbackSession,
+        onLaunchSuccess: () => setCurrentSection("monitor"),
+      }),
+    [
+      repositories,
+      tracks,
+      selectedTrack,
+      setGuideTrack,
+      resumeAudio,
+      attachSession,
+      startSession,
+      playbackSession,
+      setCurrentSection,
+    ],
   );
 
-  return buildAppV0MonitorScreenStateHookResult({
-    stateModel,
-    monitorOrchestrator,
-    reportMonitorLaunchFailure: reportAppV0MonitorLaunchFailure,
-  });
+  return useMemo(
+    () =>
+      buildAppV0MonitorScreenStateHookResult({
+        stateModel,
+        monitorOrchestrator,
+        reportMonitorLaunchFailure: reportAppV0MonitorLaunchFailure,
+      }),
+    [stateModel, monitorOrchestrator],
+  );
 }

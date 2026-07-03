@@ -1,10 +1,8 @@
 import type { AppV0MonitorLaunchExecutionResult } from "../appV0MonitorRuntime";
 import type {
-  BuildAppV0MonitorOrchestratorInput,
   buildAppV0MonitorOrchestrator,
   buildAppV0MonitorStateModel,
 } from "./appV0MonitorScreenStateRuntime";
-import type { UseAppV0MonitorScreenStateInput } from "./useAppV0MonitorScreenState";
 
 type ReportAppV0MonitorLaunchFailure = (
   scope: "library" | "source",
@@ -21,36 +19,6 @@ export interface AppV0MonitorScreenStateHookResult {
   shellViewModel: ReturnType<typeof buildAppV0MonitorStateModel>["shellViewModel"];
   waveformBins: ReturnType<typeof buildAppV0MonitorStateModel>["waveformBins"];
   reportMonitorLaunchFailure: ReportAppV0MonitorLaunchFailure;
-}
-
-export function buildAppV0MonitorStateModelInput(
-  input: UseAppV0MonitorScreenStateInput,
-) {
-  return {
-    lang: input.lang,
-    currentSection: input.currentSection,
-    selectedRepositoryTitle: input.selectedRepositoryTitle ?? null,
-    selectedTrack: input.selectedTrack,
-    tracks: input.tracks,
-    session: input.session,
-    metrics: input.metrics,
-  };
-}
-
-export function buildAppV0MonitorOrchestratorInput(
-  input: UseAppV0MonitorScreenStateInput,
-): BuildAppV0MonitorOrchestratorInput {
-  return {
-    repositories: input.repositories,
-    tracks: input.tracks,
-    selectedTrack: input.selectedTrack,
-    setGuideTrack: input.setGuideTrack,
-    resumeAudio: input.resumeAudio,
-    attachSession: input.attachSession,
-    startSession: input.startSession,
-    playbackSession: input.playbackSession,
-    onLaunchSuccess: () => input.setCurrentSection("monitor"),
-  };
 }
 
 export function buildAppV0MonitorScreenStateHookResult(input: {
