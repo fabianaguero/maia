@@ -1,9 +1,8 @@
+import { useMemo } from "react";
 import {
   buildSimpleMonitorDeckVisualCanvasEffectsInput,
-  buildSimpleMonitorDeckVisualStateResult,
 } from "./simpleMonitorDeckVisualComposeRuntime";
 import {
-  buildMonitorDeckScrubHookInput,
   buildSimpleMonitorDeckVisualDerivedState,
 } from "./simpleMonitorDeckVisualRuntime";
 import { useSimpleMonitorDeckCanvasEffects } from "./useSimpleMonitorDeckCanvasEffects";
@@ -29,24 +28,32 @@ export function useSimpleMonitorDeckVisualState({
   waveformScale,
   safeRuntime = false,
 }: UseSimpleMonitorDeckVisualStateInput) {
-  const {
-    visibleWindowSeconds,
-    trackWaveSamples,
-    deckTimelineMarkers,
-    deckBeatMarkers,
-    derivedDeckState,
-  } = buildSimpleMonitorDeckVisualDerivedState({
-    waveformBins,
-    waveformAnomalies,
-    trackWaveProgress,
-    deckDurationSeconds,
-    deckBpm,
-    activeBeatGrid,
-    logSignalBuffer,
-    selectedAnomalyId,
-  });
+  const { visibleWindowSeconds, trackWaveSamples, deckTimelineMarkers, deckBeatMarkers, derivedDeckState } =
+    useMemo(
+      () =>
+        buildSimpleMonitorDeckVisualDerivedState({
+          waveformBins,
+          waveformAnomalies,
+          trackWaveProgress,
+          deckDurationSeconds,
+          deckBpm,
+          activeBeatGrid,
+          logSignalBuffer,
+          selectedAnomalyId,
+        }),
+      [
+        waveformBins,
+        waveformAnomalies,
+        trackWaveProgress,
+        deckDurationSeconds,
+        deckBpm,
+        activeBeatGrid,
+        logSignalBuffer,
+        selectedAnomalyId,
+      ],
+    );
   const scrub = useMonitorDeckScrub(
-    buildMonitorDeckScrubHookInput({
+    {
       backgroundAudioRef,
       waveformAnomalies,
       trackWaveProgress,
@@ -55,7 +62,7 @@ export function useSimpleMonitorDeckVisualState({
       isConsoleExpanded,
       onToggleConsole,
       onSelectAnomalyForFocus,
-    }),
+    },
   );
   useSimpleMonitorDeckCanvasEffects(
     buildSimpleMonitorDeckVisualCanvasEffectsInput({
@@ -74,14 +81,12 @@ export function useSimpleMonitorDeckVisualState({
     }),
   );
 
-  return buildSimpleMonitorDeckVisualStateResult({
-    scrub,
-    derived: {
-      visibleWindowSeconds,
-      trackWaveSamples,
-      deckTimelineMarkers,
-      deckBeatMarkers,
-      derivedDeckState,
-    },
-  });
+  return {
+    ...scrub,
+    ...derivedDeckState,
+    visibleWindowSeconds,
+    trackWaveSamples,
+    deckTimelineMarkers,
+    deckBeatMarkers,
+  };
 }
