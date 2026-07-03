@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import {
   deleteLogSourceConnection,
   listLogSourceConnections,
@@ -19,12 +21,16 @@ interface UseConnectionsFormControllerInput {
 }
 
 export function useConnectionsFormController(input: UseConnectionsFormControllerInput) {
-  const api = buildConnectionsFormControllerApi({
-    listLogSourceConnections,
-    pickRepositoryFile,
-    upsertLogSourceConnection,
-    deleteLogSourceConnection,
-  });
+  const api = useMemo(
+    () =>
+      buildConnectionsFormControllerApi({
+        listLogSourceConnections,
+        pickRepositoryFile,
+        upsertLogSourceConnection,
+        deleteLogSourceConnection,
+      }),
+    [],
+  );
   const localState = useConnectionsFormLocalState(input.defaultCloudLookback);
   const actions = useConnectionsFormActions({
     api,
