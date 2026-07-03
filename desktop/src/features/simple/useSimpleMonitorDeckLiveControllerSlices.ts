@@ -4,7 +4,6 @@ import { useSimpleMonitorReactiveAudio } from "./useSimpleMonitorReactiveAudio";
 import { useSimpleMonitorDeckLiveRefs } from "./useSimpleMonitorDeckLiveRefs";
 import {
   buildSimpleMonitorDeckLiveStreamHookArgs,
-  buildSimpleMonitorDeckReactiveAudioHookArgs,
   buildSimpleMonitorDeckTrackAudioHookArgs,
 } from "./simpleMonitorDeckLiveControllerHookRuntime";
 import {
@@ -29,9 +28,7 @@ export function useSimpleMonitorDeckLiveControllerSlices(
     deckDurationSeconds: input.deckDurationSeconds,
   });
   const reactiveAudio = useSimpleMonitorReactiveAudio(
-    buildSimpleMonitorReactiveAudioControllerInput(
-      buildSimpleMonitorDeckReactiveAudioHookArgs(input),
-    ),
+    buildSimpleMonitorReactiveAudioControllerInput(input),
   );
   const trackAudio = useMonitorTrackAudio(
     buildMonitorTrackAudioHookInput(

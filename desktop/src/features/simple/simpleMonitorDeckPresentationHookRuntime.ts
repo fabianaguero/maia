@@ -1,24 +1,5 @@
 import type { UseSimpleMonitorDeckPresentationStateInput } from "./simpleMonitorDeckPresentationTypes";
 
-export function buildSimpleMonitorDeckPresentationRuntimeInput(
-  input: UseSimpleMonitorDeckPresentationStateInput,
-): UseSimpleMonitorDeckPresentationStateInput {
-  return input;
-}
-
-export function buildSimpleMonitorDeckPresentationTailHookArgs(
-  input: Pick<
-    UseSimpleMonitorDeckPresentationStateInput,
-    "liveLines" | "selectedAnomalyId" | "setSelectedAnomalyId"
-  >,
-) {
-  return {
-    liveLines: input.liveLines,
-    selectedAnomalyId: input.selectedAnomalyId,
-    setSelectedAnomalyId: input.setSelectedAnomalyId,
-  };
-}
-
 export function buildSimpleMonitorDeckPresentationVisualHookArgs(input: {
   state: UseSimpleMonitorDeckPresentationStateInput;
   focusAnomaly: (anomalyId: string) => void;
@@ -41,15 +22,5 @@ export function buildSimpleMonitorDeckPresentationVisualHookArgs(input: {
     deckVisualPreset: input.state.deckVisualPreset,
     waveformScale: input.state.waveformScale,
     safeRuntime: input.state.safeRuntime ?? false,
-  };
-}
-
-export function buildSimpleMonitorDeckPresentationHookResult<TTailState, TVisualState>(input: {
-  tailState: TTailState;
-  visualState: TVisualState;
-}): TTailState & TVisualState {
-  return {
-    ...input.tailState,
-    ...input.visualState,
   };
 }

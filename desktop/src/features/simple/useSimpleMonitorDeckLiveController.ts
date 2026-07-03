@@ -1,4 +1,3 @@
-import { buildSimpleMonitorDeckLiveControllerHookResult } from "./simpleMonitorDeckLiveControllerHookRuntime";
 import type {
   SimpleMonitorDeckLiveControllerResult,
   UseSimpleMonitorDeckLiveControllerInput,
@@ -10,8 +9,10 @@ export function useSimpleMonitorDeckLiveController(
 ): SimpleMonitorDeckLiveControllerResult {
   const { trackAudio, liveState } = useSimpleMonitorDeckLiveControllerSlices(input);
 
-  return buildSimpleMonitorDeckLiveControllerHookResult({
-    trackAudio,
-    liveState,
-  });
+  return {
+    backgroundAudioRef: trackAudio.backgroundAudioRef,
+    previewTrackId: trackAudio.previewTrackId,
+    toggleTrackPreview: trackAudio.toggleTrackPreview,
+    ...liveState,
+  };
 }

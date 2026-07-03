@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
-  buildSimpleMonitorDeckPresentationHookResult,
-  buildSimpleMonitorDeckPresentationRuntimeInput,
-  buildSimpleMonitorDeckPresentationTailHookArgs,
   buildSimpleMonitorDeckPresentationVisualHookArgs,
 } from "../../../src/features/simple/simpleMonitorDeckPresentationHookRuntime";
 import type { UseSimpleMonitorDeckPresentationStateInput } from "../../../src/features/simple/simpleMonitorDeckPresentationTypes";
@@ -32,20 +29,9 @@ function createInput(): UseSimpleMonitorDeckPresentationStateInput {
 }
 
 describe("simpleMonitorDeckPresentationHookRuntime", () => {
-  it("passes the runtime input through unchanged", () => {
-    const input = createInput();
-    expect(buildSimpleMonitorDeckPresentationRuntimeInput(input)).toBe(input);
-  });
-
-  it("builds tail and visual hook args from presentation state", () => {
+  it("builds visual hook args from presentation state", () => {
     const input = createInput();
     const focusAnomaly = vi.fn();
-
-    expect(buildSimpleMonitorDeckPresentationTailHookArgs(input)).toEqual({
-      liveLines: input.liveLines,
-      selectedAnomalyId: "anomaly-1",
-      setSelectedAnomalyId: input.setSelectedAnomalyId,
-    });
 
     expect(
       buildSimpleMonitorDeckPresentationVisualHookArgs({
@@ -59,19 +45,6 @@ describe("simpleMonitorDeckPresentationHookRuntime", () => {
         selectedAnomalyId: "anomaly-1",
         onSelectAnomalyForFocus: focusAnomaly,
         safeRuntime: true,
-      }),
-    );
-  });
-
-  it("combines tail and visual slices into the public presentation state", () => {
-    expect(
-      buildSimpleMonitorDeckPresentationHookResult({
-        tailState: { focusAnomaly: vi.fn() },
-        visualState: { overviewWindowLeftPercent: 10 },
-      }),
-    ).toEqual(
-      expect.objectContaining({
-        overviewWindowLeftPercent: 10,
       }),
     );
   });

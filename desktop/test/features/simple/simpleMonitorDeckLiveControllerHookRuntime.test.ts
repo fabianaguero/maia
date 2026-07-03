@@ -2,9 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_MONITOR_SETUP_PREFERENCES } from "../../../src/features/simple/monitorSetupPreferences";
 import {
-  buildSimpleMonitorDeckLiveControllerHookResult,
   buildSimpleMonitorDeckLiveStreamHookArgs,
-  buildSimpleMonitorDeckReactiveAudioHookArgs,
   buildSimpleMonitorDeckTrackAudioHookArgs,
 } from "../../../src/features/simple/simpleMonitorDeckLiveControllerHookRuntime";
 
@@ -42,11 +40,6 @@ function createState() {
 }
 
 describe("simpleMonitorDeckLiveControllerHookRuntime", () => {
-  it("passes the reactive-audio hook state through unchanged", () => {
-    const state = createState();
-    expect(buildSimpleMonitorDeckReactiveAudioHookArgs(state)).toBe(state);
-  });
-
   it("builds track-audio and live-stream hook args from reactive-audio slices", () => {
     const state = createState();
     const reactiveAudio = {
@@ -93,34 +86,5 @@ describe("simpleMonitorDeckLiveControllerHookRuntime", () => {
         playCueBatch: reactiveAudio.playCueBatch,
       }),
     );
-  });
-
-  it("combines track-audio and live-stream results into the public live-controller state", () => {
-    const trackAudio = {
-      backgroundAudioRef: { current: null },
-      previewTrackId: "track-1",
-      toggleTrackPreview: vi.fn(),
-    };
-    const liveState = {
-      liveLines: [{ id: "line-1" }],
-      logSignalBuffer: [{ val: 24, heat: 0.2 }],
-      liveSuggestedBpm: 132,
-      waveformAnomalies: [],
-      selectedAnomalyId: "anomaly-1",
-      setSelectedAnomalyId: vi.fn(),
-      simulateLog: vi.fn(),
-    };
-
-    expect(
-      buildSimpleMonitorDeckLiveControllerHookResult({
-        trackAudio,
-        liveState,
-      }),
-    ).toEqual({
-      backgroundAudioRef: trackAudio.backgroundAudioRef,
-      previewTrackId: "track-1",
-      toggleTrackPreview: trackAudio.toggleTrackPreview,
-      ...liveState,
-    });
   });
 });

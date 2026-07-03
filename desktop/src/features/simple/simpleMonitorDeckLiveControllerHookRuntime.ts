@@ -1,16 +1,8 @@
 import type { BuildMonitorLiveStreamHookInputArgs } from "./simpleMonitorDeckHookInputsRuntime";
 import type {
-  SimpleMonitorDeckLiveControllerResult,
   UseSimpleMonitorDeckLiveControllerInput,
 } from "./simpleMonitorDeckLiveControllerTypes";
-import type { MonitorLiveStreamHookState } from "./monitorLiveStreamStateTypes";
 import type { SimpleMonitorReactiveAudioHookState } from "./simpleMonitorReactiveAudioTypes";
-
-export function buildSimpleMonitorDeckReactiveAudioHookArgs(
-  input: UseSimpleMonitorDeckLiveControllerInput,
-): UseSimpleMonitorDeckLiveControllerInput {
-  return input;
-}
 
 export function buildSimpleMonitorDeckTrackAudioHookArgs(input: {
   state: UseSimpleMonitorDeckLiveControllerInput;
@@ -55,20 +47,5 @@ export function buildSimpleMonitorDeckLiveStreamHookArgs(input: {
     applyTrackMutation: input.applyTrackMutation,
     playTestTone: input.reactiveAudio.playTestTone,
     playCueBatch: input.reactiveAudio.playCueBatch,
-  };
-}
-
-export function buildSimpleMonitorDeckLiveControllerHookResult(input: {
-  trackAudio: Pick<
-    SimpleMonitorDeckLiveControllerResult,
-    "backgroundAudioRef" | "previewTrackId" | "toggleTrackPreview"
-  >;
-  liveState: MonitorLiveStreamHookState;
-}) {
-  return {
-    backgroundAudioRef: input.trackAudio.backgroundAudioRef,
-    previewTrackId: input.trackAudio.previewTrackId,
-    toggleTrackPreview: input.trackAudio.toggleTrackPreview,
-    ...input.liveState,
   };
 }
