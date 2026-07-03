@@ -7,11 +7,8 @@ import {
   buildSimpleMonitorScreenControllerHookArgsInput,
   buildSimpleMonitorScreenControllerDeckRuntimeInput,
   buildSimpleMonitorScreenControllerDeckHookArgs,
-  buildSimpleMonitorScreenControllerHookResult,
   buildSimpleMonitorScreenControllerLaunchStateInput,
   buildSimpleMonitorScreenControllerLaunchHookArgs,
-  buildSimpleMonitorScreenControllerRuntimeInput,
-  buildSimpleMonitorScreenControllerSlicesHookInput,
   buildSimpleMonitorScreenControllerSlicesResult,
 } from "../../../src/features/simple/simpleMonitorScreenControllerHookRuntime";
 import { en } from "../../../src/i18n/en";
@@ -44,11 +41,6 @@ function createInput() {
 }
 
 describe("simpleMonitorScreenControllerHookRuntime", () => {
-  it("passes the controller runtime input through unchanged", () => {
-    const input = createInput();
-    expect(buildSimpleMonitorScreenControllerRuntimeInput(input)).toBe(input);
-  });
-
   it("builds collection, launch, deck, and anomaly-filter args from controller state", () => {
     const input = createInput();
     const collections = {
@@ -102,20 +94,6 @@ describe("simpleMonitorScreenControllerHookRuntime", () => {
     });
 
     expect(
-      buildSimpleMonitorScreenControllerSlicesHookInput({
-        state: input,
-        collections,
-        isListening: false,
-        t: en,
-      }),
-    ).toEqual({
-      state: input,
-      collections,
-      isListening: false,
-      t: en,
-    });
-
-    expect(
       buildSimpleMonitorScreenControllerLaunchStateInput({
         state: input,
         collections,
@@ -148,12 +126,6 @@ describe("simpleMonitorScreenControllerHookRuntime", () => {
         t: en,
         }),
     );
-  });
-
-  it("wraps hookStateArgs in the public controller result", () => {
-    expect(buildSimpleMonitorScreenControllerHookResult({ ready: true })).toEqual({
-      hookStateArgs: { ready: true },
-    });
   });
 
   it("returns a stable slices result envelope", () => {

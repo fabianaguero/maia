@@ -25,12 +25,6 @@ export interface SimpleMonitorAnomalyFilterStateSlice {
   handleClearAnomalyFilter: () => void;
 }
 
-export function buildSimpleMonitorScreenControllerRuntimeInput(
-  input: SimpleMonitorScreenStateInput,
-): SimpleMonitorScreenStateInput {
-  return input;
-}
-
 export function buildSimpleMonitorScreenControllerCollectionsInput(
   input: Pick<SimpleMonitorScreenStateInput, "pastSessions" | "repositories" | "tracks">,
 ) {
@@ -39,15 +33,6 @@ export function buildSimpleMonitorScreenControllerCollectionsInput(
     repositories: input.repositories,
     tracks: input.tracks,
   };
-}
-
-export function buildSimpleMonitorScreenControllerSlicesHookInput(input: {
-  state: SimpleMonitorScreenStateInput;
-  collections: SimpleMonitorCollectionsState;
-  isListening: boolean;
-  t: AppTranslations;
-}): UseSimpleMonitorScreenControllerSlicesInput {
-  return input;
 }
 
 export function buildSimpleMonitorScreenControllerLaunchHookArgs(input: {
@@ -181,11 +166,5 @@ export function buildSimpleMonitorScreenControllerHookArgsInput(input: {
     deckRuntime: input.deckRuntime,
     collections: input.collections,
     audioStatus: input.state.audioStatus,
-  };
-}
-
-export function buildSimpleMonitorScreenControllerHookResult<TArgs>(hookStateArgs: TArgs) {
-  return {
-    hookStateArgs,
   };
 }
