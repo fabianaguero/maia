@@ -1,12 +1,4 @@
 import { useState } from "react";
-import type {
-  BaseAssetRecord,
-  BaseTrackPlaylist,
-  CompositionResultRecord,
-  ImportCompositionInput,
-  LibraryTrack,
-  RepositoryAnalysis,
-} from "../../types/library";
 import { useT } from "../../i18n/I18nContext";
 import { useMonitor } from "../monitor/MonitorContext";
 import { ComposeCreationPanel } from "./ComposeCreationPanel";

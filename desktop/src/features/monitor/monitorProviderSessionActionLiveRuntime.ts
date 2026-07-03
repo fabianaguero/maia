@@ -5,8 +5,8 @@ import {
   startLiveMonitorSessionState,
 } from "./monitorLiveLifecycleRuntime";
 import {
-  attachMonitorProviderSessionState,
-  startMonitorProviderSessionState,
+  type attachMonitorProviderSessionState,
+  type startMonitorProviderSessionState,
 } from "./monitorProviderSessionRuntime";
 import type { UseMonitorProviderSessionActionsInput } from "./monitorProviderSessionActionTypes";
 

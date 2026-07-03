@@ -1,5 +1,8 @@
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type * as MonitorProviderSessionOrchestrationRuntimeModule from "../../../src/features/monitor/monitorProviderSessionOrchestrationRuntime";
+import type * as UseMonitorProviderRuntimeOrchestrationModule from "../../../src/features/monitor/useMonitorProviderRuntimeOrchestration";
+import type * as UseMonitorProviderSessionActionsModule from "../../../src/features/monitor/useMonitorProviderSessionActions";
 
 const mocks = vi.hoisted(() => ({
   buildMonitorProviderSessionOrchestrationDependencies: vi.fn(),
@@ -8,9 +11,9 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../../src/features/monitor/monitorProviderSessionOrchestrationRuntime", async () => {
-  const actual = await vi.importActual<
-    typeof import("../../../src/features/monitor/monitorProviderSessionOrchestrationRuntime")
-  >("../../../src/features/monitor/monitorProviderSessionOrchestrationRuntime");
+  const actual = await vi.importActual<typeof MonitorProviderSessionOrchestrationRuntimeModule>(
+    "../../../src/features/monitor/monitorProviderSessionOrchestrationRuntime",
+  );
 
   return {
     ...actual,
@@ -20,9 +23,9 @@ vi.mock("../../../src/features/monitor/monitorProviderSessionOrchestrationRuntim
 });
 
 vi.mock("../../../src/features/monitor/useMonitorProviderRuntimeOrchestration", async () => {
-  const actual = await vi.importActual<
-    typeof import("../../../src/features/monitor/useMonitorProviderRuntimeOrchestration")
-  >("../../../src/features/monitor/useMonitorProviderRuntimeOrchestration");
+  const actual = await vi.importActual<typeof UseMonitorProviderRuntimeOrchestrationModule>(
+    "../../../src/features/monitor/useMonitorProviderRuntimeOrchestration",
+  );
 
   return {
     ...actual,
@@ -32,9 +35,9 @@ vi.mock("../../../src/features/monitor/useMonitorProviderRuntimeOrchestration", 
 });
 
 vi.mock("../../../src/features/monitor/useMonitorProviderSessionActions", async () => {
-  const actual = await vi.importActual<
-    typeof import("../../../src/features/monitor/useMonitorProviderSessionActions")
-  >("../../../src/features/monitor/useMonitorProviderSessionActions");
+  const actual = await vi.importActual<typeof UseMonitorProviderSessionActionsModule>(
+    "../../../src/features/monitor/useMonitorProviderSessionActions",
+  );
 
   return {
     ...actual,

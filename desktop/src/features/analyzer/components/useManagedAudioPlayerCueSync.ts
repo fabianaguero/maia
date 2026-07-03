@@ -22,52 +22,66 @@ interface UseManagedAudioPlayerCueSyncInput {
 }
 
 export function useManagedAudioPlayerCueSync(input: UseManagedAudioPlayerCueSyncInput) {
+  const {
+    audioRef,
+    lastCueRequestIdRef,
+    blobReady,
+    cueRequest,
+    durationSeconds,
+    resolvedDurationSeconds,
+    playbackState,
+    onTimeUpdate,
+    setPlaybackState,
+    setPlaybackError,
+    setCurrentTimeSeconds,
+  } = input;
+
   useEffect(() => {
-    const audio = input.audioRef.current;
-    if (!input.cueRequest || !audio || !input.blobReady) {
+    const audio = audioRef.current;
+    if (!cueRequest || !audio || !blobReady) {
       return;
     }
 
-    if (input.lastCueRequestIdRef.current === input.cueRequest.id) {
+    if (lastCueRequestIdRef.current === cueRequest.id) {
       return;
     }
 
-    input.lastCueRequestIdRef.current = input.cueRequest.id;
+    lastCueRequestIdRef.current = cueRequest.id;
 
     const targetSecond = resolveManagedAudioCueTargetSecond({
-      cueSecond: input.cueRequest.second,
-      resolvedDurationSeconds: input.resolvedDurationSeconds,
-      durationSeconds: input.durationSeconds,
+      cueSecond: cueRequest.second,
+      resolvedDurationSeconds,
+      durationSeconds,
     });
 
-    input.setPlaybackError(null);
-    input.setCurrentTimeSeconds(targetSecond);
-    input.onTimeUpdate?.(targetSecond);
+    setPlaybackError(null);
+    setCurrentTimeSeconds(targetSecond);
+    onTimeUpdate?.(targetSecond);
     audio.currentTime = targetSecond;
 
-    if (!input.cueRequest.autoplay) {
-      if (audio.paused && input.playbackState !== "error") {
-        input.setPlaybackState("ready");
+    if (!cueRequest.autoplay) {
+      if (audio.paused && playbackState !== "error") {
+        setPlaybackState("ready");
       }
       return;
     }
 
-    input.setPlaybackState("loading");
+    setPlaybackState("loading");
     void audio.play().catch((error) => {
-      input.setPlaybackState("error");
-      input.setPlaybackError(resolveManagedAudioCueError(error));
+      setPlaybackState("error");
+      setPlaybackError(resolveManagedAudioCueError(error));
     });
   }, [
-    input.audioRef,
-    input.blobReady,
-    input.cueRequest,
-    input.durationSeconds,
-    input.lastCueRequestIdRef,
-    input.onTimeUpdate,
-    input.playbackState,
-    input.resolvedDurationSeconds,
-    input.setCurrentTimeSeconds,
-    input.setPlaybackError,
-    input.setPlaybackState,
+    audioRef,
+    blobReady,
+    cueRequest,
+    durationSeconds,
+    lastCueRequestIdRef,
+    onTimeUpdate,
+    playbackState,
+    resolvedDurationSeconds,
+    setCurrentTimeSeconds,
+    setPlaybackError,
+    setPlaybackState,
   ]);
 }

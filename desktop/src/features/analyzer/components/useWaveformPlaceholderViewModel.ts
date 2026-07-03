@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import type { AppTranslations } from "../../../i18n/en";
+import type { AppTranslations } from "../../../i18n/types";
 import { useWaveformPlaceholderInteractions } from "./useWaveformPlaceholderInteractions";
 import { buildWaveformPlaceholderViewModel } from "./waveformPlaceholderViewModelRuntime";
 import type { WaveformPlaceholderProps } from "./waveformPlaceholderTypes";

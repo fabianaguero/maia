@@ -3,7 +3,7 @@ import {
   startLogSourceConnection,
   stopStreamSession,
 } from "../../api/repositories";
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import { buildConnectionsScreenControllerState } from "./connectionsScreenControllerRuntime";
 import {
   buildConnectionsScreenFormControllerInput,

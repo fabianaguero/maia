@@ -2,30 +2,30 @@ import {
   buildMonitorProviderSessionOrchestrationDependencies,
   type UseMonitorProviderSessionOrchestrationInput,
 } from "./monitorProviderSessionOrchestrationRuntime";
+import {
+  buildMonitorProviderSessionActionsHookInput,
+  buildMonitorProviderSessionOrchestrationResult,
+  buildMonitorProviderSessionRuntimeDependencies,
+} from "./monitorProviderSessionOrchestrationHookRuntime";
 import { useMonitorProviderRuntimeOrchestration } from "./useMonitorProviderRuntimeOrchestration";
 import { useMonitorProviderSessionActions } from "./useMonitorProviderSessionActions";
 
 export function useMonitorProviderSessionOrchestration(
   input: UseMonitorProviderSessionOrchestrationInput,
 ) {
-  const { runtimeOrchestrationInput, buildSessionActionsInput } =
-    buildMonitorProviderSessionOrchestrationDependencies(input);
+  const runtimeDependencies = buildMonitorProviderSessionRuntimeDependencies(input);
+  const dependencies = buildMonitorProviderSessionOrchestrationDependencies(runtimeDependencies);
 
-  const orchestration = useMonitorProviderRuntimeOrchestration(runtimeOrchestrationInput);
-
-  const sessionActions = useMonitorProviderSessionActions(
-    buildSessionActionsInput({
-      stopPolling: orchestration.stopPolling,
-      buildLiveStartInput: orchestration.buildLiveStartInput,
-      ensureProviderAudioContext: orchestration.ensureProviderAudioContext,
-      replayTick: orchestration.replayTick,
-      syncReplayTelemetry: orchestration.syncReplayTelemetry,
-      resetReplayTelemetry: orchestration.resetReplayTelemetry,
-    }),
+  const orchestration = useMonitorProviderRuntimeOrchestration(
+    dependencies.runtimeOrchestrationInput,
   );
 
-  return {
+  const sessionActions = useMonitorProviderSessionActions(
+    buildMonitorProviderSessionActionsHookInput(dependencies, orchestration),
+  );
+
+  return buildMonitorProviderSessionOrchestrationResult({
     orchestration,
     sessionActions,
-  };
+  });
 }

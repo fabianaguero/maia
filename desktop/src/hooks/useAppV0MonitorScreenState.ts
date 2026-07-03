@@ -3,6 +3,11 @@ import {
   buildAppV0MonitorOrchestrator,
   buildAppV0MonitorStateModel,
 } from "./appV0MonitorScreenStateRuntime";
+import {
+  buildAppV0MonitorOrchestratorInput,
+  buildAppV0MonitorScreenStateHookResult,
+  buildAppV0MonitorStateModelInput,
+} from "./appV0MonitorScreenStateHookRuntime";
 import type { ActiveMonitorSession, MonitorMetrics } from "../features/monitor/monitorContextTypes";
 import type { AppSection } from "../features/simple/appSections";
 import type { AppV0Language } from "../appV0Preferences";
@@ -52,36 +57,14 @@ export function reportAppV0MonitorLaunchFailure(
 }
 
 export function useAppV0MonitorScreenState(input: UseAppV0MonitorScreenStateInput) {
-  const { t, isMonitoring, uptimeLabel, fallbackViewModel, shellViewModel, waveformBins } =
-    buildAppV0MonitorStateModel({
-      lang: input.lang,
-      currentSection: input.currentSection,
-      selectedRepositoryTitle: input.selectedRepositoryTitle ?? null,
-      selectedTrack: input.selectedTrack,
-      tracks: input.tracks,
-      session: input.session,
-      metrics: input.metrics,
-    });
-  const monitorOrchestrator = buildAppV0MonitorOrchestrator({
-    repositories: input.repositories,
-    tracks: input.tracks,
-    selectedTrack: input.selectedTrack,
-    setGuideTrack: input.setGuideTrack,
-    resumeAudio: input.resumeAudio,
-    attachSession: input.attachSession,
-    startSession: input.startSession,
-    playbackSession: input.playbackSession,
-    onLaunchSuccess: () => input.setCurrentSection("monitor"),
-  });
+  const stateModel = buildAppV0MonitorStateModel(buildAppV0MonitorStateModelInput(input));
+  const monitorOrchestrator = buildAppV0MonitorOrchestrator(
+    buildAppV0MonitorOrchestratorInput(input),
+  );
 
-  return {
-    t,
-    isMonitoring,
-    uptimeLabel,
-    fallbackViewModel,
+  return buildAppV0MonitorScreenStateHookResult({
+    stateModel,
     monitorOrchestrator,
-    shellViewModel,
-    waveformBins,
     reportMonitorLaunchFailure: reportAppV0MonitorLaunchFailure,
-  };
+  });
 }

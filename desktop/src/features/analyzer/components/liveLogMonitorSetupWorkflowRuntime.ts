@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 
-import { LiveLogMonitorWorkflowStrip } from "./LiveLogMonitorWorkflowStrip";
+import { type LiveLogMonitorWorkflowStrip } from "./LiveLogMonitorWorkflowStrip";
 import type { LiveLogMonitorSetupSectionInput } from "./liveLogMonitorSetupSectionTypes";
 
 export function buildLiveLogMonitorSetupWorkflowStripProps(

@@ -1,10 +1,7 @@
 import type { GuideTrackPCM } from "./monitorAudioRuntimeTypes";
 import { decodeGuideTrackPcm } from "./monitorGuideTrackPcmDecodeRuntime";
 import { loadGuideTrackArrayBuffer } from "./monitorGuideTrackDecodeTransportRuntime";
-import type {
-  GuideTrackDecodeDependencies,
-  MonitorGuideTrackDecodeLogger,
-} from "./monitorGuideTrackDecodeTypes";
+import type { GuideTrackDecodeDependencies } from "./monitorGuideTrackDecodeTypes";
 
 export function createGuideTrackDecodeCache(): Map<string, Promise<GuideTrackPCM>> {
   return new Map<string, Promise<GuideTrackPCM>>();

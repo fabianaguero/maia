@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import { SOURCE_TEMPLATES, resolveSourceTemplatePresentation } from "../../config/sourceTemplates";
 import type { QuickSessionMode } from "./sessionDisplay";
 

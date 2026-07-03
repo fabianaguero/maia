@@ -1,5 +1,5 @@
 import type { BeatGridPhraseRange } from "../../../utils/beatGrid";
-import type { AppTranslations } from "../../../i18n/en";
+import type { AppTranslations } from "../../../i18n/types";
 import type { TrackPerformanceCueLoopPhraseViewModel } from "./trackPerformanceCueLoopSectionRuntime";
 
 interface TrackPerformancePhraseActionsProps {

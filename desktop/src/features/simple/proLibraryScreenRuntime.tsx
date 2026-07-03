@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 
 export type ProLibraryTabId = "sounds" | "sources" | "profiles";
 

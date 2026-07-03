@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { UseConnectionTailControllerInput } from "./connectionsTailControllerTypes";
 import type { UseConnectionTestControllerInput } from "./connectionsTestControllerRuntime";
 

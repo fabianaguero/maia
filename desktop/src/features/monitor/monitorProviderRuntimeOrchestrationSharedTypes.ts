@@ -4,6 +4,10 @@ import type { SessionEvent } from "../../api/sessions";
 import type { SourceTemplate } from "../../config/sourceTemplates";
 import type { GuideTrackPCM } from "./monitorAudioRuntimeTypes";
 import type { ActiveMonitorSession, MonitorMetrics, StreamListener } from "./monitorContextTypes";
+import type {
+  MonitorProviderRuntimePersistenceSlice,
+  MonitorProviderRuntimeTransportSlice,
+} from "./monitorProviderRuntimeOrchestrationIoTypes";
 import type { MonitorProviderRuntimeLogger } from "./monitorProviderOrchestrationRuntime";
 
 export interface MonitorProviderRuntimeSessionSlice {
@@ -60,6 +64,6 @@ export interface UseMonitorProviderRuntimeOrchestrationInput {
   playback: MonitorProviderRuntimePlaybackSlice;
   live: MonitorProviderRuntimeLiveSlice;
   template: MonitorProviderRuntimeTemplateSlice;
-  transport: import("./monitorProviderRuntimeOrchestrationIoTypes").MonitorProviderRuntimeTransportSlice;
-  persistence: import("./monitorProviderRuntimeOrchestrationIoTypes").MonitorProviderRuntimePersistenceSlice;
+  transport: MonitorProviderRuntimeTransportSlice;
+  persistence: MonitorProviderRuntimePersistenceSlice;
 }

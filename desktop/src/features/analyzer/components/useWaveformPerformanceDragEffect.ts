@@ -23,59 +23,74 @@ interface UseWaveformPerformanceDragEffectInput {
 }
 
 export function useWaveformPerformanceDragEffect(input: UseWaveformPerformanceDragEffectInput) {
+  const {
+    beatGrid,
+    durationSeconds,
+    dragTarget,
+    resolveSecondFromClientX,
+    dragEditSecondRef,
+    dragMovedRef,
+    dragStartClientXRef,
+    setDragEditSecond,
+    setDragTarget,
+    onMoveCue,
+    onMoveLoopBoundary,
+    onMoveLoop,
+  } = input;
+
   useEffect(() => {
-    if (!input.dragTarget) {
+    if (!dragTarget) {
       return;
     }
-    const activeDragTarget = input.dragTarget;
+    const activeDragTarget = dragTarget;
 
     const handleMouseMove = (event: MouseEvent) => {
       const moveState = buildWaveformPerformanceDragMoveState({
         clientX: event.clientX,
-        dragStartClientX: input.dragStartClientXRef.current,
-        resolveSecondFromClientX: input.resolveSecondFromClientX,
+        dragStartClientX: dragStartClientXRef.current,
+        resolveSecondFromClientX,
         dragTarget: activeDragTarget,
-        durationSeconds: input.durationSeconds,
-        beatGrid: input.beatGrid,
+        durationSeconds,
+        beatGrid,
       });
       if (moveState.nextSecond === null) {
         return;
       }
 
       if (moveState.moved) {
-        input.dragMovedRef.current = true;
+        dragMovedRef.current = true;
       }
 
-      input.dragEditSecondRef.current = moveState.nextSecond;
-      input.setDragEditSecond(moveState.nextSecond);
+      dragEditSecondRef.current = moveState.nextSecond;
+      setDragEditSecond(moveState.nextSecond);
     };
 
     const handleMouseUp = () => {
       const commit = buildWaveformPerformanceDragCommit({
         dragTarget: activeDragTarget,
-        nextSecond: input.dragEditSecondRef.current,
-        dragMoved: input.dragMovedRef.current,
+        nextSecond: dragEditSecondRef.current,
+        dragMoved: dragMovedRef.current,
       });
 
       if (commit.kind === "cue") {
-        input.onMoveCue?.(commit.cue, commit.second);
+        onMoveCue?.(commit.cue, commit.second);
       }
 
       if (commit.kind === "loop-boundary") {
-        input.onMoveLoopBoundary?.(commit.loopId, commit.boundary, commit.second);
+        onMoveLoopBoundary?.(commit.loopId, commit.boundary, commit.second);
       }
 
       if (commit.kind === "loop") {
-        input.onMoveLoop?.(commit.loopId, commit.second);
+        onMoveLoop?.(commit.loopId, commit.second);
       }
 
-      input.dragEditSecondRef.current = null;
-      input.setDragEditSecond(null);
-      input.setDragTarget(null);
-      input.dragStartClientXRef.current = null;
+      dragEditSecondRef.current = null;
+      setDragEditSecond(null);
+      setDragTarget(null);
+      dragStartClientXRef.current = null;
 
       window.setTimeout(() => {
-        input.dragMovedRef.current = false;
+        dragMovedRef.current = false;
       }, 0);
     };
 
@@ -87,17 +102,17 @@ export function useWaveformPerformanceDragEffect(input: UseWaveformPerformanceDr
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, [
-    input.beatGrid,
-    input.dragEditSecondRef,
-    input.dragMovedRef,
-    input.dragStartClientXRef,
-    input.dragTarget,
-    input.durationSeconds,
-    input.onMoveCue,
-    input.onMoveLoop,
-    input.onMoveLoopBoundary,
-    input.resolveSecondFromClientX,
-    input.setDragEditSecond,
-    input.setDragTarget,
+    beatGrid,
+    dragEditSecondRef,
+    dragMovedRef,
+    dragStartClientXRef,
+    dragTarget,
+    durationSeconds,
+    onMoveCue,
+    onMoveLoop,
+    onMoveLoopBoundary,
+    resolveSecondFromClientX,
+    setDragEditSecond,
+    setDragTarget,
   ]);
 }

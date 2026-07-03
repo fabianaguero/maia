@@ -1,5 +1,5 @@
 import type { PersistedSession } from "../../api/sessions";
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { RepositoryAnalysis } from "../../types/library";
 import type { StartSessionInput } from "../../types/monitor";
 import type { QuickSessionMode, SessionBaseMode } from "./sessionDisplay";

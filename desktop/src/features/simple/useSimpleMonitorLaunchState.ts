@@ -1,10 +1,15 @@
 import { useState } from "react";
 import { flushSync } from "react-dom";
 
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { RepositoryAnalysis } from "../../types/library";
 import { buildMonitorSourceCopy, type MonitorLaunchSource } from "./monitorSourceOptions";
 import { executeSimpleMonitorStartRequest } from "./simpleMonitorInteractionRuntime";
+import {
+  buildSimpleMonitorLaunchSelectorInput,
+  buildSimpleMonitorLaunchStateResult,
+  buildSimpleMonitorStartRequestInput,
+} from "./simpleMonitorLaunchStateHookRuntime";
 import { useSimpleMonitorSourceSelector } from "./useSimpleMonitorSourceSelector";
 
 export interface UseSimpleMonitorLaunchStateInput {
@@ -24,6 +29,19 @@ export function useSimpleMonitorLaunchState({
 }: UseSimpleMonitorLaunchStateInput) {
   const [selectedSoundId, setSelectedSoundId] = useState("");
   const monitorSourceCopy = buildMonitorSourceCopy(t);
+  const selector = useSimpleMonitorSourceSelector(
+    buildSimpleMonitorLaunchSelectorInput(
+      {
+        repositories,
+        isListening,
+        t,
+        onResumeAudio,
+        onStartMonitoring,
+      },
+      selectedSoundId,
+      monitorSourceCopy,
+    ),
+  );
   const {
     filteredMonitorSourceOptions,
     selectedSourceOption,
@@ -36,36 +54,35 @@ export function useSimpleMonitorLaunchState({
     setSourceFilter,
     isLaunchingMonitor,
     setIsLaunchingMonitor,
-  } = useSimpleMonitorSourceSelector({
-    repositories,
-    selectedSoundId,
-    isListening,
-    copy: monitorSourceCopy,
-  });
+  } = selector;
 
   const handleStartMonitoringRequest = async () => {
-    const didStart = await executeSimpleMonitorStartRequest({
-      selectedSourceOption,
-      selectedSoundId,
-      canStartSelectedSource,
-      setLaunchingImmediate: () =>
-        flushSync(() => {
-          setIsLaunchingMonitor(true);
-        }),
-      waitForNextFrame: () =>
-        new Promise<void>((resolve) => {
-          window.requestAnimationFrame(() => resolve());
-        }),
-      resumeAudio: onResumeAudio,
-      startMonitoring: onStartMonitoring,
-      resetLaunchingOnFailure: () => setIsLaunchingMonitor(false),
-    });
+    const didStart = await executeSimpleMonitorStartRequest(
+      buildSimpleMonitorStartRequestInput({
+        selector: {
+          selectedSourceOption,
+          canStartSelectedSource,
+        },
+        selectedSoundId,
+        onResumeAudio,
+        onStartMonitoring,
+        setLaunchingImmediate: () =>
+          flushSync(() => {
+            setIsLaunchingMonitor(true);
+          }),
+        waitForNextFrame: () =>
+          new Promise<void>((resolve) => {
+            window.requestAnimationFrame(() => resolve());
+          }),
+        resetLaunchingOnFailure: () => setIsLaunchingMonitor(false),
+      }),
+    );
     if (!didStart) {
       console.error("Failed to start monitor from selector");
     }
   };
 
-  return {
+  return buildSimpleMonitorLaunchStateResult({
     selectedSoundId,
     setSelectedSoundId,
     filteredMonitorSourceOptions,
@@ -79,5 +96,6 @@ export function useSimpleMonitorLaunchState({
     setSourceFilter,
     isLaunchingMonitor,
     handleStartMonitoringRequest,
-  };
+    setIsLaunchingMonitor,
+  });
 }

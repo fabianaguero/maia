@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../../i18n/en";
+import type { AppTranslations } from "../../../i18n/types";
 import type { RepositoryAnalysis } from "../../../types/library";
 import type { MonitorContextValue } from "../../monitor/MonitorContext";
 import { buildLiveLogMonitorPanelRenderState } from "./liveLogMonitorPanelRenderState";

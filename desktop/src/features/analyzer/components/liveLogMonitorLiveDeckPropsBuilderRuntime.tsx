@@ -2,7 +2,7 @@ import type { ChangeEvent, ComponentProps, ReactNode } from "react";
 
 import type { SessionBookmark } from "../../../api/sessions";
 import type { MetricGridItem, SessionCardDisplay } from "./liveLogMonitorDisplayRuntime";
-import type { AppTranslations } from "../../../i18n/en";
+import type { AppTranslations } from "../../../i18n/types";
 import type { ReplayFeedbackRecommendation } from "../../../utils/replayFeedback";
 import type { LiveLogMonitorLiveDeck } from "./LiveLogMonitorLiveDeck";
 import {

@@ -1,7 +1,7 @@
 import { useCallback, useMemo, type Dispatch, type SetStateAction } from "react";
 
 import type { SessionBookmark } from "../../../api/sessions";
-import type { AppTranslations } from "../../../i18n/en";
+import type { AppTranslations } from "../../../i18n/types";
 import type {
   BaseAssetRecord,
   BaseTrackPlaylist,

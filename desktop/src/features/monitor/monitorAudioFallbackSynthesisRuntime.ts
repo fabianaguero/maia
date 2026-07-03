@@ -23,7 +23,7 @@ export function renderSynthFallback(
   const beatSec = 60 / tempo;
   const totalSamples = Math.ceil(RENDER_SAMPLE_RATE * duration);
   const mix = new Float32Array(totalSamples);
-  const { intensity, melodyPool, bassNote, melodySteps } = buildFallbackSynthesisPattern(cues);
+  const { melodyPool, bassNote, melodySteps } = buildFallbackSynthesisPattern(cues);
 
   const sixteenthSec = beatSec / 4;
   const steps = Math.floor(duration / sixteenthSec);

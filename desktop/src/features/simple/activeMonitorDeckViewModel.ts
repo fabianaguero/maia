@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { DeckSelectedMarker } from "./monitorDeckViewModel";
 import { buildActiveMonitorFocusState } from "./activeMonitorDeckFocusRuntime";
 import { buildActiveMonitorMetaChips } from "./activeMonitorDeckMetaRuntime";
@@ -8,7 +8,6 @@ import {
   buildActiveMonitorStreamStatusLabel,
   buildActiveMonitorTrackLine,
 } from "./activeMonitorDeckSummaryRuntime";
-import { formatActiveMonitorDeckTime } from "./activeMonitorDeckTimeRuntime";
 import type { ActiveMonitorDeckViewModel } from "./activeMonitorDeckViewModelTypes";
 
 export type {

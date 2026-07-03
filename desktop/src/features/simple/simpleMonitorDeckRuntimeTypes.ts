@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { LibraryTrack } from "../../types/library";
 import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { ActiveMonitorSession } from "../monitor/monitorContextTypes";

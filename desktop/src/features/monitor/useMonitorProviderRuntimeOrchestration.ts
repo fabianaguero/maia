@@ -1,3 +1,8 @@
+import {
+  buildMonitorProviderAudioHookInput,
+  buildMonitorProviderReplayHookInput,
+  buildMonitorProviderRuntimeOrchestrationResult,
+} from "./monitorProviderRuntimeOrchestrationHookRuntime";
 import type { UseMonitorProviderRuntimeOrchestrationInput } from "./monitorProviderRuntimeOrchestrationTypes";
 import { useMonitorProviderAudioRuntime } from "./useMonitorProviderAudioRuntime";
 import { useMonitorProviderPollRuntime } from "./useMonitorProviderPollRuntime";
@@ -6,25 +11,21 @@ import { useMonitorProviderReplayRuntime } from "./useMonitorProviderReplayRunti
 export function useMonitorProviderRuntimeOrchestration(
   input: UseMonitorProviderRuntimeOrchestrationInput,
 ) {
-  const { stopPolling, emitUpdate, doPoll } = useMonitorProviderPollRuntime(input);
-  const { resetReplayTelemetry, syncReplayTelemetry, dispatchReplayEventAtIndex, replayTick } =
-    useMonitorProviderReplayRuntime(input, emitUpdate);
-  const { ensureProviderAudioContext, buildLiveStartInput, resumeAudio } =
-    useMonitorProviderAudioRuntime(input, {
-      resetReplayTelemetry,
-      doPoll,
-    });
+  const poll = useMonitorProviderPollRuntime(input);
+  const replayHookInput = buildMonitorProviderReplayHookInput(input, poll.emitUpdate);
+  const replay = useMonitorProviderReplayRuntime(
+    replayHookInput.input,
+    replayHookInput.emitUpdate,
+  );
+  const audioHookInput = buildMonitorProviderAudioHookInput(input, {
+    resetReplayTelemetry: replay.resetReplayTelemetry,
+    doPoll: poll.doPoll,
+  });
+  const audio = useMonitorProviderAudioRuntime(audioHookInput.input, audioHookInput.deps);
 
-  return {
-    stopPolling,
-    resetReplayTelemetry,
-    syncReplayTelemetry,
-    emitUpdate,
-    doPoll,
-    ensureProviderAudioContext,
-    buildLiveStartInput,
-    dispatchReplayEventAtIndex,
-    replayTick,
-    resumeAudio,
-  };
+  return buildMonitorProviderRuntimeOrchestrationResult({
+    poll,
+    replay,
+    audio,
+  });
 }

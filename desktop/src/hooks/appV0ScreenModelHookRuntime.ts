@@ -1,5 +1,7 @@
 import type { BuildAppV0ScreenModelArgs } from "../appV0ScreenCompositionRuntime";
 import type { AppV0ContentActions } from "../appV0ScreenCompositionRuntime";
+import type { buildAppV0ScreenModel } from "../appV0ScreenCompositionRuntime";
+import type { AppV0SectionContentInput } from "../appV0SectionContentRuntime";
 import type { UseAppV0ScreenModelInput } from "./appV0ScreenModelTypes";
 
 export function buildAppV0ScreenModelArgs(
@@ -29,14 +31,14 @@ export function buildAppV0ScreenModelArgs(
   };
 }
 
-export function buildAppV0ScreenModelHookResult<
-  TState extends {
-    contentActions: AppV0ContentActions;
-    sectionContentInput: BuildAppV0ScreenModelArgs["sectionContentInput"];
-    screenModel: ReturnType<
-      typeof import("../appV0ScreenCompositionRuntime").buildAppV0ScreenModel
-    >;
-  },
->(state: TState) {
+export interface AppV0ScreenModelHookResult {
+  contentActions: AppV0ContentActions;
+  sectionContentInput: AppV0SectionContentInput;
+  screenModel: ReturnType<typeof buildAppV0ScreenModel>;
+}
+
+export function buildAppV0ScreenModelHookResult(
+  state: AppV0ScreenModelHookResult,
+): AppV0ScreenModelHookResult {
   return state;
 }

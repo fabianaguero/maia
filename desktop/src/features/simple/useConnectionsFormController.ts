@@ -4,7 +4,7 @@ import {
   pickRepositoryFile,
   upsertLogSourceConnection,
 } from "../../api/repositories";
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import { buildConnectionsFormControllerState } from "./connectionsFormControllerRuntime";
 import {
   buildConnectionsFormControllerApi,

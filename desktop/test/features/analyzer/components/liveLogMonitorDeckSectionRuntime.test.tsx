@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { AppTranslations } from "../../../../src/i18n/en";
+import type { AppTranslations } from "../../../../src/i18n/types";
 import {
   buildLiveLogMonitorDeckActivityPanelProps,
   buildLiveLogMonitorPerformanceSummaryProps,

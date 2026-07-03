@@ -8,12 +8,10 @@ import type {
 import type { LibraryTab } from "../libraryScreenTypes";
 import { LibraryBaseAssetsListPanel } from "./LibraryBaseAssetsListPanel";
 import { LibraryConnectionsListPanel } from "./LibraryConnectionsListPanel";
-import { LibraryPlaylistsPanel } from "./LibraryPlaylistsPanel";
 import { LibrarySourcesListPanel } from "./LibrarySourcesListPanel";
 import { LibraryTabEmptySection } from "./LibraryTabEmptySection";
 import { LibraryTabLoadingState } from "./LibraryTabLoadingState";
 import { LibraryTracksTabSection } from "./LibraryTracksTabSection";
-import { LibraryTracksListPanel } from "./LibraryTracksListPanel";
 import { buildLibraryTabContentState } from "./libraryTabContentRuntime";
 
 export interface EmptyStateContent {

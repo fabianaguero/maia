@@ -1,6 +1,6 @@
 import { Eye, FolderOpen, RefreshCw, ScrollText, Trash2 } from "lucide-react";
 
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { RepositoryAnalysis } from "../../types/library";
 import { formatShortDate } from "../../utils/date";
 import { formatBpmLabel } from "../../utils/monitorLabels";

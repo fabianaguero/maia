@@ -9,7 +9,6 @@ import {
 } from "./monitorGuideTrackLoadResolutionRuntime";
 import { createGuideTrackLoadPromise } from "./monitorGuideTrackLoadPromiseRuntime";
 import type {
-  ClearGuideTrackStateInput,
   LoadGuideTrackPathStateInput,
 } from "./monitorStartupRuntimeTypes";
 

@@ -1,5 +1,5 @@
 import type { PersistedSession } from "../../api/sessions";
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import { resolveSessionStatusLabel } from "../../utils/monitorLabels";
 import { getBasename, truncateMiddle } from "./monitorDisplay";
 import {

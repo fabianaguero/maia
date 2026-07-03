@@ -1,20 +1,25 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import type { PlaybackSessionSelection } from "./monitorPlaybackRuntime";
 import type { UseMonitorProviderSessionActionsInput } from "./monitorProviderSessionActionTypes";
+import { buildMonitorProviderSessionPlaybackCallbacksInput } from "./monitorProviderSessionActionsHookRuntime";
 import { startMonitorProviderPlaybackSessionAction } from "./monitorProviderSessionActionRuntime";
 
 export function useMonitorProviderSessionPlaybackCallbacks(
   input: UseMonitorProviderSessionActionsInput,
 ) {
+  const dependencies = useMemo(
+    () => buildMonitorProviderSessionPlaybackCallbacksInput(input),
+    [input],
+  );
   const playbackSession = useCallback(
     async (selection: PlaybackSessionSelection): Promise<boolean> =>
       startMonitorProviderPlaybackSessionAction({
         selection,
-        dependencies: input,
+        dependencies,
         setTimeoutFn: window.setTimeout,
       }),
-    [input],
+    [dependencies],
   );
 
   return {

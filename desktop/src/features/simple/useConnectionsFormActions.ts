@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { LogSourceConnection } from "../../types/monitor";
 import {
   buildConnectionsFormLoadState,
@@ -34,7 +34,7 @@ export function useConnectionsFormActions({
   defaultCloudLookback,
   state,
 }: UseConnectionsFormActionsInput) {
-  async function refreshConnections() {
+  const refreshConnections = useCallback(async () => {
     await refreshConnectionsState(
       buildConnectionsFormControllerRefreshInput({
         setLoading: state.setLoading,
@@ -43,11 +43,11 @@ export function useConnectionsFormActions({
         api,
       }),
     );
-  }
+  }, [api, state.setConnections, state.setError, state.setLoading]);
 
   useEffect(() => {
     void refreshConnections();
-  }, []);
+  }, [refreshConnections]);
 
   function resetForm() {
     const nextState = buildConnectionsFormResetState(defaultCloudLookback);

@@ -7,7 +7,7 @@ import type {
   GuideTrackDecodeDependencies,
   MonitorGuideTrackDecodeLogger,
 } from "./monitorGuideTrackDecodeTypes";
-import { loadGuideTrackPathState } from "./monitorStartupRuntime";
+import { type loadGuideTrackPathState } from "./monitorStartupRuntime";
 import type { MonitorStartupRuntimeLogger } from "./monitorStartupRuntime";
 
 interface MonitorProviderGuideTrackLoadLogger

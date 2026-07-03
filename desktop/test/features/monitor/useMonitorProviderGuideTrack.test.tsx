@@ -1,5 +1,6 @@
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type * as MonitorProviderGuideTrackHookRuntimeModule from "../../../src/features/monitor/monitorProviderGuideTrackHookRuntime";
 
 const mocks = vi.hoisted(() => ({
   loadMonitorProviderGuideTrackPath: vi.fn(),
@@ -11,9 +12,9 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../../src/features/monitor/monitorProviderGuideTrackHookRuntime", async () => {
-  const actual = await vi.importActual<
-    typeof import("../../../src/features/monitor/monitorProviderGuideTrackHookRuntime")
-  >("../../../src/features/monitor/monitorProviderGuideTrackHookRuntime");
+  const actual = await vi.importActual<typeof MonitorProviderGuideTrackHookRuntimeModule>(
+    "../../../src/features/monitor/monitorProviderGuideTrackHookRuntime",
+  );
   return {
     ...actual,
     loadMonitorProviderGuideTrackPath: (...args: unknown[]) =>

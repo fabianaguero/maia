@@ -1,12 +1,12 @@
 import type { ComponentProps, ReactNode } from "react";
 
-import type { AppTranslations } from "../../../i18n/en";
+import type { AppTranslations } from "../../../i18n/types";
 import type { LiveMutationExplanation } from "../../../utils/liveMutationExplainability";
 import type { LiveLogMarker, LibraryTrack, VisualizationCuePoint } from "../../../types/library";
-import { LiveLogMonitorActiveDeck } from "./LiveLogMonitorActiveDeck";
-import { LiveLogMonitorPerformanceSummary } from "./LiveLogMonitorPerformanceSummary";
-import { LiveMonitorMutationTracePanel } from "./LiveMonitorMutationTracePanel";
-import { PadSequencerPanel } from "./PadSequencerPanel";
+import { type LiveLogMonitorActiveDeck } from "./LiveLogMonitorActiveDeck";
+import { type LiveLogMonitorPerformanceSummary } from "./LiveLogMonitorPerformanceSummary";
+import { type LiveMonitorMutationTracePanel } from "./LiveMonitorMutationTracePanel";
+import { type PadSequencerPanel } from "./PadSequencerPanel";
 import type { LiveMonitorDisplayState } from "./liveLogMonitorDisplayRuntime";
 import type { SyncTailRow } from "./liveLogMonitorPanelRuntime";
 import type { ArrangementVoice, RoutedLiveCue } from "./liveSonificationScene";

@@ -1,5 +1,6 @@
 import type { AppV0SectionContentInput } from "../appV0SectionContentRuntime";
 import type { AppV0ContentActions } from "../appV0ScreenCompositionRuntime";
+import type { buildAppV0SectionContentInput } from "../appV0ScreenCompositionRuntime";
 import type { AppV0SectionContentModelInput } from "./appV0ScreenModelTypes";
 
 export function buildAppV0SectionContentActionsInput(input: AppV0SectionContentModelInput) {
@@ -19,7 +20,7 @@ export function buildAppV0SectionContentActionsInput(input: AppV0SectionContentM
 export function buildAppV0SectionContentStateInput(
   input: AppV0SectionContentModelInput,
   contentActions: AppV0ContentActions,
-): Parameters<typeof import("../appV0ScreenCompositionRuntime").buildAppV0SectionContentInput>[0] {
+): Parameters<typeof buildAppV0SectionContentInput>[0] {
   return {
     currentSection: input.currentSection,
     userMode: input.userMode,

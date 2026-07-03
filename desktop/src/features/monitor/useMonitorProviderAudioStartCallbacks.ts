@@ -11,6 +11,9 @@ export function useMonitorProviderAudioStartCallbacks(
   input: UseMonitorProviderRuntimeOrchestrationInput,
   deps: MonitorProviderAudioStartHookDeps,
 ) {
+  const { live, persistence, session, template } = input;
+  const { doPoll, ensureProviderAudioContext, resetReplayTelemetry } = deps;
+
   const emitLiveStartProbe = useCallback((context: AudioContext) => {
     emitMonitorAudioProbe({
       context,
@@ -21,25 +24,36 @@ export function useMonitorProviderAudioStartCallbacks(
   }, []);
 
   const runProviderPoll = useCallback(() => {
-    void deps.doPoll();
-  }, [deps]);
+    void doPoll();
+  }, [doPoll]);
 
   const buildLiveStartInput = useCallback(
     (reason: "session-start" | "attach-session", includeProbe: boolean) =>
       buildMonitorProviderLiveStartHookInput({
-        source: input,
-        deps,
+        live,
+        persistence,
+        session,
+        template,
+        deps: {
+          doPoll,
+          ensureProviderAudioContext,
+          resetReplayTelemetry,
+        },
         reason,
         includeProbe,
         emitProbe: emitLiveStartProbe,
         runProviderPoll,
       }),
     [
-      input,
-      deps.ensureProviderAudioContext,
-      deps.resetReplayTelemetry,
+      doPoll,
       emitLiveStartProbe,
+      ensureProviderAudioContext,
+      live,
+      persistence,
       runProviderPoll,
+      resetReplayTelemetry,
+      session,
+      template,
     ],
   );
 

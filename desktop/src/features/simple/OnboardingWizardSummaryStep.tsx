@@ -1,6 +1,6 @@
 import { Zap } from "lucide-react";
 
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { OnboardingSoundPreset } from "./onboardingWizardRuntime";
 
 interface OnboardingWizardSummaryStepProps {

@@ -7,11 +7,7 @@ import type {
 } from "../../../types/library";
 import { getPlaylistMedianBpm, summarizePlaylistTracks } from "../../../utils/playlist";
 import { getTrackTitle } from "../../../utils/track";
-import {
-  buildImportCompositionInput,
-  deriveDefaultBaseAssetId,
-  resolveImportCompositionSubmitDisabled,
-} from "./importCompositionFormRuntime";
+import { resolveImportCompositionSubmitDisabled } from "./importCompositionFormRuntime";
 import { useImportCompositionFormController } from "./useImportCompositionFormController";
 
 interface ImportCompositionFormProps {

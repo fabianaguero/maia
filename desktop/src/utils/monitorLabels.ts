@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../i18n/en";
+import type { AppTranslations } from "../i18n/types";
 import type { StreamAdapterKind } from "../types/monitor";
 
 export function resolveSessionStatusLabel(status: string, t: AppTranslations): string {

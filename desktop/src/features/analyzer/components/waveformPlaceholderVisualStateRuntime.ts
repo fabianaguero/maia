@@ -10,7 +10,6 @@ import type {
   BuildWaveformPlaceholderViewModelInput,
   WaveformPlaceholderDerivedViewModel,
 } from "./waveformPlaceholderViewModelTypes";
-import type { WaveformPlaceholderDerivedState } from "./waveformPlaceholderDerivedStateRuntime";
 
 export function buildWaveformPlaceholderVisualState(
   input: Pick<

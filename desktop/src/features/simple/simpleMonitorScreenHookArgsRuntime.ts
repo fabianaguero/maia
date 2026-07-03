@@ -1,14 +1,13 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import { getTrackTitle as getLibraryTrackTitle } from "../../utils/track";
 import type { LibraryTrack } from "../../types/library";
 import type { ActiveMonitorSession, MonitorMetrics } from "../monitor/monitorContextTypes";
 import { buildSimpleMonitorScreenViewModel } from "./simpleMonitorViewModel";
-import type { useSimpleMonitorDeckRuntime } from "./useSimpleMonitorDeckRuntime";
-import type { useSimpleMonitorLaunchState } from "./useSimpleMonitorLaunchState";
 import type { SimpleMonitorCollectionsState } from "./simpleMonitorScreenStateRuntime";
-
-type LaunchStateSlice = ReturnType<typeof useSimpleMonitorLaunchState>;
-type DeckRuntimeSlice = ReturnType<typeof useSimpleMonitorDeckRuntime>;
+import type {
+  SimpleMonitorDeckRuntimeSlice,
+  SimpleMonitorLaunchStateSlice,
+} from "./simpleMonitorScreenSlicesRuntime";
 
 function getSimpleMonitorTrackTitle(track: LibraryTrack): string {
   return getLibraryTrackTitle(track);
@@ -20,8 +19,8 @@ export interface BuildSimpleMonitorHookArgsSharedInput {
   t: AppTranslations;
   nowMs: number;
   trackName?: string;
-  launchState: LaunchStateSlice;
-  deckRuntime: DeckRuntimeSlice;
+  launchState: SimpleMonitorLaunchStateSlice;
+  deckRuntime: SimpleMonitorDeckRuntimeSlice;
   collections: SimpleMonitorCollectionsState;
 }
 
@@ -54,7 +53,7 @@ export function buildSimpleMonitorActiveHookArgs(input: {
   onRefresh: () => void;
   onSimulateLog: () => void;
   onResumeAudio: () => Promise<void> | void;
-  deckRuntime: DeckRuntimeSlice;
+  deckRuntime: SimpleMonitorDeckRuntimeSlice;
   audioStatus: AudioContextState;
 }) {
   return {
@@ -111,9 +110,9 @@ export function buildSimpleMonitorActiveHookArgs(input: {
 }
 
 export function buildSimpleMonitorIdleHookArgs(input: {
-  launchState: LaunchStateSlice;
+  launchState: SimpleMonitorLaunchStateSlice;
   collections: SimpleMonitorCollectionsState;
-  deckRuntime: DeckRuntimeSlice;
+  deckRuntime: SimpleMonitorDeckRuntimeSlice;
   onReplaySession: (sessionId: string, sourcePath: string, repoTitle: string) => void;
 }) {
   return {

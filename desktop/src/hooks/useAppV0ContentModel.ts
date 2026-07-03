@@ -1,4 +1,5 @@
 import {
+  buildAppV0ContentModelResult,
   buildAppV0MonitorScreenStateInput,
   buildAppV0ScreenModelInput,
 } from "./appV0ContentModelRuntime";
@@ -15,5 +16,8 @@ export function useAppV0ContentModel() {
     buildAppV0ScreenModelInput(domainState, monitorState),
   );
 
-  return { screenModel, t: monitorState.t };
+  return buildAppV0ContentModelResult({
+    screenModel,
+    t: monitorState.t,
+  });
 }

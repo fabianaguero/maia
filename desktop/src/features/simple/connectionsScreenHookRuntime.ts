@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { Dispatch, SetStateAction } from "react";
 import type { LogSourceConnection } from "../../types/monitor";
 import type { ConnectionDraft, ConnectionKind, ConnectionTestStatus } from "./connectionsViewModel";

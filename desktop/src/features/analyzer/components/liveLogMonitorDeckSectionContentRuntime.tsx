@@ -4,7 +4,7 @@ import type { MetricGridItem, LiveMonitorDisplayState } from "./liveLogMonitorDi
 import type { LiveMutationExplanation } from "../../../utils/liveMutationExplainability";
 import type { LiveLogMarker, LibraryTrack, VisualizationCuePoint } from "../../../types/library";
 import type { SyncTailRow } from "./liveLogMonitorPanelRuntime";
-import type { AppTranslations } from "../../../i18n/en";
+import type { AppTranslations } from "../../../i18n/types";
 import type { RoutedLiveCue, ArrangementVoice } from "./liveSonificationScene";
 import { LiveLogMonitorDeckSection } from "./LiveLogMonitorDeckSection";
 import { LiveWaveformCanvas } from "./LiveWaveformCanvas";

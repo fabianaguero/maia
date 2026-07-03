@@ -54,11 +54,11 @@ export function useImportCompositionFormController({
 
   useEffect(() => {
     setTrackId((current) => resolveValidCompositionSelection(current, tracks));
-  }, [trackId, tracks]);
+  }, [tracks]);
 
   useEffect(() => {
     setPlaylistId((current) => resolveValidCompositionSelection(current, playlists));
-  }, [playlistId, playlists]);
+  }, [playlists]);
 
   useEffect(() => {
     setBaseMode((current) =>
@@ -68,7 +68,7 @@ export function useImportCompositionFormController({
         playlists,
       }),
     );
-  }, [baseMode, playlists.length, tracks.length]);
+  }, [playlists, tracks]);
 
   useEffect(() => {
     if (structureId && !repositories.some((entry) => entry.id === structureId)) {

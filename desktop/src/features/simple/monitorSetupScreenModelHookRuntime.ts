@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { AppSkin } from "./appSkin";
 import type { MonitorDeckControls, MonitorDeckPresetId } from "./monitorDeckControls";
 import type { MonitorSetupPreferences } from "./monitorSetupPreferences";

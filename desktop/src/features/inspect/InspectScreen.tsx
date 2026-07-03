@@ -1,12 +1,3 @@
-import type {
-  AnalyzerViewMode,
-  BaseAssetRecord,
-  BaseTrackPlaylist,
-  LibraryTrack,
-  RepositoryAnalysis,
-  UpdateTrackAnalysisInput,
-  UpdateTrackPerformanceInput,
-} from "../../types/library";
 import { useT } from "../../i18n/I18nContext";
 import { InspectContextBar } from "./InspectContextBar";
 import { InspectBaseAssetView } from "./InspectBaseAssetView";

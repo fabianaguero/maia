@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { RepositoryAnalysis } from "../../types/library";
 import { formatShortDate } from "../../utils/date";
 import { resolveLibrarySourceKindLabel } from "./libraryScreenViewModel";

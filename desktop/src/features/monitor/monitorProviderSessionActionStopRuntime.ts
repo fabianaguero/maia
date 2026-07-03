@@ -1,6 +1,6 @@
 import type { ActiveMonitorSession } from "./monitorContextTypes";
 import { stopAllMonitorAudio } from "./monitorContextRuntime";
-import { stopLiveMonitorSessionState } from "./monitorLiveLifecycleRuntime";
+import { type stopLiveMonitorSessionState } from "./monitorLiveLifecycleRuntime";
 import type { UseMonitorProviderSessionActionsInput } from "./monitorProviderSessionActionTypes";
 
 export function buildStopMonitorProviderSessionInput(

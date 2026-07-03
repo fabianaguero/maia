@@ -1,6 +1,6 @@
 import type { ImportRepositoryInput, RepositorySourceKind } from "../../../types/library";
 import {
-  buildImportRepositorySubmission,
+  type buildImportRepositorySubmission,
   resetImportRepositoryFormState,
   type ImportRepositoryFormStateSetters,
 } from "./importRepositoryFormRuntime";

@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { LibraryScreenControllerInput } from "./libraryScreenControllerTypes";
 import type { LibraryScreenViewModel } from "./libraryScreenViewModel";
 import type { LibraryTab } from "./libraryScreenTypes";

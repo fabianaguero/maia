@@ -1,6 +1,6 @@
 import { Activity, FileText, Folder, Play } from "lucide-react";
 
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { RepositoryAnalysis } from "../../types/library";
 import { shouldShowSimpleModeStartButton } from "./simpleModeLibraryRuntime";
 

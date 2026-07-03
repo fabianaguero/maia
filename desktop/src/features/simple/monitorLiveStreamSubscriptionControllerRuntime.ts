@@ -1,7 +1,7 @@
 import type { LiveLogStreamUpdate } from "../../types/monitor";
-import { applyMonitorLiveStreamSubscriptionResult } from "./monitorLiveStreamSubscriptionApplyRuntime";
+import { type applyMonitorLiveStreamSubscriptionResult } from "./monitorLiveStreamSubscriptionApplyRuntime";
 import {
-  applyMonitorLiveStreamSubscriptionUpdate,
+  type applyMonitorLiveStreamSubscriptionUpdate,
   type ApplyMonitorLiveStreamSubscriptionUpdateResult,
 } from "./monitorLiveStreamSubscriptionRuntime";
 import type { UseMonitorLiveStreamSubscriptionInput } from "./monitorLiveStreamSubscriptionTypes";

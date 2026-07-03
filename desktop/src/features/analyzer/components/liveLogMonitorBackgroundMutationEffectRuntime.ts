@@ -7,7 +7,7 @@ import type {
   LiveBackgroundMutationResolution,
 } from "./liveLogMonitorMutationRuntime";
 import type { ForcedLiveMutationState } from "./liveLogMonitorViewModel";
-import { createDriveCurve } from "./liveLogMonitorAudioRuntime";
+import { type createDriveCurve } from "./liveLogMonitorAudioRuntime";
 
 interface BackgroundMutationTargets {
   context: AudioContext;

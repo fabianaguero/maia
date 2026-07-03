@@ -1,5 +1,3 @@
-import { useCallback } from "react";
-
 import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { UseMonitorProviderRuntimeOrchestrationInput } from "./monitorProviderRuntimeOrchestrationTypes";
 import { useMonitorProviderReplayPlaybackRuntime } from "./useMonitorProviderReplayPlaybackRuntime";

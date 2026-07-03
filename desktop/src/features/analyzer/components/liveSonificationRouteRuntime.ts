@@ -1,7 +1,7 @@
 import {
-  resolveArrangementSections,
-  resolveCuePoints,
-  resolveRenderPreview,
+  type resolveArrangementSections,
+  type resolveCuePoints,
+  type resolveRenderPreview,
 } from "./compositionPreview";
 import {
   clampPan,

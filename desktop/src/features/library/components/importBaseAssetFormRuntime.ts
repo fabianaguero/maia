@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../../i18n/en";
+import type { AppTranslations } from "../../../i18n/types";
 import type { BaseAssetCategoryOption } from "../../../types/baseAsset";
 import type { BaseAssetSourceKind, ImportBaseAssetInput } from "../../../types/library";
 

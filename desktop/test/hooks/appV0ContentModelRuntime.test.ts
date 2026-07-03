@@ -1,13 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  buildAppV0ContentModelResult,
   buildAppV0MonitorScreenStateInput,
   buildAppV0ScreenModelInput,
 } from "../../src/hooks/appV0ContentModelRuntime";
+import type { AppV0DomainState } from "../../src/hooks/appV0DomainStateRuntime";
 
 describe("appV0ContentModelRuntime", () => {
   it("derives monitor-state and screen-model inputs from the domain state", () => {
-    const domainState = {
+    const domainState: AppV0DomainState = {
       userMode: "simple",
       preferences: {
         lang: "en",
@@ -104,5 +106,14 @@ describe("appV0ContentModelRuntime", () => {
     expect(screenModelInput.monitor.metrics).toBe(domainState.monitor.metrics);
     expect(screenModelInput.monitorOrchestrator.startLibraryMonitoring).toBeTypeOf("function");
     expect(screenModelInput.pastSessions.sessions).toHaveLength(1);
+  });
+
+  it("returns a stable content-model result envelope", () => {
+    const result = buildAppV0ContentModelResult({
+      screenModel: { appShellProps: { currentSection: "monitor" } } as never,
+      t: {} as never,
+    });
+
+    expect(result.screenModel.appShellProps.currentSection).toBe("monitor");
   });
 });

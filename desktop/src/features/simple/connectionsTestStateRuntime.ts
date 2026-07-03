@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 
 export interface ConnectionTestViewState {
   testStatusById: Record<string, "idle" | "testing" | "success" | "error">;

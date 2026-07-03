@@ -1,4 +1,4 @@
-import { FolderOpen, GitBranch, Globe, ScrollText } from "lucide-react";
+import { type FolderOpen, Globe } from "lucide-react";
 
 import type { RepositorySourceKind } from "../../../types/library";
 

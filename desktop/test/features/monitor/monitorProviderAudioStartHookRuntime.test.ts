@@ -80,7 +80,10 @@ describe("monitorProviderAudioStartHookRuntime", () => {
 
     expect(
       buildMonitorProviderLiveStartHookInput({
-        source,
+        live: source.live,
+        persistence: source.persistence,
+        session: source.session,
+        template: source.template,
         deps,
         reason: "session-start",
         includeProbe: true,
@@ -113,7 +116,10 @@ describe("monitorProviderAudioStartHookRuntime", () => {
 
     expect(
       buildMonitorProviderLiveStartHookInput({
-        source,
+        live: source.live,
+        persistence: source.persistence,
+        session: source.session,
+        template: source.template,
         deps,
         reason: "attach-session",
         includeProbe: false,

@@ -30,7 +30,7 @@ export function useSimpleMonitorDeckCanvasEffects({
   trackWaveSamples,
   trackWaveProgress,
   deckVisualPreset,
-  waveformScale,
+  waveformScale: _waveformScale,
   safeRuntime,
 }: UseSimpleMonitorDeckCanvasEffectsInput): void {
   useEffect(() => {

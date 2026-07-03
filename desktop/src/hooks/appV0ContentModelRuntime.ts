@@ -1,14 +1,13 @@
-import type { AppTranslations } from "../i18n/en";
-import type { useAppV0DomainState } from "./useAppV0DomainState";
+import type { buildAppV0ScreenModel } from "../appV0ScreenCompositionRuntime";
+import type { AppTranslations } from "../i18n/types";
+import type { AppV0DomainState } from "./appV0DomainStateRuntime";
 import type {
   AppV0MonitorOrchestratorBindings,
   UseAppV0ScreenModelInput,
 } from "./appV0ScreenModelTypes";
 import type { UseAppV0MonitorScreenStateInput } from "./useAppV0MonitorScreenState";
 
-type AppV0DomainState = ReturnType<typeof useAppV0DomainState>;
-
-type AppV0MonitorScreenState = {
+export interface AppV0MonitorScreenStateModel {
   t: AppTranslations;
   isMonitoring: boolean;
   fallbackViewModel: {
@@ -19,7 +18,7 @@ type AppV0MonitorScreenState = {
   shellViewModel: UseAppV0ScreenModelInput["shellViewModel"];
   waveformBins?: number[];
   reportMonitorLaunchFailure: UseAppV0ScreenModelInput["reportMonitorLaunchFailure"];
-};
+}
 
 export function buildAppV0MonitorScreenStateInput(
   domainState: AppV0DomainState,
@@ -44,7 +43,7 @@ export function buildAppV0MonitorScreenStateInput(
 
 export function buildAppV0ScreenModelInput(
   domainState: AppV0DomainState,
-  monitorState: AppV0MonitorScreenState,
+  monitorState: AppV0MonitorScreenStateModel,
 ): UseAppV0ScreenModelInput {
   return {
     userMode: domainState.userMode,
@@ -93,4 +92,11 @@ export function buildAppV0ScreenModelInput(
     pastSessions: domainState.pastSessions,
     monitorOrchestrator: monitorState.monitorOrchestrator,
   };
+}
+
+export function buildAppV0ContentModelResult(input: {
+  screenModel: ReturnType<typeof buildAppV0ScreenModel>;
+  t: AppTranslations;
+}) {
+  return input;
 }

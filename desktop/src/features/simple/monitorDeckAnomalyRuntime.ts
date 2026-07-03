@@ -1,4 +1,3 @@
-import type { MonitorDeckDerivedState, WaveformAnomalyMarker } from "./monitorDeckTypes";
 import { buildAnomalyBurstRegions } from "./monitorDeckAnomalyBurstRuntime";
 import {
   sampleLogWaveOverlay,

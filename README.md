@@ -58,6 +58,7 @@ Current maintainer note:
 
 - `desktop/src/main.tsx` currently mounts `desktop/src/App-v0.tsx`
 - `desktop/src/App.tsx` exists as an alternate shell under development, but it is not the mounted entrypoint today
+- desktop locales are now composed from `desktop/src/i18n/locales/*` domain slices rather than one monolithic translation file per language
 
 Publication note:
 
@@ -209,6 +210,40 @@ python3 -m pytest analyzer/tests -v --cov=maia_analyzer --cov-report=term-missin
 cd desktop
 npm run coverage
 ```
+
+## Contributor Quick Loop
+
+For the active desktop product path, the fastest safe local loop is:
+
+```bash
+cd desktop
+npm run typecheck
+npm run lint
+npm run test:run
+```
+
+Before proposing a release or a broader refactor pass:
+
+```bash
+cd desktop
+npm run coverage
+```
+
+Repository hooks are tracked in `.githooks/`. After cloning, install them with:
+
+```bash
+make hooks-install
+```
+
+## UI Copy and Localization
+
+- Active desktop translations live in `desktop/src/i18n/`
+- `desktop/src/i18n/types.ts` is the stable translation contract import for the app
+- `desktop/src/i18n/locales/` contains the per-domain locale slices used to compose `en` and `es`
+- `desktop/src/i18n/en.ts` and `desktop/src/i18n/es.ts` must stay structurally aligned
+- `desktop/test/i18n/translationsShape.test.ts` guards that alignment automatically
+
+If you add or rename UI copy, update both locales in the same change.
 
 ## Support
 

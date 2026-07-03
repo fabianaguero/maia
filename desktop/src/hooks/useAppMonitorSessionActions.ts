@@ -14,25 +14,14 @@ import {
   buildMonitoredRepoNavigation,
   buildReplayPlaybackInput,
 } from "./appMonitorSessionActionsRuntime";
-import type { UseAppMonitorActionsInput } from "./appMonitorActionsTypes";
-
-interface MonitorGuideActions {
-  armSessionMusicalBase: (draft?: SessionMonitorDraft) => void;
-  primeMonitorGuideTrack: (draft?: SessionMonitorDraft) => void;
-}
-
-type SessionActionsInput = Pick<
-  UseAppMonitorActionsInput,
-  | "t"
-  | "repositories"
-  | "sessions"
-  | "monitor"
-  | "notify"
-  | "setAnalysisMode"
-  | "setScreen"
-  | "setPillar"
-> &
-  MonitorGuideActions;
+import {
+  buildAppMonitorLiveActionInput,
+  buildAppMonitorOpenRepoActionInput,
+  buildAppMonitorReplayActionInput,
+  buildReplaySourceRepositoryId,
+  shouldSeekReplayWindow,
+  type UseAppMonitorSessionActionsInput,
+} from "./appMonitorSessionActionsHookRuntime";
 
 export function useAppMonitorSessionActions({
   t,
@@ -45,37 +34,81 @@ export function useAppMonitorSessionActions({
   setPillar,
   armSessionMusicalBase,
   primeMonitorGuideTrack,
-}: SessionActionsInput) {
+}: UseAppMonitorSessionActionsInput) {
+  const replayInput = buildAppMonitorReplayActionInput({
+    t,
+    repositories,
+    sessions,
+    monitor,
+    notify,
+    setAnalysisMode,
+    setScreen,
+    setPillar,
+    armSessionMusicalBase,
+    primeMonitorGuideTrack,
+  });
+  const liveInput = buildAppMonitorLiveActionInput({
+    t,
+    repositories,
+    sessions,
+    monitor,
+    notify,
+    setAnalysisMode,
+    setScreen,
+    setPillar,
+    armSessionMusicalBase,
+    primeMonitorGuideTrack,
+  });
+  const openRepoInput = buildAppMonitorOpenRepoActionInput({
+    t,
+    repositories,
+    sessions,
+    monitor,
+    notify,
+    setAnalysisMode,
+    setScreen,
+    setPillar,
+    armSessionMusicalBase,
+    primeMonitorGuideTrack,
+  });
+
   const startReplaySession = useCallback(
     async (session: PersistedSession, replayWindowIndex?: number): Promise<boolean> => {
-      sessions.setSelectedSessionId(session.id);
+      replayInput.sessions.setSelectedSessionId(session.id);
       const draft = resolveReplayMonitorDraft(session);
-      armSessionMusicalBase(draft);
-      primeMonitorGuideTrack(draft);
+      replayInput.armSessionMusicalBase(draft);
+      replayInput.primeMonitorGuideTrack(draft);
 
-      const sourceRepository = resolveReplaySourceRepository(session, repositories.repositories);
+      const sourceRepository = resolveReplaySourceRepository(
+        session,
+        replayInput.repositories.repositories,
+      );
 
       if (!sourceRepository) {
-        notify("error", t.appShell.replayUnavailableTitle, t.appShell.replayUnavailableBody);
+        replayInput.notify(
+          "error",
+          replayInput.t.appShell.replayUnavailableTitle,
+          replayInput.t.appShell.replayUnavailableBody,
+        );
         return false;
       }
 
-      repositories.setSelectedRepositoryId(sourceRepository.id);
-      setAnalysisMode("repo");
+      replayInput.repositories.setSelectedRepositoryId(sourceRepository.id);
+      replayInput.setAnalysisMode("repo");
 
       const alreadyActiveReplay = shouldReuseActiveReplaySession({
-        currentPersistedSessionId: monitor.session?.persistedSessionId,
-        isPlayback: monitor.isPlayback,
+        currentPersistedSessionId: replayInput.monitor.session?.persistedSessionId,
+        isPlayback: replayInput.monitor.isPlayback,
         replaySessionId: session.id,
       });
 
       const ok = alreadyActiveReplay
         ? true
-        : await monitor.playbackSession(
+        : await replayInput.monitor.playbackSession(
             buildReplayPlaybackInput({
               session,
-              repoId: sourceRepository.id ?? session.sourceId,
-              unnamedSessionLabel: t.session.unnamedSession,
+              repoId: buildReplaySourceRepositoryId(sourceRepository, session),
+              unnamedSessionLabel: replayInput.t.session.unnamedSession,
             }),
           );
 
@@ -83,25 +116,17 @@ export function useAppMonitorSessionActions({
         return false;
       }
 
-      if (typeof replayWindowIndex === "number") {
-        monitor.pausePlayback();
-        monitor.seekPlaybackWindow(replayWindowIndex);
+      if (shouldSeekReplayWindow(replayWindowIndex)) {
+        replayInput.monitor.pausePlayback();
+        replayInput.monitor.seekPlaybackWindow(replayWindowIndex);
       }
 
-      setAnalysisMode("repo");
-      setScreen("inspect");
+      replayInput.setAnalysisMode("repo");
+      replayInput.setScreen("inspect");
       return true;
     },
     [
-      armSessionMusicalBase,
-      monitor,
-      notify,
-      primeMonitorGuideTrack,
-      repositories,
-      sessions,
-      setAnalysisMode,
-      setScreen,
-      t,
+      replayInput,
     ],
   );
 
@@ -111,17 +136,17 @@ export function useAppMonitorSessionActions({
       persistedSessionId: string,
       draft?: SessionMonitorDraft & { sourceId?: string | null },
     ): Promise<boolean> => {
-      sessions.clearError();
+      liveInput.sessions.clearError();
       const guideDraft = buildLiveSessionGuideDraft(draft);
-      armSessionMusicalBase(guideDraft);
-      primeMonitorGuideTrack(guideDraft);
+      liveInput.armSessionMusicalBase(guideDraft);
+      liveInput.primeMonitorGuideTrack(guideDraft);
 
-      const success = await monitor.startSession(
+      const success = await liveInput.monitor.startSession(
         resolveSessionRepository({
           adapterKind: input.adapterKind,
-          label: input.label ?? t.session.unnamedSession,
+          label: input.label ?? liveInput.t.session.unnamedSession,
           nowIso: new Date().toISOString(),
-          repositories: repositories.repositories,
+          repositories: liveInput.repositories.repositories,
           sessionId: input.sessionId,
           source: input.source,
         }),
@@ -134,12 +159,12 @@ export function useAppMonitorSessionActions({
       }
 
       const persistenceAction = resolveSessionPersistenceAction({
-        sessions: sessions.sessions,
+        sessions: liveInput.sessions.sessions,
         persistedSessionId,
       });
 
       if (persistenceAction === "create") {
-        await sessions.createSession(
+        await liveInput.sessions.createSession(
           buildLiveSessionPersistenceInput({
             sessionId: persistedSessionId,
             startInput: input,
@@ -147,33 +172,31 @@ export function useAppMonitorSessionActions({
           }),
         );
       } else {
-        sessions.setSelectedSessionId(persistedSessionId);
+        liveInput.sessions.setSelectedSessionId(persistedSessionId);
       }
 
       return true;
     },
     [
-      armSessionMusicalBase,
-      monitor,
-      primeMonitorGuideTrack,
-      repositories.repositories,
-      sessions,
-      t.session.unnamedSession,
+      liveInput,
     ],
   );
 
   const openMonitoredRepo = useCallback(() => {
-    const repo = resolveMonitoredRepository(monitor.session, repositories.repositories);
+    const repo = resolveMonitoredRepository(
+      openRepoInput.monitor.session,
+      openRepoInput.repositories.repositories,
+    );
     if (!repo) {
       return;
     }
 
     const navigation = buildMonitoredRepoNavigation();
-    repositories.setSelectedRepositoryId(repo.id);
-    setAnalysisMode(navigation.analysisMode);
-    setScreen(navigation.screen);
-    setPillar(navigation.pillar);
-  }, [monitor.session, repositories, setAnalysisMode, setPillar, setScreen]);
+    openRepoInput.repositories.setSelectedRepositoryId(repo.id);
+    openRepoInput.setAnalysisMode(navigation.analysisMode);
+    openRepoInput.setScreen(navigation.screen);
+    openRepoInput.setPillar(navigation.pillar);
+  }, [openRepoInput]);
 
   return {
     startReplaySession,
@@ -182,5 +205,5 @@ export function useAppMonitorSessionActions({
   };
 }
 
-type PersistedSession = UseAppMonitorActionsInput["sessions"]["sessions"][number];
-type StartSessionInput = Parameters<UseAppMonitorActionsInput["monitor"]["startSession"]>[1];
+type PersistedSession = UseAppMonitorSessionActionsInput["sessions"]["sessions"][number];
+type StartSessionInput = Parameters<UseAppMonitorSessionActionsInput["monitor"]["startSession"]>[1];

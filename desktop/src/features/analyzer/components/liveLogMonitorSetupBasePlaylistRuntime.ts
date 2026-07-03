@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 
-import { LiveLogMonitorBasePlaylistPanel } from "./LiveLogMonitorBasePlaylistPanel";
+import { type LiveLogMonitorBasePlaylistPanel } from "./LiveLogMonitorBasePlaylistPanel";
 import {
   addTrackToLiveMonitorBasePlaylist,
   loadSavedLiveMonitorBasePlaylist,

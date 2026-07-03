@@ -17,6 +17,7 @@ export function useMonitorProviderPollTransportCallbacks(
   },
 ) {
   const { audio, live, logger, persistence, session, transport } = input;
+  const { schedulePoll } = deps;
 
   const emitUpdate = useCallback(
     (
@@ -28,34 +29,37 @@ export function useMonitorProviderPollTransportCallbacks(
     ) => {
       emitMonitorProviderUpdateState(
         buildMonitorProviderEmitUpdateHookInput({
-          source: input,
+          audio,
+          live,
+          logger,
+          persistence,
+          session,
           update,
           options,
         }),
       );
     },
-    [audio.audioContextRef, live.listenersRef, live.pollIndexRef, logger, persistence, session],
+    [audio, live, logger, persistence, session],
   );
 
   const doPoll = useCallback(async () => {
     await runMonitorProviderPollState(
       buildMonitorProviderPollTransportHookInput({
-        source: input,
+        live,
+        logger,
+        session,
+        transport,
         emitUpdate,
-        schedulePoll: deps.schedulePoll,
+        schedulePoll,
         doPoll,
       }),
     );
   }, [
-    deps.schedulePoll,
     emitUpdate,
-    live.activeRef,
-    live.directCursorRef,
-    live.emptyWindowsRef,
-    live.httpUrlRef,
-    live.wsLineBufferRef,
+    live,
     logger,
-    session.sessionRef,
+    schedulePoll,
+    session,
     transport,
   ]);
 

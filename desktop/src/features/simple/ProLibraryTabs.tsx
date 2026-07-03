@@ -1,6 +1,6 @@
 import { FolderOpen, Music, Package } from "lucide-react";
 
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { ProLibraryTabId } from "./proLibraryScreenRuntime";
 
 interface ProLibraryTabsProps {

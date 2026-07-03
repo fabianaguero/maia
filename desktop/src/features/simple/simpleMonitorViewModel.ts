@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { ActiveMonitorSession } from "../monitor/MonitorContext";
 import type { BeatGridPoint, LibraryTrack } from "../../types/library";
 import { getTrackTitle as getLibraryTrackTitle } from "../../utils/track";

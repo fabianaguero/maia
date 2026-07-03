@@ -4,8 +4,6 @@ import type { SessionEvent } from "../../api/sessions";
 import type { ActiveMonitorSession, MonitorMetrics } from "./monitorContextTypes";
 import { activatePlaybackMonitorSessionState } from "./monitorOrchestrationRuntime";
 import { buildReplayCumulativeMetrics } from "../../utils/replay";
-import { preparePlaybackMonitorSessionState } from "./monitorPlaybackSessionPrepareRuntime";
-import { finalizePlaybackMonitorSessionSetupState } from "./monitorPlaybackSessionSetupRuntime";
 import type { PreparedPlaybackMonitorSession } from "./monitorPlaybackSessionTypes";
 
 type SyncReplayTelemetryFn = (processedEvents: number) => void;

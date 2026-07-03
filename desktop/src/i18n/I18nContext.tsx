@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
-import { en, type AppTranslations } from "./en";
+import { en } from "./en";
+import type { AppTranslations } from "./types";
 
 export const I18nContext = createContext<AppTranslations>(en);
 

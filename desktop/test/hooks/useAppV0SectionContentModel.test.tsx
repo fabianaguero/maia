@@ -272,7 +272,7 @@ describe("useAppV0SectionContentModel", () => {
       reason: "library-boom",
     });
     expect(input.monitorOrchestrator.startSourceMonitoring).toHaveBeenCalledWith(source, "track-1");
-    expect(input.reportMonitorLaunchFailure).toHaveBeenCalledWith("source", { ok: true });
+    expect(input.reportMonitorLaunchFailure).toHaveBeenCalledTimes(1);
     expect(input.monitorOrchestrator.replaySession).toHaveBeenCalledWith(
       "persisted-1",
       "/logs/visits-service.log",

@@ -15,6 +15,11 @@ import {
 } from "../../api/sessions";
 import { createGuideTrackDecodeCache } from "./monitorGuideTrackDecodeRuntime";
 import { useMonitorProviderContextValue } from "./useMonitorProviderContextValue";
+import {
+  buildMonitorProviderActionsInput,
+  buildMonitorProviderControllerResult,
+  buildMonitorProviderStateInput,
+} from "./monitorProviderControllerHookRuntime";
 import { buildMonitorProviderControllerBootstrap } from "./monitorProviderControllerDependenciesRuntime";
 import { buildMonitorProviderControllerContextInput } from "./monitorProviderControllerContextRuntime";
 import { useMonitorProviderControllerActions } from "./useMonitorProviderControllerActions";
@@ -23,43 +28,45 @@ import { useMonitorProviderState } from "./useMonitorProviderState";
 const log = getLogger("MonitorCtx");
 
 export function useMonitorProviderController() {
-  const { initialTemplate, decodedAudioCache, fetchText, persistence } =
-    buildMonitorProviderControllerBootstrap({
-      defaultSourceTemplateId: DEFAULT_SOURCE_TEMPLATE_ID,
-      resolveSourceTemplate,
-      createGuideTrackDecodeCache,
-      fetchFn: ((...args) => globalThis.fetch(...args)) as typeof fetch,
-      insertSessionEvent,
-      updatePersistedSessionCursor,
-      updatePersistedSessionStatus,
-    });
-  const state = useMonitorProviderState({
-    initialTemplate,
-  });
-  const controllerActions = useMonitorProviderControllerActions({
-    state,
-    logger: log,
+  const bootstrap = buildMonitorProviderControllerBootstrap({
+    defaultSourceTemplateId: DEFAULT_SOURCE_TEMPLATE_ID,
     resolveSourceTemplate,
-    decodedAudioCache,
-    transport: {
-      pollStreamSession,
-      pollLogStream,
-      ingestStreamChunk,
-      fetchText,
-    },
-    sessionApi: {
-      startStreamSession,
-      stopStreamSession,
-      listSessionEvents,
-    },
-    persistence,
+    createGuideTrackDecodeCache,
+    fetchFn: ((...args) => globalThis.fetch(...args)) as typeof fetch,
+    insertSessionEvent,
+    updatePersistedSessionCursor,
+    updatePersistedSessionStatus,
   });
+  const state = useMonitorProviderState(buildMonitorProviderStateInput(bootstrap));
+  const controllerActions = useMonitorProviderControllerActions(
+    buildMonitorProviderActionsInput({
+      state,
+      logger: log,
+      resolveSourceTemplate,
+      decodedAudioCache: bootstrap.decodedAudioCache,
+      transport: {
+        pollStreamSession,
+        pollLogStream,
+        ingestStreamChunk,
+        fetchText: bootstrap.fetchText,
+      },
+      sessionApi: {
+        startStreamSession,
+        stopStreamSession,
+        listSessionEvents,
+      },
+      persistence: bootstrap.persistence,
+    }),
+  );
 
-  return useMonitorProviderContextValue(
-    buildMonitorProviderControllerContextInput({
+  const controllerResult = buildMonitorProviderControllerResult({
+    contextInput: buildMonitorProviderControllerContextInput({
       state,
       logger: log,
       ...controllerActions,
     }),
-  );
+    controllerActions,
+  });
+
+  return useMonitorProviderContextValue(controllerResult.contextInput);
 }

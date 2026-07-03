@@ -1,4 +1,9 @@
-import type { UseMonitorProviderRuntimeOrchestrationInput } from "./monitorProviderRuntimeOrchestrationTypes";
+import type {
+  MonitorProviderRuntimeLiveSlice,
+  MonitorProviderRuntimePersistenceSlice,
+  MonitorProviderRuntimeSessionSlice,
+  MonitorProviderRuntimeTemplateSlice,
+} from "./monitorProviderRuntimeOrchestrationTypes";
 import { buildMonitorProviderLiveStartBaseInput } from "./monitorProviderStartRuntime";
 import type { BuildLiveStartInputFn } from "./monitorProviderSessionActionTypes";
 
@@ -9,32 +14,33 @@ export interface MonitorProviderAudioStartHookDeps {
 }
 
 export function buildMonitorProviderLiveStartHookInput(input: {
-  source: UseMonitorProviderRuntimeOrchestrationInput;
+  live: MonitorProviderRuntimeLiveSlice;
+  persistence: MonitorProviderRuntimePersistenceSlice;
+  session: MonitorProviderRuntimeSessionSlice;
+  template: MonitorProviderRuntimeTemplateSlice;
   deps: MonitorProviderAudioStartHookDeps;
   reason: Parameters<BuildLiveStartInputFn>[0];
   includeProbe: Parameters<BuildLiveStartInputFn>[1];
   emitProbe: ((context: AudioContext) => void) | undefined;
   runProviderPoll: () => void;
 }) {
-  const { live, persistence, session, template } = input.source;
-
   return buildMonitorProviderLiveStartBaseInput({
-    directCursorRef: live.directCursorRef,
-    emptyWindowsRef: live.emptyWindowsRef,
-    pollIndexRef: live.pollIndexRef,
-    activeTemplateRef: template.activeTemplateRef,
-    setActiveTemplateState: template.setActiveTemplateState,
-    updatePersistedSessionStatus: persistence.updatePersistedSessionStatus,
-    sessionRef: session.sessionRef,
-    activeRef: live.activeRef,
-    isPlaybackRef: live.isPlaybackRef,
-    setSession: session.setSession,
-    setIsPlayback: session.setIsPlayback,
-    setMetrics: session.setMetrics,
+    directCursorRef: input.live.directCursorRef,
+    emptyWindowsRef: input.live.emptyWindowsRef,
+    pollIndexRef: input.live.pollIndexRef,
+    activeTemplateRef: input.template.activeTemplateRef,
+    setActiveTemplateState: input.template.setActiveTemplateState,
+    updatePersistedSessionStatus: input.persistence.updatePersistedSessionStatus,
+    sessionRef: input.session.sessionRef,
+    activeRef: input.live.activeRef,
+    isPlaybackRef: input.live.isPlaybackRef,
+    setSession: input.session.setSession,
+    setIsPlayback: input.session.setIsPlayback,
+    setMetrics: input.session.setMetrics,
     resetReplayTelemetry: input.deps.resetReplayTelemetry,
     ensureAudioContext: input.deps.ensureProviderAudioContext,
     emitProbe: input.includeProbe ? input.emitProbe : undefined,
-    reloadPendingGuideTrack: template.buildReloadPendingGuideTrack(input.reason),
+    reloadPendingGuideTrack: input.template.buildReloadPendingGuideTrack(input.reason),
     doPoll: input.runProviderPoll,
   });
 }

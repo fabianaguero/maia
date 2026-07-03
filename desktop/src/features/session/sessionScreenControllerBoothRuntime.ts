@@ -2,7 +2,7 @@ import type { MutableRefObject } from "react";
 
 import type { SessionEvent } from "../../api/sessions";
 import type { LiveLogStreamUpdate } from "../../types/monitor";
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { ActiveMonitorSession, MonitorMetrics } from "../monitor/monitorContextTypes";
 import type { BuildSessionBoothViewModelInput } from "./sessionBoothViewModelTypes";
 import type { PersistedSession } from "../../api/sessions";

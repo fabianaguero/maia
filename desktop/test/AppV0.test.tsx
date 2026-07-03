@@ -156,15 +156,15 @@ const hooksMock = vi.hoisted(() => {
         totalAnomalies: 3,
       },
       setGuideTrack: vi.fn(),
-      resumeAudio: vi.fn(async () => undefined),
+      resumeAudio: hooksMock.monitorResumeAudio,
       attachSession: vi.fn(async () => true),
       startSession: vi.fn(async () => true),
       playbackSession: vi.fn(async () => true),
-      stopSession: vi.fn(async () => undefined),
+      stopSession: hooksMock.monitorStopSession,
       audioContext: {
         state: "running",
       },
-      subscribe: vi.fn(() => vi.fn()),
+      subscribe: hooksMock.monitorSubscribe,
     })),
     loadAppV0Preferences: vi.fn(() => ({
       lang: "en" as const,
@@ -234,9 +234,21 @@ vi.mock("../src/api/repositories", async () => {
 });
 
 vi.mock("../src/appV0MonitorOrchestration", () => ({
-  createAppV0MonitorOrchestrator: vi.fn(() => ({
-    startLibraryMonitoring: hooksMock.startLibraryMonitoring,
-    startSourceMonitoring: hooksMock.startSourceMonitoring,
+  createAppV0MonitorOrchestrator: vi.fn((input: { onLaunchSuccess?: () => void }) => ({
+    startLibraryMonitoring: async (...args: unknown[]) => {
+      const result = await hooksMock.startLibraryMonitoring(...args);
+      if (result?.ok) {
+        input.onLaunchSuccess?.();
+      }
+      return result;
+    },
+    startSourceMonitoring: async (...args: unknown[]) => {
+      const result = await hooksMock.startSourceMonitoring(...args);
+      if (result?.ok) {
+        input.onLaunchSuccess?.();
+      }
+      return result;
+    },
     replaySession: hooksMock.replaySession,
   })),
 }));
@@ -362,6 +374,29 @@ describe("AppContentV0", () => {
     });
 
     consoleError.mockRestore();
+  });
+
+  it("switches into the active monitor section after a successful launch and stops from shell actions", async () => {
+    hooksMock.startLibraryMonitoring.mockResolvedValueOnce({ ok: true as const });
+
+    render(<AppContentV0 />);
+
+    fireEvent.click(screen.getByText("goto-connections"));
+    expect(screen.getByTestId("shell-section")).toHaveTextContent("connections");
+
+    fireEvent.click(screen.getByText("launch-library"));
+
+    await waitFor(() => {
+      expect(hooksMock.startLibraryMonitoring).toHaveBeenCalledWith("repo-1");
+      expect(screen.getByTestId("shell-section")).toHaveTextContent("monitor");
+      expect(screen.getByTestId("content-section")).toHaveTextContent("monitor");
+    });
+
+    fireEvent.click(screen.getByText("stop-monitoring"));
+
+    await waitFor(() => {
+      expect(hooksMock.monitorStopSession).toHaveBeenCalledTimes(1);
+    });
   });
 });
 

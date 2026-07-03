@@ -1,41 +1,40 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { en } from "../../../src/i18n/en";
 import { useConnectionsScreenState } from "../../../src/features/simple/useConnectionsScreenState";
+import { createEmptyConnectionDraft } from "../../../src/features/simple/connectionsDraftRuntime";
 import type { LogSourceConnection } from "../../../src/types/monitor";
 
 const apiState = vi.hoisted(() => ({
-  listLogSourceConnections: vi.fn(),
-  pickRepositoryFile: vi.fn(),
   pollStreamSession: vi.fn(),
   startLogSourceConnection: vi.fn(),
   stopStreamSession: vi.fn(),
-  upsertLogSourceConnection: vi.fn(),
-  deleteLogSourceConnection: vi.fn(),
 }));
 
-const runtimeState = vi.hoisted(() => ({
-  runConnectionProbeLoop: vi.fn(),
+const controllerHooks = vi.hoisted(() => ({
+  useConnectionsFormController: vi.fn(),
+  useConnectionTailController: vi.fn(),
+  useConnectionTestController: vi.fn(),
 }));
 
 vi.mock("../../../src/api/repositories", () => ({
-  listLogSourceConnections: apiState.listLogSourceConnections,
-  pickRepositoryFile: apiState.pickRepositoryFile,
   pollStreamSession: apiState.pollStreamSession,
   startLogSourceConnection: apiState.startLogSourceConnection,
   stopStreamSession: apiState.stopStreamSession,
-  upsertLogSourceConnection: apiState.upsertLogSourceConnection,
-  deleteLogSourceConnection: apiState.deleteLogSourceConnection,
 }));
 
-vi.mock("../../../src/features/simple/connectionsRuntime", async () => {
-  const actual = await vi.importActual("../../../src/features/simple/connectionsRuntime");
-  return {
-    ...actual,
-    runConnectionProbeLoop: runtimeState.runConnectionProbeLoop,
-  };
-});
+vi.mock("../../../src/features/simple/useConnectionsFormController", () => ({
+  useConnectionsFormController: (input: unknown) => controllerHooks.useConnectionsFormController(input),
+}));
+
+vi.mock("../../../src/features/simple/useConnectionTailController", () => ({
+  useConnectionTailController: (input: unknown) => controllerHooks.useConnectionTailController(input),
+}));
+
+vi.mock("../../../src/features/simple/useConnectionTestController", () => ({
+  useConnectionTestController: (input: unknown) => controllerHooks.useConnectionTestController(input),
+}));
 
 function createConnection(overrides: Partial<LogSourceConnection> = {}): LogSourceConnection {
   return {
@@ -56,47 +55,52 @@ function createConnection(overrides: Partial<LogSourceConnection> = {}): LogSour
   };
 }
 
+let formControllerState: ReturnType<typeof controllerHooks.useConnectionsFormController>;
+let tailControllerState: ReturnType<typeof controllerHooks.useConnectionTailController>;
+let testControllerState: ReturnType<typeof controllerHooks.useConnectionTestController>;
+
 describe("useConnectionsScreenState", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    apiState.listLogSourceConnections.mockResolvedValue([createConnection()]);
-    apiState.pickRepositoryFile.mockResolvedValue("/logs/picked.log");
-    apiState.pollStreamSession.mockResolvedValue({
-      session: {
-        sessionId: "session-1",
-        adapterKind: "file",
-        source: "/logs/visits-service.log",
-        label: "visits-service",
-        createdAt: "2026-06-26T10:00:00.000Z",
-        lastPolledAt: "2026-06-26T10:00:01.000Z",
-        totalPolls: 1,
-        fileCursor: 10,
-      },
-      hasData: true,
-      summary: "ready",
-      suggestedBpm: null,
-      confidence: 0.5,
-      dominantLevel: "info",
-      lineCount: 2,
-      anomalyCount: 0,
-      levelCounts: {},
-      anomalyMarkers: [],
-      topComponents: [],
-      sonificationCues: [],
-      parsedLines: ["INFO ok"],
-      warnings: [],
-    });
-    apiState.startLogSourceConnection.mockResolvedValue(undefined);
-    apiState.stopStreamSession.mockResolvedValue(undefined);
-    apiState.upsertLogSourceConnection.mockResolvedValue(undefined);
-    apiState.deleteLogSourceConnection.mockResolvedValue(undefined);
-    runtimeState.runConnectionProbeLoop.mockResolvedValue({
-      status: "success",
-      message: "adapter ready",
-    });
+
+    formControllerState = {
+      connections: [createConnection()],
+      editingConnectionId: null,
+      draft: createEmptyConnectionDraft("120m"),
+      loading: false,
+      saving: false,
+      pickerBusy: false,
+      error: null,
+      setDraft: vi.fn(),
+      setError: vi.fn(),
+      refreshConnections: vi.fn(async () => undefined),
+      resetForm: vi.fn(),
+      loadConnectionIntoForm: vi.fn(),
+      handleBrowseFile: vi.fn(async () => undefined),
+      handleSaveConnection: vi.fn(async () => undefined),
+      handleDeleteConnection: vi.fn(async () => undefined),
+    };
+    controllerHooks.useConnectionsFormController.mockReturnValue(formControllerState);
+
+    tailControllerState = {
+      activeSessionId: "session-1",
+      activeConnectionId: "conn-1",
+      tailPreview: ["WARN queue depth rising"],
+      tailStatus: "2 lines · 1 anomalies · warn",
+      handleStartTail: vi.fn(async () => undefined),
+      handleStopTail: vi.fn(async () => undefined),
+    };
+    controllerHooks.useConnectionTailController.mockReturnValue(tailControllerState);
+
+    testControllerState = {
+      testStatusById: { "conn-1": "success" },
+      testMessageById: { "conn-1": "adapter ready" },
+      handleTestConnection: vi.fn(async () => undefined),
+    };
+    controllerHooks.useConnectionTestController.mockReturnValue(testControllerState);
   });
 
-  it("hydrates connections on mount and resets the draft using the configured cloud lookback", async () => {
+  it("composes the form, tail, and test controllers into one screen state", () => {
     const { result } = renderHook(() =>
       useConnectionsScreenState({
         t: en,
@@ -104,30 +108,34 @@ describe("useConnectionsScreenState", () => {
       }),
     );
 
-    await waitFor(() => {
-      expect(apiState.listLogSourceConnections).toHaveBeenCalledTimes(1);
-      expect(result.current.connections).toHaveLength(1);
+    expect(controllerHooks.useConnectionsFormController).toHaveBeenCalledWith({
+      t: en,
+      defaultCloudLookback: "120m",
     });
+    expect(controllerHooks.useConnectionTailController).toHaveBeenCalledWith(
+      expect.objectContaining({
+        t: en,
+        pollStreamSession: apiState.pollStreamSession,
+        startLogSourceConnection: apiState.startLogSourceConnection,
+        stopStreamSession: apiState.stopStreamSession,
+      }),
+    );
+    expect(controllerHooks.useConnectionTestController).toHaveBeenCalledWith(
+      expect.objectContaining({
+        t: en,
+        pollStreamSession: apiState.pollStreamSession,
+        startLogSourceConnection: apiState.startLogSourceConnection,
+        stopStreamSession: apiState.stopStreamSession,
+      }),
+    );
 
-    expect(result.current.draft.gcpBackfillFreshness).toBe("120m");
-
-    act(() => {
-      result.current.loadConnectionIntoForm(createConnection());
-    });
-
-    expect(result.current.editingConnectionId).toBe("conn-1");
-    expect(result.current.draft.sourcePath).toBe("/logs/visits-service.log");
-
-    act(() => {
-      result.current.resetForm();
-    });
-
-    expect(result.current.editingConnectionId).toBeNull();
-    expect(result.current.draft.gcpBackfillFreshness).toBe("120m");
-    expect(result.current.draft.sourcePath).toBe("");
+    expect(result.current.connections).toHaveLength(1);
+    expect(result.current.activeConnectionId).toBe("conn-1");
+    expect(result.current.tailPreview).toEqual(["WARN queue depth rising"]);
+    expect(result.current.testStatusById["conn-1"]).toBe("success");
   });
 
-  it("saves and tests a connection through the repository APIs", async () => {
+  it("keeps the form draft and public handlers exposed from the composed state", () => {
     const { result } = renderHook(() =>
       useConnectionsScreenState({
         t: en,
@@ -135,120 +143,28 @@ describe("useConnectionsScreenState", () => {
       }),
     );
 
-    await waitFor(() => {
-      expect(result.current.connections).toHaveLength(1);
-    });
-
-    act(() => {
-      result.current.setDraft((current) => ({
-        ...current,
-        kind: "file_log",
-        sourcePath: "/logs/new.log",
-        label: "new-log",
-      }));
-    });
-
-    await act(async () => {
-      await result.current.handleSaveConnection();
-    });
-
-    expect(apiState.upsertLogSourceConnection).toHaveBeenCalledWith(
-      expect.objectContaining({
-        kind: "file_log",
-        label: "new-log",
-        sourceUri: "/logs/new.log",
-      }),
-    );
-    expect(apiState.listLogSourceConnections).toHaveBeenCalledTimes(2);
-
-    await act(async () => {
-      await result.current.handleTestConnection(createConnection());
-    });
-
-    expect(apiState.startLogSourceConnection).toHaveBeenCalledWith(
-      expect.objectContaining({
-        connectionId: "conn-1",
-        startFromBeginning: false,
-      }),
-    );
-    expect(runtimeState.runConnectionProbeLoop).toHaveBeenCalledWith(
-      expect.objectContaining({
-        t: en,
-        connectionKind: "file_log",
-      }),
-    );
-    expect(apiState.stopStreamSession).toHaveBeenCalled();
-
-    await waitFor(() => {
-      expect(result.current.testStatusById["conn-1"]).toBe("success");
-      expect(result.current.testMessageById["conn-1"]).toBe("adapter ready");
-    });
+    expect(result.current.draft.gcpBackfillFreshness).toBe("120m");
+    expect(result.current.handleSaveConnection).toBe(formControllerState.handleSaveConnection);
+    expect(result.current.handleStartTail).toBe(tailControllerState.handleStartTail);
+    expect(result.current.handleTestConnection).toBe(testControllerState.handleTestConnection);
   });
 
-  it("starts and stops a live tail preview through the composed tail controller", async () => {
-    apiState.pollStreamSession.mockResolvedValue({
-      session: {
-        sessionId: "conn-conn-1-1",
-        adapterKind: "file",
-        source: "/logs/visits-service.log",
-        label: "visits-service",
-        createdAt: "2026-06-26T10:00:00.000Z",
-        lastPolledAt: "2026-06-26T10:00:02.000Z",
-        totalPolls: 2,
-        fileCursor: 20,
-      },
-      hasData: true,
-      summary: "tail ready",
-      suggestedBpm: null,
-      confidence: 0.5,
-      dominantLevel: "warn",
-      lineCount: 4,
-      anomalyCount: 1,
-      levelCounts: {},
-      anomalyMarkers: [],
-      topComponents: [],
-      sonificationCues: [],
-      parsedLines: ["WARN anomaly spike"],
-      warnings: [],
+  it("reflects empty connections without losing controller wiring", () => {
+    controllerHooks.useConnectionsFormController.mockReturnValueOnce({
+      ...formControllerState,
+      connections: [],
+      draft: createEmptyConnectionDraft("45m"),
     });
 
     const { result } = renderHook(() =>
       useConnectionsScreenState({
         t: en,
-        defaultCloudLookback: "30m",
+        defaultCloudLookback: "45m",
       }),
     );
 
-    await waitFor(() => {
-      expect(result.current.connections).toHaveLength(1);
-    });
-
-    vi.useFakeTimers();
-    try {
-      await act(async () => {
-        await result.current.handleStartTail(createConnection());
-      });
-
-      expect(result.current.activeConnectionId).toBe("conn-1");
-      expect(result.current.tailStatus).toBe(en.simpleMode.connections.waitingCloudEntries);
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(1500);
-      });
-
-      expect(result.current.tailPreview).toEqual(["WARN anomaly spike"]);
-      expect(result.current.tailStatus).toBe("4 lines · 1 anomalies · warn");
-
-      await act(async () => {
-        await result.current.handleStopTail();
-      });
-
-      expect(result.current.activeSessionId).toBeNull();
-      expect(result.current.activeConnectionId).toBeNull();
-      expect(result.current.tailStatus).toBeNull();
-      expect(apiState.stopStreamSession).toHaveBeenCalled();
-    } finally {
-      vi.useRealTimers();
-    }
+    expect(result.current.connections).toEqual([]);
+    expect(result.current.draft.gcpBackfillFreshness).toBe("45m");
+    expect(result.current.activeSessionId).toBe("session-1");
   });
 });

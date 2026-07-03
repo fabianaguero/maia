@@ -2,8 +2,10 @@ import { useT } from "../../i18n/I18nContext";
 import { buildSimpleMonitorCollectionsState } from "./simpleMonitorScreenStateRuntime";
 import {
   buildSimpleMonitorScreenControllerCollectionsInput,
+  buildSimpleMonitorScreenControllerHookArgsInput,
   buildSimpleMonitorScreenControllerHookResult,
   buildSimpleMonitorScreenControllerRuntimeInput,
+  buildSimpleMonitorScreenControllerSlicesHookInput,
 } from "./simpleMonitorScreenControllerHookRuntime";
 import { buildSimpleMonitorScreenHookArgsInput } from "./simpleMonitorScreenOrchestrationRuntime";
 import type { SimpleMonitorScreenStateInput } from "./useSimpleMonitorScreenState";
@@ -55,33 +57,26 @@ export function useSimpleMonitorScreenController({
     buildSimpleMonitorScreenControllerCollectionsInput(runtimeInput),
   );
 
-  const { launchState, deckRuntime, anomalyFilter } = useSimpleMonitorScreenControllerSlices({
-    state: runtimeInput,
-    collections,
-    isListening,
-    t,
-  });
+  const { launchState, deckRuntime, anomalyFilter } = useSimpleMonitorScreenControllerSlices(
+    buildSimpleMonitorScreenControllerSlicesHookInput({
+      state: runtimeInput,
+      collections,
+      isListening,
+      t,
+    }),
+  );
 
   const hookStateArgs = buildSimpleMonitorScreenHookArgsInput({
-    session: runtimeInput.session,
-    metrics: runtimeInput.metrics,
-    t,
-    nowMs: Date.now(),
-    trackName: runtimeInput.trackName,
-    isConsoleExpanded: runtimeInput.isConsoleExpanded ?? false,
-    onToggleConsole: runtimeInput.onToggleConsole,
-    onStop: runtimeInput.onStop,
-    onRefresh: () => window.location.reload(),
-    onSimulateLog: deckRuntime.simulateLog,
-    onResumeAudio: runtimeInput.onResumeAudio,
-    onReplaySession: runtimeInput.onReplaySession,
-    isAnomalyFilterActive: anomalyFilter.isAnomalyFilterActive,
-    onToggleAnomalyFilter: anomalyFilter.handleToggleAnomalyFilter,
-    onClearAnomalyFilter: anomalyFilter.handleClearAnomalyFilter,
-    launchState,
-    deckRuntime,
-    collections,
-    audioStatus: runtimeInput.audioStatus,
+    ...buildSimpleMonitorScreenControllerHookArgsInput({
+      state: runtimeInput,
+      t,
+      nowMs: Date.now(),
+      onRefresh: () => window.location.reload(),
+      launchState,
+      deckRuntime,
+      anomalyFilter,
+      collections,
+    }),
   });
 
   return buildSimpleMonitorScreenControllerHookResult(hookStateArgs);

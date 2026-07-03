@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { LogSourceConnection, UpsertLogSourceConnectionInput } from "../../types/monitor";
 import type { ConnectionDraft } from "./connectionsViewModel";
 import { buildConnectionUpsertInput } from "./connectionsViewModel";

@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../../i18n/en";
+import type { AppTranslations } from "../../../i18n/types";
 import type { BeatGridPhraseRange } from "../../../utils/beatGrid";
 import { formatTrackTime } from "../../../utils/track";
 import { LOOP_BEAT_PRESETS } from "./trackPerformancePanelRuntime";

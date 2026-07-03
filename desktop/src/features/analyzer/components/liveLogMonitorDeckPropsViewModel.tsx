@@ -9,14 +9,12 @@ import type {
 import type { LiveMutationExplanation } from "../../../utils/liveMutationExplainability";
 import type { LiveLogMarker, LibraryTrack, VisualizationCuePoint } from "../../../types/library";
 import type { SyncTailRow } from "./liveLogMonitorPanelRuntime";
-import type { AppTranslations } from "../../../i18n/en";
+import type { AppTranslations } from "../../../i18n/types";
 import type { ReplayFeedbackRecommendation } from "../../../utils/replayFeedback";
 import type { RoutedLiveCue, ArrangementVoice } from "./liveSonificationScene";
-import { LiveLogMonitorDeckSection } from "./LiveLogMonitorDeckSection";
+import { type LiveLogMonitorDeckSection } from "./LiveLogMonitorDeckSection";
 import type { LiveLogMonitorLiveDeck } from "./LiveLogMonitorLiveDeck";
-import { LiveWaveformCanvas } from "./LiveWaveformCanvas";
-import type { BaseAssetRecord, CompositionResultRecord } from "../../../types/library";
-import type { ComponentOverride } from "./liveSonificationScene";
+import { type LiveWaveformCanvas } from "./LiveWaveformCanvas";
 export { buildLiveLogMonitorDeckSectionContent } from "./liveLogMonitorDeckSectionContentRuntime";
 export { buildLiveLogMonitorLiveDeckProps } from "./liveLogMonitorLiveDeckPropsBuilderRuntime";
 export {

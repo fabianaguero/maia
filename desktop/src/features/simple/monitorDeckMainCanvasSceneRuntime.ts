@@ -1,16 +1,9 @@
 import { buildMonitorDeckCanvasBackgroundPlan } from "./monitorDeckMainCanvasBackgroundRuntime";
-import {
-  buildMonitorDeckCanvasLogPlan,
-  buildMonitorDeckLogContourPoints,
-} from "./monitorDeckMainCanvasLogRuntime";
+import { buildMonitorDeckCanvasLogPlan } from "./monitorDeckMainCanvasLogRuntime";
 import { buildMonitorDeckCanvasOverlayPlan } from "./monitorDeckMainCanvasOverlayRuntime";
 import type { MonitorDeckMainCanvasState } from "./monitorDeckMainCanvasRuntime";
 import { buildMonitorDeckCanvasTrackPlan } from "./monitorDeckMainCanvasTrackRuntime";
-import type {
-  MonitorDeckCanvasScenePlan,
-  MonitorDeckGradientStop,
-  MonitorDeckRect,
-} from "./monitorDeckMainCanvasSceneTypes";
+import type { MonitorDeckCanvasScenePlan } from "./monitorDeckMainCanvasSceneTypes";
 
 export function buildMonitorDeckCanvasScenePlan(input: {
   state: MonitorDeckMainCanvasState;
@@ -25,8 +18,4 @@ export function buildMonitorDeckCanvasScenePlan(input: {
   };
 }
 export { buildMonitorDeckLogContourPoints } from "./monitorDeckMainCanvasLogRuntime";
-export type {
-  MonitorDeckCanvasScenePlan,
-  MonitorDeckGradientStop,
-  MonitorDeckRect,
-} from "./monitorDeckMainCanvasSceneTypes";
+export type { MonitorDeckCanvasScenePlan, MonitorDeckGradientStop, MonitorDeckRect } from "./monitorDeckMainCanvasSceneTypes";

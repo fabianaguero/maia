@@ -8,7 +8,7 @@ import type {
   RepositoryAnalysis,
 } from "../../types/library";
 import { ImportCompositionForm } from "../library/components/ImportCompositionForm";
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import { buildComposeScreenFormInput } from "./composeScreenHookRuntime";
 
 interface ComposeCreationPanelProps {

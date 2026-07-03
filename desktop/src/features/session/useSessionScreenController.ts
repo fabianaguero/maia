@@ -105,19 +105,12 @@ export function useSessionScreenController(input: SessionScreenControllerInput) 
     selectedBaseDetails,
     activeSession,
     selectedSession,
-    selectedSessionIdForEvents,
     playbackActive,
     liveMonitorActive,
-    activeBedUrl,
     selectedSessionBookmarks,
     bookmarkContexts,
     sessionLabelPlaceholder,
-    playbackPercent,
     readyToRun,
-    activeBaseDetails,
-    selectedSessionBaseDetails,
-    activeSourceDetails,
-    selectedSessionSourceDetails,
   } = derivedState;
 
   return buildSessionScreenControllerHookResult(

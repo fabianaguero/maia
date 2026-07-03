@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { AppSkin } from "./appSkin";
 import type { MonitorSetupPreferences } from "./monitorSetupPreferences";
 import type { MonitorSetupProfile } from "./monitorSetupProfileRuntime";

@@ -1,5 +1,5 @@
 import type { ActiveMonitorSession } from "./features/monitor/monitorContextTypes";
-import type { AppTranslations } from "./i18n/en";
+import type { AppTranslations } from "./i18n/types";
 import type { LibraryTrack } from "./types/library";
 import { getTrackTitle } from "./utils/track";
 

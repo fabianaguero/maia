@@ -2,7 +2,6 @@ import { useMemo, type MutableRefObject } from "react";
 
 import type { MonitorContextValue, StreamListener } from "./monitorContextTypes";
 import {
-  buildMonitorProviderContextHookDeps,
   buildMonitorProviderContextHookValue,
 } from "./monitorProviderContextValueHookRuntime";
 import { buildMonitorProviderMemoContextValue } from "./monitorProviderContextValueMemoRuntime";
@@ -25,12 +24,14 @@ export function useMonitorProviderContextValue(
 ): MonitorContextValue {
   const subscribe = useMonitorProviderSubscribeCallback(input);
 
+  const value = buildMonitorProviderContextHookValue(input);
+
   return useMemo(
     () =>
       buildMonitorProviderMemoContextValue({
-        value: buildMonitorProviderContextHookValue(input),
+        value,
         subscribe,
       }),
-    buildMonitorProviderContextHookDeps(input, subscribe),
+    [value, subscribe],
   );
 }

@@ -1,5 +1,6 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type * as ReactModule from "react";
 
 const state = vi.hoisted(() => ({
   loadAppV0Preferences: vi.fn(() => ({
@@ -60,7 +61,7 @@ describe("useAppV0PreferencesHydration", () => {
 
   it("skips hydration when window is unavailable", async () => {
     vi.doMock("react", async () => {
-      const actual = await vi.importActual<typeof import("react")>("react");
+      const actual = await vi.importActual<typeof ReactModule>("react");
       return {
         ...actual,
         useEffect: (effect: () => void) => effect(),

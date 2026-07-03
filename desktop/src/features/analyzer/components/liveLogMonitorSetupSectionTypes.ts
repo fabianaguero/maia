@@ -1,10 +1,10 @@
 import type { ComponentProps, Dispatch, SetStateAction } from "react";
 
-import type { AppTranslations } from "../../../i18n/en";
+import type { AppTranslations } from "../../../i18n/types";
 import type { BaseTrackPlaylist, LibraryTrack, StreamAdapterKind } from "../../../types/library";
-import { LiveLogMonitorBasePlaylistPanel } from "./LiveLogMonitorBasePlaylistPanel";
-import { LiveLogMonitorLaunchPanel } from "./LiveLogMonitorLaunchPanel";
-import { LiveLogMonitorWorkflowStrip } from "./LiveLogMonitorWorkflowStrip";
+import { type LiveLogMonitorBasePlaylistPanel } from "./LiveLogMonitorBasePlaylistPanel";
+import { type LiveLogMonitorLaunchPanel } from "./LiveLogMonitorLaunchPanel";
+import { type LiveLogMonitorWorkflowStrip } from "./LiveLogMonitorWorkflowStrip";
 import type { ForcedLiveMutationState } from "./liveLogMonitorViewModel";
 
 export interface BasePlaylistTrackOption {

@@ -1,4 +1,3 @@
-import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { useEffect, useRef } from "react";
 
 import {

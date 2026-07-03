@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { ActiveMonitorSession } from "../monitor/monitorContextTypes";
 import type { BeatGridPoint, LibraryTrack } from "../../types/library";
 import type { MonitorAlertShape } from "./monitorDeckControls";

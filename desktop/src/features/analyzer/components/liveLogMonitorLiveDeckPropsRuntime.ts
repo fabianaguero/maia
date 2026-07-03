@@ -1,12 +1,12 @@
 import type { ComponentProps, ReactNode } from "react";
 
 import type { SessionBookmark } from "../../../api/sessions";
-import type { AppTranslations } from "../../../i18n/en";
-import { LiveLogMonitorLiveDeck } from "./LiveLogMonitorLiveDeck";
-import { LiveLogMonitorOperationsPanel } from "./LiveLogMonitorOperationsPanel";
-import { LiveLogMonitorPlaylistSummary } from "./LiveLogMonitorPlaylistSummary";
-import { LiveLogMonitorReplaySection } from "./LiveLogMonitorReplaySection";
-import { LiveLogMonitorSessionCard } from "./LiveLogMonitorSessionCard";
+import type { AppTranslations } from "../../../i18n/types";
+import { type LiveLogMonitorLiveDeck } from "./LiveLogMonitorLiveDeck";
+import { type LiveLogMonitorOperationsPanel } from "./LiveLogMonitorOperationsPanel";
+import { type LiveLogMonitorPlaylistSummary } from "./LiveLogMonitorPlaylistSummary";
+import { type LiveLogMonitorReplaySection } from "./LiveLogMonitorReplaySection";
+import { type LiveLogMonitorSessionCard } from "./LiveLogMonitorSessionCard";
 import type { SessionCardDisplay, MetricGridItem } from "./liveLogMonitorDisplayRuntime";
 import type { ReplayFeedbackRecommendation } from "../../../utils/replayFeedback";
 

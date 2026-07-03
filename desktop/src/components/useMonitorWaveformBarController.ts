@@ -27,6 +27,7 @@ export function useMonitorWaveformBarController({
   monitor: MonitorContextValue;
   tracks: LibraryTrack[];
 }) {
+  const { audioContext, isPlayback, guideTrackPath, resumeAudio, session, subscribe } = monitor;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const historyRef = useRef<WaveColumn[]>([]);
   const animRef = useRef<number>(0);
@@ -34,9 +35,9 @@ export function useMonitorWaveformBarController({
   const [hudLines, setHudLines] = useState<HUDLine[]>([]);
   const [latestBpm, setLatestBpm] = useState<number | null>(null);
 
-  const hasSession = !!monitor.session;
-  const currentGuideTrack = monitor.guideTrackPath
-    ? (tracks.find((track) => resolvePlayableTrackPath(track) === monitor.guideTrackPath) ?? null)
+  const hasSession = !!session;
+  const currentGuideTrack = guideTrackPath
+    ? (tracks.find((track) => resolvePlayableTrackPath(track) === guideTrackPath) ?? null)
     : null;
   const guideWaveform = currentGuideTrack?.analysis.waveformBins ?? EMPTY_WAVEFORM;
 
@@ -48,7 +49,7 @@ export function useMonitorWaveformBarController({
       return;
     }
 
-    const unsubscribe = monitor.subscribe((update) => {
+    const unsubscribe = subscribe((update) => {
       if (!update) {
         return;
       }
@@ -60,12 +61,12 @@ export function useMonitorWaveformBarController({
         setLatestBpm(update.suggestedBpm);
       }
 
-      if (update.hasData && monitor.audioContext?.state === "suspended") {
-        void monitor.resumeAudio();
+      if (update.hasData && audioContext?.state === "suspended") {
+        void resumeAudio();
       }
 
       const { hudLines: newLines, nextOffset } = buildHudLinesForUpdate(update, {
-        isPlayback: monitor.isPlayback,
+        isPlayback,
         lastOffset: lastOffsetRef.current,
       });
 
@@ -83,11 +84,11 @@ export function useMonitorWaveformBarController({
 
     return () => unsubscribe();
   }, [
+    audioContext,
     hasSession,
-    monitor.audioContext,
-    monitor.isPlayback,
-    monitor.resumeAudio,
-    monitor.subscribe,
+    isPlayback,
+    resumeAudio,
+    subscribe,
   ]);
 
   const draw = useCallback(() => {
@@ -133,6 +134,6 @@ export function useMonitorWaveformBarController({
     hasSession,
     hudLines,
     latestBpm,
-    isAudioSuspended: monitor.audioContext?.state === "suspended",
+    isAudioSuspended: audioContext?.state === "suspended",
   };
 }

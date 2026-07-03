@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../../i18n/en";
+import type { AppTranslations } from "../../../i18n/types";
 import type { LiveLogStreamUpdate } from "../../../types/library";
 import type { MetricGridItem } from "./liveLogMonitorDisplayRuntime";
 import { formatConfidence, formatCursor, levelCount } from "./liveLogMonitorPanelRuntime";

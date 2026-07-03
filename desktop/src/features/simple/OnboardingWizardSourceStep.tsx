@@ -1,6 +1,6 @@
 import { FolderOpen, GitBranch, ScrollText } from "lucide-react";
 
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import {
   resolveOnboardingSourcePlaceholder,
   type OnboardingSourceType,

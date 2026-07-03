@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 
 import type { LibraryTrack } from "../../types/library";
 import { useMonitorTrackBackgroundAudioBinding } from "./useMonitorTrackBackgroundAudioBinding";

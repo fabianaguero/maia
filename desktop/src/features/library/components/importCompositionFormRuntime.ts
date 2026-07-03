@@ -1,11 +1,10 @@
-import type { AppTranslations } from "../../../i18n/en";
+import type { AppTranslations } from "../../../i18n/types";
 import type {
   BaseAssetRecord,
   BaseTrackPlaylist,
   CompositionReferenceType,
   ImportCompositionInput,
   LibraryTrack,
-  RepositoryAnalysis,
 } from "../../../types/library";
 
 export type CompositionBaseMode = "track" | "playlist";

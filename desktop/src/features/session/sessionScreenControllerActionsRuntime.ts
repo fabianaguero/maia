@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { QuickSessionMode, SessionBaseMode } from "./sessionDisplay";
 import type { SessionScreenControllerInput } from "./sessionScreenControllerTypes";
 import type { UseSessionScreenActionsInput } from "./sessionScreenActionsTypes";

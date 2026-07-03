@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import {
   DEFAULT_SOURCE_TEMPLATE_ID,
   resolveSourceTemplatePresentation,

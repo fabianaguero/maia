@@ -14,7 +14,6 @@ export function useMonitorProviderReplayTickCallback(
   ) => boolean,
 ) {
   const { input: runtimeInput } = input;
-  const { live, logger, playback } = runtimeInput;
 
   const replayTick = useCallback(() => {
     runReplayTickState(
@@ -37,14 +36,6 @@ export function useMonitorProviderReplayTickCallback(
     input.emitUpdate,
     input.syncGuideTrackToReplayProgress,
     input.syncReplayTelemetry,
-    live.activeRef,
-    live.pollTimerRef,
-    logger,
-    playback.playbackPausedRef,
-    playback.replayEventsRef,
-    playback.replayHydratingRef,
-    playback.replayIndexRef,
-    playback.setIsPlaybackPaused,
     runtimeInput,
   ]);
 

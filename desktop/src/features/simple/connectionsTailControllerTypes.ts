@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { LogSourceConnection, StreamSessionPollResult } from "../../types/monitor";
 
 export interface UseConnectionTailControllerInput {

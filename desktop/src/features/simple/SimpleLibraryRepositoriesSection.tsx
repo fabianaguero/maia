@@ -1,6 +1,6 @@
 import { FolderOpen } from "lucide-react";
 
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { ImportRepositoryInput, RepositoryAnalysis } from "../../types/library";
 import { buildSimpleModeImportRepositoryInput } from "./simpleModeLibraryRuntime";
 import { SimpleLibraryRepositoryList } from "./SimpleLibraryRepositoryList";

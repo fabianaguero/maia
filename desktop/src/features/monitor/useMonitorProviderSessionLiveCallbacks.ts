@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import type { RepositoryAnalysis } from "../../types/library";
 import type { StartSessionInput } from "../../types/monitor";
@@ -6,6 +6,7 @@ import type {
   MonitorProviderAttachSessionSelection,
   UseMonitorProviderSessionActionsInput,
 } from "./monitorProviderSessionActionTypes";
+import { buildMonitorProviderSessionLiveCallbacksInput } from "./monitorProviderSessionActionsHookRuntime";
 import {
   attachMonitorProviderSessionAction,
   replaceExistingMonitorProviderSessionState,
@@ -15,11 +16,14 @@ import {
 export function useMonitorProviderSessionLiveCallbacks(
   input: UseMonitorProviderSessionActionsInput,
 ) {
-  const { api, logger, runtime, session } = input;
+  const dependencies = useMemo(
+    () => buildMonitorProviderSessionLiveCallbacksInput(input),
+    [input],
+  );
 
   const replaceExistingSessionIfPresent = useCallback(async () => {
-    await replaceExistingMonitorProviderSessionState({ session, runtime, api });
-  }, [api.stopStreamSession, runtime.stopPolling, session.sessionRef, session.setSession]);
+    await replaceExistingMonitorProviderSessionState(dependencies);
+  }, [dependencies]);
 
   const startSession = useCallback(
     async (
@@ -28,38 +32,23 @@ export function useMonitorProviderSessionLiveCallbacks(
       persistedSessionId?: string,
     ): Promise<boolean> =>
       startMonitorProviderSessionAction({
-        dependencies: {
-          session,
-          runtime,
-          api,
-          logger,
-        },
+        dependencies,
         repo,
         sessionInput,
         persistedSessionId,
         replaceExistingSessionIfPresent,
       }),
-    [
-      api.startStreamSession,
-      logger,
-      replaceExistingSessionIfPresent,
-      runtime.buildLiveStartInput,
-      session.sessionRef,
-    ],
+    [dependencies, replaceExistingSessionIfPresent],
   );
 
   const attachSession = useCallback(
     async (selection: MonitorProviderAttachSessionSelection): Promise<boolean> =>
       attachMonitorProviderSessionAction({
-        dependencies: {
-          session,
-          runtime,
-          logger,
-        },
+        dependencies,
         selection,
         replaceExistingSessionIfPresent,
       }),
-    [logger, replaceExistingSessionIfPresent, runtime.buildLiveStartInput, session.sessionRef],
+    [dependencies, replaceExistingSessionIfPresent],
   );
 
   return {

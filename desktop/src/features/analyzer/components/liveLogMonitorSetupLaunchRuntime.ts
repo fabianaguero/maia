@@ -2,7 +2,7 @@ import type { ComponentProps } from "react";
 
 import { MUTATION_PROFILES, STYLE_PROFILES } from "../../../config/liveProfiles";
 import { getStreamAdapterLabel } from "../../../utils/streamAdapter";
-import { LiveLogMonitorLaunchPanel } from "./LiveLogMonitorLaunchPanel";
+import { type LiveLogMonitorLaunchPanel } from "./LiveLogMonitorLaunchPanel";
 import type { LiveLogMonitorSetupSectionInput } from "./liveLogMonitorSetupSectionTypes";
 import type { ForcedLiveMutationState } from "./liveLogMonitorViewModel";
 

@@ -1,15 +1,15 @@
 import { useMemo } from "react";
 
+import type { AppTranslations } from "../../i18n/types";
 import { useReplayFeedbackRecommendation } from "../../hooks/useReplayFeedbackRecommendation";
 import { buildSessionBoothViewModel } from "./sessionBoothViewModel";
 import {
   buildSessionScreenControllerActionsHookInput,
   buildSessionScreenControllerBoothHookInput,
   buildSessionScreenControllerDerivedHookInput,
-  buildSessionScreenControllerDerivedMemoDeps,
   buildSessionScreenBoothViewModelInput,
   buildSessionScreenEffectsHookInput,
-  buildSessionScreenControllerMonitorSnapshot,
+  type buildSessionScreenControllerMonitorSnapshot,
 } from "./sessionScreenControllerHookRuntime";
 import {
   buildSessionBoothInput,
@@ -27,7 +27,7 @@ type SessionScreenLocalState = ReturnType<typeof useSessionScreenLocalState>;
 type MonitorSnapshot = ReturnType<typeof buildSessionScreenControllerMonitorSnapshot>;
 
 interface UseSessionScreenControllerSlicesInput {
-  t: ReturnType<typeof import("../../i18n/I18nContext").useT>;
+  t: AppTranslations;
   input: SessionScreenControllerInput;
   monitorSnapshot: MonitorSnapshot;
   localState: SessionScreenLocalState;
@@ -112,26 +112,23 @@ export function useSessionScreenControllerSlices({
             templateGenre: selectedTemplatePresentation?.genre ?? selectedTemplate?.genre ?? null,
             templateLabel: selectedTemplatePresentation?.label ?? selectedTemplate?.label ?? null,
           }),
-        ),
       ),
-    buildSessionScreenControllerDerivedMemoDeps({
-      controllerInput: input,
-      activePlaybackProgress: input.activePlaybackProgress,
-      activeSessionId: input.activeSessionId,
-      activeSessionMode: input.activeSessionMode,
+    ),
+    [
       baseMode,
+      input,
       mode,
-      monitorSession: monitorSnapshot.monitorSession,
+      monitorSnapshot.monitorHasSession,
       selectedPlaylistId,
       selectedSessionEvents,
       selectedSourceId,
       selectedTrackId,
-      sessionPlaceholderFallback: t.session.sessionPlaceholder,
-      selectedTemplateGenre: selectedTemplate?.genre ?? null,
-      selectedTemplateLabel: selectedTemplate?.label ?? null,
-      selectedTemplatePresentationGenre: selectedTemplatePresentation?.genre ?? null,
-      selectedTemplatePresentationLabel: selectedTemplatePresentation?.label ?? null,
-    }),
+      selectedTemplate?.genre,
+      selectedTemplate?.label,
+      selectedTemplatePresentation?.genre,
+      selectedTemplatePresentation?.label,
+      t.session.sessionPlaceholder,
+    ],
   );
 
   useSessionScreenEffects(

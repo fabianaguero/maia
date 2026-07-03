@@ -1,34 +1,45 @@
-import type { UseMonitorProviderRuntimeOrchestrationInput } from "./monitorProviderRuntimeOrchestrationTypes";
+import type {
+  MonitorProviderRuntimeAudioSlice,
+  MonitorProviderRuntimeLiveSlice,
+  MonitorProviderRuntimePersistenceSlice,
+  MonitorProviderRuntimeSessionSlice,
+  MonitorProviderRuntimeTransportSlice,
+} from "./monitorProviderRuntimeOrchestrationTypes";
 import { buildEmitMonitorProviderUpdateStateInput } from "./monitorProviderOrchestrationRuntime";
 import type { emitMonitorProviderUpdateState } from "./monitorProviderLiveRuntime";
 import { buildRunMonitorProviderPollStateInput } from "./monitorProviderOrchestrationRuntime";
 
 export function buildMonitorProviderEmitUpdateHookInput(input: {
-  source: UseMonitorProviderRuntimeOrchestrationInput;
+  audio: MonitorProviderRuntimeAudioSlice;
+  live: MonitorProviderRuntimeLiveSlice;
+  logger: Parameters<typeof buildEmitMonitorProviderUpdateStateInput>[0]["logger"];
+  persistence: MonitorProviderRuntimePersistenceSlice;
+  session: MonitorProviderRuntimeSessionSlice;
   update: Parameters<typeof emitMonitorProviderUpdateState>[0]["update"];
   options?: {
     accumulateMetrics?: boolean;
     persistPlaybackEvent?: boolean;
   };
 }) {
-  const { audio, live, logger, persistence, session } = input.source;
-
   return buildEmitMonitorProviderUpdateStateInput({
     update: input.update,
-    listenersRef: live.listenersRef,
-    sessionRef: session.sessionRef,
-    pollIndexRef: live.pollIndexRef,
-    audioContextRef: audio.audioContextRef,
-    setMetrics: session.setMetrics,
-    updatePersistedSessionCursor: persistence.updatePersistedSessionCursor,
-    insertSessionEvent: persistence.insertSessionEvent,
-    logger,
+    listenersRef: input.live.listenersRef,
+    sessionRef: input.session.sessionRef,
+    pollIndexRef: input.live.pollIndexRef,
+    audioContextRef: input.audio.audioContextRef,
+    setMetrics: input.session.setMetrics,
+    updatePersistedSessionCursor: input.persistence.updatePersistedSessionCursor,
+    insertSessionEvent: input.persistence.insertSessionEvent,
+    logger: input.logger,
     options: input.options,
   });
 }
 
 export function buildMonitorProviderPollTransportHookInput(input: {
-  source: UseMonitorProviderRuntimeOrchestrationInput;
+  live: MonitorProviderRuntimeLiveSlice;
+  logger: Parameters<typeof buildRunMonitorProviderPollStateInput>[0]["logger"];
+  session: MonitorProviderRuntimeSessionSlice;
+  transport: MonitorProviderRuntimeTransportSlice;
   emitUpdate: (
     update: Parameters<typeof emitMonitorProviderUpdateState>[0]["update"],
     options?: {
@@ -39,22 +50,20 @@ export function buildMonitorProviderPollTransportHookInput(input: {
   schedulePoll: (doPoll: () => Promise<void>) => void;
   doPoll: () => Promise<void>;
 }) {
-  const { live, logger, session, transport } = input.source;
-
   return buildRunMonitorProviderPollStateInput({
-    sessionRef: session.sessionRef,
-    activeRef: live.activeRef,
-    directCursorRef: live.directCursorRef,
-    emptyWindowsRef: live.emptyWindowsRef,
-    wsLineBufferRef: live.wsLineBufferRef,
-    httpUrlRef: live.httpUrlRef,
-    pollStreamSession: transport.pollStreamSession,
-    pollLogStream: transport.pollLogStream,
-    ingestStreamChunk: transport.ingestStreamChunk,
-    fetchText: transport.fetchText,
+    sessionRef: input.session.sessionRef,
+    activeRef: input.live.activeRef,
+    directCursorRef: input.live.directCursorRef,
+    emptyWindowsRef: input.live.emptyWindowsRef,
+    wsLineBufferRef: input.live.wsLineBufferRef,
+    httpUrlRef: input.live.httpUrlRef,
+    pollStreamSession: input.transport.pollStreamSession,
+    pollLogStream: input.transport.pollLogStream,
+    ingestStreamChunk: input.transport.ingestStreamChunk,
+    fetchText: input.transport.fetchText,
     emitUpdate: input.emitUpdate,
     schedulePoll: input.schedulePoll,
     doPoll: input.doPoll,
-    logger,
+    logger: input.logger,
   });
 }

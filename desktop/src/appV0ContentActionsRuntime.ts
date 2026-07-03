@@ -1,4 +1,3 @@
-import type { AppV0SectionContentInput } from "./appV0SectionContentRuntime";
 import type { AppV0MonitorLaunchExecutionResult } from "./appV0MonitorRuntime";
 import type { AppSection } from "./features/simple/appSections";
 import type { MonitorLaunchSource } from "./features/simple/monitorSourceOptions";
@@ -16,6 +15,21 @@ export interface AppV0ContentActions {
   onStartMonitoring: (source: MonitorLaunchSource, trackId?: string) => Promise<void>;
   onReplaySession: (sessionId: string, sourcePath: string, repoTitle: string) => Promise<void>;
   onInspectFloatingWaveform: () => void;
+}
+
+function reportLaunchFailureWhenNeeded(
+  scope: "library" | "source",
+  result: AppV0MonitorLaunchExecutionResult,
+  reportMonitorLaunchFailure: (
+    scope: "library" | "source",
+    result: AppV0MonitorLaunchExecutionResult,
+  ) => void,
+) {
+  if (result.ok) {
+    return;
+  }
+
+  reportMonitorLaunchFailure(scope, result);
 }
 
 export function buildAppV0ContentActions(input: {
@@ -55,13 +69,13 @@ export function buildAppV0ContentActions(input: {
     },
     onStartLibraryMonitoring: async (repoId: string): Promise<void> => {
       const result = await input.startLibraryMonitoring(repoId);
-      input.reportMonitorLaunchFailure("library", result);
+      reportLaunchFailureWhenNeeded("library", result, input.reportMonitorLaunchFailure);
     },
     onStopMonitor: () => input.stopSession(),
     onResumeAudio: () => input.resumeAudio(),
     onStartMonitoring: async (source: MonitorLaunchSource, trackId?: string): Promise<void> => {
       const result = await input.startSourceMonitoring(source, trackId);
-      input.reportMonitorLaunchFailure("source", result);
+      reportLaunchFailureWhenNeeded("source", result, input.reportMonitorLaunchFailure);
     },
     onReplaySession: (sessionId: string, sourcePath: string, repoTitle: string) =>
       input.replaySession(sessionId, sourcePath, repoTitle),

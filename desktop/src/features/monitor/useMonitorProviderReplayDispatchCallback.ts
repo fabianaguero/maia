@@ -11,8 +11,6 @@ export function useMonitorProviderReplayDispatchCallback({
   syncReplayTelemetry,
   syncGuideTrackToReplayProgress,
 }: UseMonitorProviderReplayPlaybackRuntimeInput) {
-  const { playback, session } = input;
-
   return useCallback(
     (eventIndex: number, options?: { syncGuideTrack?: boolean }) =>
       dispatchReplayEventAtIndexState(
@@ -29,14 +27,6 @@ export function useMonitorProviderReplayDispatchCallback({
           ),
         ),
       ),
-    [
-      input,
-      emitUpdate,
-      playback.replayEventsRef,
-      playback.replayIndexRef,
-      session.sessionRef,
-      syncGuideTrackToReplayProgress,
-      syncReplayTelemetry,
-    ],
+    [emitUpdate, input, syncGuideTrackToReplayProgress, syncReplayTelemetry],
   );
 }

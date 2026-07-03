@@ -1,6 +1,6 @@
 import { Activity } from "lucide-react";
 
-import type { PersistedSession } from "../../api/sessions";
+import type { PersistedSession, SessionBookmark } from "../../api/sessions";
 import { SessionSavedSessionCard } from "./SessionSavedSessionCard";
 import { buildSessionSavedSessionListItems } from "./sessionSavedSessionsPanelRuntime";
 
@@ -11,7 +11,7 @@ interface SessionSavedSessionsListProps {
   selectedSessionId: string | null;
   activeSessionId: string | null;
   activeSessionMode: "live" | "playback" | null;
-  sessionBookmarksBySessionId: Record<string, import("../../api/sessions").SessionBookmark[]>;
+  sessionBookmarksBySessionId: Record<string, SessionBookmark[]>;
   liveWindowCount: number;
   liveProcessedLines: number;
   liveTotalAnomalies: number;

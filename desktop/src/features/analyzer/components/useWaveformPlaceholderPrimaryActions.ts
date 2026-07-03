@@ -15,100 +15,113 @@ import type { UseWaveformPlaceholderInteractionActionsInput } from "./useWavefor
 export function useWaveformPlaceholderPrimaryActions(
   input: UseWaveformPlaceholderInteractionActionsInput,
 ) {
+  const {
+    stageRef,
+    durationSeconds,
+    gridClickArmed,
+    phraseSelectArmed,
+    beatGrid,
+    phraseBeatCount,
+    onSetDownbeatAtSecond,
+    onSelectPhraseRange,
+    onSeek,
+    setGridClickArmed,
+    setPhraseSelectArmed,
+    dragMovedRef,
+    dragAnchorSecondRef,
+    setGridAnchorDragging,
+    setDragAnchorSecond,
+  } = input;
+
   const resolveSecondFromClientX = useCallback(
     (clientX: number): number | null => {
       return resolveWaveformSecondFromClientX({
         clientX,
-        stageRect: input.stageRef.current?.getBoundingClientRect() ?? null,
-        durationSeconds: input.durationSeconds,
+        stageRect: stageRef.current?.getBoundingClientRect() ?? null,
+        durationSeconds,
       });
     },
-    [input.durationSeconds, input.stageRef],
+    [durationSeconds, stageRef],
   );
 
   const handleWaveformClick = useCallback(
     (clientX: number) => {
       const action = resolveWaveformClickAction({
         clientX,
-        stageRect: input.stageRef.current?.getBoundingClientRect() ?? null,
-        durationSeconds: input.durationSeconds,
-        gridClickArmed: input.gridClickArmed,
-        phraseSelectArmed: input.phraseSelectArmed,
-        beatGrid: input.beatGrid,
-        phraseBeatCount: input.phraseBeatCount,
+        stageRect: stageRef.current?.getBoundingClientRect() ?? null,
+        durationSeconds,
+        gridClickArmed,
+        phraseSelectArmed,
+        beatGrid,
+        phraseBeatCount,
       });
 
       if (action.action === "noop") {
         return;
       }
 
-      if (action.action === "downbeat" && input.onSetDownbeatAtSecond) {
-        input.onSetDownbeatAtSecond(action.second);
-        input.setGridClickArmed(false);
+      if (action.action === "downbeat" && onSetDownbeatAtSecond) {
+        onSetDownbeatAtSecond(action.second);
+        setGridClickArmed(false);
         return;
       }
 
-      if (action.action === "phrase" && input.onSelectPhraseRange) {
+      if (action.action === "phrase" && onSelectPhraseRange) {
         if (action.range) {
-          input.onSelectPhraseRange(action.range);
+          onSelectPhraseRange(action.range);
         }
-        input.setPhraseSelectArmed(false);
+        setPhraseSelectArmed(false);
         return;
       }
 
       if (action.action === "seek") {
-        input.onSeek?.(action.second);
+        onSeek?.(action.second);
       }
     },
     [
-      input.beatGrid,
-      input.durationSeconds,
-      input.gridClickArmed,
-      input.onSeek,
-      input.onSelectPhraseRange,
-      input.onSetDownbeatAtSecond,
-      input.phraseBeatCount,
-      input.phraseSelectArmed,
-      input.setGridClickArmed,
-      input.setPhraseSelectArmed,
-      input.stageRef,
+      beatGrid,
+      durationSeconds,
+      gridClickArmed,
+      onSeek,
+      onSelectPhraseRange,
+      onSetDownbeatAtSecond,
+      phraseBeatCount,
+      phraseSelectArmed,
+      setGridClickArmed,
+      setPhraseSelectArmed,
+      stageRef,
     ],
   );
 
   const consumeDraggedClick = useCallback(() => {
-    return consumeWaveformDraggedClick({ dragMovedRef: input.dragMovedRef });
-  }, [input.dragMovedRef]);
+    return consumeWaveformDraggedClick({ dragMovedRef });
+  }, [dragMovedRef]);
 
   const toggleGridClickArmed = useCallback(() => {
     toggleWaveformGridClickArmedState({
-      setGridClickArmed: input.setGridClickArmed,
-      setPhraseSelectArmed: input.setPhraseSelectArmed,
+      setGridClickArmed,
+      setPhraseSelectArmed,
     });
-  }, [input.setGridClickArmed, input.setPhraseSelectArmed]);
+  }, [setGridClickArmed, setPhraseSelectArmed]);
 
   const togglePhraseSelectArmed = useCallback(() => {
     toggleWaveformPhraseSelectArmedState({
-      setGridClickArmed: input.setGridClickArmed,
-      setPhraseSelectArmed: input.setPhraseSelectArmed,
+      setGridClickArmed,
+      setPhraseSelectArmed,
     });
-  }, [input.setGridClickArmed, input.setPhraseSelectArmed]);
+  }, [setGridClickArmed, setPhraseSelectArmed]);
 
   const beginAnchorDrag = useCallback(
     (anchorSecond: number | null) => {
       beginWaveformAnchorDragState({
         anchorSecond,
-        dragAnchorSecondRef: input.dragAnchorSecondRef,
-        setGridClickArmed: input.setGridClickArmed,
-        setGridAnchorDragging: input.setGridAnchorDragging,
-        setDragAnchorSecond: input.setDragAnchorSecond,
+        dragAnchorSecondRef,
+        setGridClickArmed,
+        setGridAnchorDragging,
+        setDragAnchorSecond,
       });
     },
-    [
-      input.dragAnchorSecondRef,
-      input.setDragAnchorSecond,
-      input.setGridAnchorDragging,
-      input.setGridClickArmed,
-    ],
+    [dragAnchorSecondRef, setDragAnchorSecond, setGridAnchorDragging, setGridClickArmed],
   );
 
   return {

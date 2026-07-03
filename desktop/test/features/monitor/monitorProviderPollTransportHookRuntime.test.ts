@@ -77,7 +77,11 @@ describe("monitorProviderPollTransportHookRuntime", () => {
 
     expect(
       buildMonitorProviderEmitUpdateHookInput({
-        source,
+        audio: source.audio,
+        live: source.live,
+        logger: source.logger,
+        persistence: source.persistence,
+        session: source.session,
         update,
         options: { accumulateMetrics: true },
       }),
@@ -103,7 +107,10 @@ describe("monitorProviderPollTransportHookRuntime", () => {
 
     expect(
       buildMonitorProviderPollTransportHookInput({
-        source,
+        live: source.live,
+        logger: source.logger,
+        session: source.session,
+        transport: source.transport,
         emitUpdate,
         schedulePoll,
         doPoll,

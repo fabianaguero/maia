@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../../i18n/en";
+import type { AppTranslations } from "../../../i18n/types";
 import type {
   BaseTrackPlaylist,
   LibraryTrack,
@@ -8,7 +8,7 @@ import type {
 import type { ActiveMonitorSession, MonitorMetrics } from "../../monitor/monitorContextTypes";
 import type { AudioEngineStatus, SampleEngineStatus } from "./liveLogMonitorViewModel";
 import {
-  buildLiveMonitorDisplayState,
+  type buildLiveMonitorDisplayState,
   type MetricGridItem,
   type SessionCardDisplay,
 } from "./liveLogMonitorDisplayRuntime";

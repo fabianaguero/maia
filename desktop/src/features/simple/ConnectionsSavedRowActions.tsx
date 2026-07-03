@@ -1,6 +1,6 @@
 import { Pencil, Play, Square, Trash2 } from "lucide-react";
 
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { ConnectionsSavedListRowViewModel } from "./connectionsSavedListViewModel";
 
 interface ConnectionsSavedRowActionsProps {

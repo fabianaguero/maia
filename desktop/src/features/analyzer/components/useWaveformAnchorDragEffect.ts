@@ -14,34 +14,43 @@ interface UseWaveformAnchorDragEffectInput {
 }
 
 export function useWaveformAnchorDragEffect(input: UseWaveformAnchorDragEffectInput) {
+  const {
+    gridAnchorDragging,
+    onSetDownbeatAtSecond,
+    resolveSecondFromClientX,
+    dragAnchorSecondRef,
+    setDragAnchorSecond,
+    setGridAnchorDragging,
+  } = input;
+
   useEffect(() => {
-    if (!input.gridAnchorDragging || !input.onSetDownbeatAtSecond) {
+    if (!gridAnchorDragging || !onSetDownbeatAtSecond) {
       return;
     }
 
     const handleMouseMove = (event: MouseEvent) => {
       const nextSecond = resolveWaveformAnchorDragSecond({
         clientX: event.clientX,
-        resolveSecondFromClientX: input.resolveSecondFromClientX,
+        resolveSecondFromClientX,
       });
       if (nextSecond === null) {
         return;
       }
 
-      input.dragAnchorSecondRef.current = nextSecond;
-      input.setDragAnchorSecond(nextSecond);
+      dragAnchorSecondRef.current = nextSecond;
+      setDragAnchorSecond(nextSecond);
     };
 
     const handleMouseUp = () => {
       const commit = buildWaveformAnchorDragCommit({
-        dragAnchorSecond: input.dragAnchorSecondRef.current,
+        dragAnchorSecond: dragAnchorSecondRef.current,
       });
       if (commit.shouldCommit && commit.second !== null) {
-        input.onSetDownbeatAtSecond?.(commit.second);
+        onSetDownbeatAtSecond?.(commit.second);
       }
-      input.dragAnchorSecondRef.current = null;
-      input.setDragAnchorSecond(null);
-      input.setGridAnchorDragging(false);
+      dragAnchorSecondRef.current = null;
+      setDragAnchorSecond(null);
+      setGridAnchorDragging(false);
     };
 
     window.addEventListener("mousemove", handleMouseMove);
@@ -52,11 +61,11 @@ export function useWaveformAnchorDragEffect(input: UseWaveformAnchorDragEffectIn
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, [
-    input.dragAnchorSecondRef,
-    input.gridAnchorDragging,
-    input.onSetDownbeatAtSecond,
-    input.resolveSecondFromClientX,
-    input.setDragAnchorSecond,
-    input.setGridAnchorDragging,
+    dragAnchorSecondRef,
+    gridAnchorDragging,
+    onSetDownbeatAtSecond,
+    resolveSecondFromClientX,
+    setDragAnchorSecond,
+    setGridAnchorDragging,
   ]);
 }

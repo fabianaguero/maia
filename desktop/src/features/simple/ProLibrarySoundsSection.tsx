@@ -1,6 +1,6 @@
 import { AudioWaveform, Eye, Trash2 } from "lucide-react";
 
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { LibraryTrack } from "../../types/library";
 import { formatBpmLabel } from "../../utils/monitorLabels";
 import { getTrackTitle } from "../../utils/track";

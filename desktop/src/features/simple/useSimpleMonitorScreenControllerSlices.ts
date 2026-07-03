@@ -3,27 +3,11 @@ import { useSimpleMonitorDeckRuntime } from "./useSimpleMonitorDeckRuntime";
 import { useSimpleMonitorLaunchState } from "./useSimpleMonitorLaunchState";
 import {
   buildSimpleMonitorScreenControllerAnomalyFilterArgs,
-  buildSimpleMonitorScreenControllerDeckHookArgs,
-  buildSimpleMonitorScreenControllerLaunchHookArgs,
+  buildSimpleMonitorScreenControllerDeckRuntimeInput,
+  buildSimpleMonitorScreenControllerLaunchStateInput,
+  buildSimpleMonitorScreenControllerSlicesResult,
+  type UseSimpleMonitorScreenControllerSlicesInput,
 } from "./simpleMonitorScreenControllerHookRuntime";
-import {
-  buildSimpleMonitorDeckRuntimeInput,
-  buildSimpleMonitorLaunchStateInput,
-} from "./simpleMonitorScreenOrchestrationRuntime";
-import {
-  buildSimpleMonitorDeckRuntimeSlice,
-  buildSimpleMonitorLaunchStateSlice,
-} from "./simpleMonitorScreenSlicesRuntime";
-import type { AppTranslations } from "../../i18n/en";
-import type { SimpleMonitorCollectionsState } from "./simpleMonitorScreenStateRuntime";
-import type { SimpleMonitorScreenStateInput } from "./useSimpleMonitorScreenState";
-
-interface UseSimpleMonitorScreenControllerSlicesInput {
-  state: SimpleMonitorScreenStateInput;
-  collections: SimpleMonitorCollectionsState;
-  isListening: boolean;
-  t: AppTranslations;
-}
 
 export function useSimpleMonitorScreenControllerSlices({
   state,
@@ -32,36 +16,33 @@ export function useSimpleMonitorScreenControllerSlices({
   t,
 }: UseSimpleMonitorScreenControllerSlicesInput) {
   const launchState = useSimpleMonitorLaunchState(
-    buildSimpleMonitorLaunchStateInput({
-      ...buildSimpleMonitorScreenControllerLaunchHookArgs({
-        collections,
-        isListening,
-        t,
-        onResumeAudio: state.onResumeAudio,
-        onStartMonitoring: state.onStartMonitoring,
-      }),
+    buildSimpleMonitorScreenControllerLaunchStateInput({
+      state,
+      collections,
+      isListening,
+      t,
     }),
   );
 
   const deckRuntime = useSimpleMonitorDeckRuntime(
-    buildSimpleMonitorDeckRuntimeInput({
-      ...buildSimpleMonitorScreenControllerDeckHookArgs({
+    buildSimpleMonitorScreenControllerDeckRuntimeInput(
+      {
         state,
-        isListening,
-        isLaunchingMonitor: launchState.isLaunchingMonitor,
         collections,
+        isListening,
         t,
-      }),
-    }),
+      },
+      launchState,
+    ),
   );
 
   const anomalyFilter = useSimpleMonitorAnomalyFilterState(
     buildSimpleMonitorScreenControllerAnomalyFilterArgs(state),
   );
 
-  return {
-    launchState: buildSimpleMonitorLaunchStateSlice(launchState),
-    deckRuntime: buildSimpleMonitorDeckRuntimeSlice(deckRuntime),
+  return buildSimpleMonitorScreenControllerSlicesResult({
+    launchState,
+    deckRuntime,
     anomalyFilter,
-  };
+  });
 }

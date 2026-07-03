@@ -1,4 +1,3 @@
-import type { LiveMonitorDisplayLabels, MetricGridItem } from "./liveLogMonitorDisplayRuntime";
 export {
   resolveBounceActionLabel,
   resolveCueEngineStateLabel,

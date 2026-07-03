@@ -48,19 +48,21 @@ The minimum supported baseline for the public desktop shell is:
 
 ## Current desktop baseline
 
-As of July 2, 2026, the latest full desktop Vitest coverage run is:
+As of July 3, 2026, the latest full desktop Vitest coverage run is:
 
-- statements / lines: `98.58%`
-- branches: `88.87%`
-- functions: `95.88%`
-- suite size: `586` test files, `1839` passing tests, `3` skipped
+- statements / lines: `98.69%`
+- branches: `89.34%`
+- functions: `96.23%`
+- suite size: `622` test files, `1918` passing tests, `3` skipped
 
-Current hotspots with the largest remaining risk or debt:
+Current desktop lint status is also clean again:
 
-- `desktop/src/features/monitor/monitorProviderPlaybackControlsRuntime.ts`
-- `desktop/src/features/monitor/monitorReplayPlaybackControlRuntime.ts`
-- `desktop/src/features/monitor/useMonitorProviderGuideTrack.ts`
-- `desktop/src/features/monitor/monitorProviderSessionRuntime.ts`
+- `eslint` warnings: `0`
+- `eslint` errors: `0`
+
+Recent cleanup also added a dedicated translation-shape regression test so the composed locale entrypoints
+in `desktop/src/i18n/en.ts` and `desktop/src/i18n/es.ts` stay structurally aligned as contributors add or
+rename UI copy across `desktop/src/i18n/locales/*`.
 
 The practical interpretation of those thresholds is:
 
@@ -68,7 +70,16 @@ The practical interpretation of those thresholds is:
 - runtime/helper extraction should continue to be paired with focused direct tests
 - new UI shells should prefer hook or runtime seams before they become large integration-only surfaces
 
+Current highest-value remaining frontend refactor targets are now less about lint debt and more about
+maintainability boundaries:
+
+- add more full-flow integration coverage around connection creation, monitor launch, live attach, and stop
+- keep shrinking orchestration seams where screen routes still depend on broader provider/session state than necessary
+
 Recently reduced hotspots:
+- `desktop/src/features/monitor/useMonitorProviderContextValue.ts`, `useMonitorProviderPollTransportCallbacks.ts`, `useMonitorProviderAudioStartCallbacks.ts`, `useMonitorProviderSessionLiveCallbacks.ts`, and `useMonitorProviderSessionStopCallback.ts` now use more explicit slice-based orchestration inputs and tighter hook dependency boundaries, reducing provider coupling and shrinking a large portion of the remaining lint debt in the monitor runtime layer
+- `desktop/src/features/session/useSessionScreenControllerSlices.ts` now uses a more explicit derived-state memo boundary with direct hook coverage, keeping session screen composition closer to a facade instead of one broader controller seam
+- `desktop/src/components/useMonitorWaveformBarController.ts` now reads monitor state through a narrower local seam, so passive monitor waveform subscription/resume behavior remains covered without carrying implicit monitor object dependencies through the hook
 - `desktop/src/features/analyzer/components/compositionPreview.ts` now acts as a stable facade over dedicated field, arrangement/cue, and render-preview runtimes, while the analyzer-facing composition preview behavior remains covered through the focused runtime suite
 - `desktop/src/features/analyzer/components/liveSonificationSceneRuntime.ts` now acts as a stable facade over dedicated scene-resolution and summary runtimes, while the public sonification scene behavior remains covered through the focused analyzer/component suites
 - `desktop/src/features/analyzer/components/liveSonificationSceneProfileData.ts` and `compositionPreviewRenderRuntime.ts` now act as facades over smaller domain datasets/runtimes, so the remaining debt moved into the concrete derived-profile and derived-render modules instead of broad mixed files

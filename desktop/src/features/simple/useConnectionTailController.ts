@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 
 import type { LogSourceConnection } from "../../types/monitor";
 import {
-  buildConnectionTailFailureState,
   buildConnectionTailStartPlan,
   buildConnectionTailStopState,
 } from "./connectionsRuntime";

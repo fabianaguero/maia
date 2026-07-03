@@ -191,7 +191,6 @@ describe("LiveLogMonitorSetupSection", () => {
     const {
       setBasePlaylist,
       setPendingAddTrackId,
-      setPendingLoadPlaylistId,
       setSelectedStyleProfileId,
       setSelectedMutationProfileId,
       setForcedLiveMutationState,

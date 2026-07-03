@@ -94,6 +94,7 @@ Recent refactors have been pushing large components toward:
 - pure runtimes for monitor/orchestration behavior
 - thinner screen components
 - better testability around monitor startup, setup preferences, shell state, and stream mutation logic
+- locale composition by domain section instead of monolithic translation files
 
 Current emphasis for the next iterations:
 
@@ -103,6 +104,17 @@ Current emphasis for the next iterations:
 - make the open-source entrypoints understandable for first-time contributors
 - keep audio control shells thin by routing managed-player and live-monitor DSP behavior through focused runtimes/hooks
 - keep shared utility surfaces split by domain concern, instead of letting formatting, timing, and mutation logic accumulate in one helper file
+- keep translation contracts independent from concrete locale files; `desktop/src/i18n/types.ts` is now the stable typing seam so future locale/domain splits do not require app-wide import churn
+
+## Translation architecture
+
+The i18n layer is now intentionally split into:
+
+- `desktop/src/i18n/types.ts` for the shared translation contract
+- `desktop/src/i18n/locales/enLocale.ts` and `desktop/src/i18n/locales/esLocale.ts` for locale composition
+- `desktop/src/i18n/locales/<locale>/` for domain slices such as `core`, `library`, `inspect`, `compose`, `session`, `controls`, and `appShell`
+
+This keeps locale review diff-friendly and avoids mixing monitor copy, setup copy, connection copy, and library copy inside one giant file.
 
 ## Orchestration boundaries
 
@@ -1168,9 +1180,13 @@ These files are still significant complexity hotspots:
 - `desktop/src/features/monitor/MonitorContext.tsx`
 - `desktop/src/features/simple/useSimpleMonitorScreenState.ts`
 - `desktop/src/features/simple/useConnectionsScreenState.ts`
+- `desktop/src/features/analyzer/components/useManagedAudioPlayerCueSync.ts`
+- `desktop/src/features/analyzer/components/useWaveformAnchorDragEffect.ts`
+- `desktop/src/features/analyzer/components/useWaveformPerformanceDragEffect.ts`
 
 `App-v0.tsx`, `SimpleMonitorScreen.tsx`, and `ConnectionsScreen.tsx` have already been reduced substantially and now act primarily as composition shells.
 `App.tsx` has also been reduced again and now focuses on shell composition, high-level navigation, and status rendering rather than catalog or monitor mutation details.
+The monitor provider layer also improved again in the latest pass: live-start, poll transport, session start/stop, and context-value wiring now depend on narrower slice-based orchestration inputs instead of broad callback bodies closing over the entire provider input object.
 
 ## Testing direction
 

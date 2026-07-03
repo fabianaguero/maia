@@ -89,7 +89,7 @@ describe("appCatalogActionsRuntime", () => {
   it("uses default timer settings when none are provided", () => {
     const setNewlyImportedId = vi.fn();
     const originalSetTimeout = window.setTimeout;
-    const setTimeoutSpy = vi.fn((handler: () => void, delay?: number) => {
+    const setTimeoutSpy = vi.fn((handler: () => void, _delay?: number) => {
       handler();
       return 1 as never;
     });

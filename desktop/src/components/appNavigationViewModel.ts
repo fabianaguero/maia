@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../i18n/en";
+import type { AppTranslations } from "../i18n/types";
 import type { UserMode } from "../features/simple/UserModeContext";
 import type { AppSection } from "../features/simple/appSections";
 import type { AppPillar } from "../types/library";

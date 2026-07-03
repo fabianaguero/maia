@@ -138,7 +138,7 @@ describe("appV0ViewModel", () => {
     ).toEqual([0.2, 0.4, 0.6]);
   });
 
-  it("builds app content callbacks that normalize monitor orchestration results", async () => {
+  it("builds app content callbacks that only report failed monitor orchestration results", async () => {
     const setCurrentSection = vi.fn();
     const stopSession = vi.fn(async () => undefined);
     const importRepositorySource = vi.fn(async () => ({ id: "repo-1" }));
@@ -182,7 +182,7 @@ describe("appV0ViewModel", () => {
       ok: false,
       reason: "start-failed",
     });
-    expect(reportMonitorLaunchFailure).toHaveBeenCalledWith("source", { ok: true });
+    expect(reportMonitorLaunchFailure).toHaveBeenCalledTimes(1);
     expect(resumeAudio).not.toHaveBeenCalled();
     expect(replaySession).toHaveBeenCalledWith("session-1", "/tmp/log", "repo");
   });

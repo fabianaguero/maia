@@ -1,6 +1,5 @@
 import type { LiveLogMarker } from "../../../types/library";
 import type { AnomalySourceRow, SyncTailRow } from "./liveLogMonitorDisplayStateRuntime";
-import type { AudioEngineStatus, SampleEngineStatus } from "./liveLogMonitorViewModel";
 
 export interface LiveMonitorDisplayLabels {
   replayLabel: string;

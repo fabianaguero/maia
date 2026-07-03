@@ -1,6 +1,7 @@
 import { renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { buildAppMonitorSessionHookInput } from "../../src/hooks/appMonitorActionsHookRuntime";
 import { useAppMonitorActions } from "../../src/hooks/useAppMonitorActions";
 
 const guideActionsMock = vi.hoisted(() => ({
@@ -88,11 +89,12 @@ describe("useAppMonitorActions", () => {
     const { result } = renderHook(() => useAppMonitorActions(input));
 
     expect(guideActionsMock.useAppMonitorGuideActions).toHaveBeenCalledWith(input);
-    expect(sessionActionsMock.useAppMonitorSessionActions).toHaveBeenCalledWith({
-      ...input,
-      armSessionMusicalBase,
-      primeMonitorGuideTrack,
-    });
+    expect(sessionActionsMock.useAppMonitorSessionActions).toHaveBeenCalledWith(
+      buildAppMonitorSessionHookInput(input as never, {
+        armSessionMusicalBase,
+        primeMonitorGuideTrack,
+      }),
+    );
     expect(result.current).toEqual(
       expect.objectContaining({
         armSessionMusicalBase,

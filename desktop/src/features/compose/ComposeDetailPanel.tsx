@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { CompositionResultRecord } from "../../types/library";
 import { BpmCurvePanel } from "../analyzer/components/BpmCurvePanel";
 import { CompositionMetricsPanel } from "../analyzer/components/CompositionMetricsPanel";

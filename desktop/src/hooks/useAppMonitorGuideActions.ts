@@ -12,6 +12,13 @@ import {
   applyMonitorGuideState,
   clearLibraryArmState,
 } from "./appMonitorGuideActionsRuntime";
+import {
+  buildAppMonitorLibraryGuideEffectInput,
+  buildAppMonitorPlaylistArmInput,
+  buildAppMonitorSessionArmInput,
+  buildAppMonitorSessionGuideInput,
+  buildAppMonitorTrackArmInput,
+} from "./appMonitorGuideActionsHookRuntime";
 import type { UseAppMonitorActionsInput } from "./appMonitorActionsTypes";
 
 type GuideActionsInput = Pick<UseAppMonitorActionsInput, "library" | "monitor">;
@@ -19,74 +26,87 @@ type GuideActionsInput = Pick<UseAppMonitorActionsInput, "library" | "monitor">;
 export function useAppMonitorGuideActions({ library, monitor }: GuideActionsInput) {
   const armTrackBase = useCallback(
     (trackId: string | null | undefined) => {
-      const nextState = resolveTrackArmState(trackId, library.tracks);
+      const trackArmInput = buildAppMonitorTrackArmInput({ library, monitor }, trackId);
+      const nextState = resolveTrackArmState(trackArmInput.trackId, trackArmInput.tracks);
       applyLibraryArmState(nextState, {
-        setSelectedPlaylistId: library.setSelectedPlaylistId,
-        setSelectedTrackId: library.setSelectedTrackId,
+        setSelectedPlaylistId: trackArmInput.setSelectedPlaylistId,
+        setSelectedTrackId: trackArmInput.setSelectedTrackId,
       });
     },
-    [library.setSelectedPlaylistId, library.setSelectedTrackId, library.tracks],
+    [library, monitor],
   );
 
   const armPlaylistBase = useCallback(
     (playlistId: string | null | undefined) => {
-      const nextState = resolvePlaylistArmState(playlistId, library.playlists, library.tracks);
+      const playlistArmInput = buildAppMonitorPlaylistArmInput({ library, monitor }, playlistId);
+      const nextState = resolvePlaylistArmState(
+        playlistArmInput.playlistId,
+        playlistArmInput.playlists,
+        playlistArmInput.tracks,
+      );
       applyLibraryArmState(nextState, {
-        setSelectedPlaylistId: library.setSelectedPlaylistId,
-        setSelectedTrackId: library.setSelectedTrackId,
+        setSelectedPlaylistId: playlistArmInput.setSelectedPlaylistId,
+        setSelectedTrackId: playlistArmInput.setSelectedTrackId,
       });
     },
-    [library.playlists, library.setSelectedPlaylistId, library.setSelectedTrackId, library.tracks],
+    [library, monitor],
   );
 
   useEffect(() => {
+    const libraryGuideInput = buildAppMonitorLibraryGuideEffectInput({ library, monitor });
     const guideState = resolveLibraryMonitorGuideState({
-      selectedPlaylist: library.selectedPlaylist,
-      selectedTrack: library.selectedTrack,
-      tracks: library.tracks,
+      selectedPlaylist: libraryGuideInput.selectedPlaylist,
+      selectedTrack: libraryGuideInput.selectedTrack,
+      tracks: libraryGuideInput.tracks,
     });
 
     applyMonitorGuideState(guideState, {
-      setGuideTrack: monitor.setGuideTrack,
-      setGuideTrackPlaylist: monitor.setGuideTrackPlaylist,
+      setGuideTrack: libraryGuideInput.setGuideTrack,
+      setGuideTrackPlaylist: libraryGuideInput.setGuideTrackPlaylist,
     });
-  }, [
-    library.selectedPlaylist,
-    library.selectedTrack,
-    library.tracks,
-    monitor.setGuideTrack,
-    monitor.setGuideTrackPlaylist,
-  ]);
+  }, [library, monitor]);
 
   const armSessionMusicalBase = useCallback(
     (draft?: SessionMonitorDraft) => {
-      if (draft?.playlistId) {
-        armPlaylistBase(draft.playlistId);
+      const sessionArmInput = buildAppMonitorSessionArmInput(
+        { library, monitor },
+        draft,
+        armPlaylistBase,
+        armTrackBase,
+      );
+
+      if (sessionArmInput.draft?.playlistId) {
+        sessionArmInput.armPlaylistBase(sessionArmInput.draft.playlistId);
         return;
       }
 
-      if (draft?.trackId) {
-        armTrackBase(draft.trackId);
+      if (sessionArmInput.draft?.trackId) {
+        sessionArmInput.armTrackBase(sessionArmInput.draft.trackId);
         return;
       }
 
       clearLibraryArmState({
-        setSelectedPlaylistId: library.setSelectedPlaylistId,
-        setSelectedTrackId: library.setSelectedTrackId,
+        setSelectedPlaylistId: sessionArmInput.setSelectedPlaylistId,
+        setSelectedTrackId: sessionArmInput.setSelectedTrackId,
       });
     },
-    [armPlaylistBase, armTrackBase, library.setSelectedPlaylistId, library.setSelectedTrackId],
+    [armPlaylistBase, armTrackBase, library, monitor],
   );
 
   const primeMonitorGuideTrack = useCallback(
     (draft?: SessionMonitorDraft) => {
-      const guideState = resolveSessionMonitorGuideState(draft, library.playlists, library.tracks);
+      const sessionGuideInput = buildAppMonitorSessionGuideInput({ library, monitor }, draft);
+      const guideState = resolveSessionMonitorGuideState(
+        sessionGuideInput.draft,
+        sessionGuideInput.playlists,
+        sessionGuideInput.tracks,
+      );
       applyMonitorGuideState(guideState, {
-        setGuideTrack: monitor.setGuideTrack,
-        setGuideTrackPlaylist: monitor.setGuideTrackPlaylist,
+        setGuideTrack: sessionGuideInput.setGuideTrack,
+        setGuideTrackPlaylist: sessionGuideInput.setGuideTrackPlaylist,
       });
     },
-    [library.playlists, library.tracks, monitor.setGuideTrack, monitor.setGuideTrackPlaylist],
+    [library, monitor],
   );
 
   return {

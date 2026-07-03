@@ -5,6 +5,7 @@ import { useRepositories } from "./useRepositories";
 import { useSessions } from "./useSessions";
 import { useAppV0PreferencesState } from "./useAppV0PreferencesState";
 import { useAppV0ShellState } from "./useAppV0ShellState";
+import { buildAppV0DomainState } from "./appV0DomainStateRuntime";
 import { useMonitor } from "../features/monitor/MonitorContext";
 import { useUserMode } from "../features/simple/UserModeContext";
 
@@ -19,7 +20,7 @@ export function useAppV0DomainState() {
   const monitor = useMonitor();
   const pastSessions = useSessions();
 
-  return {
+  return buildAppV0DomainState({
     userMode,
     preferences,
     shellState,
@@ -28,5 +29,5 @@ export function useAppV0DomainState() {
     baseAssets,
     monitor,
     pastSessions,
-  };
+  });
 }

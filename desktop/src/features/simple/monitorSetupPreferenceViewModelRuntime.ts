@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import {
   MONITOR_SETUP_PREFERENCE_LIMITS,
   type MonitorSetupPreferenceKey,

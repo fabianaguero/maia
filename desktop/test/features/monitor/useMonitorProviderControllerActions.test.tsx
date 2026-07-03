@@ -1,5 +1,8 @@
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type * as UseMonitorProviderGuideTrackActionsModule from "../../../src/features/monitor/useMonitorProviderGuideTrackActions";
+import type * as UseMonitorProviderPlaybackControlsModule from "../../../src/features/monitor/useMonitorProviderPlaybackControls";
+import type * as UseMonitorProviderSessionOrchestrationModule from "../../../src/features/monitor/useMonitorProviderSessionOrchestration";
 import { buildMonitorProviderControllerContextInput } from "../../../src/features/monitor/monitorProviderControllerContextRuntime";
 
 const mocks = vi.hoisted(() => ({
@@ -9,9 +12,9 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../../src/features/monitor/useMonitorProviderGuideTrackActions", async () => {
-  const actual = await vi.importActual<
-    typeof import("../../../src/features/monitor/useMonitorProviderGuideTrackActions")
-  >("../../../src/features/monitor/useMonitorProviderGuideTrackActions");
+  const actual = await vi.importActual<typeof UseMonitorProviderGuideTrackActionsModule>(
+    "../../../src/features/monitor/useMonitorProviderGuideTrackActions",
+  );
   return {
     ...actual,
     useMonitorProviderGuideTrackActions: (...args: unknown[]) =>
@@ -20,9 +23,9 @@ vi.mock("../../../src/features/monitor/useMonitorProviderGuideTrackActions", asy
 });
 
 vi.mock("../../../src/features/monitor/useMonitorProviderSessionOrchestration", async () => {
-  const actual = await vi.importActual<
-    typeof import("../../../src/features/monitor/useMonitorProviderSessionOrchestration")
-  >("../../../src/features/monitor/useMonitorProviderSessionOrchestration");
+  const actual = await vi.importActual<typeof UseMonitorProviderSessionOrchestrationModule>(
+    "../../../src/features/monitor/useMonitorProviderSessionOrchestration",
+  );
   return {
     ...actual,
     useMonitorProviderSessionOrchestration: (...args: unknown[]) =>
@@ -31,9 +34,9 @@ vi.mock("../../../src/features/monitor/useMonitorProviderSessionOrchestration", 
 });
 
 vi.mock("../../../src/features/monitor/useMonitorProviderPlaybackControls", async () => {
-  const actual = await vi.importActual<
-    typeof import("../../../src/features/monitor/useMonitorProviderPlaybackControls")
-  >("../../../src/features/monitor/useMonitorProviderPlaybackControls");
+  const actual = await vi.importActual<typeof UseMonitorProviderPlaybackControlsModule>(
+    "../../../src/features/monitor/useMonitorProviderPlaybackControls",
+  );
   return {
     ...actual,
     useMonitorProviderPlaybackControls: (...args: unknown[]) =>

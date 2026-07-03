@@ -1,4 +1,4 @@
-import { replaceExistingMonitorSessionIfPresent } from "./monitorProviderStartRuntime";
+import { type replaceExistingMonitorSessionIfPresent } from "./monitorProviderStartRuntime";
 import type { UseMonitorProviderSessionActionsInput } from "./monitorProviderSessionActionTypes";
 
 export function buildReplaceExistingMonitorProviderSessionInput(

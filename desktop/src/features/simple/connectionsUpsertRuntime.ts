@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { UpsertLogSourceConnectionInput } from "../../types/monitor";
 import { deriveFileConnectionLabel, type ConnectionDraft } from "./connectionsDraftRuntime";
 

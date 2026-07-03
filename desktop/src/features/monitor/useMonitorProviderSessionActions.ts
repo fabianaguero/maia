@@ -2,6 +2,7 @@ import type {
   UseMonitorProviderSessionActionsInput,
   UseMonitorProviderSessionActionsResult,
 } from "./monitorProviderSessionActionTypes";
+import { buildMonitorProviderSessionActionsResult } from "./monitorProviderSessionActionsHookRuntime";
 import { useMonitorProviderSessionLiveCallbacks } from "./useMonitorProviderSessionLiveCallbacks";
 import { useMonitorProviderSessionPlaybackCallbacks } from "./useMonitorProviderSessionPlaybackCallbacks";
 import { useMonitorProviderSessionStopCallback } from "./useMonitorProviderSessionStopCallback";
@@ -14,11 +15,17 @@ export function useMonitorProviderSessionActions(
   const { playbackSession } = useMonitorProviderSessionPlaybackCallbacks(input);
   const { stopSession } = useMonitorProviderSessionStopCallback(input);
 
-  return {
-    replaceExistingSessionIfPresent,
-    startSession,
-    attachSession,
-    playbackSession,
-    stopSession,
-  };
+  return buildMonitorProviderSessionActionsResult({
+    live: {
+      replaceExistingSessionIfPresent,
+      startSession,
+      attachSession,
+    },
+    playback: {
+      playbackSession,
+    },
+    stop: {
+      stopSession,
+    },
+  });
 }
