@@ -5,6 +5,11 @@ import type {
   UpdateTrackAnalysisInput,
   UpdateTrackPerformanceInput,
 } from "../types/library";
+import {
+  runCatalogBooleanAction,
+  runCatalogResultAction,
+  runCatalogUpdateAction,
+} from "./appCatalogLibraryActionsRuntime";
 import { buildRelinkMissingTracksNotice } from "./appCatalogActionsRuntime";
 import type { UseAppCatalogActionsInput } from "./appCatalogActionsTypes";
 
@@ -20,178 +25,188 @@ export function useAppCatalogLibraryActions({
   repositories,
 }: CatalogLibraryActionsInput) {
   const handleReanalyzeTrack = useCallback(
-    async (trackId: string) => {
-      try {
-        const nextTrack = await library.reanalyzeTrack(trackId);
-        if (nextTrack) {
-          notify(
-            "success",
-            t.appShell.reanalysisCompleteTitle,
-            t.appShell.reanalysisCompleteBody.replace("{title}", nextTrack.tags.title),
-          );
-          return true;
-        }
-      } catch (err) {
-        notify("error", t.appShell.reanalysisFailedTitle, String(err));
-      }
-      return false;
-    },
+    async (trackId: string) =>
+      runCatalogResultAction({
+        task: () => library.reanalyzeTrack(trackId),
+        onSuccess: (nextTrack) => ({
+          tone: "success",
+          title: t.appShell.reanalysisCompleteTitle,
+          body: t.appShell.reanalysisCompleteBody.replace("{title}", nextTrack.tags.title),
+        }),
+        onError: (err) => ({
+          tone: "error",
+          title: t.appShell.reanalysisFailedTitle,
+          body: String(err),
+        }),
+        notify,
+      }),
     [library, notify, t],
   );
 
   const handleRelinkTrack = useCallback(
-    async (trackId: string) => {
-      try {
-        const nextTrack = await library.relinkTrack(trackId);
-        if (nextTrack) {
-          notify(
-            "success",
-            t.appShell.trackRelinkedTitle,
-            t.appShell.trackRelinkedBody.replace("{title}", nextTrack.tags.title),
-          );
-          return true;
-        }
-      } catch (err) {
-        notify("error", t.appShell.relinkFailedTitle, String(err));
-      }
-      return false;
-    },
+    async (trackId: string) =>
+      runCatalogResultAction({
+        task: () => library.relinkTrack(trackId),
+        onSuccess: (nextTrack) => ({
+          tone: "success",
+          title: t.appShell.trackRelinkedTitle,
+          body: t.appShell.trackRelinkedBody.replace("{title}", nextTrack.tags.title),
+        }),
+        onError: (err) => ({
+          tone: "error",
+          title: t.appShell.relinkFailedTitle,
+          body: String(err),
+        }),
+        notify,
+      }),
     [library, notify, t],
   );
 
-  const handleRelinkMissingTracks = useCallback(async () => {
-    try {
-      const result = await library.relinkMissingTracksFromDirectory();
-      if (!result) {
-        return false;
-      }
-
-      const notice = buildRelinkMissingTracksNotice({ t, result });
-      notify(notice.tone, notice.title, notice.body);
-      return true;
-    } catch (err) {
-      notify("error", t.appShell.bulkRelinkFailedTitle, String(err));
-    }
-    return false;
-  }, [library, notify, t]);
+  const handleRelinkMissingTracks = useCallback(
+    async () =>
+      runCatalogResultAction({
+        task: () => library.relinkMissingTracksFromDirectory(),
+        onSuccess: (result) => buildRelinkMissingTracksNotice({ t, result }),
+        onError: (err) => ({
+          tone: "error",
+          title: t.appShell.bulkRelinkFailedTitle,
+          body: String(err),
+        }),
+        notify,
+      }),
+    [library, notify, t],
+  );
 
   const handleReanalyzeRepository = useCallback(
-    async (repositoryId: string) => {
-      try {
-        const nextRepository = await repositories.reanalyzeRepository(repositoryId);
-        if (nextRepository) {
-          notify(
-            "success",
-            t.appShell.reanalysisCompleteTitle,
-            t.appShell.reanalysisCompleteBody.replace("{title}", nextRepository.title),
-          );
-          return true;
-        }
-      } catch (err) {
-        notify("error", t.appShell.reanalysisFailedTitle, String(err));
-      }
-      return false;
-    },
+    async (repositoryId: string) =>
+      runCatalogResultAction({
+        task: () => repositories.reanalyzeRepository(repositoryId),
+        onSuccess: (nextRepository) => ({
+          tone: "success",
+          title: t.appShell.reanalysisCompleteTitle,
+          body: t.appShell.reanalysisCompleteBody.replace("{title}", nextRepository.title),
+        }),
+        onError: (err) => ({
+          tone: "error",
+          title: t.appShell.reanalysisFailedTitle,
+          body: String(err),
+        }),
+        notify,
+      }),
     [notify, repositories, t],
   );
 
   const handleDeleteTrack = useCallback(
-    async (trackId: string) => {
-      try {
-        const success = await library.deleteLibraryTrack(trackId);
-        if (success) {
-          notify("success", t.appShell.trackDeletedTitle, t.appShell.trackDeletedBody);
-          return true;
-        }
-      } catch (err) {
-        notify("error", t.appShell.deleteFailedTitle, String(err));
-      }
-      return false;
-    },
+    async (trackId: string) =>
+      runCatalogBooleanAction({
+        task: () => library.deleteLibraryTrack(trackId),
+        onSuccess: () => ({
+          tone: "success",
+          title: t.appShell.trackDeletedTitle,
+          body: t.appShell.trackDeletedBody,
+        }),
+        onError: (err) => ({
+          tone: "error",
+          title: t.appShell.deleteFailedTitle,
+          body: String(err),
+        }),
+        notify,
+      }),
     [library, notify, t],
   );
 
   const handleDeleteRepository = useCallback(
-    async (repositoryId: string) => {
-      try {
-        const success = await repositories.deleteLibraryRepository(repositoryId);
-        if (success) {
-          notify("success", t.appShell.repositoryDeletedTitle, t.appShell.repositoryDeletedBody);
-          return true;
-        }
-      } catch (err) {
-        notify("error", t.appShell.deleteFailedTitle, String(err));
-      }
-      return false;
-    },
+    async (repositoryId: string) =>
+      runCatalogBooleanAction({
+        task: () => repositories.deleteLibraryRepository(repositoryId),
+        onSuccess: () => ({
+          tone: "success",
+          title: t.appShell.repositoryDeletedTitle,
+          body: t.appShell.repositoryDeletedBody,
+        }),
+        onError: (err) => ({
+          tone: "error",
+          title: t.appShell.deleteFailedTitle,
+          body: String(err),
+        }),
+        notify,
+      }),
     [notify, repositories, t],
   );
 
   const handleUpdateTrackPerformance = useCallback(
-    async (trackId: string, input: UpdateTrackPerformanceInput): Promise<void> => {
-      try {
-        const nextTrack = await library.updateTrackPerformance(trackId, input);
-        if (!nextTrack) {
-          notify("error", t.appShell.trackUpdateFailedTitle, t.appShell.trackUpdateFailedBody);
-        }
-      } catch (err) {
-        notify("error", t.appShell.trackUpdateFailedTitle, String(err));
-      }
-    },
+    async (trackId: string, input: UpdateTrackPerformanceInput): Promise<void> =>
+      runCatalogUpdateAction({
+        task: () => library.updateTrackPerformance(trackId, input),
+        notify,
+        onMissing: {
+          tone: "error",
+          title: t.appShell.trackUpdateFailedTitle,
+          body: t.appShell.trackUpdateFailedBody,
+        },
+        onError: (err) => ({
+          tone: "error",
+          title: t.appShell.trackUpdateFailedTitle,
+          body: String(err),
+        }),
+      }),
     [library, notify, t],
   );
 
   const handleUpdateTrackAnalysis = useCallback(
-    async (trackId: string, input: UpdateTrackAnalysisInput): Promise<void> => {
-      try {
-        const nextTrack = await library.updateTrackAnalysis(trackId, input);
-        if (!nextTrack) {
-          notify(
-            "error",
-            t.appShell.beatGridUpdateFailedTitle,
-            t.appShell.beatGridUpdateFailedBody,
-          );
-        }
-      } catch (err) {
-        notify("error", t.appShell.beatGridUpdateFailedTitle, String(err));
-      }
-    },
+    async (trackId: string, input: UpdateTrackAnalysisInput): Promise<void> =>
+      runCatalogUpdateAction({
+        task: () => library.updateTrackAnalysis(trackId, input),
+        notify,
+        onMissing: {
+          tone: "error",
+          title: t.appShell.beatGridUpdateFailedTitle,
+          body: t.appShell.beatGridUpdateFailedBody,
+        },
+        onError: (err) => ({
+          tone: "error",
+          title: t.appShell.beatGridUpdateFailedTitle,
+          body: String(err),
+        }),
+      }),
     [library, notify, t],
   );
 
   const handleSavePlaylist = useCallback(
-    async (input: SaveBaseTrackPlaylistInput): Promise<boolean> => {
-      try {
-        const nextPlaylist = await library.savePlaylist(input);
-        if (nextPlaylist) {
-          notify(
-            "success",
-            t.appShell.playlistSavedTitle,
-            t.appShell.playlistSavedBody.replace("{name}", nextPlaylist.name),
-          );
-          return true;
-        }
-      } catch (err) {
-        notify("error", t.appShell.playlistSaveFailedTitle, String(err));
-      }
-      return false;
-    },
+    async (input: SaveBaseTrackPlaylistInput): Promise<boolean> =>
+      runCatalogResultAction({
+        task: () => library.savePlaylist(input),
+        onSuccess: (nextPlaylist) => ({
+          tone: "success",
+          title: t.appShell.playlistSavedTitle,
+          body: t.appShell.playlistSavedBody.replace("{name}", nextPlaylist.name),
+        }),
+        onError: (err) => ({
+          tone: "error",
+          title: t.appShell.playlistSaveFailedTitle,
+          body: String(err),
+        }),
+        notify,
+      }),
     [library, notify, t],
   );
 
   const handleDeletePlaylist = useCallback(
-    async (playlistId: string): Promise<boolean> => {
-      try {
-        const success = await library.deletePlaylist(playlistId);
-        if (success) {
-          notify("success", t.appShell.playlistDeletedTitle, t.appShell.playlistDeletedBody);
-          return true;
-        }
-      } catch (err) {
-        notify("error", t.appShell.playlistDeleteFailedTitle, String(err));
-      }
-      return false;
-    },
+    async (playlistId: string): Promise<boolean> =>
+      runCatalogBooleanAction({
+        task: () => library.deletePlaylist(playlistId),
+        onSuccess: () => ({
+          tone: "success",
+          title: t.appShell.playlistDeletedTitle,
+          body: t.appShell.playlistDeletedBody,
+        }),
+        onError: (err) => ({
+          tone: "error",
+          title: t.appShell.playlistDeleteFailedTitle,
+          body: String(err),
+        }),
+        notify,
+      }),
     [library, notify, t],
   );
 

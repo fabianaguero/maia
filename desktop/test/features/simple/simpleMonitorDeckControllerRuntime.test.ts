@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { en } from "../../../src/i18n/en";
+import { DEFAULT_MONITOR_SETUP_PREFERENCES } from "../../../src/features/simple/monitorSetupPreferences";
 import {
   buildSimpleMonitorDeckControllerBaseState,
+  buildSimpleMonitorDeckControllerHookState,
+  buildSimpleMonitorDeckControllerLiveInput,
+  buildSimpleMonitorDeckControllerModel,
   buildSimpleMonitorDeckControllerPresentationInput,
   resolveSimpleMonitorDeckControllerBpm,
 } from "../../../src/features/simple/simpleMonitorDeckControllerRuntime";
@@ -119,6 +123,46 @@ describe("simpleMonitorDeckControllerRuntime", () => {
     ).toBe(132);
   });
 
+  it("builds the controller model used by the hook composition layer", () => {
+    const track = createTrack();
+    const result = buildSimpleMonitorDeckControllerModel({
+      state: {
+        skin: "nightfall",
+        session: null,
+        isListening: true,
+        isLaunchingMonitor: false,
+        safeTracks: [track],
+        trackName: "Base Pulse",
+        audioContext: null,
+        subscribe: vi.fn(() => () => undefined),
+        waveformBins: [0.1, 0.2],
+        isConsoleExpanded: false,
+        onToggleConsole: vi.fn(),
+        liveSettings: DEFAULT_MONITOR_SETUP_PREFERENCES,
+        t: en,
+      },
+      deckControls: {
+        waveformScale: 1.4,
+        beatSnapSubdivision: 0.25,
+        reactivity: 55,
+        anomalyEmphasis: 70,
+        idleMotion: 30,
+        cueCooldownMs: 850,
+        masterVolume: 0.75,
+        duckingIntensity: 35,
+        recoveryRelease: 45,
+        alertShape: "balanced",
+      },
+      activePreset: "balanced",
+      trackDurationSeconds: 240,
+    });
+
+    expect(result.activeTrack?.id).toBe("track-1");
+    expect(result.deckDurationSeconds).toBe(240);
+    expect(result.streamAdapterLabel).toBe("FILE_TAIL");
+    expect(result.deckPresetLabel).toBe("Balanced");
+  });
+
   it("builds the presentation input without reshaping controller values", () => {
     const input = buildSimpleMonitorDeckControllerPresentationInput({
       backgroundAudioRef: { current: null },
@@ -144,5 +188,117 @@ describe("simpleMonitorDeckControllerRuntime", () => {
     expect(input.deckBpm).toBe(128);
     expect(input.selectedAnomalyId).toBe("anomaly-1");
     expect(input.waveformScale).toBe(1.2);
+  });
+
+  it("builds the live controller input from runtime and playback state", () => {
+    const track = createTrack();
+    const input = buildSimpleMonitorDeckControllerLiveInput({
+      state: {
+        skin: "nightfall",
+        session: {
+          sessionId: "live-1",
+          persistedSessionId: null,
+          repoId: "repo-1",
+          repoTitle: "visits-service",
+          trackId: "track-1",
+          trackName: "Base Pulse",
+          sourcePath: "/logs/visits-service.log",
+          adapterKind: "file",
+          pollMode: "direct",
+          startedAt: Date.now(),
+        },
+        isListening: true,
+        isLaunchingMonitor: false,
+        safeTracks: [track],
+        trackName: "Base Pulse",
+        audioContext: null,
+        subscribe: vi.fn(() => () => undefined),
+        waveformBins: [0.1, 0.2],
+        isConsoleExpanded: false,
+        onToggleConsole: vi.fn(),
+        liveSettings: DEFAULT_MONITOR_SETUP_PREFERENCES,
+        t: en,
+      },
+      deckControls: {
+        waveformScale: 1.4,
+        beatSnapSubdivision: 0.25,
+        reactivity: 55,
+        anomalyEmphasis: 70,
+        idleMotion: 30,
+        cueCooldownMs: 850,
+        masterVolume: 0.75,
+        duckingIntensity: 35,
+        recoveryRelease: 45,
+        alertShape: "tight",
+      },
+      activeTrack: track,
+      deckDurationSeconds: 240,
+      streamAdapterLabel: "FILE_TAIL",
+      trackWaveProgressRef: { current: 0.25 },
+      setTrackWaveProgress: vi.fn(),
+      setTrackElapsedSeconds: vi.fn(),
+      setTrackDurationSeconds: vi.fn(),
+    });
+
+    expect(input.streamAdapterLabel).toBe("FILE_TAIL");
+    expect(input.activeTrack?.id).toBe("track-1");
+    expect(input.liveSettings.tailWindowRows).toBe(
+      DEFAULT_MONITOR_SETUP_PREFERENCES.tailWindowRows,
+    );
+  });
+
+  it("builds the final controller hook state without losing presentation fields", () => {
+    const track = createTrack();
+    const result = buildSimpleMonitorDeckControllerHookState({
+      activeTrack: track,
+      previewTrackId: "track-1",
+      toggleTrackPreview: vi.fn(),
+      deckPresetLabel: "Balanced",
+      streamAdapterLabel: "FILE_TAIL",
+      isMonitorActive: true,
+      liveLines: [
+        {
+          id: "line-1",
+          timestamp: "00:01",
+          level: "info",
+          message: "ok",
+          isAnomaly: false,
+          anomalyId: null,
+        },
+      ],
+      selectedAnomalyId: "anomaly-1",
+      simulateLog: vi.fn(),
+      terminalLinesRef: { current: null },
+      onTerminalScroll: vi.fn(),
+      registerLineRef: vi.fn(),
+      focusAnomaly: vi.fn(),
+      deckBpm: 128,
+      trackElapsedSeconds: 42,
+      deckDurationSeconds: 240,
+      overviewCanvasRef: { current: null },
+      waveformCanvasRef: { current: null },
+      waveformStageRef: { current: null },
+      anomalyBurstRegions: [],
+      selectedBurstRegion: null,
+      overviewAnomalyMarkers: [],
+      overviewWindowLeftPercent: 0.1,
+      overviewWindowWidthPercent: 0.5,
+      overviewPlayheadLeftPercent: 0.2,
+      handleOverviewPointerDown: vi.fn(),
+      handleOverviewClick: vi.fn(),
+      handleOverviewAnomalyClick: vi.fn(),
+      handleOverviewAnomalyPointerDown: vi.fn(),
+      selectedDeckMarker: null,
+      deckTimelineMarkers: [],
+      deckBeatMarkers: [],
+      handleStagePointerDown: vi.fn(),
+      handleStageClick: vi.fn(),
+      waveformScale: 1.3,
+    });
+
+    expect(result.previewTrackId).toBe("track-1");
+    expect(result.streamAdapterLabel).toBe("FILE_TAIL");
+    expect(result.waveformScale).toBe(1.3);
+    expect(result.deckBpm).toBe(128);
   });
 });

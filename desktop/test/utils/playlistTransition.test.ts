@@ -234,4 +234,258 @@ describe("playlist transition utils", () => {
 
     expect(delayMs).toBe(104000);
   });
+
+  it("builds a phrase-bridge plan when tempo/energy are moderate but not smooth-blend compatible", () => {
+    const currentTrack = createTrack("current", {
+      bpm: 124,
+      keySignature: "C major",
+      energyLevel: 0.42,
+    });
+    const nextTrack = createTrack("next", {
+      bpm: 129,
+      keySignature: "G major",
+      energyLevel: 0.53,
+      hotCueSecond: 11,
+    });
+
+    const plan = resolvePlaylistTransitionPlan(currentTrack, nextTrack, {
+      styleProfile: {
+        playlistCrossfadeSeconds: 6.5,
+        transitionFeel: "steady",
+      },
+      mutationProfile: {
+        transitionTightness: 1,
+      },
+    });
+
+    expect(plan.mode).toBe("phrase-bridge");
+    expect(plan.harmonicLabel).toContain("Adjacent");
+    expect(plan.summary).toContain("Phrase bridge");
+  });
+
+  it("resolves same-key and open-key mixes and falls back to memory cue or intro markers", () => {
+    const sameKeyCurrent = createTrack("same-current", {
+      keySignature: "C major",
+      bpm: 124,
+    });
+    const sameKeyNext = createTrack("same-next", {
+      keySignature: "C major",
+      bpm: 124,
+      mainCueSecond: null,
+      hotCueSecond: undefined,
+    });
+    sameKeyNext.performance.memoryCues = [
+      {
+        id: "memory-1",
+        slot: 1,
+        second: 13.25,
+        label: "Memory jump",
+        kind: "memory",
+        color: null,
+      },
+    ];
+
+    const sameKeyPlan = resolvePlaylistTransitionPlan(sameKeyCurrent, sameKeyNext);
+    expect(sameKeyPlan.harmonicLabel).toContain("Same key");
+    expect(sameKeyPlan.entryLabel).toContain("Memory jump");
+
+    const openKeyTrack = createTrack("open-key", {
+      keySignature: "???",
+      bpm: 110,
+      mainCueSecond: null,
+      hotCueSecond: undefined,
+    });
+    openKeyTrack.performance.memoryCues = [];
+    openKeyTrack.analysis.structuralPatterns = [
+      {
+        type: "opening",
+        start: 14,
+        end: 32,
+        confidence: 0.8,
+        label: "Opening theme",
+      },
+    ];
+
+    const openKeyPlan = resolvePlaylistTransitionPlan(sameKeyCurrent, openKeyTrack);
+    expect(openKeyPlan.harmonicLabel).toBe("Open key");
+    expect(openKeyPlan.entryLabel).toContain("Opening theme");
+  });
+
+  it("falls back to track head and natural delay when no beat grid alignment is available", () => {
+    const noGridTrack = createTrack("no-grid", {
+      durationSeconds: 64,
+      mainCueSecond: null,
+      hotCueSecond: undefined,
+    });
+    noGridTrack.performance.memoryCues = [];
+    noGridTrack.analysis.structuralPatterns = [];
+    noGridTrack.analysis.beatGrid = [];
+
+    const startPlan = resolvePlaylistStartPlan(noGridTrack, {
+      styleProfile: {
+        playlistCrossfadeSeconds: 20,
+        transitionFeel: "tight",
+      },
+    });
+
+    expect(startPlan.entrySecond).toBe(0);
+    expect(startPlan.entryLabel).toBe("Track start");
+    expect(startPlan.summary).toBe("Cue start at track head");
+    expect(startPlan.crossfadeSeconds).toBe(8);
+
+    const noStartBeatTrack = createTrack("no-start-beat", {
+      durationSeconds: 90,
+      mainCueSecond: 8,
+    });
+    noStartBeatTrack.analysis.beatGrid = [
+      { index: 0, second: 0 },
+      { index: 1, second: 4 },
+    ];
+
+    const delayMs = resolvePhraseAlignedTransitionDelayMs({
+      track: noStartBeatTrack,
+      entrySecond: 12,
+      playbackRate: 1.5,
+      crossfadeSeconds: 5,
+      phraseSpanBeats: 16,
+      fallbackDurationSeconds: 90,
+    });
+
+    expect(delayMs).toBe(Math.round(Math.max(0.25, (90 - 12) / 1.5 - 5) * 1000));
+  });
+
+  it("uses fallback cue labels, treats invalid pitch classes as open key, and keeps neutral tempo when nearly matched", () => {
+    const currentTrack = createTrack("current-neutral", {
+      bpm: 128,
+      keySignature: "C major",
+      energyLevel: 0.5,
+    });
+    const nextTrack = createTrack("next-neutral", {
+      bpm: 127.8,
+      keySignature: "H major",
+      mainCueSecond: null,
+      hotCueSecond: undefined,
+    });
+
+    nextTrack.performance.hotCues = [
+      {
+        id: "hot-blank",
+        slot: 1,
+        second: 9.2,
+        label: "",
+        kind: "hot",
+        color: null,
+      },
+    ];
+    nextTrack.analysis.structuralPatterns = [];
+
+    const plan = resolvePlaylistTransitionPlan(currentTrack, nextTrack, {
+      styleProfile: {
+        playlistCrossfadeSeconds: 6,
+        transitionFeel: "tight",
+      },
+      mutationProfile: {
+        transitionTightness: 1,
+      },
+    });
+
+    expect(plan.harmonicLabel).toBe("Open key");
+    expect(plan.entryLabel).toContain("Hot cue");
+    expect(plan.tempoRatio).toBe(1);
+    expect(plan.tempoAdjustPercent).toBe(0);
+    expect(plan.summary).toContain("tempo neutral");
+  });
+
+  it("falls back to default memory and intro labels when their labels are empty", () => {
+    const currentTrack = createTrack("memory-current", {
+      bpm: 124,
+      keySignature: "C major",
+    });
+
+    const memoryTrack = createTrack("memory-next", {
+      bpm: 124,
+      keySignature: "C major",
+      mainCueSecond: null,
+      hotCueSecond: undefined,
+    });
+    memoryTrack.performance.memoryCues = [
+      {
+        id: "memory-blank",
+        slot: 1,
+        second: 18,
+        label: "",
+        kind: "memory",
+        color: null,
+      },
+    ];
+
+    const memoryPlan = resolvePlaylistTransitionPlan(currentTrack, memoryTrack);
+    expect(memoryPlan.entryLabel).toContain("Memory cue");
+
+    const introTrack = createTrack("intro-next", {
+      bpm: 118,
+      keySignature: "???",
+      mainCueSecond: null,
+      hotCueSecond: undefined,
+    });
+    introTrack.performance.memoryCues = [];
+    introTrack.analysis.structuralPatterns = [
+      {
+        type: "opening",
+        start: 10,
+        end: 24,
+        confidence: 0.8,
+        label: "",
+      },
+    ];
+
+    const introPlan = resolvePlaylistTransitionPlan(currentTrack, introTrack);
+    expect(introPlan.entryLabel).toContain("Intro");
+  });
+
+  it("falls back to natural delay when no phrase offset fits and otherwise uses the first later phrase offset", () => {
+    const sparsePhraseTrack = createTrack("sparse-phrase", {
+      durationSeconds: 12,
+      mainCueSecond: 8,
+    });
+    sparsePhraseTrack.analysis.beatGrid = [
+      { index: 0, second: 0 },
+      { index: 1, second: 8 },
+      { index: 2, second: 11.5 },
+    ];
+
+    const naturalDelayMs = resolvePhraseAlignedTransitionDelayMs({
+      track: sparsePhraseTrack,
+      entrySecond: 8,
+      playbackRate: 1,
+      crossfadeSeconds: 3.5,
+      phraseSpanBeats: 16,
+      fallbackDurationSeconds: 12,
+    });
+
+    expect(naturalDelayMs).toBe(500);
+
+    const laterPhraseTrack = createTrack("later-phrase", {
+      durationSeconds: null,
+      mainCueSecond: 8,
+    });
+    laterPhraseTrack.analysis.durationSeconds = null;
+    laterPhraseTrack.analysis.beatGrid = [
+      { index: 20, second: 8 },
+      { index: 21, second: 8.4 },
+      { index: 22, second: 8.8 },
+      { index: 23, second: 9.2 },
+    ];
+
+    const alignedDelayMs = resolvePhraseAlignedTransitionDelayMs({
+      track: laterPhraseTrack,
+      entrySecond: 8,
+      playbackRate: 1,
+      crossfadeSeconds: 3,
+      phraseSpanBeats: 3,
+      fallbackDurationSeconds: 12,
+    });
+
+    expect(alignedDelayMs).toBe(1200);
+  });
 });

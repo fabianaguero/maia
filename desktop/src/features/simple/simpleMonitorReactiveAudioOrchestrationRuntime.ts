@@ -1,4 +1,5 @@
 import type { BackgroundTrackGraph } from "./simpleMonitorReactiveAudioRuntime";
+import type { MonitorCueBatch } from "./monitorCueBatchTypes";
 
 export interface SimpleMonitorToneVoicePlan {
   frequency: number;
@@ -36,12 +37,7 @@ export function buildSimpleMonitorTestTonePlan(input: {
 }
 
 export function buildSimpleMonitorCueBatchPlan(input: {
-  cues: Array<{
-    noteHz?: number;
-    gain?: number;
-    durationMs?: number;
-    waveform?: OscillatorType;
-  }>;
+  cues: MonitorCueBatch;
   masterVolume: number;
   hasBackgroundGraph: boolean;
   now: number;

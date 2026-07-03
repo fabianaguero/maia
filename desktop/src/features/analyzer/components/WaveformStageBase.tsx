@@ -1,15 +1,9 @@
 import type { CSSProperties } from "react";
-
-interface WaveformVisibleBeat {
-  index: number;
-  second: number;
-  emphasis: string;
-  label: string;
-}
+import type { BeatGridGuideMarker } from "../../../utils/beatGrid";
 
 interface WaveformStageBaseProps {
   displayBins: number[];
-  visibleBeats: WaveformVisibleBeat[];
+  visibleBeats: BeatGridGuideMarker[];
   durationSeconds: number | null;
   waveformOverviewLabel: string;
   beatGridMarkersLabel: string;

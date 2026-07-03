@@ -7,6 +7,11 @@ import {
   resolveTrackArmState,
 } from "../appRuntime";
 import type { SessionMonitorDraft } from "../appMonitorActionsRuntime";
+import {
+  applyLibraryArmState,
+  applyMonitorGuideState,
+  clearLibraryArmState,
+} from "./appMonitorGuideActionsRuntime";
 import type { UseAppMonitorActionsInput } from "./appMonitorActionsTypes";
 
 type GuideActionsInput = Pick<UseAppMonitorActionsInput, "library" | "monitor">;
@@ -15,19 +20,23 @@ export function useAppMonitorGuideActions({ library, monitor }: GuideActionsInpu
   const armTrackBase = useCallback(
     (trackId: string | null | undefined) => {
       const nextState = resolveTrackArmState(trackId, library.tracks);
-      library.setSelectedPlaylistId(nextState.selectedPlaylistId);
-      library.setSelectedTrackId(nextState.selectedTrackId);
+      applyLibraryArmState(nextState, {
+        setSelectedPlaylistId: library.setSelectedPlaylistId,
+        setSelectedTrackId: library.setSelectedTrackId,
+      });
     },
-    [library],
+    [library.setSelectedPlaylistId, library.setSelectedTrackId, library.tracks],
   );
 
   const armPlaylistBase = useCallback(
     (playlistId: string | null | undefined) => {
       const nextState = resolvePlaylistArmState(playlistId, library.playlists, library.tracks);
-      library.setSelectedPlaylistId(nextState.selectedPlaylistId);
-      library.setSelectedTrackId(nextState.selectedTrackId);
+      applyLibraryArmState(nextState, {
+        setSelectedPlaylistId: library.setSelectedPlaylistId,
+        setSelectedTrackId: library.setSelectedTrackId,
+      });
     },
-    [library],
+    [library.playlists, library.setSelectedPlaylistId, library.setSelectedTrackId, library.tracks],
   );
 
   useEffect(() => {
@@ -37,13 +46,17 @@ export function useAppMonitorGuideActions({ library, monitor }: GuideActionsInpu
       tracks: library.tracks,
     });
 
-    if (guideState.playlistPaths) {
-      monitor.setGuideTrackPlaylist(guideState.playlistPaths);
-      return;
-    }
-
-    monitor.setGuideTrack(guideState.trackPath);
-  }, [library.selectedPlaylist, library.selectedTrack, library.tracks, monitor]);
+    applyMonitorGuideState(guideState, {
+      setGuideTrack: monitor.setGuideTrack,
+      setGuideTrackPlaylist: monitor.setGuideTrackPlaylist,
+    });
+  }, [
+    library.selectedPlaylist,
+    library.selectedTrack,
+    library.tracks,
+    monitor.setGuideTrack,
+    monitor.setGuideTrackPlaylist,
+  ]);
 
   const armSessionMusicalBase = useCallback(
     (draft?: SessionMonitorDraft) => {
@@ -57,24 +70,23 @@ export function useAppMonitorGuideActions({ library, monitor }: GuideActionsInpu
         return;
       }
 
-      library.setSelectedPlaylistId(null);
-      library.setSelectedTrackId(null);
+      clearLibraryArmState({
+        setSelectedPlaylistId: library.setSelectedPlaylistId,
+        setSelectedTrackId: library.setSelectedTrackId,
+      });
     },
-    [armPlaylistBase, armTrackBase, library],
+    [armPlaylistBase, armTrackBase, library.setSelectedPlaylistId, library.setSelectedTrackId],
   );
 
   const primeMonitorGuideTrack = useCallback(
     (draft?: SessionMonitorDraft) => {
       const guideState = resolveSessionMonitorGuideState(draft, library.playlists, library.tracks);
-
-      if (guideState.playlistPaths) {
-        monitor.setGuideTrackPlaylist(guideState.playlistPaths);
-        return;
-      }
-
-      monitor.setGuideTrack(guideState.trackPath);
+      applyMonitorGuideState(guideState, {
+        setGuideTrack: monitor.setGuideTrack,
+        setGuideTrackPlaylist: monitor.setGuideTrackPlaylist,
+      });
     },
-    [library.playlists, library.tracks, monitor],
+    [library.playlists, library.tracks, monitor.setGuideTrack, monitor.setGuideTrackPlaylist],
   );
 
   return {

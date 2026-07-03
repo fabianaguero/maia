@@ -105,4 +105,77 @@ describe("useCompositionResults", () => {
 
     expect(result.current.error).toBe("composition failed");
   });
+
+  it("surfaces bootstrap failures and clears stale selected compositions", async () => {
+    apiMock.listCompositions.mockRejectedValueOnce(new Error("load compositions failed"));
+
+    const failed = renderHook(() => useCompositionResults());
+
+    await waitFor(() => {
+      expect(failed.result.current.loading).toBe(false);
+    });
+
+    expect(failed.result.current.error).toBe("load compositions failed");
+    failed.unmount();
+
+    apiMock.listCompositions.mockResolvedValueOnce([
+      createComposition("composition-a", "2026-06-25T10:00:00.000Z"),
+      createComposition("composition-b", "2026-06-25T11:00:00.000Z"),
+    ]);
+
+    const selected = renderHook(() => useCompositionResults());
+
+    await waitFor(() => {
+      expect(selected.result.current.selectedCompositionId).toBe("composition-b");
+    });
+
+    act(() => {
+      selected.result.current.setSelectedCompositionId("missing-id");
+    });
+
+    expect(selected.result.current.selectedComposition).toBeNull();
+  });
+
+  it("ignores late composition bootstrap success and failure after unmount", async () => {
+    let resolveList: ((value: CompositionResultRecord[]) => void) | null = null;
+    let rejectList: ((reason?: unknown) => void) | null = null;
+
+    apiMock.listCompositions.mockImplementationOnce(
+      () =>
+        new Promise<CompositionResultRecord[]>((resolve, reject) => {
+          resolveList = resolve;
+          rejectList = reject;
+        }),
+    );
+
+    const pendingSuccess = renderHook(() => useCompositionResults());
+    pendingSuccess.unmount();
+
+    await act(async () => {
+      resolveList?.([createComposition("composition-late", "2026-06-25T12:00:00.000Z")]);
+      await Promise.resolve();
+    });
+
+    expect(pendingSuccess.result.current.compositions).toEqual([]);
+    expect(pendingSuccess.result.current.loading).toBe(true);
+
+    apiMock.listCompositions.mockImplementationOnce(
+      () =>
+        new Promise<CompositionResultRecord[]>((resolve, reject) => {
+          resolveList = resolve;
+          rejectList = reject;
+        }),
+    );
+
+    const pendingFailure = renderHook(() => useCompositionResults());
+    pendingFailure.unmount();
+
+    await act(async () => {
+      rejectList?.(new Error("late compositions failed"));
+      await Promise.resolve();
+    });
+
+    expect(pendingFailure.result.current.error).toBeNull();
+    expect(pendingFailure.result.current.loading).toBe(true);
+  });
 });

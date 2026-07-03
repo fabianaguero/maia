@@ -1,57 +1,13 @@
 import type { CSSProperties } from "react";
 
 import { useT } from "../../../i18n/I18nContext";
-import type {
-  BeatGridPoint,
-  TrackSavedLoop,
-  VisualizationCuePoint,
-  VisualizationRegionPoint,
-} from "../../../types/library";
-import type { BeatGridPhraseRange } from "../../../utils/beatGrid";
-import {
-  buildWaveformSummaryPills,
-  buildRenderedCueMarkers,
-  buildRenderedRegions,
-  resolveAnchorPosition,
-  resolveDisplayBins,
-  resolveVisibleBeats,
-  resolveWaveformCursor,
-  resolveWaveformInteractionHints,
-  resolveWaveformPlayheadOverlayState,
-  resolveWaveformSummaryFlags,
-  type WaveformEditableCuePoint,
-} from "./waveformPlaceholderRuntime";
 import { WaveformCueOverlay } from "./WaveformCueOverlay";
 import { WaveformPanelHeader } from "./WaveformPanelHeader";
 import { WaveformRegionOverlay } from "./WaveformRegionOverlay";
 import { WaveformStageBase } from "./WaveformStageBase";
 import { WaveformSummaryFooter } from "./WaveformSummaryFooter";
-import { useWaveformPlaceholderInteractions } from "./useWaveformPlaceholderInteractions";
-
-interface WaveformPlaceholderProps {
-  bins: number[];
-  beatGrid: BeatGridPoint[];
-  durationSeconds: number | null;
-  hotCues?: VisualizationCuePoint[];
-  regions?: VisualizationRegionPoint[];
-  editableCues?: WaveformEditableCuePoint[];
-  editableLoops?: TrackSavedLoop[];
-  currentTime?: number;
-  hero?: boolean;
-  onSeek?: (second: number) => void;
-  analysisProgress?: number | null;
-  canEditBeatGrid?: boolean;
-  onSetDownbeatAtSecond?: (second: number) => void;
-  canSelectPhrase?: boolean;
-  selectedPhraseRange?: BeatGridPhraseRange | null;
-  onSelectPhraseRange?: (range: BeatGridPhraseRange) => void;
-  phraseBeatCount?: number;
-  canEditPerformance?: boolean;
-  onMoveCue?: (cue: WaveformEditableCuePoint, second: number) => void;
-  onNudgeCue?: (cue: WaveformEditableCuePoint, second: number) => void;
-  onMoveLoopBoundary?: (loopId: string, boundary: "start" | "end", second: number) => void;
-  onMoveLoop?: (loopId: string, startSecond: number) => void;
-}
+import { useWaveformPlaceholderViewModel } from "./useWaveformPlaceholderViewModel";
+import type { WaveformPlaceholderProps } from "./waveformPlaceholderTypes";
 
 export function WaveformPlaceholder({
   bins,
@@ -83,9 +39,7 @@ export function WaveformPlaceholder({
     gridClickArmed,
     phraseSelectArmed,
     gridAnchorDragging,
-    dragAnchorSecond,
     dragTarget,
-    dragEditSecond,
     dragMovedRef,
     resolveSecondFromClientX,
     handleWaveformClick,
@@ -96,70 +50,38 @@ export function WaveformPlaceholder({
     toggleGridClickArmed,
     togglePhraseSelectArmed,
     beginAnchorDrag,
-  } = useWaveformPlaceholderInteractions({
+    cursor,
+    displayBins,
+    visibleBeats,
+    anchorSecond,
+    anchorPosition,
+    renderedCueMarkers,
+    renderedRegions,
+    interactionHints,
+    playheadOverlay,
+    summaryPills,
+  } = useWaveformPlaceholderViewModel({
+    t,
+    bins,
     beatGrid,
     durationSeconds,
+    hotCues,
+    regions,
+    editableCues,
+    editableLoops,
+    currentTime,
+    analysisProgress,
     canEditBeatGrid,
-    canSelectPhrase,
-    canEditPerformance,
-    phraseBeatCount,
     onSeek,
     onSetDownbeatAtSecond,
+    canSelectPhrase,
+    selectedPhraseRange,
     onSelectPhraseRange,
+    phraseBeatCount,
+    canEditPerformance,
     onMoveCue,
     onMoveLoopBoundary,
     onMoveLoop,
-  });
-
-  const displayBins = resolveDisplayBins(bins);
-  const visibleBeats = resolveVisibleBeats(beatGrid, durationSeconds);
-  const { anchorSecond, anchorPosition } = resolveAnchorPosition({
-    dragAnchorSecond,
-    durationSeconds,
-    visibleBeats,
-  });
-  const { showRegionSummary, showPhraseSummary } = resolveWaveformSummaryFlags(
-    regions,
-    selectedPhraseRange,
-    onSelectPhraseRange,
-  );
-  const renderedCueMarkers = buildRenderedCueMarkers({
-    editableCues,
-    hotCues,
-    dragTarget,
-    dragEditSecond,
-  });
-  const renderedRegions = buildRenderedRegions({
-    regions,
-    editableLoops,
-    dragTarget,
-    dragEditSecond,
-    durationSeconds,
-  });
-  const interactionHints = resolveWaveformInteractionHints({
-    gridClickArmed,
-    phraseSelectArmed,
-    gridAnchorDragging,
-    phraseBeatCount,
-    t,
-  });
-  const playheadOverlay = resolveWaveformPlayheadOverlayState({
-    currentTime,
-    durationSeconds,
-    analysisProgress,
-    t,
-  });
-  const summaryPills = buildWaveformSummaryPills({
-    visibleBeatsCount: visibleBeats.length,
-    showRegionSummary,
-    regionsCount: regions.length,
-    selectedPhraseRange,
-    displayBinsCount: displayBins.length,
-    gridAnchorDragging,
-    gridClickArmed,
-    phraseSelectArmed,
-    showPhraseSummary,
-    t,
   });
 
   return (
@@ -188,15 +110,7 @@ export function WaveformPlaceholder({
         onClick={(event) => handleWaveformClick(event.clientX)}
         aria-label={t.inspect.waveformStage}
         style={{
-          cursor: resolveWaveformCursor({
-            gridAnchorDragging,
-            dragTarget,
-            phraseSelectArmed,
-            canSelectPhrase,
-            gridClickArmed,
-            canEditBeatGrid,
-            onSeek,
-          }),
+          cursor,
         }}
       >
         {interactionHints.gridHint ? (

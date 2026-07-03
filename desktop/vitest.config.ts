@@ -10,6 +10,12 @@ export default defineConfig({
       reporter: ["text", "html", "cobertura"],
       reportsDirectory: "./coverage",
       exclude: ["test/**", "src-tauri/**"],
+      thresholds: {
+        statements: 95,
+        lines: 95,
+        functions: 90,
+        branches: 80,
+      },
     },
   },
 });

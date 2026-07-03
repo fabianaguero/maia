@@ -1,22 +1,7 @@
-import { useEffect, useState } from "react";
-import {
-  createPersistedSession,
-  deletePersistedSession,
-  listPersistedSessions,
-  listSessionBookmarks,
-  type CreateSessionInput,
-  type PersistedSession,
-  type SessionBookmark,
-} from "../api/sessions";
-import {
-  appendCreatedSession,
-  buildSessionBookmarksMap,
-  clearDeletedSelectedSessionId,
-  removeDeletedSession,
-  removeDeletedSessionBookmarks,
-  sortSessionsByCreatedAt,
-  toSessionErrorMessage,
-} from "./sessionsRuntime";
+import { useState } from "react";
+import { type PersistedSession, type SessionBookmark } from "../api/sessions";
+import { useSessionBookmarksLoader } from "./useSessionBookmarksLoader";
+import { useSessionsPersistence } from "./useSessionsPersistence";
 
 export function useSessions() {
   const [sessions, setSessions] = useState<PersistedSession[]>([]);
@@ -28,72 +13,22 @@ export function useSessions() {
     Record<string, SessionBookmark[]>
   >({});
 
-  async function loadSessions() {
-    setLoading(true);
-    try {
-      const data = await listPersistedSessions();
-      setSessions(sortSessionsByCreatedAt(data));
-      setError(null);
-    } catch (err) {
-      setError(toSessionErrorMessage(err, "Failed to load sessions"));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function refreshBookmarks() {
-    try {
-      const entries = await Promise.all(
-        sessions.map(async (session) => {
-          const bookmarks = await listSessionBookmarks(session.id);
-          return [session.id, bookmarks] as const;
-        }),
-      );
-      setSessionBookmarksBySessionId(buildSessionBookmarksMap(entries));
-      setError(null);
-    } catch (err) {
-      setError(toSessionErrorMessage(err, "Failed to load session bookmarks"));
-    }
-  }
-
-  useEffect(() => {
-    void loadSessions();
-  }, []);
-
-  async function createSession(input: CreateSessionInput) {
-    setMutating(true);
-    try {
-      const session = await createPersistedSession(input);
-      if (session) {
-        setSessions((prev) => appendCreatedSession(prev, session));
-        setSelectedSessionId(session.id);
-      }
-      setError(null);
-      return session;
-    } catch (err) {
-      setError(toSessionErrorMessage(err, "Failed to create session"));
-      return null;
-    } finally {
-      setMutating(false);
-    }
-  }
-
-  async function removeSession(id: string): Promise<void> {
-    setMutating(true);
-    try {
-      const success = await deletePersistedSession(id);
-      if (success) {
-        setSessions((prev) => removeDeletedSession(prev, id));
-        setSessionBookmarksBySessionId((prev) => removeDeletedSessionBookmarks(prev, id));
-        setSelectedSessionId((prev) => clearDeletedSelectedSessionId(prev, id));
-      }
-      setError(null);
-    } catch (err) {
-      setError(toSessionErrorMessage(err, "Failed to delete session"));
-    } finally {
-      setMutating(false);
-    }
-  }
+  const { loadSessions, createSession, removeSession } = useSessionsPersistence({
+    sessions,
+    selectedSessionId,
+    sessionBookmarksBySessionId,
+    setSessions,
+    setLoading,
+    setMutating,
+    setError,
+    setSelectedSessionId,
+    setSessionBookmarksBySessionId,
+  });
+  const refreshBookmarks = useSessionBookmarksLoader({
+    sessions,
+    setSessionBookmarksBySessionId,
+    setError,
+  });
 
   return {
     sessions,

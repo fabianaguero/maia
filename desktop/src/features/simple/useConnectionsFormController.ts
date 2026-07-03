@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-
 import {
   deleteLogSourceConnection,
   listLogSourceConnections,
@@ -7,18 +5,13 @@ import {
   upsertLogSourceConnection,
 } from "../../api/repositories";
 import type { AppTranslations } from "../../i18n/en";
-import type { LogSourceConnection } from "../../types/monitor";
+import { buildConnectionsFormControllerState } from "./connectionsFormControllerRuntime";
 import {
-  createConnectionDraftFromConnection,
-  createEmptyConnectionDraft,
-  type ConnectionDraft,
-} from "./connectionsViewModel";
-import {
-  browseConnectionFileState,
-  deleteConnectionState,
-  refreshConnectionsState,
-  saveConnectionState,
-} from "./connectionsScreenStateRuntime";
+  buildConnectionsFormControllerApi,
+  buildConnectionsFormControllerHookResult,
+} from "./connectionsFormControllerHookRuntime";
+import { useConnectionsFormActions } from "./useConnectionsFormActions";
+import { useConnectionsFormLocalState } from "./useConnectionsFormLocalState";
 
 interface UseConnectionsFormControllerInput {
   t: AppTranslations;
@@ -26,92 +19,37 @@ interface UseConnectionsFormControllerInput {
 }
 
 export function useConnectionsFormController(input: UseConnectionsFormControllerInput) {
-  const [connections, setConnections] = useState<LogSourceConnection[]>([]);
-  const [editingConnectionId, setEditingConnectionId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<ConnectionDraft>(() =>
-    createEmptyConnectionDraft(input.defaultCloudLookback),
+  const api = buildConnectionsFormControllerApi({
+    listLogSourceConnections,
+    pickRepositoryFile,
+    upsertLogSourceConnection,
+    deleteLogSourceConnection,
+  });
+  const localState = useConnectionsFormLocalState(input.defaultCloudLookback);
+  const actions = useConnectionsFormActions({
+    api,
+    t: input.t,
+    defaultCloudLookback: input.defaultCloudLookback,
+    state: localState,
+  });
+
+  return buildConnectionsFormControllerHookResult(
+    buildConnectionsFormControllerState({
+      connections: localState.connections,
+      editingConnectionId: localState.editingConnectionId,
+      draft: localState.draft,
+      loading: localState.loading,
+      saving: localState.saving,
+      pickerBusy: localState.pickerBusy,
+      error: localState.error,
+      setDraft: localState.setDraft,
+      setError: localState.setError,
+      refreshConnections: actions.refreshConnections,
+      resetForm: actions.resetForm,
+      loadConnectionIntoForm: actions.loadConnectionIntoForm,
+      handleBrowseFile: actions.handleBrowseFile,
+      handleSaveConnection: actions.handleSaveConnection,
+      handleDeleteConnection: actions.handleDeleteConnection,
+    }),
   );
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [pickerBusy, setPickerBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function refreshConnections() {
-    await refreshConnectionsState({
-      setLoading,
-      setError,
-      setConnections,
-      listLogSourceConnections,
-    });
-  }
-
-  useEffect(() => {
-    void refreshConnections();
-  }, []);
-
-  function resetForm() {
-    setEditingConnectionId(null);
-    setDraft(createEmptyConnectionDraft(input.defaultCloudLookback));
-  }
-
-  function loadConnectionIntoForm(connection: LogSourceConnection) {
-    setEditingConnectionId(connection.id);
-    setDraft(createConnectionDraftFromConnection(connection));
-    setError(null);
-  }
-
-  async function handleBrowseFile() {
-    await browseConnectionFileState({
-      sourcePath: draft.sourcePath,
-      setPickerBusy,
-      setError,
-      setDraft,
-      pickRepositoryFile,
-      fallbackErrorMessage: input.t.simpleMode.connections.nativeFilePickerFailed,
-    });
-  }
-
-  async function handleSaveConnection() {
-    await saveConnectionState({
-      draft,
-      editingConnectionId,
-      t: input.t,
-      setSaving,
-      setError,
-      upsertLogSourceConnection,
-      onAfterSave: async () => {
-        resetForm();
-        await refreshConnections();
-      },
-    });
-  }
-
-  async function handleDeleteConnection(id: string) {
-    await deleteConnectionState({
-      id,
-      editingConnectionId,
-      setError,
-      deleteLogSourceConnection,
-      resetForm,
-      refreshConnections,
-    });
-  }
-
-  return {
-    connections,
-    editingConnectionId,
-    draft,
-    loading,
-    saving,
-    pickerBusy,
-    error,
-    setDraft,
-    setError,
-    refreshConnections,
-    resetForm,
-    loadConnectionIntoForm,
-    handleBrowseFile,
-    handleSaveConnection,
-    handleDeleteConnection,
-  };
 }

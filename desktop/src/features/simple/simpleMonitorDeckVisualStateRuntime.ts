@@ -1,14 +1,14 @@
 import type { WaveformAnomalyMarker } from "./monitorDeckViewModel";
 import type { buildSimpleMonitorDeckVisualDerivedState } from "./simpleMonitorDeckVisualRuntime";
 
-type DerivedDeckState = ReturnType<
+export type SimpleMonitorDerivedDeckState = ReturnType<
   typeof buildSimpleMonitorDeckVisualDerivedState
 >["derivedDeckState"];
 
 export function buildMonitorOverviewRenderPlan(input: {
   safeRuntime: boolean;
   canvas: HTMLCanvasElement | null;
-  derivedDeckState: DerivedDeckState;
+  derivedDeckState: SimpleMonitorDerivedDeckState;
   waveformAnomalies: WaveformAnomalyMarker[];
   deckVisualPreset: "passive" | "balanced" | "alert";
 }) {
@@ -32,7 +32,7 @@ export function buildMonitorWaveformRenderPlan(input: {
   canvas: HTMLCanvasElement | null;
   stage: HTMLDivElement | null;
   trackWaveSamples: number[];
-  derivedDeckState: DerivedDeckState;
+  derivedDeckState: SimpleMonitorDerivedDeckState;
   waveformAnomalies: WaveformAnomalyMarker[];
   trackWaveProgress: number;
   deckVisualPreset: "passive" | "balanced" | "alert";

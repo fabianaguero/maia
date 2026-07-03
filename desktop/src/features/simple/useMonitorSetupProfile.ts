@@ -1,16 +1,12 @@
 import { useMonitorDeckControls } from "./useMonitorDeckControls";
 import { buildMonitorSetupProfile } from "./monitorSetupProfileRuntime";
 import { buildMonitorSetupScreenViewModel } from "./monitorSetupViewModel";
-import type { AppTranslations } from "../../i18n/en";
-import type { AppSkin } from "./appSkin";
-import type { MonitorSetupPreferences } from "./monitorSetupPreferences";
-
-interface UseMonitorSetupProfileInput {
-  lang: "en" | "es";
-  skin: AppSkin;
-  setupPreferences: MonitorSetupPreferences;
-  t: AppTranslations;
-}
+import {
+  buildMonitorSetupDeckControlsHookInput,
+  buildMonitorSetupProfileHookResult,
+  buildMonitorSetupProfileViewModelInput,
+  type UseMonitorSetupProfileInput,
+} from "./monitorSetupProfileHookRuntime";
 
 export function useMonitorSetupProfile({
   lang,
@@ -25,7 +21,7 @@ export function useMonitorSetupProfile({
     applyDeckPreset,
     activePreset,
     isDirty,
-  } = useMonitorDeckControls({ skin });
+  } = useMonitorDeckControls(buildMonitorSetupDeckControlsHookInput({ skin }));
 
   const profile = buildMonitorSetupProfile({
     deckControls,
@@ -34,21 +30,20 @@ export function useMonitorSetupProfile({
     isDirty,
   });
 
-  const viewModel = buildMonitorSetupScreenViewModel({
-    controls: profile.deckControls,
-    lang,
-    skin,
-    activePreset: profile.activePreset,
-    isDirty: profile.isDirty,
-    setupPreferences: profile.setupPreferences,
-    t,
-  });
+  const viewModel = buildMonitorSetupScreenViewModel(
+    buildMonitorSetupProfileViewModelInput({
+      profile,
+      lang,
+      skin,
+      t,
+    }),
+  );
 
-  return {
+  return buildMonitorSetupProfileHookResult({
     profile,
     viewModel,
     updateDeckControl,
     resetDeckControls,
     applyDeckPreset,
-  };
+  });
 }

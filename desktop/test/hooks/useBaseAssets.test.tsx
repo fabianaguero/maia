@@ -93,4 +93,77 @@ describe("useBaseAssets", () => {
 
     expect(result.current.error).toBe("import failed");
   });
+
+  it("surfaces bootstrap failures and clears stale selection when data changes", async () => {
+    apiMock.listBaseAssets.mockRejectedValueOnce(new Error("load failed"));
+
+    const failed = renderHook(() => useBaseAssets());
+
+    await waitFor(() => {
+      expect(failed.result.current.loading).toBe(false);
+    });
+
+    expect(failed.result.current.error).toBe("load failed");
+    failed.unmount();
+
+    apiMock.listBaseAssets.mockResolvedValueOnce([
+      createBaseAsset("asset-a", "2026-06-25T10:00:00.000Z"),
+      createBaseAsset("asset-b", "2026-06-25T11:00:00.000Z"),
+    ]);
+
+    const selected = renderHook(() => useBaseAssets());
+
+    await waitFor(() => {
+      expect(selected.result.current.selectedBaseAssetId).toBe("asset-b");
+    });
+
+    act(() => {
+      selected.result.current.setSelectedBaseAssetId("missing-id");
+    });
+
+    expect(selected.result.current.selectedBaseAsset).toBeNull();
+  });
+
+  it("ignores late bootstrap success and failure after unmount", async () => {
+    let resolveList: ((value: BaseAssetRecord[]) => void) | null = null;
+    let rejectList: ((reason?: unknown) => void) | null = null;
+
+    apiMock.listBaseAssets.mockImplementationOnce(
+      () =>
+        new Promise<BaseAssetRecord[]>((resolve, reject) => {
+          resolveList = resolve;
+          rejectList = reject;
+        }),
+    );
+
+    const pendingSuccess = renderHook(() => useBaseAssets());
+    pendingSuccess.unmount();
+
+    await act(async () => {
+      resolveList?.([createBaseAsset("asset-late", "2026-06-25T12:00:00.000Z")]);
+      await Promise.resolve();
+    });
+
+    expect(pendingSuccess.result.current.baseAssets).toEqual([]);
+    expect(pendingSuccess.result.current.loading).toBe(true);
+
+    apiMock.listBaseAssets.mockImplementationOnce(
+      () =>
+        new Promise<BaseAssetRecord[]>((resolve, reject) => {
+          resolveList = resolve;
+          rejectList = reject;
+        }),
+    );
+
+    const pendingFailure = renderHook(() => useBaseAssets());
+    pendingFailure.unmount();
+
+    await act(async () => {
+      rejectList?.(new Error("late load failed"));
+      await Promise.resolve();
+    });
+
+    expect(pendingFailure.result.current.error).toBeNull();
+    expect(pendingFailure.result.current.loading).toBe(true);
+  });
 });

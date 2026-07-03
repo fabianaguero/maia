@@ -63,6 +63,26 @@ describe("musicMetadata", () => {
     await expect(searchMusicBrainz("Song", "Artist")).resolves.toBeNull();
   });
 
+  it("falls back to the requested artist and leaves release year undefined when MusicBrainz lacks both", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        recordings: [
+          {
+            title: "Windowlicker",
+          },
+        ],
+      }),
+    });
+
+    await expect(searchMusicBrainz("Windowlicker", "Aphex Twin")).resolves.toEqual({
+      title: "Windowlicker",
+      artist: "Aphex Twin",
+      releaseYear: undefined,
+      source: "musicbrainz",
+    });
+  });
+
   it("skips Last.fm without an API key and warns once", async () => {
     await expect(searchLastFm("One More Time", "Daft Punk")).resolves.toBeNull();
     expect(warnSpy).toHaveBeenCalledWith("Last.fm API key not provided - skipping");
@@ -91,6 +111,43 @@ describe("musicMetadata", () => {
       source: "lastfm",
       spotifyUrl: "https://last.fm/track/one-more-time",
     });
+  });
+
+  it("keeps Last.fm duration undefined when the API omits it", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        track: {
+          name: "Windowlicker",
+          artist: { name: "Aphex Twin" },
+          album: { title: "Windowlicker" },
+          url: "https://last.fm/track/windowlicker",
+        },
+      }),
+    });
+
+    await expect(searchLastFm("Windowlicker", "Aphex Twin", "key-123")).resolves.toEqual({
+      title: "Windowlicker",
+      artist: "Aphex Twin",
+      album: "Windowlicker",
+      duration: undefined,
+      source: "lastfm",
+      spotifyUrl: "https://last.fm/track/windowlicker",
+    });
+  });
+
+  it("returns null for failed, empty or rejected Last.fm responses", async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false });
+    await expect(searchLastFm("One More Time", "Daft Punk", "key-123")).resolves.toBeNull();
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({}),
+    });
+    await expect(searchLastFm("One More Time", "Daft Punk", "key-123")).resolves.toBeNull();
+
+    fetchMock.mockRejectedValueOnce(new Error("lastfm offline"));
+    await expect(searchLastFm("One More Time", "Daft Punk", "key-123")).resolves.toBeNull();
   });
 
   it("skips Genius without a token and warns once", async () => {
@@ -127,6 +184,24 @@ describe("musicMetadata", () => {
         headers: { Authorization: "Bearer genius-token" },
       }),
     );
+  });
+
+  it("returns null for failed, empty or rejected Genius responses", async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false });
+    await expect(searchGenius("Music", "Madonna", "genius-token")).resolves.toBeNull();
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        response: {
+          hits: [],
+        },
+      }),
+    });
+    await expect(searchGenius("Music", "Madonna", "genius-token")).resolves.toBeNull();
+
+    fetchMock.mockRejectedValueOnce(new Error("genius offline"));
+    await expect(searchGenius("Music", "Madonna", "genius-token")).resolves.toBeNull();
   });
 
   it("merges MusicBrainz, Last.fm and Genius data into a single metadata payload", async () => {
@@ -207,5 +282,44 @@ describe("musicMetadata", () => {
       album: undefined,
       spotifyUrl: undefined,
     });
+  });
+
+  it("returns null when no source yields metadata and Genius has no base payload to enrich", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        recordings: [],
+      }),
+    });
+
+    await expect(
+      fetchSongMetadata("Unknown", "Nobody", {
+        geniusToken: "genius-token",
+        sources: ["musicbrainz", "genius"],
+      }),
+    ).resolves.toBeNull();
+  });
+
+  it("uses the default source order when no options are provided", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        recordings: [
+          {
+            title: "Technologic",
+            "artist-credit": [{ artist: { name: "Daft Punk" } }],
+            releases: [{ date: "2005-01-24" }],
+          },
+        ],
+      }),
+    });
+
+    await expect(fetchSongMetadata("Technologic", "Daft Punk")).resolves.toEqual({
+      title: "Technologic",
+      artist: "Daft Punk",
+      releaseYear: 2005,
+      source: "musicbrainz",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

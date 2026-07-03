@@ -8,6 +8,12 @@ import {
   type SessionMonitorDraft,
 } from "../appMonitorActionsRuntime";
 import { resolveSessionRepository } from "../appContentRuntime";
+import {
+  buildLiveSessionGuideDraft,
+  buildLiveSessionPersistenceInput,
+  buildMonitoredRepoNavigation,
+  buildReplayPlaybackInput,
+} from "./appMonitorSessionActionsRuntime";
 import type { UseAppMonitorActionsInput } from "./appMonitorActionsTypes";
 
 interface MonitorGuideActions {
@@ -65,12 +71,13 @@ export function useAppMonitorSessionActions({
 
       const ok = alreadyActiveReplay
         ? true
-        : await monitor.playbackSession({
-            sessionId: session.id,
-            label: session.label || t.session.unnamedSession,
-            sourcePath: session.sourcePath || "",
-            repoId: sourceRepository.id ?? session.sourceId,
-          });
+        : await monitor.playbackSession(
+            buildReplayPlaybackInput({
+              session,
+              repoId: sourceRepository.id ?? session.sourceId,
+              unnamedSessionLabel: t.session.unnamedSession,
+            }),
+          );
 
       if (!ok) {
         return false;
@@ -105,14 +112,9 @@ export function useAppMonitorSessionActions({
       draft?: SessionMonitorDraft & { sourceId?: string | null },
     ): Promise<boolean> => {
       sessions.clearError();
-      armSessionMusicalBase({
-        trackId: draft?.trackId,
-        playlistId: draft?.playlistId,
-      });
-      primeMonitorGuideTrack({
-        trackId: draft?.trackId,
-        playlistId: draft?.playlistId,
-      });
+      const guideDraft = buildLiveSessionGuideDraft(draft);
+      armSessionMusicalBase(guideDraft);
+      primeMonitorGuideTrack(guideDraft);
 
       const success = await monitor.startSession(
         resolveSessionRepository({
@@ -137,15 +139,13 @@ export function useAppMonitorSessionActions({
       });
 
       if (persistenceAction === "create") {
-        await sessions.createSession({
-          id: persistedSessionId,
-          label: input.label ?? undefined,
-          sourceId: draft?.sourceId ?? undefined,
-          trackId: draft?.trackId ?? undefined,
-          playlistId: draft?.playlistId ?? undefined,
-          adapterKind: input.adapterKind,
-          mode: "live",
-        });
+        await sessions.createSession(
+          buildLiveSessionPersistenceInput({
+            sessionId: persistedSessionId,
+            startInput: input,
+            draft,
+          }),
+        );
       } else {
         sessions.setSelectedSessionId(persistedSessionId);
       }
@@ -168,10 +168,11 @@ export function useAppMonitorSessionActions({
       return;
     }
 
+    const navigation = buildMonitoredRepoNavigation();
     repositories.setSelectedRepositoryId(repo.id);
-    setAnalysisMode("repo");
-    setScreen("inspect");
-    setPillar("curate");
+    setAnalysisMode(navigation.analysisMode);
+    setScreen(navigation.screen);
+    setPillar(navigation.pillar);
   }, [monitor.session, repositories, setAnalysisMode, setPillar, setScreen]);
 
   return {

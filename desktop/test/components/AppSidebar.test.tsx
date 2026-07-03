@@ -85,4 +85,37 @@ describe("AppSidebar", () => {
     expect(onOpenMonitoredRepo).toHaveBeenCalledTimes(1);
     expect(onStopMonitor).toHaveBeenCalledTimes(1);
   });
+
+  it("renders expert stats and pillar navigation when the stored user mode is expert", async () => {
+    localStorage.setItem("maia_user_mode", "expert");
+    const onPillarChange = vi.fn();
+
+    renderSidebar({
+      onPillarChange,
+      connectionsActive: true,
+    });
+
+    await screen.findByText("PERFORM");
+    expect(screen.getByText("DESIGN")).toBeInTheDocument();
+    expect(screen.getByText("CURATE")).toBeInTheDocument();
+    expect(screen.getByText("AUD")).toBeInTheDocument();
+    expect(screen.getByText("LOG")).toBeInTheDocument();
+    expect(screen.getByText("PRF")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /DESIGN/i }));
+    expect(onPillarChange).toHaveBeenCalledWith("design");
+
+    expect(screen.getByRole("button", { name: /Conexiones/i })).toHaveClass("active");
+  });
+
+  it("shows the empty selected-focus footer and hides monitor controls when there is no session", async () => {
+    renderSidebar({
+      monitorSession: null,
+      selectedItemTitle: null,
+    });
+
+    await screen.findByText("Ninguno");
+    expect(screen.queryByRole("button", { name: "Inspeccionar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Detener" })).not.toBeInTheDocument();
+  });
 });

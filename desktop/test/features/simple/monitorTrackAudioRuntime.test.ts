@@ -38,9 +38,22 @@ describe("monitorTrackAudioRuntime", () => {
     expect(revoke).toHaveBeenCalledWith("blob:track");
   });
 
+  it("disposes null audio while still revoking the managed url", () => {
+    const revoke = vi.fn();
+
+    const disposed = disposeMonitorAudio(null, "blob:track", revoke);
+
+    expect(disposed).toBeNull();
+    expect(revoke).toHaveBeenCalledWith("blob:track");
+  });
+
   it("reads normalized progress snapshots only when duration is valid", () => {
     expect(readMonitorTrackAudioSnapshot(null)).toBeNull();
     expect(readMonitorTrackAudioSnapshot(createAudio({ duration: Number.NaN }))).toBeNull();
+    expect(readMonitorTrackAudioSnapshot(createAudio({ duration: 0 }))).toBeNull();
+    expect(
+      readMonitorTrackAudioSnapshot(createAudio({ duration: Number.POSITIVE_INFINITY })),
+    ).toBeNull();
 
     expect(readMonitorTrackAudioSnapshot(createAudio({ currentTime: 30, duration: 120 }))).toEqual({
       progress: 0.25,
@@ -52,6 +65,14 @@ describe("monitorTrackAudioRuntime", () => {
       {
         progress: 1,
         elapsedSeconds: 300,
+        durationSeconds: 120,
+      },
+    );
+
+    expect(readMonitorTrackAudioSnapshot(createAudio({ currentTime: -30, duration: 120 }))).toEqual(
+      {
+        progress: 0,
+        elapsedSeconds: -30,
         durationSeconds: 120,
       },
     );
@@ -79,5 +100,23 @@ describe("monitorTrackAudioRuntime", () => {
     expect(audio.pause).not.toHaveBeenCalled();
     expect(revoke).not.toHaveBeenCalled();
     expect(audio.load).not.toHaveBeenCalled();
+  });
+
+  it("reuses the playback url when the same source is already bound without a cached url", () => {
+    const audio = createAudio({ src: "blob:stable" });
+    const revoke = vi.fn();
+
+    const stableUrl = prepareBackgroundMonitorAudio(audio, "blob:stable", null, revoke);
+
+    expect(stableUrl).toBe("blob:stable");
+    expect(audio.pause).not.toHaveBeenCalled();
+    expect(revoke).not.toHaveBeenCalled();
+    expect(audio.load).not.toHaveBeenCalled();
+    expect(audio.loop).toBe(true);
+    expect(audio.volume).toBe(1);
+    expect(audio.muted).toBe(false);
+    expect(audio.defaultMuted).toBe(false);
+    expect(audio.preload).toBe("auto");
+    expect(audio.crossOrigin).toBe("anonymous");
   });
 });

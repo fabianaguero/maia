@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_MONITOR_DECK_CONTROLS } from "../../../src/features/simple/monitorDeckControls";
 import { useSimpleMonitorReactiveAudio } from "../../../src/features/simple/useSimpleMonitorReactiveAudio";
@@ -52,6 +52,12 @@ function createAudioContext() {
 }
 
 describe("useSimpleMonitorReactiveAudio", () => {
+  const originalWarn = console.warn;
+
+  afterEach(() => {
+    console.warn = originalWarn;
+  });
+
   it("plays a test tone and cue batches when the audio context is running", () => {
     const audioContext = createAudioContext();
 
@@ -83,6 +89,29 @@ describe("useSimpleMonitorReactiveAudio", () => {
 
     expect(audioContext.createOscillator).toHaveBeenCalled();
     expect(audioContext.createGain).toHaveBeenCalled();
+  });
+
+  it("skips tone and cue playback when the audio context is not running", () => {
+    const audioContext = {
+      ...createAudioContext(),
+      state: "suspended" as AudioContextState,
+    };
+
+    const { result } = renderHook(() =>
+      useSimpleMonitorReactiveAudio({
+        audioContext,
+        isListening: true,
+        deckControls: DEFAULT_MONITOR_DECK_CONTROLS,
+      }),
+    );
+
+    act(() => {
+      result.current.playTestTone();
+      result.current.playCueBatch([{ noteHz: 330, gain: 0.12 }]);
+    });
+
+    expect(audioContext.createOscillator).not.toHaveBeenCalled();
+    expect(audioContext.createGain).not.toHaveBeenCalled();
   });
 
   it("creates and reuses the background graph, then applies track mutations", () => {
@@ -134,5 +163,44 @@ describe("useSimpleMonitorReactiveAudio", () => {
     expect(typedGraph.outputGain.gain.linearRampToValueAtTime).toHaveBeenCalled();
     expect(typedGraph.driveWetGain.gain.linearRampToValueAtTime).toHaveBeenCalled();
     expect(typedGraph.driveNode.curve).not.toBeNull();
+  });
+
+  it("returns null when graph setup fails and ignores mutations without a running graph", () => {
+    console.warn = vi.fn();
+    const audioContext = {
+      ...createAudioContext(),
+      createMediaElementSource: vi.fn(() => {
+        throw new Error("media source failed");
+      }),
+    } as unknown as AudioContext;
+    const audioElement = { playbackRate: 1 } as HTMLAudioElement;
+
+    const { result } = renderHook(() =>
+      useSimpleMonitorReactiveAudio({
+        audioContext,
+        isListening: true,
+        deckControls: DEFAULT_MONITOR_DECK_CONTROLS,
+      }),
+    );
+
+    let graph: ReturnType<typeof result.current.ensureBackgroundGraph>;
+    act(() => {
+      graph = result.current.ensureBackgroundGraph(audioElement, audioContext);
+      result.current.applyTrackMutation(
+        {
+          lineCount: 4,
+          anomalyCount: 1,
+          levelCounts: { warn: 1 },
+          anomalyMarkers: [{ eventIndex: 1, level: "warn", component: "svc", excerpt: "slow" }],
+        },
+        { current: null },
+      );
+    });
+
+    expect(graph).toBeNull();
+    expect(console.warn).toHaveBeenCalledWith(
+      "Simple monitor graph setup failed",
+      expect.any(Error),
+    );
   });
 });

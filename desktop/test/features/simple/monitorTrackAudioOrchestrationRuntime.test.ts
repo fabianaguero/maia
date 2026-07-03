@@ -46,6 +46,15 @@ describe("monitorTrackAudioOrchestrationRuntime", () => {
         hasPreviewAudio: false,
       }),
     ).toBe("start");
+
+    expect(
+      resolveMonitorPreviewAction({
+        playablePath: "/music/track-1.wav",
+        previewTrackId: "track-1",
+        nextTrackId: "track-1",
+        hasPreviewAudio: false,
+      }),
+    ).toBe("start");
   });
 
   it("builds reset and ended state snapshots", () => {
@@ -80,6 +89,20 @@ describe("monitorTrackAudioOrchestrationRuntime", () => {
       }),
     ).toBe(false);
     expect(
+      shouldBindMonitorBackgroundTrack({
+        safeRuntime: false,
+        isListening: false,
+        hasActiveTrack: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldBindMonitorBackgroundTrack({
+        safeRuntime: false,
+        isListening: true,
+        hasActiveTrack: false,
+      }),
+    ).toBe(false);
+    expect(
       shouldStartMonitorProgressLoop({
         safeRuntime: false,
         isListening: true,
@@ -89,6 +112,12 @@ describe("monitorTrackAudioOrchestrationRuntime", () => {
       shouldStartMonitorProgressLoop({
         safeRuntime: false,
         isListening: false,
+      }),
+    ).toBe(false);
+    expect(
+      shouldStartMonitorProgressLoop({
+        safeRuntime: true,
+        isListening: true,
       }),
     ).toBe(false);
 

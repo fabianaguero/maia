@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { SessionEvent } from "../../../src/api/sessions";
+import { resolveSourceTemplate } from "../../../src/config/sourceTemplates";
 import {
   bootstrapLiveMonitorSessionState,
   activateLiveMonitorSessionState,
@@ -65,6 +66,21 @@ describe("monitorOrchestrationRuntime", () => {
     });
 
     expect(directCursorRef.current).toBe(0);
+    expect(emptyWindowsRef.current).toBe(0);
+    expect(pollIndexRef.current).toBe(0);
+
+    directCursorRef.current = 99;
+    emptyWindowsRef.current = 5;
+    pollIndexRef.current = 3;
+
+    resetLivePollingState({
+      directCursorRef,
+      emptyWindowsRef,
+      pollIndexRef,
+      startFromBeginning: false,
+    });
+
+    expect(directCursorRef.current).toBeUndefined();
     expect(emptyWindowsRef.current).toBe(0);
     expect(pollIndexRef.current).toBe(0);
   });
@@ -163,6 +179,49 @@ describe("monitorOrchestrationRuntime", () => {
     expect(sessionRef.current).toBe(session);
     expect(activeRef.current).toBe(true);
     expect(isPlaybackRef.current).toBe(false);
+  });
+
+  it("bootstraps live monitor session state without persisted id and falls back to default template", () => {
+    const session = createSession({ persistedSessionId: null });
+    const directCursorRef = { current: 10 as number | undefined };
+    const emptyWindowsRef = { current: 1 };
+    const pollIndexRef = { current: 2 };
+    const activeTemplateRef = { current: resolveSourceTemplate("tech-house") };
+    const setActiveTemplateState = vi.fn();
+    const updatePersistedSessionStatus = vi.fn(async () => undefined);
+    const sessionRef = { current: null as ActiveMonitorSession | null };
+    const activeRef = { current: false };
+    const isPlaybackRef = { current: true };
+    const setSession = vi.fn();
+    const setIsPlayback = vi.fn();
+    const setMetrics = vi.fn();
+    const resetReplayTelemetry = vi.fn();
+
+    bootstrapLiveMonitorSessionState({
+      session,
+      sourceTemplateId: undefined,
+      persistedSessionId: null,
+      startFromBeginning: false,
+      directCursorRef,
+      emptyWindowsRef,
+      pollIndexRef,
+      activeTemplateRef,
+      setActiveTemplateState,
+      updatePersistedSessionStatus,
+      sessionRef,
+      activeRef,
+      isPlaybackRef,
+      setSession,
+      setIsPlayback,
+      setMetrics,
+      resetReplayTelemetry,
+    });
+
+    expect(directCursorRef.current).toBeUndefined();
+    expect(activeTemplateRef.current).toEqual(resolveSourceTemplate(null));
+    expect(setActiveTemplateState).toHaveBeenCalledWith(resolveSourceTemplate(null));
+    expect(updatePersistedSessionStatus).not.toHaveBeenCalled();
+    expect(sessionRef.current).toBe(session);
   });
 
   it("activates playback monitor session state and returns hydration token", () => {
@@ -271,6 +330,48 @@ describe("monitorOrchestrationRuntime", () => {
     });
 
     expect(previousId).toBe("stream-1");
+    expect(stopPolling).toHaveBeenCalledTimes(1);
+    expect(setSession).toHaveBeenCalledWith(null);
+    expect(stopStreamSession).toHaveBeenCalledWith("stream-1");
+    expect(sessionRef.current).toBeNull();
+  });
+
+  it("returns null when there is no existing session to replace", async () => {
+    const sessionRef = { current: null as ActiveMonitorSession | null };
+    const stopPolling = vi.fn();
+    const setSession = vi.fn();
+    const stopStreamSession = vi.fn(async () => undefined);
+
+    const previousId = await replaceExistingMonitorSession({
+      sessionRef,
+      stopPolling,
+      setSession,
+      stopStreamSession,
+    });
+
+    expect(previousId).toBeNull();
+    expect(stopPolling).not.toHaveBeenCalled();
+    expect(setSession).not.toHaveBeenCalled();
+    expect(stopStreamSession).not.toHaveBeenCalled();
+  });
+
+  it("swallows stopStreamSession failures during replacement cleanup", async () => {
+    const sessionRef = { current: createSession() as ActiveMonitorSession | null };
+    const stopPolling = vi.fn();
+    const setSession = vi.fn();
+    const stopStreamSession = vi.fn(async () => {
+      throw new Error("cleanup boom");
+    });
+
+    await expect(
+      replaceExistingMonitorSession({
+        sessionRef,
+        stopPolling,
+        setSession,
+        stopStreamSession,
+      }),
+    ).resolves.toBe("stream-1");
+
     expect(stopPolling).toHaveBeenCalledTimes(1);
     expect(setSession).toHaveBeenCalledWith(null);
     expect(stopStreamSession).toHaveBeenCalledWith("stream-1");

@@ -1,19 +1,14 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 
-import {
-  applyAppV0SkinPreference,
-  loadAppV0Preferences,
-  persistAppV0Language,
-  persistAppV0SetupPreferences,
-  persistAppV0Skin,
-  type AppV0Language,
-} from "../appV0Preferences";
+import { type AppV0Language } from "../appV0Preferences";
 import {
   DEFAULT_MONITOR_SETUP_PREFERENCES,
-  sanitizeMonitorSetupPreferenceValue,
   type MonitorSetupPreferences,
 } from "../features/simple/monitorSetupPreferences";
 import type { AppSkin } from "../features/simple/appSkin";
+import { applyAppV0SetupPreferenceUpdate } from "./appV0PreferencesStateRuntime";
+import { useAppV0PreferencesHydration } from "./useAppV0PreferencesHydration";
+import { useAppV0PreferencesPersistence } from "./useAppV0PreferencesPersistence";
 
 export interface UseAppV0PreferencesStateResult {
   lang: AppV0Language;
@@ -35,49 +30,23 @@ export function useAppV0PreferencesState(): UseAppV0PreferencesStateResult {
     DEFAULT_MONITOR_SETUP_PREFERENCES,
   );
 
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const nextPreferences = loadAppV0Preferences(window.localStorage);
-    setLang(nextPreferences.lang);
-    setSkin(nextPreferences.skin);
-    setSetupPreferences(nextPreferences.setupPreferences);
-  }, []);
+  useAppV0PreferencesHydration({
+    setLang,
+    setSkin,
+    setSetupPreferences,
+  });
 
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    persistAppV0Language(window.localStorage, lang);
-  }, [lang]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    persistAppV0Skin(window.localStorage, skin);
-    applyAppV0SkinPreference(document.documentElement, skin);
-  }, [skin]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    persistAppV0SetupPreferences(window.localStorage, setupPreferences);
-  }, [setupPreferences]);
+  useAppV0PreferencesPersistence({
+    lang,
+    skin,
+    setupPreferences,
+  });
 
   const updateSetupPreference = <K extends keyof MonitorSetupPreferences>(
     key: K,
     value: MonitorSetupPreferences[K],
   ) => {
-    setSetupPreferences(
-      (current) =>
-        ({
-          ...current,
-          [key]: sanitizeMonitorSetupPreferenceValue(key, value),
-        }) as MonitorSetupPreferences,
-    );
+    setSetupPreferences((current) => applyAppV0SetupPreferenceUpdate(current, key, value));
   };
 
   return {

@@ -1,9 +1,8 @@
-import { Activity } from "lucide-react";
 import type { PersistedSession, SessionBookmark } from "../../api/sessions";
 import { useT } from "../../i18n/I18nContext";
 import type { ReplayFeedbackRecommendation } from "../../utils/replayFeedback";
 import { SessionReplayBookmarkPanel } from "./SessionReplayBookmarkPanel";
-import { SessionSavedSessionCard } from "./SessionSavedSessionCard";
+import { SessionSavedSessionsList } from "./SessionSavedSessionsList";
 
 export interface SessionBookmarkContext {
   bpm: number | null;
@@ -67,39 +66,24 @@ export function SessionSavedSessionsPanel({
       </div>
 
       <div className="session-card-list">
-        {loading ? (
-          <p className="placeholder">{t.session.loading}</p>
-        ) : sessions.length === 0 ? (
-          <div className="empty-state">
-            <Activity size={28} style={{ opacity: 0.3 }} />
-            <p>{t.session.noSessions}</p>
-          </div>
-        ) : (
-          sessions.map((session) => {
-            const isActive = session.id === activeSessionId;
-            const isPlaybackSession = isActive && activeSessionMode === "playback";
-            const sessionBookmarks = sessionBookmarksBySessionId[session.id] ?? [];
-
-            return (
-              <SessionSavedSessionCard
-                key={session.id}
-                session={session}
-                selected={selectedSessionId === session.id}
-                active={isActive}
-                playbackActive={isPlaybackSession}
-                mutating={mutating}
-                bookmarks={sessionBookmarks}
-                liveWindowCount={liveWindowCount}
-                liveProcessedLines={liveProcessedLines}
-                liveTotalAnomalies={liveTotalAnomalies}
-                onSelectSession={onSelectSession}
-                onResumeSession={onResumeSession}
-                onPlaybackSession={onPlaybackSession}
-                onDeleteSession={onDeleteSession}
-              />
-            );
-          })
-        )}
+        <SessionSavedSessionsList
+          sessions={sessions}
+          loading={loading}
+          mutating={mutating}
+          selectedSessionId={selectedSessionId}
+          activeSessionId={activeSessionId}
+          activeSessionMode={activeSessionMode}
+          sessionBookmarksBySessionId={sessionBookmarksBySessionId}
+          liveWindowCount={liveWindowCount}
+          liveProcessedLines={liveProcessedLines}
+          liveTotalAnomalies={liveTotalAnomalies}
+          emptyLabel={t.session.noSessions}
+          loadingLabel={t.session.loading}
+          onSelectSession={onSelectSession}
+          onResumeSession={onResumeSession}
+          onPlaybackSession={onPlaybackSession}
+          onDeleteSession={onDeleteSession}
+        />
       </div>
 
       {selectedSession ? (

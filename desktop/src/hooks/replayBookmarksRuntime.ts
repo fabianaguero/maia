@@ -1,4 +1,4 @@
-import type { SessionBookmark } from "../api/sessions";
+import type { SessionBookmark, UpsertSessionBookmarkInput } from "../api/sessions";
 
 export interface ReplayExplanationSnapshot {
   eventIndex: number | null;
@@ -114,4 +114,32 @@ export function removeReplayBookmark(
   bookmarkId: number,
 ): SessionBookmark[] {
   return sessionBookmarks.filter((bookmark) => bookmark.id !== bookmarkId);
+}
+
+export function buildReplayBookmarkUpsertInput(input: {
+  replaySessionId: string;
+  replayWindowIndex: number;
+  bookmarkLabelDraft: string;
+  bookmarkNoteDraft: string;
+  bookmarkTagDraft: string | null;
+  bookmarkStyleProfileIdDraft: string | null;
+  bookmarkMutationProfileIdDraft: string | null;
+  currentReplayExplanation: ReplayExplanationSnapshot | null;
+  fallbackTrackId: string | null;
+  fallbackTrackTitle: string | null;
+  fallbackTrackSecond: number | null;
+}): UpsertSessionBookmarkInput {
+  return {
+    sessionId: input.replaySessionId,
+    replayWindowIndex: input.replayWindowIndex,
+    eventIndex: input.currentReplayExplanation?.eventIndex ?? null,
+    label: input.bookmarkLabelDraft.trim() || `Window ${input.replayWindowIndex}`,
+    note: input.bookmarkNoteDraft.trim(),
+    bookmarkTag: input.bookmarkTagDraft,
+    suggestedStyleProfileId: input.bookmarkStyleProfileIdDraft,
+    suggestedMutationProfileId: input.bookmarkMutationProfileIdDraft,
+    trackId: input.currentReplayExplanation?.trackId ?? input.fallbackTrackId,
+    trackTitle: input.currentReplayExplanation?.trackTitle ?? input.fallbackTrackTitle,
+    trackSecond: input.currentReplayExplanation?.trackSecond ?? input.fallbackTrackSecond,
+  };
 }

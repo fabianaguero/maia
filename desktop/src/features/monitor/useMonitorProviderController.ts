@@ -13,246 +13,53 @@ import {
   updatePersistedSessionStatus,
   insertSessionEvent,
 } from "../../api/sessions";
-import { POLL_INTERVAL_MS } from "./monitorSessionRuntime";
 import { createGuideTrackDecodeCache } from "./monitorGuideTrackDecodeRuntime";
 import { useMonitorProviderContextValue } from "./useMonitorProviderContextValue";
-import { useMonitorProviderGuideTrack } from "./useMonitorProviderGuideTrack";
-import { useMonitorProviderPlaybackControls } from "./useMonitorProviderPlaybackControls";
-import { useMonitorProviderRuntimeOrchestration } from "./useMonitorProviderRuntimeOrchestration";
-import { useMonitorProviderSessionActions } from "./useMonitorProviderSessionActions";
+import { buildMonitorProviderControllerBootstrap } from "./monitorProviderControllerDependenciesRuntime";
+import { buildMonitorProviderControllerContextInput } from "./monitorProviderControllerContextRuntime";
+import { useMonitorProviderControllerActions } from "./useMonitorProviderControllerActions";
 import { useMonitorProviderState } from "./useMonitorProviderState";
 
 const log = getLogger("MonitorCtx");
-const decodedAudioCache = createGuideTrackDecodeCache();
 
 export function useMonitorProviderController() {
-  const initialTemplate = resolveSourceTemplate(DEFAULT_SOURCE_TEMPLATE_ID);
-  const {
-    session,
-    setSession,
-    isPlayback,
-    setIsPlayback,
-    metrics,
-    setMetrics,
-    guideTrackReady,
-    setGuideTrackReady,
-    guideTrackPath,
-    setGuideTrackPathState,
-    playbackProgress,
-    setPlaybackProgress,
-    isPlaybackPaused,
-    setIsPlaybackPaused,
-    playbackEventIndex,
-    setPlaybackEventIndex,
-    playbackEventCount,
-    setPlaybackEventCount,
-    guideTrackDurationSec,
-    setGuideTrackDurationSec,
-    audioContext,
-    setAudioContext,
-    activeTemplate,
-    setActiveTemplateState,
-    audioContextRef,
-    pollTimerRef,
-    sessionRef,
-    listenersRef,
-    activeRef,
-    guideTrackRef,
-    guideTrackCursorRef,
-    guideTrackFinishedRef,
-    directCursorRef,
-    replayEventsRef,
-    replayMetricsRef,
-    replayIndexRef,
-    replayHydratingRef,
-    replayHydrationTokenRef,
-    playbackPausedRef,
-    emptyWindowsRef,
-    wsRef,
-    wsLineBufferRef,
-    httpUrlRef,
-    pollIndexRef,
-    isPlaybackRef,
-    guideTrackPathRef,
-    guideTrackQueueRef,
-    guideTrackQueueIndexRef,
-    guideTrackLoadPromiseRef,
-    currentSegmentRef,
-    activeTemplateRef,
-  } = useMonitorProviderState({
+  const { initialTemplate, decodedAudioCache, fetchText, persistence } =
+    buildMonitorProviderControllerBootstrap({
+      defaultSourceTemplateId: DEFAULT_SOURCE_TEMPLATE_ID,
+      resolveSourceTemplate,
+      createGuideTrackDecodeCache,
+      fetchFn: ((...args) => globalThis.fetch(...args)) as typeof fetch,
+      insertSessionEvent,
+      updatePersistedSessionCursor,
+      updatePersistedSessionStatus,
+    });
+  const state = useMonitorProviderState({
     initialTemplate,
   });
-
-  const {
-    setActiveTemplate,
-    seekGuideTrack,
-    setGuideTrack,
-    setGuideTrackPlaylist,
-    buildReloadPendingGuideTrack,
-  } = useMonitorProviderGuideTrack({
+  const controllerActions = useMonitorProviderControllerActions({
+    state,
+    logger: log,
     resolveSourceTemplate,
     decodedAudioCache,
-    logger: log,
-    audioContextRef,
-    currentSegmentRef,
-    guideTrackPathRef,
-    guideTrackQueueRef,
-    guideTrackQueueIndexRef,
-    guideTrackRef,
-    guideTrackCursorRef,
-    guideTrackFinishedRef,
-    guideTrackLoadPromiseRef,
-    activeTemplateRef,
-    setGuideTrackReady,
-    setGuideTrackPathState,
-    setGuideTrackDurationSec,
-    setActiveTemplateState,
-  });
-
-  const {
-    stopPolling,
-    resetReplayTelemetry,
-    syncReplayTelemetry,
-    dispatchReplayEventAtIndex,
-    replayTick,
-    resumeAudio,
-    ensureProviderAudioContext,
-    buildLiveStartInput,
-  } = useMonitorProviderRuntimeOrchestration({
-    logger: log,
-    sessionRef,
-    setSession,
-    setIsPlayback,
-    setMetrics,
-    setAudioContext,
-    setPlaybackProgress,
-    setIsPlaybackPaused,
-    setPlaybackEventIndex,
-    setPlaybackEventCount,
-    updatePersistedSessionCursor,
-    insertSessionEvent: async (payload) => {
-      await insertSessionEvent(payload);
+    transport: {
+      pollStreamSession,
+      pollLogStream,
+      ingestStreamChunk,
+      fetchText,
     },
-    pollStreamSession,
-    pollLogStream,
-    ingestStreamChunk,
-    fetchText: async (url) => {
-      const response = await fetch(url);
-      return response.text();
-    },
-    updatePersistedSessionStatus,
-    audioContextRef,
-    activeRef,
-    pollTimerRef,
-    wsRef,
-    wsLineBufferRef,
-    httpUrlRef,
-    directCursorRef,
-    emptyWindowsRef,
-    pollIndexRef,
-    isPlaybackRef,
-    listenersRef,
-    replayEventsRef,
-    replayMetricsRef,
-    replayIndexRef,
-    replayHydratingRef,
-    replayHydrationTokenRef,
-    playbackPausedRef,
-    guideTrackRef,
-    guideTrackCursorRef,
-    guideTrackFinishedRef,
-    activeTemplateRef,
-    setActiveTemplateState,
-    buildReloadPendingGuideTrack,
-  });
-
-  const { startSession, attachSession, playbackSession, stopSession } =
-    useMonitorProviderSessionActions({
-      logger: log,
-      sessionRef,
-      setSession,
-      setIsPlayback,
-      setIsPlaybackPaused,
-      setMetrics,
-      isPlayback,
-      activeRef,
-      isPlaybackRef,
-      directCursorRef,
-      emptyWindowsRef,
-      currentSegmentRef,
-      audioContextRef,
-      replayEventsRef,
-      replayMetricsRef,
-      replayIndexRef,
-      replayHydratingRef,
-      replayHydrationTokenRef,
-      playbackPausedRef,
-      pollTimerRef,
-      guideTrackPathRef,
-      guideTrackQueueRef,
-      guideTrackRef,
-      guideTrackLoadPromiseRef,
-      stopPolling,
-      buildLiveStartInput,
-      ensureProviderAudioContext,
-      replayTick,
-      syncReplayTelemetry,
-      resetReplayTelemetry,
+    sessionApi: {
       startStreamSession,
       stopStreamSession,
       listSessionEvents,
-      updatePersistedSessionStatus,
-      pollLogStream,
-    });
-
-  const {
-    seekPlaybackProgress,
-    seekPlaybackWindow,
-    pausePlayback,
-    resumePlayback,
-    stepPlaybackWindow,
-  } = useMonitorProviderPlaybackControls({
-    isPlayback,
-    replayEventsRef,
-    replayIndexRef,
-    pollTimerRef,
-    playbackPausedRef,
-    activeRef,
-    guideTrackFinishedRef,
-    dispatchReplayEventAtIndex,
-    replayTick,
-    setIsPlaybackPaused,
-    intervalMs: POLL_INTERVAL_MS,
+    },
+    persistence,
   });
 
-  return useMonitorProviderContextValue({
-    session,
-    metrics,
-    isPlayback,
-    guideTrackReady,
-    guideTrackPath,
-    playbackProgress,
-    isPlaybackPaused,
-    playbackEventIndex,
-    playbackEventCount,
-    guideTrackDurationSec,
-    setGuideTrack,
-    setGuideTrackPlaylist,
-    seekGuideTrack,
-    startSession,
-    attachSession,
-    stopSession,
-    playbackSession,
-    seekPlaybackProgress,
-    seekPlaybackWindow,
-    pausePlayback,
-    resumePlayback,
-    stepPlaybackWindow,
-    audioContext,
-    resumeAudio,
-    activeTemplate,
-    setActiveTemplate,
-    listenersRef,
-    logger: log,
-  });
+  return useMonitorProviderContextValue(
+    buildMonitorProviderControllerContextInput({
+      state,
+      logger: log,
+      ...controllerActions,
+    }),
+  );
 }

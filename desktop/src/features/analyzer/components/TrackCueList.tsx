@@ -15,13 +15,14 @@ interface TrackCueListProps {
   colorText: string;
   removeText: (name: string) => string;
   slotTemplate: string;
+  pendingLabel: string;
   onPatchCue: (
     kind: "hot" | "memory",
     cueId: string,
     patch: Partial<Pick<TrackCuePoint, "label" | "color">>,
   ) => void;
   onRemoveCue: (kind: "hot" | "memory", cueId: string) => void;
-  renderCueLabel: (cue: TrackCuePoint, slotTemplate: string) => string;
+  renderCueLabel: (cue: TrackCuePoint, slotTemplate: string, pendingLabel?: string) => string;
   colorOptions: TrackColorOption[];
 }
 
@@ -35,6 +36,7 @@ export function TrackCueList({
   colorText,
   removeText,
   slotTemplate,
+  pendingLabel,
   onPatchCue,
   onRemoveCue,
   renderCueLabel,
@@ -48,7 +50,7 @@ export function TrackCueList({
           {cues.map((cue) => (
             <li key={cue.id}>
               <div className="pill-strip">
-                <span>{renderCueLabel(cue, slotTemplate)}</span>
+                <span>{renderCueLabel(cue, slotTemplate, pendingLabel)}</span>
                 <span>
                   <label>
                     {labelText}

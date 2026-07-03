@@ -1,27 +1,21 @@
-import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useRef, useState } from "react";
 
-import type { AppTranslations } from "../../i18n/en";
-import type { LogSourceConnection, StreamSessionPollResult } from "../../types/monitor";
+import type { LogSourceConnection } from "../../types/monitor";
 import {
   buildConnectionTailFailureState,
-  buildConnectionTailPollViewState,
   buildConnectionTailStartPlan,
   buildConnectionTailStopState,
 } from "./connectionsRuntime";
-
-interface UseConnectionTailControllerInput {
-  t: AppTranslations;
-  setError: Dispatch<SetStateAction<string | null>>;
-  pollStreamSession: (sessionId: string) => Promise<StreamSessionPollResult>;
-  startLogSourceConnection: (payload: {
-    connectionId: string;
-    sessionId: string;
-    startFromBeginning: boolean;
-  }) => Promise<unknown>;
-  stopStreamSession: (sessionId: string) => Promise<unknown>;
-  pollIntervalMs?: number;
-}
+import {
+  buildConnectionTailControllerState,
+  buildConnectionTailFailureApplyState,
+  buildConnectionTailPollApplyState,
+} from "./connectionsTailControllerStateRuntime";
+import {
+  clearConnectionTailPollTimer,
+  scheduleConnectionTailPollTimer,
+} from "./connectionsTailControllerTimerRuntime";
+import type { UseConnectionTailControllerInput } from "./connectionsTailControllerTypes";
 
 export function useConnectionTailController(input: UseConnectionTailControllerInput) {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -36,38 +30,36 @@ export function useConnectionTailController(input: UseConnectionTailControllerIn
   }, [tailPreview]);
 
   function clearPollTimer() {
-    if (pollTimerRef.current !== null) {
-      window.clearTimeout(pollTimerRef.current);
-      pollTimerRef.current = null;
-    }
+    pollTimerRef.current = clearConnectionTailPollTimer(pollTimerRef.current);
   }
 
   function applyTailFailure(error: unknown) {
-    const nextState = buildConnectionTailFailureState(
-      error instanceof Error ? error.message : String(error),
-    );
+    const nextState = buildConnectionTailFailureApplyState(error);
     input.setError(nextState.error);
     setActiveSessionId(nextState.activeSessionId);
     setActiveConnectionId(nextState.activeConnectionId);
   }
 
   function scheduleConnectionPoll(sessionId: string) {
-    clearPollTimer();
-    pollTimerRef.current = window.setTimeout(async () => {
-      try {
-        const result = await input.pollStreamSession(sessionId);
-        const nextState = buildConnectionTailPollViewState({
-          t: input.t,
-          currentPreview: tailPreviewRef.current,
-          result,
-        });
-        setTailPreview(nextState.tailPreview);
-        setTailStatus(nextState.tailStatus);
-        scheduleConnectionPoll(sessionId);
-      } catch (error) {
-        applyTailFailure(error);
-      }
-    }, input.pollIntervalMs ?? 1500);
+    pollTimerRef.current = scheduleConnectionTailPollTimer({
+      currentTimerId: pollTimerRef.current,
+      delayMs: input.pollIntervalMs ?? 1500,
+      run: async () => {
+        try {
+          const result = await input.pollStreamSession(sessionId);
+          const nextState = buildConnectionTailPollApplyState({
+            t: input.t,
+            currentPreview: tailPreviewRef.current,
+            result,
+          });
+          setTailPreview(nextState.tailPreview);
+          setTailStatus(nextState.tailStatus);
+          scheduleConnectionPoll(sessionId);
+        } catch (error) {
+          applyTailFailure(error);
+        }
+      },
+    });
   }
 
   async function handleStartTail(connection: LogSourceConnection) {
@@ -120,12 +112,12 @@ export function useConnectionTailController(input: UseConnectionTailControllerIn
     [],
   );
 
-  return {
+  return buildConnectionTailControllerState({
     activeSessionId,
     activeConnectionId,
     tailPreview,
     tailStatus,
     handleStartTail,
     handleStopTail,
-  };
+  });
 }

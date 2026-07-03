@@ -148,4 +148,99 @@ describe("monitorLiveStreamStateRuntime", () => {
     expect(markers).toHaveLength(3);
     expect(simulated.anomalyId).toBe("sim-anomaly-1234");
   });
+
+  it("falls back cleanly when bpm, progress or selected anomaly are not derivable", () => {
+    const sanitized = sanitizeLiveLogStreamUpdate({
+      ...baseUpdate,
+      hasData: false,
+      parsedLines: undefined as unknown as string[],
+      sonificationCues: undefined as unknown as typeof baseUpdate.sonificationCues,
+      anomalyMarkers: undefined as unknown as typeof baseUpdate.anomalyMarkers,
+      suggestedBpm: Number.NaN,
+      lineCount: 0,
+    });
+    const waveContext = resolveMonitorWaveContext({
+      activeAudio: { duration: 0, currentTime: 50 } as Pick<
+        HTMLAudioElement,
+        "duration" | "currentTime"
+      >,
+      fallbackDurationSeconds: null,
+      fallbackProgress: 1.4,
+      liveSuggestedBpm: null,
+      trackBpm: 124,
+    });
+    const retainedSelection = resolveInitialSelectedAnomalyId("anom-existing", anomalyLines);
+    const inferredSelection = resolveInitialSelectedAnomalyId(null, [
+      {
+        id: "line-ok",
+        timestamp: "2026-06-24 18:11:40",
+        level: "info",
+        message: "healthy",
+        isAnomaly: false,
+        anomalyId: null,
+      },
+    ]);
+
+    expect(sanitized.hasRealLines).toBe(false);
+    expect(sanitized.hasRealSignals).toBe(false);
+    expect(sanitized.hasMeaningfulUpdate).toBe(false);
+    expect(sanitized.suggestedBpm).toBeNull();
+    expect(waveContext.currentProgress).toBe(1);
+    expect(waveContext.bpm).toBe(124);
+    expect(retainedSelection).toBe("anom-existing");
+    expect(inferredSelection).toBeNull();
+  });
+
+  it("filters retained markers and respects batch and marker caps", () => {
+    const markers = buildWaveformAnomalyMarkers({
+      previous: [
+        {
+          id: "drop-low",
+          lineId: "drop-low",
+          timestamp: "00:01",
+          message: "drop",
+          severity: 0.3,
+          progress: -0.2,
+        },
+        {
+          id: "keep",
+          lineId: "keep",
+          timestamp: "00:02",
+          message: "keep",
+          severity: 0.4,
+          progress: 0.4,
+        },
+        {
+          id: "drop-high",
+          lineId: "drop-high",
+          timestamp: "00:03",
+          message: "drop",
+          severity: 0.4,
+          progress: 1.2,
+        },
+      ],
+      parsedLines: [
+        ...anomalyLines,
+        {
+          id: "line-3",
+          timestamp: "2026-06-24 18:11:39",
+          level: "warn",
+          message: "third anomaly",
+          isAnomaly: true,
+          anomalyId: "anom-3",
+        },
+      ],
+      currentTrack: null,
+      durationSeconds: undefined,
+      bpm: null,
+      currentProgress: 0.6,
+      beatSnapSubdivision: DEFAULT_MONITOR_DECK_CONTROLS.beatSnapSubdivision,
+      maxMarkers: 2,
+      maxBatchMarkers: 1,
+    });
+
+    expect(markers).toHaveLength(2);
+    expect(markers[0]?.id).toBe("keep");
+    expect(markers[1]?.id).toBe("anom-1");
+  });
 });

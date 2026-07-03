@@ -1,14 +1,8 @@
 import type { LibraryTrack } from "../../../types/library";
 import { useT } from "../../../i18n/I18nContext";
-import {
-  formatTrackTime,
-  getTrackCompareAuditionPoints,
-  getTrackOriginalWaveformCues,
-  getTrackWaveformCues,
-  getTrackWaveformRegions,
-  type TrackCompareAuditionPoint,
-} from "../../../utils/track";
+import { type TrackCompareAuditionPoint } from "../../../utils/track";
 import { WaveformPlaceholder } from "./WaveformPlaceholder";
+import { buildTrackOriginalComparePanelViewModel } from "./trackOriginalComparePanelRuntime";
 
 interface TrackOriginalComparePanelProps {
   track: LibraryTrack;
@@ -16,11 +10,6 @@ interface TrackOriginalComparePanelProps {
   onSeek?: (second: number) => void;
   onAudition?: (point: TrackCompareAuditionPoint) => void;
   activeAuditionId?: TrackCompareAuditionPoint["id"] | null;
-}
-
-function countAlteredCueMarkers(track: LibraryTrack): number {
-  const mainCueCount = track.performance.mainCueSecond !== null ? 1 : 0;
-  return mainCueCount + track.performance.hotCues.length + track.performance.memoryCues.length;
 }
 
 export function TrackOriginalComparePanel({
@@ -31,12 +20,11 @@ export function TrackOriginalComparePanel({
   activeAuditionId = null,
 }: TrackOriginalComparePanelProps) {
   const t = useT();
-  const originalCues = getTrackOriginalWaveformCues(track);
-  const alteredCues = getTrackWaveformCues(track);
-  const alteredRegions = getTrackWaveformRegions(track);
-  const auditionPoints = getTrackCompareAuditionPoints(track);
-  const alteredCueCount = countAlteredCueMarkers(track);
-  const cueDelta = alteredCueCount - originalCues.length;
+  const viewModel = buildTrackOriginalComparePanelViewModel({
+    track,
+    activeAuditionId,
+    t,
+  });
 
   const handleAudition = (point: TrackCompareAuditionPoint) => {
     if (onAudition) {
@@ -57,43 +45,36 @@ export function TrackOriginalComparePanel({
       </div>
 
       <div className="track-compare-summary">
-        <div className="waveform-meta-pill">
-          <span>{t.inspect.originalCues}</span>
-          <strong>{originalCues.length}</strong>
-        </div>
-        <div className="waveform-meta-pill">
-          <span>{t.inspect.alteredCues}</span>
-          <strong>{alteredCueCount}</strong>
-        </div>
-        <div className="waveform-meta-pill">
-          <span>{t.inspect.savedLoops}</span>
-          <strong>{alteredRegions.length}</strong>
-        </div>
-        <div className="waveform-meta-pill">
-          <span>{t.inspect.delta}</span>
-          <strong>{cueDelta >= 0 ? `+${cueDelta}` : cueDelta}</strong>
-        </div>
-        <div className="waveform-meta-pill">
-          <span>{t.inspect.mainCue}</span>
-          <strong>{formatTrackTime(track.performance.mainCueSecond)}</strong>
-        </div>
+        {viewModel.metrics.map((metric) => (
+          <div key={metric.key} className="waveform-meta-pill">
+            <span>{metric.label}</span>
+            <strong>{metric.value}</strong>
+          </div>
+        ))}
       </div>
 
       <div className="track-compare-auditions">
-        {auditionPoints.map((point) => (
+        {viewModel.auditions.map((point) => (
           <button
             key={point.id}
             type="button"
             className={
-              activeAuditionId === point.id
+              point.active
                 ? `track-compare-audition active track-compare-audition--${point.id}`
                 : `track-compare-audition track-compare-audition--${point.id}`
             }
-            onClick={() => handleAudition(point)}
-            aria-label={t.inspect.audition.replace("{label}", point.label)}
+            onClick={() =>
+              handleAudition({
+                id: point.id,
+                label: point.label,
+                detail: point.detail,
+                second: point.second,
+              })
+            }
+            aria-label={point.ariaLabel}
           >
             <span>{point.label}</span>
-            <strong>{formatTrackTime(point.second)}</strong>
+            <strong>{point.formattedTime}</strong>
             <small>{point.detail}</small>
           </button>
         ))}
@@ -109,7 +90,7 @@ export function TrackOriginalComparePanel({
             bins={track.analysis.waveformBins}
             beatGrid={track.analysis.beatGrid}
             durationSeconds={track.analysis.durationSeconds}
-            hotCues={originalCues}
+            hotCues={viewModel.originalCues}
             currentTime={currentTime}
             onSeek={onSeek}
           />
@@ -124,8 +105,8 @@ export function TrackOriginalComparePanel({
             bins={track.analysis.waveformBins}
             beatGrid={track.analysis.beatGrid}
             durationSeconds={track.analysis.durationSeconds}
-            hotCues={alteredCues}
-            regions={alteredRegions}
+            hotCues={viewModel.alteredCues}
+            regions={viewModel.alteredRegions}
             currentTime={currentTime}
             onSeek={onSeek}
           />

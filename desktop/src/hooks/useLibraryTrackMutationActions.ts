@@ -1,5 +1,3 @@
-import { startTransition } from "react";
-
 import { runAnalyzerRequest } from "../api/analyzer";
 import {
   checkTrackExists,
@@ -22,20 +20,16 @@ import type {
   UpdateTrackPerformanceInput,
   UpdateTrackSourceInput,
 } from "../types/library";
+import { resolveReanalyzeTrackInput, shouldAnalyzeImportedTrack } from "./libraryRuntime";
 import {
-  appendImportedTrack,
-  applyAnalyzedTrackMetadata,
-  clearDeletedTrackSelection,
-  removeDeletedTrack,
-  removeTrackFromPlaylists,
-  replaceRelinkedTracks,
-  replaceTrack,
-  resolvePreferredRelinkSelection,
-  resolveReanalyzeTrackInput,
-  shouldAnalyzeImportedTrack,
-  sortTracksByImportedAt,
-  toLibraryErrorMessage,
-} from "./libraryRuntime";
+  commitAnalyzedTrackMetadata,
+  commitDeletedTrack,
+  commitImportedTrack,
+  commitRelinkedTracks,
+  commitReplacedTrack,
+  commitSeededTracks,
+  runLibraryTrackMutation,
+} from "./libraryTrackMutationActionRuntime";
 import type { UseLibraryMutationActionsInput } from "./libraryMutationActionsTypes";
 
 type TrackMutationActionsInput = Pick<
@@ -51,6 +45,14 @@ export function useLibraryTrackMutationActions({
   setMutating,
   setError,
 }: TrackMutationActionsInput) {
+  const mutationState = {
+    setTracks,
+    setPlaylists,
+    setSelectedTrackId,
+    setMutating,
+    setError,
+  };
+
   async function analyzeTrackBackground(track: LibraryTrack): Promise<void> {
     try {
       const request = createAnalyzeTrackRequest(track.file.sourcePath);
@@ -58,9 +60,7 @@ export function useLibraryTrackMutationActions({
 
       if (response.status === "ok" && "musicalAsset" in response.payload) {
         const analyzed = response.payload.musicalAsset;
-        startTransition(() => {
-          setTracks((current) => applyAnalyzedTrackMetadata(current, track.id, analyzed));
-        });
+        commitAnalyzedTrackMetadata(mutationState, track.id, analyzed);
       }
     } catch (error) {
       console.debug("Background analysis failed:", error);
@@ -68,223 +68,147 @@ export function useLibraryTrackMutationActions({
   }
 
   async function importLibraryTrack(input: ImportTrackInput): Promise<LibraryTrack | null> {
-    setMutating(true);
-
-    try {
-      const nextTrack = await importTrack(input);
-
-      startTransition(() => {
-        setTracks((current) => appendImportedTrack(current, nextTrack));
-        setSelectedTrackId(nextTrack.id);
-        setError(null);
-      });
-
-      if (shouldAnalyzeImportedTrack(nextTrack)) {
-        analyzeTrackBackground(nextTrack).catch((error) => {
-          console.debug("Background analysis error (non-blocking):", error);
-        });
-      }
-
-      return nextTrack;
-    } catch (nextError) {
-      startTransition(() => {
-        setError(toLibraryErrorMessage(nextError));
-      });
-      return null;
-    } finally {
-      setMutating(false);
-    }
+    return runLibraryTrackMutation({
+      state: mutationState,
+      task: async () => {
+        const nextTrack = await importTrack(input);
+        if (shouldAnalyzeImportedTrack(nextTrack)) {
+          void analyzeTrackBackground(nextTrack);
+        }
+        return nextTrack;
+      },
+      onSuccess: (nextTrack) => {
+        commitImportedTrack(mutationState, nextTrack);
+      },
+      onErrorValue: null,
+    });
   }
 
   async function reanalyzeTrack(trackId: string): Promise<LibraryTrack | null> {
-    setMutating(true);
+    return runLibraryTrackMutation({
+      state: mutationState,
+      task: async () => {
+        const track = tracks.find((entry) => entry.id === trackId);
+        if (!track) {
+          throw new Error("Track not found");
+        }
 
-    try {
-      const track = tracks.find((entry) => entry.id === trackId);
-      if (!track) {
-        throw new Error("Track not found");
-      }
+        const fileExists = await checkTrackExists(track.file.sourcePath);
+        if (!fileExists) {
+          throw new Error(`Track file not found: ${track.file.sourcePath}`);
+        }
 
-      const fileExists = await checkTrackExists(track.file.sourcePath);
-      if (!fileExists) {
-        throw new Error(`Track file not found: ${track.file.sourcePath}`);
-      }
-
-      const nextTrack = await importTrack(resolveReanalyzeTrackInput(track));
-
-      startTransition(() => {
-        setTracks((current) => replaceTrack(current, trackId, nextTrack));
-        setError(null);
-      });
-
-      return nextTrack;
-    } catch (nextError) {
-      startTransition(() => {
-        setError(toLibraryErrorMessage(nextError));
-      });
-      return null;
-    } finally {
-      setMutating(false);
-    }
+        return importTrack(resolveReanalyzeTrackInput(track));
+      },
+      onSuccess: (nextTrack) => {
+        commitReplacedTrack(mutationState, trackId, nextTrack);
+      },
+      onErrorValue: null,
+    });
   }
 
   async function seedLibrary(): Promise<void> {
-    setMutating(true);
-
-    try {
-      const nextTracks = await seedDemoTracks();
-
-      startTransition(() => {
-        const sorted = sortTracksByImportedAt(nextTracks);
-        setTracks(sorted);
-        setSelectedTrackId(sorted[0]?.id ?? null);
-        setError(null);
-      });
-    } catch (nextError) {
-      startTransition(() => {
-        setError(toLibraryErrorMessage(nextError));
-      });
-    } finally {
-      setMutating(false);
-    }
+    await runLibraryTrackMutation({
+      state: mutationState,
+      task: () => seedDemoTracks(),
+      onSuccess: (nextTracks) => {
+        commitSeededTracks(mutationState, nextTracks);
+      },
+      onErrorValue: undefined,
+    });
   }
 
   async function deleteLibraryTrack(trackId: string): Promise<boolean> {
-    try {
-      await deleteTrack(trackId);
-
-      startTransition(() => {
-        setTracks((current) => removeDeletedTrack(current, trackId));
-        setPlaylists((current) => removeTrackFromPlaylists(current, trackId));
-        setSelectedTrackId((current) => clearDeletedTrackSelection(current, trackId));
-        setError(null);
-      });
-
-      return true;
-    } catch (nextError) {
-      startTransition(() => {
-        setError(toLibraryErrorMessage(nextError));
-      });
-      return false;
-    }
+    return runLibraryTrackMutation({
+      state: mutationState,
+      task: async () => {
+        await deleteTrack(trackId);
+        return true;
+      },
+      onSuccess: () => {
+        commitDeletedTrack(mutationState, trackId);
+      },
+      onErrorValue: false,
+      trackMutating: false,
+    });
   }
 
   async function updateTrackPerformance(
     trackId: string,
     input: UpdateTrackPerformanceInput,
   ): Promise<LibraryTrack | null> {
-    setMutating(true);
-
-    try {
-      const nextTrack = await persistTrackPerformance(trackId, input);
-
-      startTransition(() => {
-        setTracks((current) => replaceTrack(current, trackId, nextTrack));
-        setError(null);
-      });
-
-      return nextTrack;
-    } catch (nextError) {
-      startTransition(() => {
-        setError(toLibraryErrorMessage(nextError));
-      });
-      return null;
-    } finally {
-      setMutating(false);
-    }
+    return runLibraryTrackMutation({
+      state: mutationState,
+      task: () => persistTrackPerformance(trackId, input),
+      onSuccess: (nextTrack) => {
+        commitReplacedTrack(mutationState, trackId, nextTrack);
+      },
+      onErrorValue: null,
+    });
   }
 
   async function updateTrackAnalysis(
     trackId: string,
     input: UpdateTrackAnalysisInput,
   ): Promise<LibraryTrack | null> {
-    setMutating(true);
-
-    try {
-      const nextTrack = await persistTrackAnalysis(trackId, input);
-
-      startTransition(() => {
-        setTracks((current) => replaceTrack(current, trackId, nextTrack));
-        setError(null);
-      });
-
-      return nextTrack;
-    } catch (nextError) {
-      startTransition(() => {
-        setError(toLibraryErrorMessage(nextError));
-      });
-      return null;
-    } finally {
-      setMutating(false);
-    }
+    return runLibraryTrackMutation({
+      state: mutationState,
+      task: () => persistTrackAnalysis(trackId, input),
+      onSuccess: (nextTrack) => {
+        commitReplacedTrack(mutationState, trackId, nextTrack);
+      },
+      onErrorValue: null,
+    });
   }
 
   async function relinkTrack(trackId: string): Promise<LibraryTrack | null> {
-    setMutating(true);
+    return runLibraryTrackMutation({
+      state: mutationState,
+      task: async () => {
+        const track = tracks.find((entry) => entry.id === trackId) ?? null;
+        if (!track) {
+          throw new Error("Track not found");
+        }
 
-    try {
-      const track = tracks.find((entry) => entry.id === trackId) ?? null;
-      if (!track) {
-        throw new Error("Track not found");
-      }
+        const pickedPath = await pickTrackSourcePath(track.file.sourcePath);
+        if (!pickedPath) {
+          return null;
+        }
 
-      const pickedPath = await pickTrackSourcePath(track.file.sourcePath);
-      if (!pickedPath) {
-        return null;
-      }
-
-      const input: UpdateTrackSourceInput = { sourcePath: pickedPath };
-      const nextTrack = await persistTrackSource(trackId, input);
-
-      startTransition(() => {
-        setTracks((current) => replaceTrack(current, trackId, nextTrack));
-        setError(null);
-      });
-
-      return nextTrack;
-    } catch (nextError) {
-      startTransition(() => {
-        setError(toLibraryErrorMessage(nextError));
-      });
-      return null;
-    } finally {
-      setMutating(false);
-    }
+        const input: UpdateTrackSourceInput = { sourcePath: pickedPath };
+        return persistTrackSource(trackId, input);
+      },
+      onSuccess: (nextTrack) => {
+        if (nextTrack) {
+          commitReplacedTrack(mutationState, trackId, nextTrack);
+        }
+      },
+      onErrorValue: null,
+    });
   }
 
   async function relinkMissingTracksFromDirectory(): Promise<RelinkMissingTracksResult | null> {
-    setMutating(true);
-
-    try {
-      const firstMissingTrack =
-        tracks.find((track) => track.file.availabilityState === "missing") ?? null;
-      const pickedDirectory = await pickTrackSourceDirectory(
-        firstMissingTrack?.file.sourcePath ?? undefined,
-      );
-      if (!pickedDirectory) {
-        return null;
-      }
-
-      const result = await persistMissingTrackRelink(pickedDirectory);
-
-      startTransition(() => {
-        setTracks((current) => replaceRelinkedTracks(current, result));
-        const preferredSelection = resolvePreferredRelinkSelection(result);
-        if (preferredSelection) {
-          setSelectedTrackId(preferredSelection);
+    return runLibraryTrackMutation({
+      state: mutationState,
+      task: async () => {
+        const firstMissingTrack =
+          tracks.find((track) => track.file.availabilityState === "missing") ?? null;
+        const pickedDirectory = await pickTrackSourceDirectory(
+          firstMissingTrack?.file.sourcePath ?? undefined,
+        );
+        if (!pickedDirectory) {
+          return null;
         }
-        setError(null);
-      });
 
-      return result;
-    } catch (nextError) {
-      startTransition(() => {
-        setError(toLibraryErrorMessage(nextError));
-      });
-      return null;
-    } finally {
-      setMutating(false);
-    }
+        return persistMissingTrackRelink(pickedDirectory);
+      },
+      onSuccess: (result) => {
+        if (result) {
+          commitRelinkedTracks(mutationState, result);
+        }
+      },
+      onErrorValue: null,
+    });
   }
 
   return {

@@ -1,17 +1,18 @@
-import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
-
-import { useT } from "../../../i18n/I18nContext";
 import type {
   BaseAssetRecord,
   BaseTrackPlaylist,
-  CompositionReferenceType,
   ImportCompositionInput,
   LibraryTrack,
   RepositoryAnalysis,
 } from "../../../types/library";
 import { getPlaylistMedianBpm, summarizePlaylistTracks } from "../../../utils/playlist";
 import { getTrackTitle } from "../../../utils/track";
+import {
+  buildImportCompositionInput,
+  deriveDefaultBaseAssetId,
+  resolveImportCompositionSubmitDisabled,
+} from "./importCompositionFormRuntime";
+import { useImportCompositionFormController } from "./useImportCompositionFormController";
 
 interface ImportCompositionFormProps {
   busy: boolean;
@@ -22,12 +23,6 @@ interface ImportCompositionFormProps {
   onImportComposition: (input: ImportCompositionInput) => Promise<boolean>;
 }
 
-type CompositionBaseMode = "track" | "playlist";
-
-function deriveDefaultBaseAssetId(baseAssets: BaseAssetRecord[]): string {
-  return baseAssets.find((entry) => entry.reusable)?.id ?? baseAssets[0]?.id ?? "";
-}
-
 export function ImportCompositionForm({
   busy,
   baseAssets,
@@ -36,108 +31,34 @@ export function ImportCompositionForm({
   repositories,
   onImportComposition,
 }: ImportCompositionFormProps) {
-  const t = useT();
-  const [baseAssetId, setBaseAssetId] = useState(deriveDefaultBaseAssetId(baseAssets));
-  const [baseMode, setBaseMode] = useState<CompositionBaseMode>(
-    tracks.length > 0 ? "track" : "playlist",
-  );
-  const [trackId, setTrackId] = useState<string>(tracks[0]?.id ?? "");
-  const [playlistId, setPlaylistId] = useState<string>(playlists[0]?.id ?? "");
-  const [structureId, setStructureId] = useState<string>("");
-  const [label, setLabel] = useState("");
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!baseAssets.some((entry) => entry.id === baseAssetId)) {
-      setBaseAssetId(deriveDefaultBaseAssetId(baseAssets));
-    }
-  }, [baseAssets, baseAssetId]);
-
-  useEffect(() => {
-    // Keep track ID in sync with available tracks
-    if (!tracks.some((entry) => entry.id === trackId)) {
-      setTrackId(tracks[0]?.id ?? "");
-    }
-  }, [trackId, tracks]);
-
-  useEffect(() => {
-    if (!playlists.some((entry) => entry.id === playlistId)) {
-      setPlaylistId(playlists[0]?.id ?? "");
-    }
-  }, [playlistId, playlists]);
-
-  useEffect(() => {
-    if (baseMode === "track" && tracks.length === 0 && playlists.length > 0) {
-      setBaseMode("playlist");
-    }
-
-    if (baseMode === "playlist" && playlists.length === 0 && tracks.length > 0) {
-      setBaseMode("track");
-    }
-  }, [baseMode, playlists.length, tracks.length]);
-
-  useEffect(() => {
-    // Keep structure ID valid if set
-    if (structureId && !repositories.some((entry) => entry.id === structureId)) {
-      setStructureId("");
-    }
-  }, [structureId, repositories]);
-
-  const selectedBaseAsset = baseAssets.find((entry) => entry.id === baseAssetId) ?? null;
-  const selectedTrack = tracks.find((entry) => entry.id === trackId) ?? null;
-  const selectedPlaylist = playlists.find((entry) => entry.id === playlistId) ?? null;
-  const selectedStructure = structureId
-    ? (repositories.find((entry) => entry.id === structureId) ?? null)
-    : null;
+  const {
+    t,
+    baseAssetId,
+    setBaseAssetId,
+    baseMode,
+    setBaseMode,
+    trackId,
+    setTrackId,
+    playlistId,
+    setPlaylistId,
+    structureId,
+    setStructureId,
+    label,
+    setLabel,
+    error,
+    selectedBaseAsset,
+    selectedTrack,
+    selectedPlaylist,
+    selectedStructure,
+    handleSubmit,
+  } = useImportCompositionFormController({
+    baseAssets,
+    tracks,
+    playlists,
+    repositories,
+    onImportComposition,
+  });
   const selectedPlaylistBpm = getPlaylistMedianBpm(selectedPlaylist, tracks);
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!baseAssetId.trim()) {
-      setError(t.compose.forms.baseAssetRequiredError);
-      return;
-    }
-
-    if (baseMode === "track" && !trackId.trim()) {
-      setError(t.compose.forms.trackRequiredError);
-      return;
-    }
-
-    if (baseMode === "playlist" && !playlistId.trim()) {
-      setError(t.compose.forms.playlistRequiredError);
-      return;
-    }
-
-    setError(null);
-
-    let actualRefType: CompositionReferenceType;
-    let actualRefAssetId: string | undefined;
-    if (structureId) {
-      actualRefType = "repo";
-      actualRefAssetId = structureId;
-    } else if (baseMode === "playlist") {
-      actualRefType = "playlist";
-      actualRefAssetId = playlistId;
-    } else {
-      actualRefType = "track";
-      actualRefAssetId = trackId;
-    }
-
-    const imported = await onImportComposition({
-      baseAssetId,
-      trackId: baseMode === "track" ? trackId : undefined,
-      playlistId: baseMode === "playlist" ? playlistId : undefined,
-      structureId: structureId || undefined,
-      referenceType: actualRefType,
-      referenceAssetId: actualRefAssetId,
-      label: label.trim() || undefined,
-    });
-
-    if (imported) {
-      setLabel("");
-    }
-  }
 
   return (
     <form className="import-form" onSubmit={(event) => void handleSubmit(event)}>
@@ -298,9 +219,13 @@ export function ImportCompositionForm({
         <button
           type="submit"
           className="action"
-          disabled={
-            busy || baseAssets.length === 0 || (baseMode === "track" ? !trackId : !playlistId)
-          }
+          disabled={resolveImportCompositionSubmitDisabled({
+            busy,
+            baseAssets,
+            baseMode,
+            trackId,
+            playlistId,
+          })}
         >
           {busy ? (
             <>

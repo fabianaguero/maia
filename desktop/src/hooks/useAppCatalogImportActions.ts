@@ -1,7 +1,5 @@
 import { useCallback } from "react";
 
-import { discoverRepositoryLogs } from "../api/repositories";
-import { buildDiscoveredLogImportInputs } from "../appRuntime";
 import type {
   ImportBaseAssetInput,
   ImportCompositionInput,
@@ -9,9 +7,15 @@ import type {
   ImportTrackInput,
 } from "../types/library";
 import {
-  buildRepositoryImportSuccessMessage,
-  scheduleImportedHighlightReset,
-} from "./appCatalogActionsRuntime";
+  applyCatalogImportSuccess,
+  buildBaseAssetImportNotice,
+  buildCatalogImportNavigation,
+  buildCompositionImportNotice,
+  buildRepositoryImportNotice,
+  buildTrackImportNotice,
+  resolveRepositoryImportRescue,
+  runCatalogImportAction,
+} from "./appCatalogImportActionsRuntime";
 import type { UseAppCatalogActionsInput } from "./appCatalogActionsTypes";
 
 type CatalogImportActionsInput = Pick<
@@ -39,115 +43,110 @@ export function useAppCatalogImportActions({
   compositions,
 }: CatalogImportActionsInput) {
   const handleImportTrack = useCallback(
-    async (input: ImportTrackInput) => {
-      try {
-        const nextTrack = await library.importLibraryTrack(input);
-        if (nextTrack) {
-          notify(
-            "success",
-            t.appShell.trackImportedTitle,
-            t.appShell.trackImportedBody.replace("{title}", nextTrack.tags.title),
-          );
-          scheduleImportedHighlightReset({
+    async (input: ImportTrackInput) =>
+      runCatalogImportAction({
+        task: () => library.importLibraryTrack(input),
+        onSuccess: (nextTrack) => {
+          applyCatalogImportSuccess({
             id: nextTrack.id,
+            notice: buildTrackImportNotice(t, nextTrack.tags.title),
+            notify,
             setNewlyImportedId,
+            navigation: buildCatalogImportNavigation("track"),
+            setAnalysisMode,
+            setScreen,
           });
-          setAnalysisMode("track");
-          setScreen("inspect");
-          return true;
-        }
-      } catch (err) {
-        notify("error", t.appShell.importFailedTitle, String(err));
-      }
-      return false;
-    },
+        },
+        onError: (err) => ({
+          tone: "error",
+          title: t.appShell.importFailedTitle,
+          body: String(err),
+        }),
+        notify,
+      }),
     [library, notify, setAnalysisMode, setNewlyImportedId, setScreen, t],
   );
 
   const handleImportRepository = useCallback(
-    async (input: ImportRepositoryInput) => {
-      try {
-        const nextRepository = await repositories.importRepositorySource(input);
-        if (nextRepository) {
-          let rescuedLogCount = 0;
-
-          if (input.sourceKind === "directory") {
-            const discovered = await discoverRepositoryLogs(input.sourcePath);
-            rescuedLogCount = discovered.length;
-            for (const nextInput of buildDiscoveredLogImportInputs(discovered)) {
-              void repositories.importRepositorySource(nextInput);
-            }
-          }
-
-          notify(
-            "success",
-            t.appShell.repositoryConnectedTitle,
-            buildRepositoryImportSuccessMessage({
+    async (input: ImportRepositoryInput) =>
+      runCatalogImportAction({
+        task: () => repositories.importRepositorySource(input),
+        onSuccess: async (nextRepository) => {
+          const rescuedLogCount = await resolveRepositoryImportRescue({
+            sourceKind: input.sourceKind,
+            sourcePath: input.sourcePath,
+            importRepositorySource: repositories.importRepositorySource,
+          });
+          applyCatalogImportSuccess({
+            id: nextRepository.id,
+            notice: buildRepositoryImportNotice({
               t,
               title: nextRepository.title,
               rescuedLogCount,
             }),
-          );
-          scheduleImportedHighlightReset({
-            id: nextRepository.id,
+            notify,
             setNewlyImportedId,
+            navigation: buildCatalogImportNavigation("repo"),
+            setAnalysisMode,
+            setScreen,
           });
-          setAnalysisMode("repo");
-          setScreen("inspect");
-          return true;
-        }
-      } catch (err) {
-        notify("error", t.appShell.connectionFailedTitle, String(err));
-      }
-      return false;
-    },
+        },
+        onError: (err) => ({
+          tone: "error",
+          title: t.appShell.connectionFailedTitle,
+          body: String(err),
+        }),
+        notify,
+      }),
     [notify, repositories, setAnalysisMode, setNewlyImportedId, setScreen, t],
   );
 
   const handleImportBaseAsset = useCallback(
-    async (input: ImportBaseAssetInput) => {
-      try {
-        const nextBaseAsset = await baseAssets.importLibraryBaseAsset(input);
-        if (nextBaseAsset) {
-          notify(
-            "success",
-            t.appShell.assetImportedTitle,
-            t.appShell.assetImportedBody.replace("{title}", nextBaseAsset.title),
-          );
-          scheduleImportedHighlightReset({
+    async (input: ImportBaseAssetInput) =>
+      runCatalogImportAction({
+        task: () => baseAssets.importLibraryBaseAsset(input),
+        onSuccess: (nextBaseAsset) => {
+          applyCatalogImportSuccess({
             id: nextBaseAsset.id,
+            notice: buildBaseAssetImportNotice(t, nextBaseAsset.title),
+            notify,
             setNewlyImportedId,
+            navigation: buildCatalogImportNavigation("base"),
+            setAnalysisMode,
+            setScreen,
           });
-          setAnalysisMode("base");
-          setScreen("inspect");
-          return true;
-        }
-      } catch (err) {
-        notify("error", t.appShell.assetImportFailedTitle, String(err));
-      }
-      return false;
-    },
+        },
+        onError: (err) => ({
+          tone: "error",
+          title: t.appShell.assetImportFailedTitle,
+          body: String(err),
+        }),
+        notify,
+      }),
     [baseAssets, notify, setAnalysisMode, setNewlyImportedId, setScreen, t],
   );
 
   const handleImportComposition = useCallback(
-    async (input: ImportCompositionInput) => {
-      try {
-        const nextComposition = await compositions.importLibraryComposition(input);
-        if (nextComposition) {
-          notify(
-            "success",
-            t.appShell.compositionReadyTitle,
-            t.appShell.compositionReadyBody.replace("{title}", nextComposition.title),
-          );
-          return true;
-        }
-      } catch (err) {
-        notify("error", t.appShell.compositionFailedTitle, String(err));
-      }
-      return false;
-    },
-    [compositions, notify, t],
+    async (input: ImportCompositionInput) =>
+      runCatalogImportAction({
+        task: () => compositions.importLibraryComposition(input),
+        onSuccess: (nextComposition) => {
+          applyCatalogImportSuccess({
+            notice: buildCompositionImportNotice(t, nextComposition.title),
+            notify,
+            setNewlyImportedId,
+            setAnalysisMode,
+            setScreen,
+          });
+        },
+        onError: (err) => ({
+          tone: "error",
+          title: t.appShell.compositionFailedTitle,
+          body: String(err),
+        }),
+        notify,
+      }),
+    [compositions, notify, setAnalysisMode, setNewlyImportedId, setScreen, t],
   );
 
   return {

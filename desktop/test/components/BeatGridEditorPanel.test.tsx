@@ -173,4 +173,55 @@ describe("BeatGridEditorPanel", () => {
     expect(screen.getByRole("button", { name: "Set downbeat here" })).toBeDisabled();
     expect(screen.getByText(/Unlock grid in the Performance panel/i)).toBeInTheDocument();
   });
+
+  it("supports half/double BPM actions and blocks invalid manual BPM input", () => {
+    const onUpdateAnalysis = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <BeatGridEditorPanel
+        track={createTrack()}
+        currentTime={6}
+        onUpdateAnalysis={onUpdateAnalysis}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Half BPM" }));
+    fireEvent.click(screen.getByRole("button", { name: "Double BPM" }));
+
+    expect(onUpdateAnalysis).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        bpm: 60,
+      }),
+    );
+    expect(onUpdateAnalysis).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        bpm: 120,
+      }),
+    );
+
+    fireEvent.change(screen.getByLabelText("Grid BPM"), {
+      target: { value: "20" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Apply BPM" }));
+
+    expect(onUpdateAnalysis).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("button", { name: "Apply BPM" })).toBeDisabled();
+  });
+
+  it("renders pending state and disables persistence when bpm or duration cannot be edited", () => {
+    const track = createTrack();
+    track.analysis.bpm = null;
+    track.analysis.durationSeconds = null;
+    track.analysis.beatGrid = [];
+
+    render(<BeatGridEditorPanel track={track} currentTime={3} busy />);
+
+    expect(screen.getAllByText("Pending").length).toBeGreaterThan(0);
+    expect(screen.getByText("Unavailable")).toBeInTheDocument();
+    expect(screen.getByRole("spinbutton", { name: "Grid BPM" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Set downbeat here" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Nudge +1 beat" })).toBeDisabled();
+  });
 });

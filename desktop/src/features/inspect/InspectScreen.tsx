@@ -12,29 +12,21 @@ import { InspectContextBar } from "./InspectContextBar";
 import { InspectBaseAssetView } from "./InspectBaseAssetView";
 import { InspectEmptyState } from "./InspectEmptyState";
 import { InspectRepositoryView } from "./InspectRepositoryView";
-import { getTrackTitle } from "../../utils/track";
 import { InspectTrackView } from "./InspectTrackView";
-
-interface InspectScreenProps {
-  track: LibraryTrack | null;
-  repository: RepositoryAnalysis | null;
-  baseAsset: BaseAssetRecord | null;
-  availableTracks: LibraryTrack[];
-  availablePlaylists: BaseTrackPlaylist[];
-  availableRepositories: RepositoryAnalysis[];
-  availableBaseAssets: BaseAssetRecord[];
-  mode: AnalyzerViewMode;
-  analyzerLabel: string;
-  onChangeMode: (mode: AnalyzerViewMode) => void;
-  onSelectTrack: (id: string) => void;
-  onSelectRepository: (id: string) => void;
-  onSelectBaseAsset: (id: string) => void;
-  onGoLibrary: () => void;
-  onGoCompose: () => void;
-  onUpdateTrackPerformance: (trackId: string, input: UpdateTrackPerformanceInput) => Promise<void>;
-  onUpdateTrackAnalysis: (trackId: string, input: UpdateTrackAnalysisInput) => Promise<void>;
-  trackMutating: boolean;
-}
+import {
+  buildInspectScreenContextBarProps,
+  buildInspectScreenRenderState,
+} from "./inspectScreenRuntime";
+import {
+  buildInspectScreenBaseAssetViewInput,
+  buildInspectScreenContextBarElementInput,
+  buildInspectScreenContextBarInput,
+  buildInspectScreenRenderStateInput,
+  buildInspectScreenRepositoryViewInput,
+  buildInspectScreenTrackViewInput,
+  resolveInspectScreenPlaceholderTitle,
+  type InspectScreenProps,
+} from "./inspectScreenHookRuntime";
 
 export function InspectScreen({
   track,
@@ -57,45 +49,58 @@ export function InspectScreen({
   trackMutating,
 }: InspectScreenProps) {
   const t = useT();
-  const hasAnyAsset =
-    availableTracks.length > 0 ||
-    availableRepositories.length > 0 ||
-    availableBaseAssets.length > 0;
+  const renderState = buildInspectScreenRenderState(
+    buildInspectScreenRenderStateInput({
+      mode,
+      track,
+      repository,
+      baseAsset,
+      availableTracks,
+      availableRepositories,
+      availableBaseAssets,
+    }),
+  );
+  const contextBarProps = buildInspectScreenContextBarProps(
+    buildInspectScreenContextBarInput({
+      mode,
+      track,
+      repository,
+      baseAsset,
+      availableTracks,
+      availableRepositories,
+      availableBaseAssets,
+      t,
+    }),
+  );
 
+  const contextBarInput = buildInspectScreenContextBarElementInput({
+    contextBarProps,
+    onChangeMode,
+    onSelectTrack,
+    onSelectRepository,
+    onSelectBaseAsset,
+  });
   const contextBar = (
     <InspectContextBar
-      mode={mode}
-      trackCount={availableTracks.length}
-      repositoryCount={availableRepositories.length}
-      baseAssetCount={availableBaseAssets.length}
-      selectedTrackId={track?.id ?? null}
-      selectedRepositoryId={repository?.id ?? null}
-      selectedBaseAssetId={baseAsset?.id ?? null}
-      trackOptions={availableTracks.map((entry) => ({
-        id: entry.id,
-        label: getTrackTitle(entry),
-      }))}
-      repositoryOptions={availableRepositories.map((entry) => ({
-        id: entry.id,
-        label: entry.title,
-      }))}
-      baseAssetOptions={availableBaseAssets.map((entry) => ({
-        id: entry.id,
-        label: entry.title,
-      }))}
-      labels={{
-        tracks: t.sidebar.tracks,
-        logSources: t.library.logSources,
-        bases: t.sidebar.bases,
-      }}
-      onChangeMode={onChangeMode}
-      onSelectTrack={onSelectTrack}
-      onSelectRepository={onSelectRepository}
-      onSelectBaseAsset={onSelectBaseAsset}
+      mode={contextBarInput.contextBarProps.mode}
+      trackCount={contextBarInput.contextBarProps.trackCount}
+      repositoryCount={contextBarInput.contextBarProps.repositoryCount}
+      baseAssetCount={contextBarInput.contextBarProps.baseAssetCount}
+      selectedTrackId={contextBarInput.contextBarProps.selectedTrackId}
+      selectedRepositoryId={contextBarInput.contextBarProps.selectedRepositoryId}
+      selectedBaseAssetId={contextBarInput.contextBarProps.selectedBaseAssetId}
+      trackOptions={contextBarInput.contextBarProps.trackOptions}
+      repositoryOptions={contextBarInput.contextBarProps.repositoryOptions}
+      baseAssetOptions={contextBarInput.contextBarProps.baseAssetOptions}
+      labels={contextBarInput.contextBarProps.labels}
+      onChangeMode={contextBarInput.onChangeMode}
+      onSelectTrack={contextBarInput.onSelectTrack}
+      onSelectRepository={contextBarInput.onSelectRepository}
+      onSelectBaseAsset={contextBarInput.onSelectBaseAsset}
     />
   );
 
-  if (!hasAnyAsset) {
+  if (renderState.kind === "empty") {
     return (
       <InspectEmptyState
         eyebrow={t.inspect.title}
@@ -107,72 +112,74 @@ export function InspectScreen({
     );
   }
 
-  // ── TRACK ──────────────────────────────────────────────────────────────────
-  if (mode === "track") {
-    if (!track) {
-      return (
-        <section className="screen">
-          <header className="screen-header">
-            <div>
-              <p className="eyebrow">{t.inspect.title}</p>
-              <h2>{t.inspect.noTrackSelected}</h2>
-            </div>
-          </header>
-          {contextBar}
-        </section>
-      );
-    }
-    return (
-      <InspectTrackView
-        track={track}
-        analyzerLabel={analyzerLabel}
-        trackMutating={trackMutating}
-        contextBar={contextBar}
-        onGoCompose={onGoCompose}
-        onUpdateTrackPerformance={onUpdateTrackPerformance}
-        onUpdateTrackAnalysis={onUpdateTrackAnalysis}
-      />
-    );
-  }
-
-  // ── REPOSITORY / LOG ───────────────────────────────────────────────────────
-  if (mode === "repo") {
-    if (!repository) {
-      return (
-        <section className="screen">
-          <header className="screen-header">
-            <div>
-              <p className="eyebrow">{t.inspect.title}</p>
-              <h2>{t.inspect.noRepoSelected}</h2>
-            </div>
-          </header>
-          {contextBar}
-        </section>
-      );
-    }
-
-    return (
-      <InspectRepositoryView
-        repository={repository}
-        availableBaseAssets={availableBaseAssets}
-        availableTracks={availableTracks}
-        availablePlaylists={availablePlaylists}
-        preferredBaseAssetId={baseAsset?.id ?? null}
-        analyzerLabel={analyzerLabel}
-        contextBar={contextBar}
-        onGoCompose={onGoCompose}
-      />
-    );
-  }
-
-  // ── BASE ASSET ─────────────────────────────────────────────────────────────
-  if (!baseAsset) {
+  if (renderState.kind === "track-placeholder") {
     return (
       <section className="screen">
         <header className="screen-header">
           <div>
             <p className="eyebrow">{t.inspect.title}</p>
-            <h2>{t.inspect.noBaseAssetSelected}</h2>
+            <h2>{resolveInspectScreenPlaceholderTitle({ kind: renderState.kind, t })}</h2>
+          </div>
+        </header>
+        {contextBar}
+      </section>
+    );
+  }
+
+  if (renderState.kind === "track" && track) {
+    return (
+      <InspectTrackView
+        {...buildInspectScreenTrackViewInput({
+          track,
+          analyzerLabel,
+          trackMutating,
+          contextBar,
+          onGoCompose,
+          onUpdateTrackPerformance,
+          onUpdateTrackAnalysis,
+        })}
+      />
+    );
+  }
+
+  if (renderState.kind === "repo-placeholder") {
+    return (
+      <section className="screen">
+        <header className="screen-header">
+          <div>
+            <p className="eyebrow">{t.inspect.title}</p>
+            <h2>{resolveInspectScreenPlaceholderTitle({ kind: renderState.kind, t })}</h2>
+          </div>
+        </header>
+        {contextBar}
+      </section>
+    );
+  }
+
+  if (renderState.kind === "repo" && repository) {
+    return (
+      <InspectRepositoryView
+        {...buildInspectScreenRepositoryViewInput({
+          repository,
+          availableBaseAssets,
+          availableTracks,
+          availablePlaylists,
+          preferredBaseAssetId: baseAsset?.id ?? null,
+          analyzerLabel,
+          contextBar,
+          onGoCompose,
+        })}
+      />
+    );
+  }
+
+  if (renderState.kind === "base-placeholder") {
+    return (
+      <section className="screen">
+        <header className="screen-header">
+          <div>
+            <p className="eyebrow">{t.inspect.title}</p>
+            <h2>{resolveInspectScreenPlaceholderTitle({ kind: renderState.kind, t })}</h2>
           </div>
         </header>
         {contextBar}
@@ -182,10 +189,12 @@ export function InspectScreen({
 
   return (
     <InspectBaseAssetView
-      baseAsset={baseAsset}
-      analyzerLabel={analyzerLabel}
-      contextBar={contextBar}
-      onGoCompose={onGoCompose}
+      {...buildInspectScreenBaseAssetViewInput({
+        baseAsset: baseAsset!,
+        analyzerLabel,
+        contextBar,
+        onGoCompose,
+      })}
     />
   );
 }

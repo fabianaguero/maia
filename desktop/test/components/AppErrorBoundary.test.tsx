@@ -44,4 +44,22 @@ describe("AppErrorBoundary", () => {
     expect(throwerMentions).toHaveLength(2);
     expect(errorSpy).toHaveBeenCalled();
   });
+
+  it("falls back to the error message when the stack is unavailable", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    function ThrowerWithoutStack() {
+      const error = new Error("message-only render failure");
+      Object.defineProperty(error, "stack", {
+        configurable: true,
+        get: () => "",
+      });
+      throw error;
+    }
+
+    renderBoundary(<ThrowerWithoutStack />);
+
+    expect(screen.getByText(/message-only render failure/i)).toBeInTheDocument();
+    expect(errorSpy).toHaveBeenCalled();
+  });
 });

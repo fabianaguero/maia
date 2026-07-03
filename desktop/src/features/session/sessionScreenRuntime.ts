@@ -10,8 +10,8 @@ export {
   resolveReplayBookmarkError,
   resolveReplaySessionError,
   resolveReplaySessionFailure,
-  type SessionStartDraft,
 } from "./sessionStartPlanRuntime";
+export type { SessionStartDraft } from "./sessionStartPlanTypes";
 export {
   resolveSelectedEntities,
   resolveSessionControllerDerivedState,

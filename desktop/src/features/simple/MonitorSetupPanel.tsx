@@ -1,15 +1,17 @@
 import React from "react";
-import { Pause, Play, RefreshCw } from "lucide-react";
 
 import type { LibraryTrack } from "../../types/library";
 import { BrandIcon } from "../../components/Branding";
 import { TrackWaveformMini } from "../../components/TrackWaveformMini";
 import { useT } from "../../i18n/I18nContext";
+import { MonitorSetupHero } from "./MonitorSetupHero";
 import { MonitorSetupModernSelector } from "./MonitorSetupModernSelector";
+import { MonitorSetupSourceFilterBar } from "./MonitorSetupSourceFilterBar";
+import { MonitorSetupTrackPreviewAction } from "./MonitorSetupTrackPreviewAction";
 import { buildMonitorSetupSourceFilterOptions } from "./monitorSetupPanelRuntime";
 import type { MonitorLaunchSource, MonitorSourceFilter } from "./monitorSourceOptions";
 
-interface MonitorSetupPanelProps {
+export interface MonitorSetupPanelProps {
   sourceFilter: MonitorSourceFilter;
   onSourceFilterChange: (filter: MonitorSourceFilter) => void;
   filteredMonitorSourceOptions: MonitorLaunchSource[];
@@ -48,34 +50,18 @@ export function MonitorSetupPanel({
 }: MonitorSetupPanelProps) {
   const t = useT();
   const sourceFilterOptions = buildMonitorSetupSourceFilterOptions(t);
+  const canLaunch = Boolean(selectedSourceId && selectedSoundId && canStartSelectedSource);
 
   return (
     <>
-      <div className="setup-actions-fixed setup-actions-fixed--hero">
-        <button
-          className={`btn-start-listening-impactful ${selectedSourceId && selectedSoundId && canStartSelectedSource ? "ready" : ""}${isLaunchingMonitor ? " launching" : ""}`}
-          onClick={() => {
-            void onStartMonitoringRequest();
-          }}
-          disabled={
-            !selectedSourceId || !selectedSoundId || !canStartSelectedSource || isLaunchingMonitor
-          }
-        >
-          <div className="btn-impact-glitch" />
-          {isLaunchingMonitor ? (
-            <RefreshCw size={28} className="spin-ring" />
-          ) : (
-            <Play size={28} fill="currentColor" />
-          )}
-          <span className="btn-text">
-            {isLaunchingMonitor
-              ? t.simpleMode.setup.connectingToStream
-              : t.simpleMode.setup.initializeMonitoring}
-          </span>
-          <div className="btn-impact-scan" />
-        </button>
-        <p className="setup-hero-hint">{startHint}</p>
-      </div>
+      <MonitorSetupHero
+        canLaunch={canLaunch}
+        isLaunchingMonitor={isLaunchingMonitor}
+        startHint={startHint}
+        launchLabel={t.simpleMode.setup.initializeMonitoring}
+        loadingLabel={t.simpleMode.setup.connectingToStream}
+        onStartMonitoringRequest={onStartMonitoringRequest}
+      />
 
       <div className="setup-container-modern">
         <MonitorSetupModernSelector
@@ -84,22 +70,12 @@ export function MonitorSetupPanel({
           selectedId={selectedSourceId}
           onSelect={onSelectSourceId}
           headerAside={
-            <div
-              className="source-filter-bar"
-              role="tablist"
-              aria-label={t.simpleMode.setup.filterAria}
-            >
-              {sourceFilterOptions.map((filter) => (
-                <button
-                  key={filter.id}
-                  type="button"
-                  className={`source-filter-chip ${sourceFilter === filter.id ? "active" : ""}`}
-                  onClick={() => onSourceFilterChange(filter.id)}
-                >
-                  {filter.label}
-                </button>
-              ))}
-            </div>
+            <MonitorSetupSourceFilterBar
+              sourceFilter={sourceFilter}
+              sourceFilterOptions={sourceFilterOptions}
+              filterAriaLabel={t.simpleMode.setup.filterAria}
+              onSourceFilterChange={onSourceFilterChange}
+            />
           }
           renderLeading={(source, isSelected) => (
             <span
@@ -137,20 +113,13 @@ export function MonitorSetupPanel({
           color="var(--color-accent)"
           seedPrefix="track"
           renderAction={(track) => (
-            <button
-              type="button"
-              className="track-preview-button"
-              title={
-                previewTrackId === track.id
-                  ? t.simpleMode.setup.pausePreview
-                  : t.simpleMode.setup.previewTrack
-              }
-              onClick={() => {
-                void onToggleTrackPreview(track);
-              }}
-            >
-              {previewTrackId === track.id ? <Pause size={14} /> : <Play size={14} />}
-            </button>
+            <MonitorSetupTrackPreviewAction
+              track={track}
+              previewTrackId={previewTrackId}
+              previewLabel={t.simpleMode.setup.previewTrack}
+              pauseLabel={t.simpleMode.setup.pausePreview}
+              onToggleTrackPreview={onToggleTrackPreview}
+            />
           )}
           renderWave={(track, isSelected) => (
             <TrackWaveformMini bins={track.analysis?.waveformBins ?? null} active={isSelected} />

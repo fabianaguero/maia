@@ -1,27 +1,13 @@
-import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useRef, useState } from "react";
 
-import type { AppTranslations } from "../../i18n/en";
-import type { LogSourceConnection, StreamSessionPollResult } from "../../types/monitor";
+import type { LogSourceConnection } from "../../types/monitor";
 import type { ConnectionTestStatus } from "./connectionsViewModel";
 import { testConnectionState } from "./connectionsScreenStateRuntime";
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
-interface UseConnectionTestControllerInput {
-  t: AppTranslations;
-  setError: Dispatch<SetStateAction<string | null>>;
-  startLogSourceConnection: (payload: {
-    connectionId: string;
-    sessionId: string;
-    startFromBeginning: boolean;
-  }) => Promise<unknown>;
-  pollStreamSession: (sessionId: string) => Promise<StreamSessionPollResult>;
-  stopStreamSession: (sessionId: string) => Promise<unknown>;
-  sleepMs?: (ms: number) => Promise<void>;
-}
+import {
+  buildConnectionTestControllerState,
+  sleepForConnectionTest,
+  type UseConnectionTestControllerInput,
+} from "./connectionsTestControllerRuntime";
 
 export function useConnectionTestController(input: UseConnectionTestControllerInput) {
   const [testStatusById, setTestStatusById] = useState<Record<string, ConnectionTestStatus>>({});
@@ -48,14 +34,14 @@ export function useConnectionTestController(input: UseConnectionTestControllerIn
       setTestMessageById,
       startLogSourceConnection: input.startLogSourceConnection,
       pollStreamSession: input.pollStreamSession,
-      sleep: input.sleepMs ?? sleep,
+      sleep: input.sleepMs ?? sleepForConnectionTest,
       stopStreamSession: input.stopStreamSession,
     });
   }
 
-  return {
+  return buildConnectionTestControllerState({
     testStatusById,
     testMessageById,
     handleTestConnection,
-  };
+  });
 }

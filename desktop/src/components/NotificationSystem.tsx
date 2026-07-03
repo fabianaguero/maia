@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 import { CheckCircle2, AlertCircle, X } from "lucide-react";
+import { useT } from "../i18n/I18nContext";
 import {
   appendToast,
   createToast,
@@ -23,6 +24,7 @@ export const useNotify = () => {
 };
 
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
+  const t = useT();
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const notify = useCallback((type: ToastType, title: string, message?: string) => {
@@ -58,7 +60,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
             </div>
             <button
               type="button"
-              aria-label="Dismiss notification"
+              aria-label={t.simpleMode.common.dismissNotification}
               onClick={() => removeToast(toast.id)}
               style={{
                 background: "transparent",

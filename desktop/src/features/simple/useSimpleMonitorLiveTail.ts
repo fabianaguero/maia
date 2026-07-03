@@ -49,8 +49,8 @@ export function useSimpleMonitorLiveTail({
       const node = lineRefs.current.get(syncPlan.lineId);
       if (node) {
         node.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        focusSelectedLogRef.current = false;
       }
-      focusSelectedLogRef.current = false;
       return;
     }
 

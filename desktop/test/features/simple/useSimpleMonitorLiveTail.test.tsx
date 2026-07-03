@@ -1,3 +1,4 @@
+import type React from "react";
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -100,6 +101,114 @@ describe("useSimpleMonitorLiveTail", () => {
     });
 
     expect(lineNode.scrollIntoView).toHaveBeenCalledWith({
+      block: "nearest",
+      behavior: "smooth",
+    });
+  });
+
+  it("does not auto-pin once the user scrolls away from the bottom", () => {
+    const onSelectAnomalyId = vi.fn();
+    const container = {
+      scrollHeight: 900,
+      scrollTop: 400,
+      clientHeight: 200,
+      scrollTo: vi.fn(),
+    } as unknown as HTMLDivElement;
+
+    const { result, rerender } = renderHook(
+      ({ liveLines }) =>
+        useSimpleMonitorLiveTail({
+          liveLines,
+          selectedAnomalyId: null,
+          onSelectAnomalyId,
+        }),
+      {
+        initialProps: {
+          liveLines: [createLine()],
+        },
+      },
+    );
+
+    act(() => {
+      result.current.terminalLinesRef.current = container;
+      result.current.onTerminalScroll({
+        currentTarget: container,
+      } as React.UIEvent<HTMLDivElement>);
+    });
+
+    rerender({
+      liveLines: [createLine(), createLine({ id: "line-2", message: "later" })],
+    });
+
+    expect(container.scrollTo).not.toHaveBeenCalled();
+  });
+
+  it("keeps waiting for focus when the anomaly line has not been registered yet", () => {
+    const onSelectAnomalyId = vi.fn();
+    const container = {
+      scrollHeight: 900,
+      scrollTop: 690,
+      clientHeight: 200,
+      scrollTo: vi.fn(),
+    } as unknown as HTMLDivElement;
+
+    const { result, rerender } = renderHook(
+      ({ liveLines, selectedAnomalyId }) =>
+        useSimpleMonitorLiveTail({
+          liveLines,
+          selectedAnomalyId,
+          onSelectAnomalyId,
+        }),
+      {
+        initialProps: {
+          liveLines: [createLine()],
+          selectedAnomalyId: null as string | null,
+        },
+      },
+    );
+
+    act(() => {
+      result.current.terminalLinesRef.current = container;
+      result.current.focusAnomaly("anomaly-missing");
+    });
+
+    rerender({
+      liveLines: [
+        createLine({
+          id: "line-missing",
+          level: "warn",
+          message: "timeout",
+          isAnomaly: true,
+          anomalyId: "anomaly-missing",
+        }),
+      ],
+      selectedAnomalyId: "anomaly-missing",
+    });
+
+    expect(container.scrollTo).not.toHaveBeenCalled();
+
+    const lateNode = {
+      scrollIntoView: vi.fn(),
+    } as unknown as HTMLDivElement;
+
+    act(() => {
+      result.current.registerLineRef("line-missing", lateNode);
+    });
+
+    rerender({
+      liveLines: [
+        createLine({
+          id: "line-missing",
+          level: "warn",
+          message: "timeout",
+          isAnomaly: true,
+          anomalyId: "anomaly-missing",
+        }),
+      ],
+      selectedAnomalyId: "anomaly-missing",
+    });
+
+    expect(lateNode.scrollIntoView).toHaveBeenCalledWith({
       block: "nearest",
       behavior: "smooth",
     });

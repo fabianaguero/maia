@@ -45,6 +45,20 @@ describe("appCatalogActionsRuntime", () => {
       buildRelinkMissingTracksNotice({
         t: en,
         result: {
+          relinkedTracks: [{ id: "track-5" } as never, { id: "track-6" } as never],
+          unresolvedTrackIds: [],
+        },
+      }),
+    ).toEqual({
+      tone: "success",
+      title: en.appShell.missingTracksRelinkedTitle,
+      body: en.appShell.missingTracksRelinkedSuccessBody.replace("{count}", "2"),
+    });
+
+    expect(
+      buildRelinkMissingTracksNotice({
+        t: en,
+        result: {
           relinkedTracks: [],
           unresolvedTrackIds: [],
         },
@@ -69,6 +83,30 @@ describe("appCatalogActionsRuntime", () => {
     });
 
     expect(setNewlyImportedId).toHaveBeenNthCalledWith(1, "track-1");
+    expect(setNewlyImportedId).toHaveBeenNthCalledWith(2, null);
+  });
+
+  it("uses default timer settings when none are provided", () => {
+    const setNewlyImportedId = vi.fn();
+    const originalSetTimeout = window.setTimeout;
+    const setTimeoutSpy = vi.fn((handler: () => void, delay?: number) => {
+      handler();
+      return 1 as never;
+    });
+
+    window.setTimeout = setTimeoutSpy as typeof window.setTimeout;
+
+    try {
+      scheduleImportedHighlightReset({
+        id: "track-default",
+        setNewlyImportedId,
+      });
+    } finally {
+      window.setTimeout = originalSetTimeout;
+    }
+
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 3000);
+    expect(setNewlyImportedId).toHaveBeenNthCalledWith(1, "track-default");
     expect(setNewlyImportedId).toHaveBeenNthCalledWith(2, null);
   });
 });

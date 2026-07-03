@@ -1,11 +1,7 @@
 import { FolderOpen, PackagePlus } from "lucide-react";
-import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
-
-import { pickBaseAssetPath } from "../../../api/baseAssets";
-import { useT } from "../../../i18n/I18nContext";
 import type { BaseAssetCategoryOption } from "../../../types/baseAsset";
-import type { BaseAssetSourceKind, ImportBaseAssetInput } from "../../../types/library";
+import type { ImportBaseAssetInput } from "../../../types/library";
+import { useImportBaseAssetFormController } from "./useImportBaseAssetFormController";
 
 interface ImportBaseAssetFormProps {
   busy: boolean;
@@ -14,105 +10,35 @@ interface ImportBaseAssetFormProps {
   onImportBaseAsset: (input: ImportBaseAssetInput) => Promise<boolean>;
 }
 
-function deriveLabel(sourcePath: string, fallbackLabel: string): string {
-  return sourcePath.trim().split(/[\\/]/).pop() ?? fallbackLabel;
-}
-
 export function ImportBaseAssetForm({
   busy,
   baseAssetCategories,
   defaultCategoryId,
   onImportBaseAsset,
 }: ImportBaseAssetFormProps) {
-  const t = useT();
-  const sourceModes: Array<{
-    id: BaseAssetSourceKind;
-    label: string;
-    help: string;
-  }> = [
-    {
-      id: "file",
-      label: t.library.forms.baseAsset.singleFile,
-      help: t.library.forms.baseAsset.singleFileHelp,
-    },
-    {
-      id: "directory",
-      label: t.library.forms.baseAsset.folderPack,
-      help: t.library.forms.baseAsset.folderPackHelp,
-    },
-  ];
-  const fallbackCategoryId = defaultCategoryId ?? baseAssetCategories[0]?.id ?? "";
-  const [sourceKind, setSourceKind] = useState<BaseAssetSourceKind>("directory");
-  const [sourcePath, setSourcePath] = useState("");
-  const [label, setLabel] = useState("");
-  const [categoryId, setCategoryId] = useState(fallbackCategoryId);
-  const [reusable, setReusable] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [pickerBusy, setPickerBusy] = useState(false);
-
-  useEffect(() => {
-    if (!baseAssetCategories.some((category) => category.id === categoryId)) {
-      setCategoryId(fallbackCategoryId);
-    }
-  }, [baseAssetCategories, categoryId, fallbackCategoryId]);
-
-  const selectedCategory =
-    baseAssetCategories.find((category) => category.id === categoryId) ?? null;
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const normalizedPath = sourcePath.trim();
-    if (!normalizedPath) {
-      setError(t.library.forms.baseAsset.pathRequiredError);
-      return;
-    }
-
-    if (!categoryId.trim()) {
-      setError(t.library.forms.baseAsset.categoryRequiredError);
-      return;
-    }
-
-    setError(null);
-    const imported = await onImportBaseAsset({
-      sourceKind,
-      sourcePath: normalizedPath,
-      label: label.trim() || deriveLabel(normalizedPath, t.library.forms.baseAsset.fallbackLabel),
-      categoryId: categoryId.trim(),
-      reusable,
-    });
-
-    if (imported) {
-      setSourcePath("");
-      setLabel("");
-      setReusable(true);
-      setCategoryId(fallbackCategoryId);
-    }
-  }
-
-  async function handleBrowse(): Promise<void> {
-    setPickerBusy(true);
-    setError(null);
-
-    try {
-      const pickedPath = await pickBaseAssetPath(sourceKind, sourcePath);
-      if (!pickedPath) {
-        return;
-      }
-
-      setSourcePath(pickedPath);
-      setLabel(
-        (current) =>
-          current.trim() || deriveLabel(pickedPath, t.library.forms.baseAsset.fallbackLabel),
-      );
-    } catch (nextError) {
-      setError(
-        nextError instanceof Error ? nextError.message : t.library.forms.baseAsset.pickerFailed,
-      );
-    } finally {
-      setPickerBusy(false);
-    }
-  }
+  const {
+    t,
+    sourceModes,
+    sourceKind,
+    setSourceKind,
+    sourcePath,
+    setSourcePath,
+    label,
+    setLabel,
+    categoryId,
+    setCategoryId,
+    reusable,
+    setReusable,
+    error,
+    pickerBusy,
+    handleSubmit,
+    handleBrowse,
+    selectedCategory,
+  } = useImportBaseAssetFormController({
+    baseAssetCategories,
+    defaultCategoryId,
+    onImportBaseAsset,
+  });
 
   return (
     <form className="import-form" onSubmit={(event) => void handleSubmit(event)}>

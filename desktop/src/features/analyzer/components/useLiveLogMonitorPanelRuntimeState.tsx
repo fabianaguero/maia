@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-
 import type {
   BaseAssetRecord,
   CompositionResultRecord,
@@ -8,15 +6,14 @@ import type {
 } from "../../../types/library";
 import { getLogger } from "../../../utils/logger";
 import type { MonitorContextValue } from "../../monitor/MonitorContext";
-import { buildLiveLogMonitorViewModel } from "./liveLogMonitorViewModel";
 import {
   buildLiveLogMonitorPanelAudioRuntimeInput,
   buildLiveLogMonitorPanelRuntimeStateValue,
   buildLiveLogMonitorReplayStateInput,
-  buildLiveLogMonitorViewModelInput,
 } from "./liveLogMonitorPanelRuntimeStateBridge";
 import { useLiveLogMonitorPanelAudioRuntime } from "./useLiveLogMonitorPanelAudioRuntime";
 import { useLiveLogMonitorReplayState } from "./useLiveLogMonitorReplayState";
+import { useLiveLogMonitorPanelViewState } from "./useLiveLogMonitorPanelViewState";
 import type { useLiveLogMonitorSurfaceState } from "./useLiveLogMonitorSurfaceState";
 
 const log = getLogger("LiveMonitor");
@@ -37,8 +34,7 @@ export interface UseLiveLogMonitorPanelRuntimeStateInput {
 }
 
 export function useLiveLogMonitorPanelRuntimeState(input: UseLiveLogMonitorPanelRuntimeStateInput) {
-  const viewModelInput = useMemo(() => buildLiveLogMonitorViewModelInput(input), [input]);
-  const viewState = useMemo(() => buildLiveLogMonitorViewModel(viewModelInput), [viewModelInput]);
+  const { viewState } = useLiveLogMonitorPanelViewState(input);
 
   const audioRuntime = useLiveLogMonitorPanelAudioRuntime(
     buildLiveLogMonitorPanelAudioRuntimeInput(input, viewState, log),

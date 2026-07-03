@@ -243,6 +243,7 @@ describe("useLibrary", () => {
 
     expect(result.current.tracks).toEqual([]);
     expect(result.current.playlists).toEqual([]);
+    expect(result.current.selectedPlaylistId).toBeNull();
   });
 
   it("relinks, seeds, updates and surfaces reanalyze failures", async () => {
@@ -278,5 +279,40 @@ describe("useLibrary", () => {
     });
 
     expect(result.current.selectedTrackId).toBe("seed-track");
+  });
+
+  it("surfaces playlist save/delete failures without corrupting current library state", async () => {
+    libraryApiMock.listPlaylists.mockResolvedValue([
+      createPlaylist("playlist-a", "2026-06-25T10:00:00.000Z"),
+    ]);
+    libraryApiMock.saveBaseTrackPlaylist.mockRejectedValueOnce(new Error("save playlist boom"));
+    libraryApiMock.deleteBaseTrackPlaylist.mockRejectedValueOnce("delete playlist boom");
+
+    const { result } = renderHook(() => useLibrary());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+      expect(result.current.selectedPlaylistId).toBe("playlist-a");
+    });
+
+    await act(async () => {
+      const saved = await result.current.savePlaylist({
+        name: "playlist-new",
+        trackIds: ["track-a"],
+      });
+      expect(saved).toBeNull();
+    });
+
+    expect(result.current.error).toBe("save playlist boom");
+    expect(result.current.playlists.map((entry) => entry.id)).toEqual(["playlist-a"]);
+
+    await act(async () => {
+      const deleted = await result.current.deletePlaylist("playlist-a");
+      expect(deleted).toBe(false);
+    });
+
+    expect(result.current.error).toBe("delete playlist boom");
+    expect(result.current.playlists.map((entry) => entry.id)).toEqual(["playlist-a"]);
+    expect(result.current.selectedPlaylistId).toBe("playlist-a");
   });
 });

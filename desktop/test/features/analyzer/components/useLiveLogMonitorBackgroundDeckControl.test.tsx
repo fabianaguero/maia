@@ -141,6 +141,21 @@ describe("useLiveLogMonitorBackgroundDeckControl", () => {
     expect(input.setBackgroundTransitionPlan).toHaveBeenCalledWith(null);
   });
 
+  it("clears background state even when there is no active context or deck", () => {
+    const input = createInput({
+      audioContextRef: { current: null },
+      backgroundDeckRef: { current: null },
+    });
+
+    const { result } = renderHook(() => useLiveLogMonitorBackgroundDeckControl(input));
+
+    result.current.stopBackgroundDeck();
+
+    expect(input.backgroundDeckRef.current).toBeNull();
+    expect(input.setBackgroundNowPlayingId).toHaveBeenCalledWith(null);
+    expect(input.setBackgroundTransitionPlan).toHaveBeenCalledWith(null);
+  });
+
   it("starts the background deck and stores now playing state", async () => {
     const input = createInput();
     const { result } = renderHook(() => useLiveLogMonitorBackgroundDeckControl(input));
@@ -166,6 +181,96 @@ describe("useLiveLogMonitorBackgroundDeckControl", () => {
       trackId: "track-1",
       trackIndex: 0,
     });
+  });
+
+  it("skips background starts when the track, filter or decoded buffer is unavailable", async () => {
+    const missingTrackInput = createInput();
+    const missingFilterInput = createInput({
+      filterNodeRef: { current: null },
+    });
+    const missingBufferInput = createInput();
+    loadCachedBackgroundBufferMock.mockResolvedValueOnce(null);
+
+    const missingTrack = renderHook(() =>
+      useLiveLogMonitorBackgroundDeckControl(missingTrackInput),
+    );
+    await missingTrack.result.current.startBackgroundDeck(
+      missingTrackInput.audioContextRef.current,
+      99,
+    );
+
+    const missingFilter = renderHook(() =>
+      useLiveLogMonitorBackgroundDeckControl(missingFilterInput),
+    );
+    await missingFilter.result.current.startBackgroundDeck(
+      missingFilterInput.audioContextRef.current,
+      0,
+    );
+
+    const missingBuffer = renderHook(() =>
+      useLiveLogMonitorBackgroundDeckControl(missingBufferInput),
+    );
+    await missingBuffer.result.current.startBackgroundDeck(
+      missingBufferInput.audioContextRef.current,
+      0,
+    );
+
+    expect(missingTrackInput.ensureBackgroundBus).not.toHaveBeenCalled();
+    expect(missingFilterInput.__internals.source.start).not.toHaveBeenCalled();
+    expect(missingBufferInput.__internals.source.start).not.toHaveBeenCalled();
+    expect(missingBufferInput.backgroundDeckRef.current).toBeNull();
+  });
+
+  it("fades out the previous deck and preserves matching transition metadata when replacing tracks", async () => {
+    const previousDeck = {
+      source: { stop: vi.fn() },
+      gain: { gain: createParam(0.3) },
+      trackId: "track-1",
+      trackIndex: 0,
+      startedAtContextTime: 2,
+      bufferDurationSec: 180,
+      durationSec: 120,
+      entrySecond: 4,
+      playbackRate: 1,
+      looping: false,
+    };
+    const input = createInput({
+      backgroundDeckRef: { current: previousDeck },
+    });
+    const transitionPlan = { nextTrackId: "track-2" };
+    const { result } = renderHook(() => useLiveLogMonitorBackgroundDeckControl(input));
+
+    await result.current.startBackgroundDeck(
+      input.audioContextRef.current,
+      1,
+      transitionPlan as never,
+    );
+
+    expect(previousDeck.gain.gain.cancelScheduledValues).toHaveBeenCalled();
+    expect(previousDeck.gain.gain.linearRampToValueAtTime).toHaveBeenCalled();
+    expect(previousDeck.source.stop).toHaveBeenCalled();
+    expect(input.setBackgroundNowPlayingId).toHaveBeenCalledWith("track-2");
+    expect(input.setBackgroundTransitionPlan).toHaveBeenCalledWith(transitionPlan);
+  });
+
+  it("surfaces start failures as capped warning messages", async () => {
+    const input = createInput();
+    loadCachedBackgroundBufferMock.mockRejectedValueOnce(new Error("decode failed"));
+    const { result } = renderHook(() => useLiveLogMonitorBackgroundDeckControl(input));
+
+    await result.current.startBackgroundDeck(input.audioContextRef.current, 0);
+
+    expect(input.backgroundDeckRef.current).toBeNull();
+    expect(input.setBackgroundNowPlayingId).toHaveBeenCalledWith(null);
+    expect(input.setBackgroundTransitionPlan).toHaveBeenCalledWith(null);
+    expect(input.setRecentWarnings).toHaveBeenCalled();
+    const warningUpdater = input.setRecentWarnings.mock.calls[0]?.[0];
+    expect(warningUpdater(["older-1", "older-2", "older-3", "older-4"])).toEqual([
+      "Failed to start guide track: boom",
+      "older-1",
+      "older-2",
+      "older-3",
+    ]);
   });
 
   it("schedules the next transition and lazily starts audio when needed", async () => {
@@ -199,5 +304,38 @@ describe("useLiveLogMonitorBackgroundDeckControl", () => {
 
     expect(loadCachedBackgroundBufferMock).toHaveBeenCalledTimes(2);
     vi.useRealTimers();
+  });
+
+  it("clears transition state when scheduling is not possible and skips ensureBackgroundAudio when already armed", async () => {
+    resolveBackgroundTransitionSchedulePlanMock.mockReturnValueOnce({ action: "clear" });
+    const input = createInput({
+      backgroundDeckRef: {
+        current: {
+          trackId: "track-1",
+          trackIndex: 0,
+          entrySecond: 8,
+          playbackRate: 1,
+          durationSec: 172,
+        },
+      },
+    });
+    const { result } = renderHook(() => useLiveLogMonitorBackgroundDeckControl(input));
+
+    result.current.scheduleBackgroundTransition(
+      input.audioContextRef.current,
+      input.backgroundDeckRef.current,
+    );
+
+    expect(input.setBackgroundTransitionPlan).toHaveBeenCalledWith(null);
+
+    await result.current.ensureBackgroundAudio(input.audioContextRef.current);
+
+    expect(loadCachedBackgroundBufferMock).not.toHaveBeenCalled();
+
+    const emptyInput = createInput({ playableBaseTracks: [] });
+    const empty = renderHook(() => useLiveLogMonitorBackgroundDeckControl(emptyInput));
+    await empty.result.current.ensureBackgroundAudio(emptyInput.audioContextRef.current);
+
+    expect(emptyInput.ensureBackgroundBus).not.toHaveBeenCalled();
   });
 });

@@ -103,6 +103,46 @@ describe("monitorProviderSessionRuntime", () => {
     );
   });
 
+  it("replaces an existing session before starting a new one and preserves start-from-tail mode", async () => {
+    const startLiveMonitorSession = vi.fn(async () => undefined);
+    const resolveLiveMonitorPollMode = vi.fn(async () => "direct" as const);
+    const replaceExistingSessionIfPresent = vi.fn(async () => undefined);
+    const logger = { info: vi.fn() };
+
+    const ok = await startMonitorProviderSessionState({
+      repo: createRepo(),
+      sessionInput: createSessionInput({
+        startFromBeginning: false,
+      }),
+      sessionRef: {
+        current: {
+          sessionId: "old-1",
+        } as never,
+      },
+      replaceExistingSessionIfPresent,
+      resolveLiveMonitorPollMode,
+      startLiveMonitorSession,
+      liveStartInput: createLiveStartInput(),
+      logger,
+    });
+
+    expect(ok).toBe(true);
+    expect(replaceExistingSessionIfPresent).toHaveBeenCalledTimes(1);
+    expect(logger.info).toHaveBeenCalledWith(
+      "startSession — stopping previous session id=%s",
+      "old-1",
+    );
+    expect(startLiveMonitorSession.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        session: expect.objectContaining({
+          pollMode: "direct",
+        }),
+        startFromBeginning: false,
+        sourceTemplateId: null,
+      }),
+    );
+  });
+
   it("rejects non-file monitoring starts", async () => {
     await expect(
       startMonitorProviderSessionState({
@@ -149,6 +189,40 @@ describe("monitorProviderSessionRuntime", () => {
         }),
         sourceTemplateId: "ambient",
         persistedSessionId: "persisted-1",
+      }),
+    );
+  });
+
+  it("replaces an existing session before attaching and tolerates a missing logger", async () => {
+    const startLiveMonitorSession = vi.fn(async () => undefined);
+    const replaceExistingSessionIfPresent = vi.fn(async () => undefined);
+
+    const ok = await attachMonitorProviderSessionState({
+      sessionRecord: createSessionRecord(),
+      repoId: "repo-1",
+      repoTitle: "Visits",
+      sessionRef: {
+        current: {
+          sessionId: "old-1",
+        } as never,
+      },
+      replaceExistingSessionIfPresent,
+      startLiveMonitorSession,
+      liveStartInput: createLiveStartInput(),
+    });
+
+    expect(ok).toBe(true);
+    expect(replaceExistingSessionIfPresent).toHaveBeenCalledTimes(1);
+    expect(startLiveMonitorSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        session: expect.objectContaining({
+          sessionId: "attached-1",
+          sourcePath: "/logs/attached.log",
+          adapterKind: "file",
+          pollMode: "session",
+        }),
+        sourceTemplateId: null,
+        persistedSessionId: undefined,
       }),
     );
   });

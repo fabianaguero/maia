@@ -4,33 +4,13 @@ import {
   createSyntheticReplayEvent,
   emitMonitorAudioProbe,
   ensureMonitorAudioContext,
-  quantizeMonitorFrequency,
   registerActiveAudioElement,
-  renderSynthFallback,
-  sliceGuideTrackBar,
   stopAllMonitorAudio,
   stopCrossfadeEngine,
   unregisterActiveAudioElement,
-  type CrossfadeHandle,
-  type GuideTrackPCM,
 } from "../../../src/features/monitor/monitorContextRuntime";
-import type { LiveLogCue, LiveLogStreamUpdate } from "../../../src/types/monitor";
-
-function createCue(overrides: Partial<LiveLogCue> = {}): LiveLogCue {
-  return {
-    id: "cue-1",
-    eventIndex: 1,
-    level: "warn",
-    component: "queue",
-    excerpt: "queue depth rising",
-    noteHz: 440,
-    durationMs: 120,
-    gain: 0.5,
-    waveform: "triangle",
-    accent: "warn",
-    ...overrides,
-  };
-}
+import type { CrossfadeHandle } from "../../../src/features/monitor/monitorAudioRuntimeTypes";
+import type { LiveLogStreamUpdate } from "../../../src/types/monitor";
 
 function createUpdate(): LiveLogStreamUpdate {
   return {
@@ -47,39 +27,26 @@ function createUpdate(): LiveLogStreamUpdate {
     levelCounts: { warn: 2, error: 1 },
     anomalyMarkers: [{ eventIndex: 1, level: "error", component: "payments", excerpt: "500" }],
     topComponents: [{ component: "queue", count: 3 }],
-    sonificationCues: [createCue()],
+    sonificationCues: [
+      {
+        id: "cue-1",
+        eventIndex: 1,
+        level: "warn",
+        component: "queue",
+        excerpt: "queue depth rising",
+        noteHz: 440,
+        durationMs: 120,
+        gain: 0.5,
+        waveform: "triangle",
+        accent: "warn",
+      },
+    ],
     parsedLines: ["WARN queue depth rising"],
     warnings: [],
   };
 }
 
 describe("monitorContextRuntime", () => {
-  it("quantizes monitor frequencies to the nearest scale tone", () => {
-    expect(quantizeMonitorFrequency(438)).toBe(440);
-    expect(quantizeMonitorFrequency(350)).toBe(349.23);
-  });
-
-  it("renders synth fallback audio and slices guide track bars", () => {
-    const blob = renderSynthFallback([createCue()], 0.5, 0.6, 126);
-    expect(blob).toBeInstanceOf(Blob);
-    expect(blob?.size ?? 0).toBeGreaterThan(44);
-
-    const pcm: GuideTrackPCM = {
-      samples: new Float32Array(44100).fill(0.25),
-      sampleRate: 44100,
-      durationSec: 1,
-    };
-    const cursorRef = { current: 0 };
-    const sliced = sliceGuideTrackBar(pcm, cursorRef, [createCue()], 0.25, 126, 0.7);
-
-    expect(sliced).toBeInstanceOf(Blob);
-    expect(cursorRef.current).toBeGreaterThan(0);
-    cursorRef.current = pcm.samples.length;
-    expect(sliceGuideTrackBar(pcm, cursorRef, [createCue()], 0.25, 126, 0.7)).toBeNull();
-
-    expect(sliced?.size ?? 0).toBeGreaterThan(44);
-  });
-
   it("stops registered audio elements and clears crossfade sources", () => {
     const audio = {
       pause: vi.fn(),
@@ -132,6 +99,53 @@ describe("monitorContextRuntime", () => {
     expect(currentSource.stop).toHaveBeenCalled();
     expect(trailingSource.stop).toHaveBeenCalledWith(1);
     expect(activeSourcesRef.current).toEqual([]);
+
+    const throwingSegmentRef = {
+      current: {
+        gainNode,
+        source: {
+          stop: vi.fn(() => {
+            throw new Error("stop boom");
+          }),
+        } as unknown as AudioBufferSourceNode,
+        scheduledEndTime: 2,
+      } as CrossfadeHandle,
+    };
+    const throwingSourcesRef = {
+      current: [
+        {
+          stop: vi.fn(() => {
+            throw new Error("tail boom");
+          }),
+        } as unknown as AudioBufferSourceNode,
+      ],
+    };
+
+    expect(() =>
+      stopCrossfadeEngine(throwingSegmentRef, audioContextRef, throwingSourcesRef),
+    ).not.toThrow();
+    expect(throwingSegmentRef.current).toBeNull();
+    expect(throwingSourcesRef.current).toEqual([]);
+
+    const noContextSegmentRef = { current: null as CrossfadeHandle | null };
+    const noContextSourcesRef = { current: [trailingSource] };
+    stopCrossfadeEngine(noContextSegmentRef, { current: null }, noContextSourcesRef);
+    expect(noContextSourcesRef.current).toEqual([trailingSource]);
+
+    const pausedContextSegmentRef = {
+      current: {
+        gainNode,
+        source: currentSource,
+        scheduledEndTime: 2,
+      } as CrossfadeHandle,
+    };
+    const pausedSourcesRef = { current: [] as AudioBufferSourceNode[] };
+    stopCrossfadeEngine(
+      pausedContextSegmentRef,
+      { current: { state: "suspended", currentTime: 4 } as AudioContext },
+      pausedSourcesRef,
+    );
+    expect(pausedContextSegmentRef.current).toBeNull();
   });
 
   it("creates or resumes audio contexts and emits probe tones", async () => {
@@ -189,6 +203,37 @@ describe("monitorContextRuntime", () => {
     expect(createdContext.createGain).toHaveBeenCalledTimes(1);
     expect(oscillator.start).toHaveBeenCalledWith(1);
     expect(oscillator.stop).toHaveBeenCalledWith(1.3);
+
+    const existingRunningContext = {
+      state: "running",
+      sampleRate: 48000,
+      currentTime: 2,
+      destination: {},
+      resume: vi.fn(async () => undefined),
+      createOscillator: vi.fn(() => oscillator),
+      createGain: vi.fn(() => gainNode),
+    } as unknown as AudioContext;
+
+    const reused = await ensureMonitorAudioContext({
+      audioContextRef: { current: existingRunningContext },
+      setAudioContext,
+      logger,
+    });
+
+    expect(reused).toBe(existingRunningContext);
+    expect(setAudioContext).toHaveBeenCalledTimes(1);
+    expect(
+      (existingRunningContext as { resume: ReturnType<typeof vi.fn> }).resume,
+    ).not.toHaveBeenCalled();
+
+    emitMonitorAudioProbe({
+      context: { state: "suspended" } as AudioContext,
+      frequency: 440,
+      attackGain: 0.15,
+      releaseTimeSec: 0.3,
+    });
+
+    expect(createdContext.createOscillator).toHaveBeenCalledTimes(1);
   });
 
   it("creates synthetic replay events from live updates", () => {

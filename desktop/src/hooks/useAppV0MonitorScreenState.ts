@@ -9,7 +9,7 @@ import type { AppV0Language } from "../appV0Preferences";
 import type { LibraryTrack, RepositoryAnalysis } from "../types/library";
 import type { StartSessionInput, StreamSessionRecord } from "../types/monitor";
 
-interface UseAppV0MonitorScreenStateInput {
+export interface UseAppV0MonitorScreenStateInput {
   lang: AppV0Language;
   currentSection: AppSection;
   setCurrentSection: (section: AppSection) => void;

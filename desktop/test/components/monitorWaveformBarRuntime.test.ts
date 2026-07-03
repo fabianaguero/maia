@@ -79,6 +79,12 @@ describe("monitorWaveformBarRuntime", () => {
       mid: 0,
       high: 0,
     });
+
+    expect(resolveProcessedMetrics([], createUpdate())).toEqual({
+      low: expect.any(Number),
+      mid: expect.any(Number),
+      high: expect.any(Number),
+    });
   });
 
   it("builds HUD lines only for new offsets or replay events", () => {
@@ -158,6 +164,9 @@ describe("monitorWaveformBarRuntime", () => {
     const nextHistory = appendWaveHistory(history, column);
     expect(nextHistory).toHaveLength(MONITOR_WAVEFORM_HISTORY_SIZE);
     expect(nextHistory.at(-1)).toEqual(column);
+    expect(
+      buildWaveColumn(createUpdate({ parsedLines: [] }), source, processed).logLine,
+    ).toBeNull();
   });
 
   it("syncs canvas dimensions only when the surface is measurable", () => {
@@ -182,6 +191,25 @@ describe("monitorWaveformBarRuntime", () => {
 
     canvas.clientWidth = 0;
     expect(syncMonitorWaveformCanvasSize(canvas, ctx, 2)).toBeNull();
+  });
+
+  it("keeps the current transform when the canvas is already sized", () => {
+    const setTransform = vi.fn();
+    const canvas = {
+      clientWidth: 200,
+      clientHeight: 100,
+      width: 200,
+      height: 100,
+    } as HTMLCanvasElement;
+    const ctx = {
+      setTransform,
+    } as unknown as CanvasRenderingContext2D;
+
+    expect(syncMonitorWaveformCanvasSize(canvas, ctx, 1)).toEqual({
+      width: 200,
+      height: 100,
+    });
+    expect(setTransform).not.toHaveBeenCalled();
   });
 
   it("draws an empty frame background and reports that no signal is present", () => {
@@ -217,6 +245,80 @@ describe("monitorWaveformBarRuntime", () => {
     expect(ctx.clearRect).toHaveBeenCalledWith(0, 0, 300, 120);
     expect(ctx.fillRect).toHaveBeenCalledWith(0, 0, 300, 120);
     expect(ctx.createLinearGradient).not.toHaveBeenCalled();
+  });
+
+  it("draws a signal frame even when the guide waveform is unavailable", () => {
+    const gradient = {
+      addColorStop: vi.fn(),
+    };
+    const ctx = {
+      clearRect: vi.fn(),
+      fillRect: vi.fn(),
+      createLinearGradient: vi.fn(() => gradient),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      fillStyle: "",
+      strokeStyle: "",
+      shadowColor: "",
+      shadowBlur: 0,
+      lineWidth: 0,
+    } as unknown as CanvasRenderingContext2D;
+    const update = createUpdate();
+    const source = resolveSourceMetrics(update, 0.2);
+    const processed = resolveProcessedMetrics(update.sonificationCues, update);
+    const history = [buildWaveColumn(update, source, processed)];
+
+    expect(
+      drawMonitorWaveformFrame({
+        ctx,
+        width: 320,
+        height: 140,
+        history,
+        guideWaveform: [],
+        barWidth: 2,
+        nowMs: 1000,
+      }),
+    ).toBe(true);
+    expect(ctx.createLinearGradient).toHaveBeenCalled();
+  });
+
+  it("renders sparse guide waveform samples without crashing", () => {
+    const gradient = {
+      addColorStop: vi.fn(),
+    };
+    const ctx = {
+      clearRect: vi.fn(),
+      fillRect: vi.fn(),
+      createLinearGradient: vi.fn(() => gradient),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      fillStyle: "",
+      strokeStyle: "",
+      shadowColor: "",
+      shadowBlur: 0,
+      lineWidth: 0,
+    } as unknown as CanvasRenderingContext2D;
+    const update = createUpdate();
+    const source = resolveSourceMetrics(update, 0.2);
+    const processed = resolveProcessedMetrics(update.sonificationCues, update);
+    const history = [buildWaveColumn(update, source, processed)];
+
+    expect(
+      drawMonitorWaveformFrame({
+        ctx,
+        width: 300,
+        height: 120,
+        history,
+        guideWaveform: [0.4, undefined, 0.8] as unknown as number[],
+        barWidth: 2,
+        nowMs: 1000,
+      }),
+    ).toBe(true);
+    expect(ctx.fillRect).toHaveBeenCalled();
   });
 
   it("draws waveform beds, rekordbox bars, anomaly glow, scanline and playhead when signal is present", () => {

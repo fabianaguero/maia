@@ -6,12 +6,10 @@ import { TrackPerformanceControlStrip } from "./TrackPerformanceControlStrip";
 import { TrackPerformanceCueLoopSection } from "./TrackPerformanceCueLoopSection";
 import { TrackPerformanceSummaryGrid } from "./TrackPerformanceSummaryGrid";
 import {
-  buildTrackPerformanceMetrics,
-  buildQuantizedPlacementHint,
-  buildTrackColorOptions,
   buildTrackPerformancePanelState,
   createTrackPerformanceActions,
 } from "./trackPerformancePanelRuntime";
+import { buildTrackPerformancePanelViewModel } from "./trackPerformancePanelViewModelRuntime";
 
 interface TrackPerformancePanelProps {
   track: LibraryTrack;
@@ -30,8 +28,6 @@ export function TrackPerformancePanel({
 }: TrackPerformancePanelProps) {
   const t = useT();
   const { performance } = track;
-  const TRACK_COLOR_OPTIONS = buildTrackColorOptions(t);
-  const summaryMetrics = buildTrackPerformanceMetrics({ track, t });
   const { durationSeconds, bpm, canEditPerformance, canAddHot, canAddLoop, quantizeAvailable } =
     buildTrackPerformancePanelState({
       track,
@@ -66,6 +62,15 @@ export function TrackPerformancePanel({
     quantizeEnabled,
     onUpdatePerformance,
   });
+  const viewModel = buildTrackPerformancePanelViewModel({
+    track,
+    busy,
+    currentTime,
+    placementSecond,
+    onUpdatePerformance,
+    quantizeEnabled,
+    t,
+  });
 
   return (
     <section className="panel metric-panel">
@@ -76,14 +81,14 @@ export function TrackPerformancePanel({
         </div>
       </div>
 
-      <TrackPerformanceSummaryGrid metrics={summaryMetrics} />
+      <TrackPerformanceSummaryGrid metrics={viewModel.summaryMetrics} />
 
       <div className="top-spaced">
         <p className="support-copy">{t.inspect.performanceControls}</p>
         <TrackPerformanceControlStrip
           performance={performance}
           canEditPerformance={canEditPerformance}
-          colorOptions={TRACK_COLOR_OPTIONS}
+          colorOptions={viewModel.colorOptions}
           ratingLabel={t.inspect.rating}
           performanceLabel={t.inspect.performanceTitle}
           colorLabel={t.inspect.color}
@@ -108,13 +113,8 @@ export function TrackPerformancePanel({
         canAddHot={canAddHot}
         canAddLoop={canAddLoop}
         selectedPhraseRange={selectedPhraseRange}
-        colorOptions={TRACK_COLOR_OPTIONS}
-        quantizedPlacementHint={buildQuantizedPlacementHint({
-          currentTime,
-          placementSecond,
-          durationSeconds,
-          quantizedToTemplate: t.inspect.quantizedTo,
-        })}
+        colorOptions={viewModel.colorOptions}
+        quantizedPlacementHint={viewModel.quantizedPlacementHint}
         onSetQuantizeEnabled={setQuantizeEnabled}
         onUpdatePerformance={updatePerformance}
         onAddCue={addCue}

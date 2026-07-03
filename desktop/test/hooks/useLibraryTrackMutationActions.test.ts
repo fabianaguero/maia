@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 import type { MusicalAsset } from "../../src/contracts";
@@ -292,5 +292,170 @@ describe("useLibraryTrackMutationActions", () => {
     expect(harness.trackState[0]?.file.availabilityState).toBe("available");
     expect(harness.selectedTrackId).toBe("track-missing");
     expect(harness.errorState).toBeNull();
+  });
+
+  it("replaces the track during reanalyze when the source still exists", async () => {
+    const currentTrack = createTrack("track-a", "2026-06-29T10:00:00.000Z", {
+      bpm: 120,
+      bpmConfidence: 0.5,
+    });
+    const refreshedTrack = createTrack("track-a", "2026-06-29T10:00:00.000Z", {
+      bpm: 132,
+      bpmConfidence: 0.91,
+    });
+
+    libraryApiMock.checkTrackExists.mockResolvedValue(true);
+    libraryApiMock.importTrack.mockResolvedValue(refreshedTrack);
+
+    const harness = createHarness([currentTrack]);
+
+    await expect(harness.actions.reanalyzeTrack("track-a")).resolves.toEqual(refreshedTrack);
+
+    expect(harness.trackState[0]?.analysis.bpm).toBe(132);
+    expect(harness.errorState).toBeNull();
+  });
+
+  it("returns null when reanalyze is requested for a missing track id", async () => {
+    const harness = createHarness([]);
+
+    await expect(harness.actions.reanalyzeTrack("missing-track")).resolves.toBeNull();
+
+    expect(libraryApiMock.checkTrackExists).not.toHaveBeenCalled();
+    expect(harness.errorState).toBe("Track not found");
+  });
+
+  it("swallows background analyzer failures without breaking the import mutation", async () => {
+    const importedTrack = createTrack("track-new", "2026-06-29T11:00:00.000Z", {
+      analyzerStatus: "pending",
+      bpm: null,
+      bpmConfidence: 0.12,
+    });
+    const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => undefined);
+
+    libraryApiMock.importTrack.mockResolvedValue(importedTrack);
+    analyzerMock.runAnalyzerRequest.mockRejectedValue(new Error("analyzer down"));
+
+    const harness = createHarness();
+
+    await expect(
+      harness.actions.importLibraryTrack({
+        title: "track-new",
+        sourcePath: "/music/track-new.wav",
+        musicStyleId: "house",
+      }),
+    ).resolves.toEqual(importedTrack);
+
+    await waitFor(() => {
+      expect(debugSpy).toHaveBeenCalledWith("Background analysis failed:", expect.any(Error));
+    });
+
+    expect(harness.selectedTrackId).toBe("track-new");
+    expect(harness.errorState).toBeNull();
+
+    debugSpy.mockRestore();
+  });
+
+  it("seeds, updates and deletes tracks through the shared mutation runtime", async () => {
+    const seededTrack = createTrack("seed-a", "2026-06-29T09:00:00.000Z");
+    const currentTrack = createTrack("track-a", "2026-06-29T10:00:00.000Z");
+    const performanceUpdatedTrack = createTrack("track-a", "2026-06-29T10:00:00.000Z", {
+      bpm: 124,
+    });
+    const analysisUpdatedTrack = createTrack("track-a", "2026-06-29T10:00:00.000Z", {
+      bpm: 128,
+    });
+
+    libraryApiMock.seedDemoTracks.mockResolvedValue([seededTrack]);
+    libraryApiMock.updateTrackPerformance.mockResolvedValue(performanceUpdatedTrack);
+    libraryApiMock.updateTrackAnalysis.mockResolvedValue(analysisUpdatedTrack);
+    libraryApiMock.deleteTrack.mockResolvedValue(undefined);
+
+    const harness = createHarness(
+      [currentTrack],
+      [
+        {
+          id: "playlist-1",
+          name: "Playlist 1",
+          createdAt: "2026-06-29T08:00:00.000Z",
+          updatedAt: "2026-06-29T08:00:00.000Z",
+          trackIds: ["track-a"],
+        },
+      ],
+    );
+
+    await act(async () => {
+      await expect(harness.actions.seedLibrary()).resolves.toBeUndefined();
+    });
+    expect(harness.trackState[0]?.id).toBe("seed-a");
+    expect(harness.selectedTrackId).toBe("seed-a");
+
+    await act(async () => {
+      await expect(
+        harness.actions.updateTrackPerformance("track-a", {
+          color: "blue",
+        }),
+      ).resolves.toEqual(performanceUpdatedTrack);
+    });
+    expect(harness.errorState).toBeNull();
+
+    await act(async () => {
+      await expect(
+        harness.actions.updateTrackAnalysis("track-a", {
+          bpm: 128,
+        }),
+      ).resolves.toEqual(analysisUpdatedTrack);
+    });
+
+    await act(async () => {
+      await expect(harness.actions.deleteLibraryTrack("track-a")).resolves.toBe(true);
+    });
+    expect(harness.trackState.some((track) => track.id === "track-a")).toBe(false);
+    expect(harness.playlistState[0]?.trackIds).toEqual([]);
+  });
+
+  it("relinks a single track when a replacement path is picked", async () => {
+    const currentTrack = createTrack("track-a", "2026-06-29T10:00:00.000Z", {
+      availabilityState: "missing",
+    });
+    const relinkedTrack = createTrack("track-a", "2026-06-29T10:00:00.000Z");
+
+    libraryApiMock.pickTrackSourcePath.mockResolvedValue("/relinked/track-a.wav");
+    libraryApiMock.updateTrackSource.mockResolvedValue(relinkedTrack);
+
+    const harness = createHarness([currentTrack]);
+
+    await expect(harness.actions.relinkTrack("track-a")).resolves.toEqual(relinkedTrack);
+
+    expect(libraryApiMock.updateTrackSource).toHaveBeenCalledWith("track-a", {
+      sourcePath: "/relinked/track-a.wav",
+    });
+    expect(harness.trackState[0]?.file.availabilityState).toBe("available");
+  });
+
+  it("skips relink mutations cleanly when the picker is cancelled or no directory is chosen", async () => {
+    const currentTrack = createTrack("track-a", "2026-06-29T10:00:00.000Z", {
+      availabilityState: "missing",
+    });
+
+    libraryApiMock.pickTrackSourcePath.mockResolvedValue(null);
+    libraryApiMock.pickTrackSourceDirectory.mockResolvedValue(null);
+
+    const harness = createHarness([currentTrack]);
+
+    await expect(harness.actions.relinkTrack("track-a")).resolves.toBeNull();
+    await expect(harness.actions.relinkMissingTracksFromDirectory()).resolves.toBeNull();
+
+    expect(libraryApiMock.updateTrackSource).not.toHaveBeenCalled();
+    expect(libraryApiMock.resolveMissingTracksFromDirectory).not.toHaveBeenCalled();
+    expect(harness.errorState).toBeNull();
+  });
+
+  it("returns null when relink is requested for a missing track id", async () => {
+    const harness = createHarness([]);
+
+    await expect(harness.actions.relinkTrack("missing-track")).resolves.toBeNull();
+
+    expect(libraryApiMock.pickTrackSourcePath).not.toHaveBeenCalled();
+    expect(harness.errorState).toBe("Track not found");
   });
 });

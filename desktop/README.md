@@ -34,8 +34,43 @@ npm run quality:strict
 - `src/features/monitor/MonitorContext.tsx`: monitor runtime context
 - `src/features/simple/`: active simple-mode product surface
 - `src/appV0MonitorRuntime.ts`: monitor launch orchestration helpers
+- `src/appV0MonitorOrchestration.ts`: shared monitor orchestration boundary
 - `src/appV0Preferences.ts`: shell preference persistence helpers
 - `src/appV0ShellViewModel.ts`: shell-derived view state
+
+## Contributor map
+
+If you are new to the desktop codebase, start in this order:
+
+1. `src/main.tsx`
+2. `src/App-v0.tsx`
+3. `src/hooks/useAppV0ContentModel.ts`
+4. `src/hooks/useAppV0ScreenModel.ts`
+5. `src/appV0MonitorOrchestration.ts`
+6. `src/appV0MonitorRuntime.ts`
+7. `src/features/monitor/MonitorContext.tsx`
+8. `src/features/simple/SimpleMonitorScreen.tsx`
+
+Then branch into one area:
+
+- monitor launch and sessions
+- simple monitor deck and live visuals
+- connections and persisted sources
+- library and imported assets
+- setup/preferences and skins
+
+## Quality gates
+
+Before opening or updating a PR, run:
+
+```bash
+npm run test:run
+npm run coverage
+npm run typecheck
+npm run quality
+```
+
+Repository hooks also enforce the tracked quality gates described in the root `AGENTS.md`.
 
 ## Related docs
 

@@ -1,37 +1,14 @@
-import { useEffect } from "react";
-
-import type { BeatGridPoint } from "../../types/library";
-import { renderMonitorDeckCanvas, renderMonitorOverviewCanvas } from "./monitorDeckCanvas";
-import { type WaveformAnomalyMarker } from "./monitorDeckViewModel";
 import {
-  buildMonitorOverviewRenderPlan,
-  buildMonitorWaveformRenderPlan,
-} from "./simpleMonitorDeckVisualStateRuntime";
+  buildSimpleMonitorDeckVisualCanvasEffectsInput,
+  buildSimpleMonitorDeckVisualStateResult,
+} from "./simpleMonitorDeckVisualComposeRuntime";
 import {
   buildMonitorDeckScrubHookInput,
   buildSimpleMonitorDeckVisualDerivedState,
 } from "./simpleMonitorDeckVisualRuntime";
+import { useSimpleMonitorDeckCanvasEffects } from "./useSimpleMonitorDeckCanvasEffects";
 import { useMonitorDeckScrub } from "./useMonitorDeckScrub";
-
-interface UseSimpleMonitorDeckVisualStateInput {
-  backgroundAudioRef: { current: HTMLAudioElement | null };
-  waveformBins?: number[] | null;
-  waveformAnomalies: WaveformAnomalyMarker[];
-  trackWaveProgress: number;
-  setTrackWaveProgress: (value: number) => void;
-  setTrackElapsedSeconds: (value: number) => void;
-  deckDurationSeconds: number | null;
-  deckBpm: number | null;
-  activeBeatGrid: BeatGridPoint[] | null;
-  logSignalBuffer: Array<{ val: number; heat: number }>;
-  selectedAnomalyId: string | null;
-  isConsoleExpanded: boolean;
-  onToggleConsole?: () => void;
-  onSelectAnomalyForFocus: (anomalyId: string) => void;
-  deckVisualPreset: "passive" | "balanced" | "alert";
-  waveformScale: number;
-  safeRuntime?: boolean;
-}
+import type { UseSimpleMonitorDeckVisualStateInput } from "./simpleMonitorDeckVisualTypes";
 
 export function useSimpleMonitorDeckVisualState({
   backgroundAudioRef,
@@ -68,13 +45,6 @@ export function useSimpleMonitorDeckVisualState({
     logSignalBuffer,
     selectedAnomalyId,
   });
-  const {
-    overviewWaveSamples,
-    overviewAnomalyDensity,
-    anomalyBurstRegions,
-    selectedDeckMarker,
-    logWaveOverlay,
-  } = derivedDeckState;
   const scrub = useMonitorDeckScrub(
     buildMonitorDeckScrubHookInput({
       backgroundAudioRef,
@@ -87,76 +57,31 @@ export function useSimpleMonitorDeckVisualState({
       onSelectAnomalyForFocus,
     }),
   );
+  useSimpleMonitorDeckCanvasEffects(
+    buildSimpleMonitorDeckVisualCanvasEffectsInput({
+      visualState: {
+        waveformAnomalies,
+        trackWaveProgress,
+        deckVisualPreset,
+        waveformScale,
+        safeRuntime,
+      },
+      scrub,
+      derived: {
+        derivedDeckState,
+        trackWaveSamples,
+      },
+    }),
+  );
 
-  useEffect(() => {
-    const renderPlan = buildMonitorOverviewRenderPlan({
-      safeRuntime,
-      canvas: scrub.overviewCanvasRef.current,
-      derivedDeckState: {
-        overviewWaveSamples,
-        overviewAnomalyDensity,
-        anomalyBurstRegions,
-        selectedDeckMarker,
-      } as typeof derivedDeckState,
-      waveformAnomalies,
-      deckVisualPreset,
-    });
-    if (!renderPlan) {
-      return;
-    }
-
-    renderMonitorOverviewCanvas(renderPlan);
-  }, [
-    deckVisualPreset,
-    anomalyBurstRegions,
-    overviewAnomalyDensity,
-    overviewWaveSamples,
-    selectedDeckMarker,
-    scrub.overviewCanvasRef,
-    safeRuntime,
-    waveformAnomalies,
-  ]);
-
-  useEffect(() => {
-    const renderPlan = buildMonitorWaveformRenderPlan({
-      safeRuntime,
-      canvas: scrub.waveformCanvasRef.current,
-      stage: scrub.waveformStageRef.current,
+  return buildSimpleMonitorDeckVisualStateResult({
+    scrub,
+    derived: {
+      visibleWindowSeconds,
       trackWaveSamples,
-      derivedDeckState: {
-        logWaveOverlay,
-        anomalyBurstRegions,
-        selectedDeckMarker,
-      } as typeof derivedDeckState,
-      waveformAnomalies,
-      trackWaveProgress,
-      deckVisualPreset,
-    });
-    if (!renderPlan) {
-      return;
-    }
-
-    renderMonitorDeckCanvas(renderPlan);
-  }, [
-    deckVisualPreset,
-    anomalyBurstRegions,
-    logWaveOverlay,
-    selectedDeckMarker,
-    safeRuntime,
-    scrub.waveformCanvasRef,
-    scrub.waveformStageRef,
-    trackWaveProgress,
-    trackWaveSamples,
-    waveformAnomalies,
-    waveformScale,
-  ]);
-
-  return {
-    ...scrub,
-    ...derivedDeckState,
-    visibleWindowSeconds,
-    trackWaveSamples,
-    deckTimelineMarkers,
-    deckBeatMarkers,
-  };
+      deckTimelineMarkers,
+      deckBeatMarkers,
+      derivedDeckState,
+    },
+  });
 }

@@ -1,5 +1,3 @@
-import { Cable, FolderOpen, Music, PackagePlus, Plus } from "lucide-react";
-
 import type {
   BaseAssetRecord,
   BaseTrackPlaylist,
@@ -10,12 +8,15 @@ import type {
 import type { LibraryTab } from "../libraryScreenTypes";
 import { LibraryBaseAssetsListPanel } from "./LibraryBaseAssetsListPanel";
 import { LibraryConnectionsListPanel } from "./LibraryConnectionsListPanel";
-import { LibraryEmptyState } from "./LibraryEmptyState";
 import { LibraryPlaylistsPanel } from "./LibraryPlaylistsPanel";
 import { LibrarySourcesListPanel } from "./LibrarySourcesListPanel";
+import { LibraryTabEmptySection } from "./LibraryTabEmptySection";
+import { LibraryTabLoadingState } from "./LibraryTabLoadingState";
+import { LibraryTracksTabSection } from "./LibraryTracksTabSection";
 import { LibraryTracksListPanel } from "./LibraryTracksListPanel";
+import { buildLibraryTabContentState } from "./libraryTabContentRuntime";
 
-interface EmptyStateContent {
+export interface EmptyStateContent {
   title: string;
   body: string;
   actionLabel: string;
@@ -62,19 +63,6 @@ interface LibraryTabContentProps {
   onTogglePlaylistTrack: (trackId: string) => void;
 }
 
-function renderEmptyIcon(tab: LibraryTab) {
-  if (tab === "tracks") {
-    return <Music size={32} />;
-  }
-  if (tab === "sources") {
-    return <FolderOpen size={32} />;
-  }
-  if (tab === "connections") {
-    return <Cable size={32} />;
-  }
-  return <PackagePlus size={32} />;
-}
-
 export function LibraryTabContent({
   tab,
   loading,
@@ -115,77 +103,60 @@ export function LibraryTabContent({
   onSetPlaylistName,
   onTogglePlaylistTrack,
 }: LibraryTabContentProps) {
-  if (loading) {
+  const contentState = buildLibraryTabContentState({
+    tab,
+    loading,
+    trackCount: tracks.length,
+    repositoryCount: repositories.length,
+    connectionCount: logConnections.length,
+    baseAssetCount: baseAssets.length,
+  });
+
+  if (contentState.kind === "loading") {
+    return <LibraryTabLoadingState loadingLabel={loadingLabel} />;
+  }
+
+  if (contentState.kind === "empty") {
     return (
-      <div className="placeholder-loading">
-        <span className="spin-ring" aria-hidden="true" />
-        {loadingLabel}
-      </div>
+      <LibraryTabEmptySection
+        iconKind={contentState.emptyIconKind ?? "tracks"}
+        title={emptyState.title}
+        body={emptyState.body}
+        actionLabel={emptyState.actionLabel}
+        onShowForm={onShowForm}
+      />
     );
   }
 
-  const emptyAction = (
-    <button type="button" className="action" onClick={onShowForm}>
-      <Plus size={14} /> {emptyState.actionLabel}
-    </button>
-  );
-
-  if (tab === "tracks") {
-    if (tracks.length === 0) {
-      return (
-        <LibraryEmptyState
-          icon={renderEmptyIcon(tab)}
-          title={emptyState.title}
-          body={emptyState.body}
-          action={emptyAction}
-        />
-      );
-    }
-
+  if (contentState.kind === "tracks") {
     return (
-      <div className="library-track-stack">
-        <LibraryPlaylistsPanel
-          playlistEditorId={playlistEditorId}
-          playlistEditorOpen={playlistEditorOpen}
-          playlistName={playlistName}
-          playlistTrackIds={playlistTrackIds}
-          playlists={playlists}
-          selectedPlaylistId={selectedPlaylistId}
-          tracks={tracks}
-          onDeletePlaylist={onDeletePlaylist}
-          onOpenPlaylistEditor={onOpenPlaylistEditor}
-          onResetPlaylistEditor={onResetPlaylistEditor}
-          onSavePlaylist={onSavePlaylist}
-          onSelectPlaylist={onSelectPlaylist}
-          onSetPlaylistName={onSetPlaylistName}
-          onTogglePlaylistTrack={onTogglePlaylistTrack}
-        />
-        <LibraryTracksListPanel
-          newlyImportedId={newlyImportedId}
-          selectedTrackId={selectedTrackId}
-          tracks={tracks}
-          onDeleteTrack={onDeleteTrack}
-          onInspectTrack={onInspectTrack}
-          onReanalyzeTrack={onReanalyzeTrack}
-          onRelinkTrack={onRelinkTrack}
-          onSelectTrack={onSelectTrack}
-        />
-      </div>
+      <LibraryTracksTabSection
+        newlyImportedId={newlyImportedId}
+        selectedTrackId={selectedTrackId}
+        selectedPlaylistId={selectedPlaylistId}
+        playlistEditorOpen={playlistEditorOpen}
+        playlistEditorId={playlistEditorId}
+        playlistName={playlistName}
+        playlistTrackIds={playlistTrackIds}
+        tracks={tracks}
+        playlists={playlists}
+        onDeleteTrack={onDeleteTrack}
+        onInspectTrack={onInspectTrack}
+        onReanalyzeTrack={onReanalyzeTrack}
+        onRelinkTrack={onRelinkTrack}
+        onSelectTrack={onSelectTrack}
+        onDeletePlaylist={onDeletePlaylist}
+        onOpenPlaylistEditor={onOpenPlaylistEditor}
+        onResetPlaylistEditor={onResetPlaylistEditor}
+        onSavePlaylist={onSavePlaylist}
+        onSelectPlaylist={onSelectPlaylist}
+        onSetPlaylistName={onSetPlaylistName}
+        onTogglePlaylistTrack={onTogglePlaylistTrack}
+      />
     );
   }
 
-  if (tab === "sources") {
-    if (repositories.length === 0) {
-      return (
-        <LibraryEmptyState
-          icon={renderEmptyIcon(tab)}
-          title={emptyState.title}
-          body={emptyState.body}
-          action={emptyAction}
-        />
-      );
-    }
-
+  if (contentState.kind === "sources") {
     return (
       <LibrarySourcesListPanel
         newlyImportedId={newlyImportedId}
@@ -199,33 +170,11 @@ export function LibraryTabContent({
     );
   }
 
-  if (tab === "connections") {
-    if (logConnections.length === 0) {
-      return (
-        <LibraryEmptyState
-          icon={renderEmptyIcon(tab)}
-          title={emptyState.title}
-          body={emptyState.body}
-          action={emptyAction}
-        />
-      );
-    }
-
+  if (contentState.kind === "connections") {
     return (
       <LibraryConnectionsListPanel
         connections={logConnections}
         onDeleteConnection={onDeleteConnection}
-      />
-    );
-  }
-
-  if (baseAssets.length === 0) {
-    return (
-      <LibraryEmptyState
-        icon={renderEmptyIcon(tab)}
-        title={emptyState.title}
-        body={emptyState.body}
-        action={emptyAction}
       />
     );
   }

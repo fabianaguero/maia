@@ -16,6 +16,13 @@ import {
   resolveSelectedLibraryPlaylist,
   toggleLibraryPlaylistTrackId,
 } from "./libraryScreenStateRuntime";
+import {
+  buildLibraryScreenPlaylistSaveHookInput,
+  buildLibraryScreenPlaylistSyncInput,
+  buildLibraryScreenRefreshConnectionsInput,
+  buildLibraryScreenStateHookResult,
+  buildLibraryScreenTabChangeHookState,
+} from "./libraryScreenStateHookRuntime";
 
 interface UseLibraryScreenStateInput {
   activeTab?: LibraryTab;
@@ -44,15 +51,26 @@ export function useLibraryScreenState({
   const [playlistTrackIds, setPlaylistTrackIds] = useState<string[]>([]);
 
   function handleTabChange(next: LibraryTab) {
-    setTab(next);
-    onTabChange?.(next);
-    setShowForm(false);
+    const nextState = buildLibraryScreenTabChangeHookState({
+      nextTab: next,
+      setTab,
+      onTabChange,
+      setShowForm,
+    });
+    nextState.setTab(nextState.nextTab);
+    nextState.onTabChange?.(nextState.nextTab);
+    nextState.setShowForm(false);
   }
 
   async function refreshLogConnections(): Promise<void> {
     try {
       setLogConnectionError(null);
-      setLogConnections(await listLogSourceConnections());
+      const refreshInput = buildLibraryScreenRefreshConnectionsInput({
+        setLogConnectionError,
+        setLogConnections,
+        listLogSourceConnections,
+      });
+      refreshInput.setLogConnections(await refreshInput.listLogSourceConnections());
     } catch (error) {
       setLogConnectionError(resolveLibraryLogConnectionError(error));
     }
@@ -69,10 +87,19 @@ export function useLibraryScreenState({
   }, [activeTab]);
 
   useEffect(() => {
-    const nextState = buildLibraryPlaylistEditorSyncState({
+    const syncInput = buildLibraryScreenPlaylistSyncInput({
       playlistEditorOpen,
       playlistEditorId,
-      selectedPlaylist: resolveSelectedLibraryPlaylist(playlists, selectedPlaylistId),
+      playlists,
+      selectedPlaylistId,
+    });
+    const nextState = buildLibraryPlaylistEditorSyncState({
+      playlistEditorOpen: syncInput.playlistEditorOpen,
+      playlistEditorId: syncInput.playlistEditorId,
+      selectedPlaylist: resolveSelectedLibraryPlaylist(
+        syncInput.playlists,
+        syncInput.selectedPlaylistId,
+      ),
     });
 
     if (nextState) {
@@ -107,12 +134,14 @@ export function useLibraryScreenState({
   }
 
   async function handleSavePlaylist() {
-    const ok = await onSavePlaylist(
-      buildLibraryPlaylistSaveInput({
-        playlistEditorId,
-        playlistName,
-        playlistTrackIds,
-      }),
+    const saveInput = buildLibraryScreenPlaylistSaveHookInput({
+      onSavePlaylist,
+      playlistEditorId,
+      playlistName,
+      playlistTrackIds,
+    });
+    const ok = await saveInput.onSavePlaylist(
+      buildLibraryPlaylistSaveInput(saveInput.playlistSaveInput),
     );
 
     if (ok) {
@@ -120,7 +149,7 @@ export function useLibraryScreenState({
     }
   }
 
-  return {
+  return buildLibraryScreenStateHookResult({
     tab,
     handleTabChange,
     logConnections,
@@ -138,5 +167,5 @@ export function useLibraryScreenState({
     togglePlaylistTrack,
     handleSavePlaylist,
     refreshLogConnections,
-  };
+  });
 }

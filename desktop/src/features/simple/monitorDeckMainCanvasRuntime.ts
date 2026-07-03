@@ -15,7 +15,18 @@ export interface BuildMonitorDeckMainCanvasStateInput {
   logWaveOverlay: LogWaveOverlayPoint[];
 }
 
-export function buildMonitorDeckMainCanvasState(input: BuildMonitorDeckMainCanvasStateInput) {
+export interface MonitorDeckMainCanvasState {
+  palette: ReturnType<typeof resolveMonitorDeckPalette>;
+  size: ReturnType<typeof resolveMonitorDeckCanvasSize>;
+  layout: ReturnType<typeof buildMonitorDeckLayout>;
+  logSamples: number[];
+  trackWaveSamples: number[];
+  logWaveOverlay: LogWaveOverlayPoint[];
+}
+
+export function buildMonitorDeckMainCanvasState(
+  input: BuildMonitorDeckMainCanvasStateInput,
+): MonitorDeckMainCanvasState {
   const palette = resolveMonitorDeckPalette(
     input.visualPreset ?? "balanced",
     resolveCurrentMonitorDeckSkin(),

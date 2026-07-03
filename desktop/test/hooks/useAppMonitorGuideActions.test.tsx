@@ -87,6 +87,55 @@ describe("useAppMonitorGuideActions", () => {
     ]);
   });
 
+  it("arms an individual track base and routes track-only session drafts through the same branch", () => {
+    const input = createInput();
+    appRuntimeMock.resolveLibraryMonitorGuideState.mockReturnValue({
+      trackPath: null,
+      playlistPaths: null,
+    });
+    appRuntimeMock.resolveTrackArmState.mockReturnValue({
+      selectedPlaylistId: null,
+      selectedTrackId: "track-4",
+    });
+
+    const { result } = renderHook(() => useAppMonitorGuideActions(input));
+
+    act(() => {
+      result.current.armTrackBase("track-4");
+    });
+
+    expect(input.library.setSelectedPlaylistId).toHaveBeenCalledWith(null);
+    expect(input.library.setSelectedTrackId).toHaveBeenCalledWith("track-4");
+
+    act(() => {
+      result.current.armSessionMusicalBase({ trackId: "track-4" });
+    });
+
+    expect(appRuntimeMock.resolveTrackArmState).toHaveBeenNthCalledWith(2, "track-4", []);
+  });
+
+  it("routes playlist session drafts through playlist arming instead of clearing state", () => {
+    const input = createInput();
+    appRuntimeMock.resolveLibraryMonitorGuideState.mockReturnValue({
+      trackPath: null,
+      playlistPaths: null,
+    });
+    appRuntimeMock.resolvePlaylistArmState.mockReturnValue({
+      selectedPlaylistId: "playlist-9",
+      selectedTrackId: "track-2",
+    });
+
+    const { result } = renderHook(() => useAppMonitorGuideActions(input));
+
+    act(() => {
+      result.current.armSessionMusicalBase({ playlistId: "playlist-9" });
+    });
+
+    expect(appRuntimeMock.resolvePlaylistArmState).toHaveBeenCalledWith("playlist-9", [], []);
+    expect(input.library.setSelectedPlaylistId).toHaveBeenCalledWith("playlist-9");
+    expect(input.library.setSelectedTrackId).toHaveBeenCalledWith("track-2");
+  });
+
   it("clears selected musical base when a session draft has no track or playlist", () => {
     const input = createInput();
     appRuntimeMock.resolveLibraryMonitorGuideState.mockReturnValue({

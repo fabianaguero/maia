@@ -1,18 +1,13 @@
 import { useT } from "../../i18n/I18nContext";
 import { buildSimpleMonitorCollectionsState } from "./simpleMonitorScreenStateRuntime";
 import {
-  buildSimpleMonitorDeckRuntimeInput,
-  buildSimpleMonitorLaunchStateInput,
-  buildSimpleMonitorScreenHookArgsInput,
-} from "./simpleMonitorScreenOrchestrationRuntime";
-import {
-  buildSimpleMonitorDeckRuntimeSlice,
-  buildSimpleMonitorLaunchStateSlice,
-} from "./simpleMonitorScreenSlicesRuntime";
-import { useSimpleMonitorAnomalyFilterState } from "./useSimpleMonitorAnomalyFilterState";
-import { useSimpleMonitorDeckRuntime } from "./useSimpleMonitorDeckRuntime";
-import { useSimpleMonitorLaunchState } from "./useSimpleMonitorLaunchState";
+  buildSimpleMonitorScreenControllerCollectionsInput,
+  buildSimpleMonitorScreenControllerHookResult,
+  buildSimpleMonitorScreenControllerRuntimeInput,
+} from "./simpleMonitorScreenControllerHookRuntime";
+import { buildSimpleMonitorScreenHookArgsInput } from "./simpleMonitorScreenOrchestrationRuntime";
 import type { SimpleMonitorScreenStateInput } from "./useSimpleMonitorScreenState";
+import { useSimpleMonitorScreenControllerSlices } from "./useSimpleMonitorScreenControllerSlices";
 
 export function useSimpleMonitorScreenController({
   skin,
@@ -34,70 +29,60 @@ export function useSimpleMonitorScreenController({
   onToggleConsole,
   liveSettings,
 }: SimpleMonitorScreenStateInput) {
-  const t = useT();
-  const isListening = !!session;
-  const collections = buildSimpleMonitorCollectionsState({
+  const runtimeInput = buildSimpleMonitorScreenControllerRuntimeInput({
+    skin,
+    session,
+    metrics,
     pastSessions,
     repositories,
     tracks,
-  });
-
-  const launchState = useSimpleMonitorLaunchState(
-    buildSimpleMonitorLaunchStateInput({
-      repositories: collections.safeRepositories,
-      isListening,
-      t,
-      onResumeAudio,
-      onStartMonitoring,
-    }),
-  );
-
-  const deckRuntime = useSimpleMonitorDeckRuntime(
-    buildSimpleMonitorDeckRuntimeInput({
-      skin,
-      session,
-      isListening,
-      isLaunchingMonitor: launchState.isLaunchingMonitor,
-      safeTracks: collections.safeTracks,
-      trackName,
-      audioContext,
-      subscribe,
-      waveformBins,
-      isConsoleExpanded,
-      onToggleConsole,
-      liveSettings,
-      t,
-    }),
-  );
-
-  const anomalyFilter = useSimpleMonitorAnomalyFilterState({
+    onStop,
+    onResumeAudio,
+    audioStatus,
+    audioContext,
+    onStartMonitoring,
+    onReplaySession,
+    subscribe,
+    trackName,
+    waveformBins,
     isConsoleExpanded,
     onToggleConsole,
+    liveSettings,
+  });
+  const t = useT();
+  const isListening = !!runtimeInput.session;
+  const collections = buildSimpleMonitorCollectionsState(
+    buildSimpleMonitorScreenControllerCollectionsInput(runtimeInput),
+  );
+
+  const { launchState, deckRuntime, anomalyFilter } = useSimpleMonitorScreenControllerSlices({
+    state: runtimeInput,
+    collections,
+    isListening,
+    t,
   });
 
   const hookStateArgs = buildSimpleMonitorScreenHookArgsInput({
-    session,
-    metrics,
+    session: runtimeInput.session,
+    metrics: runtimeInput.metrics,
     t,
     nowMs: Date.now(),
-    trackName,
-    isConsoleExpanded,
-    onToggleConsole,
-    onStop,
+    trackName: runtimeInput.trackName,
+    isConsoleExpanded: runtimeInput.isConsoleExpanded ?? false,
+    onToggleConsole: runtimeInput.onToggleConsole,
+    onStop: runtimeInput.onStop,
     onRefresh: () => window.location.reload(),
     onSimulateLog: deckRuntime.simulateLog,
-    onResumeAudio,
-    onReplaySession,
+    onResumeAudio: runtimeInput.onResumeAudio,
+    onReplaySession: runtimeInput.onReplaySession,
     isAnomalyFilterActive: anomalyFilter.isAnomalyFilterActive,
     onToggleAnomalyFilter: anomalyFilter.handleToggleAnomalyFilter,
     onClearAnomalyFilter: anomalyFilter.handleClearAnomalyFilter,
-    launchState: buildSimpleMonitorLaunchStateSlice(launchState),
-    deckRuntime: buildSimpleMonitorDeckRuntimeSlice(deckRuntime),
+    launchState,
+    deckRuntime,
     collections,
-    audioStatus,
+    audioStatus: runtimeInput.audioStatus,
   });
 
-  return {
-    hookStateArgs,
-  };
+  return buildSimpleMonitorScreenControllerHookResult(hookStateArgs);
 }

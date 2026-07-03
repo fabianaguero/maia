@@ -98,6 +98,26 @@ describe("LiveTailPanel", () => {
     expect(onToggleConsole).toHaveBeenCalledTimes(1);
   });
 
+  it("supports keyboard toggling and exposes the expanded state for accessibility", () => {
+    const onToggleConsole = vi.fn();
+
+    renderPanel({
+      onToggleConsole,
+      isConsoleExpanded: true,
+      liveLines: [createLine()],
+    });
+
+    const header = screen.getByRole("button", {
+      name: `${en.simpleMode.monitor.liveSystemIngestion} — ${en.simpleMode.common.close}`,
+    });
+    expect(header).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.keyDown(header, { key: "Enter" });
+    fireEvent.keyDown(header, { key: " " });
+
+    expect(onToggleConsole).toHaveBeenCalledTimes(2);
+  });
+
   it("renders anomaly rows, linked states and selection callbacks", () => {
     const onSelectAnomalyLine = vi.fn();
     const registerLineRef = vi.fn();

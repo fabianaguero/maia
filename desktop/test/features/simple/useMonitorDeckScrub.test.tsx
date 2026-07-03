@@ -364,4 +364,75 @@ describe("useMonitorDeckScrub", () => {
     expect(audio.currentTime).toBe(10);
     expect(onSelectAnomalyForFocus).not.toHaveBeenCalled();
   });
+
+  it("bails out of viewport scrub helpers when the stage or overview canvas is missing", () => {
+    const audio = {
+      duration: 100,
+      currentTime: 0,
+    } as HTMLAudioElement;
+    const setTrackWaveProgress = vi.fn();
+    const setTrackElapsedSeconds = vi.fn();
+
+    const { result } = renderHook(() =>
+      useMonitorDeckScrub({
+        backgroundAudioRef: { current: audio },
+        waveformAnomalies: [],
+        trackWaveProgress: 0.2,
+        setTrackWaveProgress,
+        setTrackElapsedSeconds,
+        isConsoleExpanded: true,
+        onToggleConsole: vi.fn(),
+        onSelectAnomalyForFocus: vi.fn(),
+      }),
+    );
+
+    act(() => {
+      result.current.seekTrackFromViewport(240);
+      result.current.seekTrackFromOverviewViewport(180);
+    });
+
+    expect(audio.currentTime).toBe(0);
+    expect(setTrackWaveProgress).not.toHaveBeenCalled();
+    expect(setTrackElapsedSeconds).not.toHaveBeenCalled();
+  });
+
+  it("bails out when background audio disappears after resolving the seek state", () => {
+    const audio = {
+      duration: 100,
+      currentTime: 0,
+    } as HTMLAudioElement;
+    const setTrackWaveProgress = vi.fn();
+    const setTrackElapsedSeconds = vi.fn();
+    let reads = 0;
+    const backgroundAudioRef = {} as { current: HTMLAudioElement | null };
+
+    Object.defineProperty(backgroundAudioRef, "current", {
+      configurable: true,
+      get() {
+        reads += 1;
+        return reads === 1 ? audio : null;
+      },
+    });
+
+    const { result } = renderHook(() =>
+      useMonitorDeckScrub({
+        backgroundAudioRef,
+        waveformAnomalies: [],
+        trackWaveProgress: 0.2,
+        setTrackWaveProgress,
+        setTrackElapsedSeconds,
+        isConsoleExpanded: true,
+        onToggleConsole: vi.fn(),
+        onSelectAnomalyForFocus: vi.fn(),
+      }),
+    );
+
+    act(() => {
+      result.current.seekToTrackProgress(0.5);
+    });
+
+    expect(setTrackWaveProgress).not.toHaveBeenCalled();
+    expect(setTrackElapsedSeconds).not.toHaveBeenCalled();
+    expect(audio.currentTime).toBe(0);
+  });
 });

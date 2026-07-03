@@ -119,4 +119,164 @@ describe("live sonification profiles", () => {
     expect(scene.presetId).toBe("beat-locked");
     expect(scene.summary).toContain("Anchor Track");
   });
+
+  it("uses a managed single-file base asset as the direct sample source", () => {
+    const baseAsset: BaseAssetRecord = {
+      id: "asset-file",
+      title: "One Shot",
+      sourcePath: "/tmp/one-shot.wav",
+      storagePath: "/tmp/one-shot.wav",
+      sourceKind: "file",
+      importedAt: "2026-06-27T00:00:00Z",
+      categoryId: "fx",
+      categoryLabel: "FX",
+      reusable: true,
+      entryCount: 1,
+      checksum: null,
+      confidence: 0.9,
+      summary: "single sample",
+      analyzerStatus: "ready",
+      notes: [],
+      tags: [],
+      metrics: {},
+    };
+
+    const scene = resolveLiveSonificationScene(baseAsset, null, "steady-house", "balanced", null);
+
+    expect(scene.sampleSourceMode).toBe("single-sample");
+    expect(scene.sampleSources).toEqual([{ path: "/tmp/one-shot.wav", label: "One Shot" }]);
+    expect(scene.sampleSourceDetail).toContain("managed base-asset file");
+  });
+
+  it("falls back to the composition preview when the base asset cannot provide playable managed audio", () => {
+    const baseAsset: BaseAssetRecord = {
+      id: "asset-browser",
+      title: "Browser fallback",
+      sourcePath: "/tmp/browser",
+      storagePath: "browser-fallback:///tmp/browser",
+      sourceKind: "directory",
+      importedAt: "2026-06-27T00:00:00Z",
+      categoryId: "collection",
+      categoryLabel: "Collection",
+      reusable: true,
+      entryCount: 0,
+      checksum: null,
+      confidence: 0.7,
+      summary: "browser fallback",
+      analyzerStatus: "ready",
+      notes: [],
+      tags: [],
+      metrics: {
+        playableAudioEntries: ["kick.wav"],
+      },
+    };
+
+    const composition = {
+      id: "comp-1",
+      title: "Hybrid Mix",
+      previewAudioPath: "/renders/hybrid-preview.wav",
+      referenceTitle: "Hybrid Mix",
+      referenceType: "track",
+      targetBpm: 126,
+      strategy: "layered-pack",
+      baseAssetCategoryId: "collection",
+      baseAssetCategoryLabel: "Collection",
+      metrics: {},
+    } as never;
+
+    const scene = resolveLiveSonificationScene(
+      baseAsset,
+      composition,
+      "steady-house",
+      "balanced",
+      null,
+    );
+
+    expect(scene.sampleSourceMode).toBe("single-sample");
+    expect(scene.sampleSources).toEqual([
+      { path: "/renders/hybrid-preview.wav", label: "Hybrid Mix" },
+    ]);
+    expect(scene.sampleSourceDetail).toContain("composition preview WAV");
+  });
+
+  it("stays on synth mode when no playable managed audio exists anywhere", () => {
+    const baseAsset: BaseAssetRecord = {
+      id: "asset-empty",
+      title: "No audio",
+      sourcePath: "/tmp/empty",
+      storagePath: "/tmp/empty",
+      sourceKind: "directory",
+      importedAt: "2026-06-27T00:00:00Z",
+      categoryId: "collection",
+      categoryLabel: "Collection",
+      reusable: true,
+      entryCount: 1,
+      checksum: null,
+      confidence: 0.7,
+      summary: "empty",
+      analyzerStatus: "ready",
+      notes: [],
+      tags: [],
+      metrics: {
+        playableAudioEntries: ["notes.txt"],
+        previewEntries: ["readme.md"],
+      },
+    };
+
+    const composition = {
+      id: "comp-2",
+      title: "No Preview",
+      previewAudioPath: "browser-fallback:///renders/preview.wav",
+      referenceType: "track",
+      targetBpm: 124,
+      baseAssetCategoryId: "collection",
+      baseAssetCategoryLabel: "Collection",
+      strategy: "layered-pack",
+      metrics: {},
+    } as never;
+
+    const scene = resolveLiveSonificationScene(
+      baseAsset,
+      composition,
+      "steady-house",
+      "balanced",
+      null,
+    );
+
+    expect(scene.sampleSourceMode).toBe("synth");
+    expect(scene.sampleSources).toEqual([]);
+    expect(scene.sampleSourceDetail).toContain("internal synthesis");
+  });
+
+  it("mutes overridden components and routes anomaly cues distinctly", () => {
+    const scene = resolveLiveSonificationScene(null, null, "alert-techno", "volatile", null);
+    const anomalyCue: LiveLogCue = {
+      ...baseCue,
+      level: "info",
+      accent: "anomaly",
+      component: "worker",
+    };
+
+    const muted = routeCueThroughScene(
+      anomalyCue,
+      scene,
+      1,
+      ["worker", "api"],
+      new Map([["worker", { muted: true }]]),
+    );
+    const routed = routeCueThroughScene(
+      anomalyCue,
+      scene,
+      1,
+      ["worker", "api"],
+      new Map([["worker", { gainMult: 1.4 }]]),
+    );
+
+    expect(muted.routeLabel).toBe("muted");
+    expect(muted.gain).toBe(0);
+    expect(muted.durationMs).toBe(0);
+    expect(routed.routeKey).toBe("anomaly");
+    expect(routed.gain).toBeGreaterThan(baseCue.gain);
+    expect(routed.pan).not.toBe(scene.routes.find((route) => route.key === "anomaly")?.pan);
+  });
 });

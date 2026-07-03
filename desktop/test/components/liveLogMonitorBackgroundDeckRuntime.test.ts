@@ -75,6 +75,10 @@ function createTrack(path = "/tmp/demo.wav"): LibraryTrack {
 }
 
 describe("liveLogMonitorBackgroundDeckRuntime", () => {
+  it("returns null snapshots when no deck is active", () => {
+    expect(snapshotBackgroundDeckState(null)).toBeNull();
+  });
+
   it("snapshots only lifecycle-relevant deck fields", () => {
     const snapshot = snapshotBackgroundDeckState({
       source: {} as AudioBufferSourceNode,
@@ -110,6 +114,36 @@ describe("liveLogMonitorBackgroundDeckRuntime", () => {
     expect(url).toBe("/tmp/demo.wav");
   });
 
+  it("returns null when the playable source path is missing or tauri conversion fails", () => {
+    expect(
+      resolveBackgroundTrackUrl({
+        track: createTrack(""),
+        isTauriRuntime: false,
+        convertFileSrc: (path) => `asset://${path}`,
+      }),
+    ).toBeNull();
+
+    expect(
+      resolveBackgroundTrackUrl({
+        track: createTrack("/tmp/demo.wav"),
+        isTauriRuntime: true,
+        convertFileSrc: () => {
+          throw new Error("boom");
+        },
+      }),
+    ).toBeNull();
+  });
+
+  it("uses tauri path conversion when available", () => {
+    expect(
+      resolveBackgroundTrackUrl({
+        track: createTrack("/tmp/demo.wav"),
+        isTauriRuntime: true,
+        convertFileSrc: (path) => `asset://${path}`,
+      }),
+    ).toBe("asset:///tmp/demo.wav");
+  });
+
   it("loads and caches background buffers", async () => {
     const decodeAudioData = vi.fn(async () => ({ id: "decoded" }) as unknown as AudioBuffer);
     const context = { decodeAudioData } as unknown as AudioContext;
@@ -139,5 +173,78 @@ describe("liveLogMonitorBackgroundDeckRuntime", () => {
     expect(first).toBeTruthy();
     expect(second).toBe(first);
     expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns null when the track has no playable path or no resolved url", async () => {
+    const decodeAudioData = vi.fn(async () => ({ id: "decoded" }) as unknown as AudioBuffer);
+    const context = { decodeAudioData } as unknown as AudioContext;
+    const fetchImpl = vi.fn();
+    const cache = new Map<string, Promise<AudioBuffer>>();
+
+    const missingPath = await loadCachedBackgroundBuffer({
+      context,
+      track: createTrack(""),
+      cache,
+      isTauriRuntime: false,
+      convertFileSrc: (path) => `asset://${path}`,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    const brokenTauriUrl = await loadCachedBackgroundBuffer({
+      context,
+      track: createTrack("/tmp/demo.wav"),
+      cache,
+      isTauriRuntime: true,
+      convertFileSrc: () => {
+        throw new Error("broken");
+      },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+
+    expect(missingPath).toBeNull();
+    expect(brokenTauriUrl).toBeNull();
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("evicts failed cache entries so a later retry can succeed", async () => {
+    const decodeAudioData = vi.fn(async () => ({ id: "decoded" }) as unknown as AudioBuffer);
+    const context = { decodeAudioData } as unknown as AudioContext;
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        arrayBuffer: async () => new ArrayBuffer(0),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        arrayBuffer: async () => new ArrayBuffer(8),
+      });
+    const cache = new Map<string, Promise<AudioBuffer>>();
+
+    await expect(
+      loadCachedBackgroundBuffer({
+        context,
+        track: createTrack(),
+        cache,
+        isTauriRuntime: false,
+        convertFileSrc: (path) => `asset://${path}`,
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      }),
+    ).rejects.toThrow("HTTP 503 fetching guide track");
+    expect(cache.size).toBe(0);
+
+    const recovered = await loadCachedBackgroundBuffer({
+      context,
+      track: createTrack(),
+      cache,
+      isTauriRuntime: false,
+      convertFileSrc: (path) => `asset://${path}`,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+
+    expect(recovered).toBeTruthy();
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(cache.size).toBe(1);
   });
 });

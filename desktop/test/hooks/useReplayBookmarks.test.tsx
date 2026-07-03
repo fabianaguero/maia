@@ -57,6 +57,30 @@ function renderReplayBookmarksHook() {
   );
 }
 
+function renderReplayBookmarksHookWithOverrides(
+  overrides: Partial<Parameters<typeof useReplayBookmarks>[0]>,
+) {
+  return renderHook(() =>
+    useReplayBookmarks({
+      replaySessionId: "session-1",
+      replayActive: true,
+      replayWindowIndex: 2,
+      selectedStyleProfileId: "style-a",
+      selectedMutationProfileId: "mutation-a",
+      currentReplayExplanation: {
+        eventIndex: 7,
+        trackId: "track-1",
+        trackTitle: "Track 1",
+        trackSecond: 42,
+      },
+      fallbackTrackId: "track-fallback",
+      fallbackTrackTitle: "Fallback",
+      fallbackTrackSecond: 21,
+      ...overrides,
+    }),
+  );
+}
+
 describe("useReplayBookmarks", () => {
   beforeEach(() => {
     sessionsApiMock.listSessionBookmarks.mockResolvedValue([
@@ -139,5 +163,43 @@ describe("useReplayBookmarks", () => {
     });
 
     expect(result.current.bookmarkError).toContain("save failed");
+  });
+
+  it("returns null without calling the API when the replay session or window is missing", async () => {
+    const withoutSession = renderReplayBookmarksHookWithOverrides({
+      replaySessionId: null,
+    });
+
+    await act(async () => {
+      await expect(withoutSession.result.current.saveReplayBookmark()).resolves.toBeNull();
+    });
+
+    const withoutWindow = renderReplayBookmarksHookWithOverrides({
+      replayWindowIndex: null,
+    });
+
+    await act(async () => {
+      await expect(withoutWindow.result.current.saveReplayBookmark()).resolves.toBeNull();
+    });
+
+    expect(sessionsApiMock.upsertSessionBookmark).not.toHaveBeenCalled();
+  });
+
+  it("surfaces the native-runtime requirement when bookmark upsert returns null", async () => {
+    sessionsApiMock.upsertSessionBookmark.mockResolvedValueOnce(null);
+
+    const { result } = renderReplayBookmarksHook();
+
+    await waitFor(() => {
+      expect(result.current.bookmarkBusy).toBe(false);
+    });
+
+    await act(async () => {
+      await expect(result.current.saveReplayBookmark()).resolves.toBeNull();
+    });
+
+    expect(result.current.bookmarkError).toBe(
+      "Replay bookmarks require the native desktop runtime.",
+    );
   });
 });

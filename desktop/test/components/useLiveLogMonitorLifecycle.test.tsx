@@ -84,6 +84,12 @@ describe("useLiveLogMonitorLifecycle", () => {
     expect(input.setBasePlaylist).toHaveBeenCalledWith(expect.any(Function));
     expect(input.subscribe).toHaveBeenCalledWith(input.onStreamUpdate);
 
+    const setBasePlaylistUpdater = input.setBasePlaylist.mock.calls[0]?.[0] as (
+      current: { trackIds: string[] } | null,
+    ) => { name: string; trackIds: string[] } | null;
+    expect(setBasePlaylistUpdater(null)).toEqual({ name: "seed", trackIds: ["track-1"] });
+    expect(setBasePlaylistUpdater({ trackIds: ["existing"] })).toEqual({ trackIds: ["existing"] });
+
     unmount();
     expect(unsubscribe).toHaveBeenCalled();
     expect(stopManagedBlobAudioState).toHaveBeenCalledTimes(1);
@@ -110,5 +116,32 @@ describe("useLiveLogMonitorLifecycle", () => {
     unmount();
 
     expect(close).toHaveBeenCalled();
+  });
+
+  it("does not seed playlists when no guide-track seed is available and keeps shared audio contexts open", () => {
+    resolveGuideTrackSeedPlaylist.mockReturnValueOnce(null);
+    const close = vi.fn(async () => undefined);
+    const input = createInput({
+      basePlaylist: { name: "existing", trackIds: ["track-1"] } as never,
+      audioContextRef: { current: { close } as never },
+      usingSharedAudioContextRef: { current: true },
+    });
+
+    const { unmount } = renderHook(() => useLiveLogMonitorLifecycle(input));
+
+    expect(input.setBasePlaylist).not.toHaveBeenCalled();
+
+    const baseAssetUpdater = input.setSceneBaseAssetId.mock.calls[0]?.[0] as (
+      current: string,
+    ) => string;
+    const compositionUpdater = input.setSceneCompositionId.mock.calls[0]?.[0] as (
+      current: string,
+    ) => string;
+    expect(baseAssetUpdater("base-current")).toBe("base-current");
+    expect(compositionUpdater("comp-current")).toBe("comp-current");
+
+    unmount();
+
+    expect(close).not.toHaveBeenCalled();
   });
 });

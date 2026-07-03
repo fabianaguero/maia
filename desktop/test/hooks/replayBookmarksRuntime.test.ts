@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { SessionBookmark } from "../../src/api/sessions";
 import {
+  buildReplayBookmarkUpsertInput,
   buildReplayBookmarkDraftState,
   removeReplayBookmark,
   resolveActiveReplayBookmark,
@@ -86,5 +87,40 @@ describe("replayBookmarksRuntime", () => {
     expect(toReplayBookmarkErrorMessage(new Error("boom"))).toBe("boom");
     expect(toReplayBookmarkErrorMessage("failed")).toBe("failed");
     expect(toReplayBookmarkErrorMessage({})).toBe("Unexpected replay bookmark failure.");
+  });
+
+  it("builds the bookmark upsert payload from replay and fallback context", () => {
+    expect(
+      buildReplayBookmarkUpsertInput({
+        replaySessionId: "session-9",
+        replayWindowIndex: 4,
+        bookmarkLabelDraft: "  ",
+        bookmarkNoteDraft: "  note  ",
+        bookmarkTagDraft: "alert",
+        bookmarkStyleProfileIdDraft: "style-z",
+        bookmarkMutationProfileIdDraft: "mutation-z",
+        currentReplayExplanation: {
+          eventIndex: 6,
+          trackId: "track-live",
+          trackTitle: "Live Track",
+          trackSecond: 64,
+        },
+        fallbackTrackId: "track-fallback",
+        fallbackTrackTitle: "Fallback",
+        fallbackTrackSecond: 21,
+      }),
+    ).toEqual({
+      sessionId: "session-9",
+      replayWindowIndex: 4,
+      eventIndex: 6,
+      label: "Window 4",
+      note: "note",
+      bookmarkTag: "alert",
+      suggestedStyleProfileId: "style-z",
+      suggestedMutationProfileId: "mutation-z",
+      trackId: "track-live",
+      trackTitle: "Live Track",
+      trackSecond: 64,
+    });
   });
 });
