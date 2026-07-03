@@ -16,8 +16,6 @@ import {
 import { createGuideTrackDecodeCache } from "./monitorGuideTrackDecodeRuntime";
 import { useMonitorProviderContextValue } from "./useMonitorProviderContextValue";
 import {
-  buildMonitorProviderActionsInput,
-  buildMonitorProviderControllerResult,
   buildMonitorProviderStateInput,
 } from "./monitorProviderControllerHookRuntime";
 import { buildMonitorProviderControllerBootstrap } from "./monitorProviderControllerDependenciesRuntime";
@@ -39,7 +37,7 @@ export function useMonitorProviderController() {
   });
   const state = useMonitorProviderState(buildMonitorProviderStateInput(bootstrap));
   const controllerActions = useMonitorProviderControllerActions(
-    buildMonitorProviderActionsInput({
+    {
       state,
       logger: log,
       resolveSourceTemplate,
@@ -56,17 +54,14 @@ export function useMonitorProviderController() {
         listSessionEvents,
       },
       persistence: bootstrap.persistence,
-    }),
+    },
   );
 
-  const controllerResult = buildMonitorProviderControllerResult({
-    contextInput: buildMonitorProviderControllerContextInput({
+  return useMonitorProviderContextValue(
+    buildMonitorProviderControllerContextInput({
       state,
       logger: log,
       ...controllerActions,
     }),
-    controllerActions,
-  });
-
-  return useMonitorProviderContextValue(controllerResult.contextInput);
+  );
 }
