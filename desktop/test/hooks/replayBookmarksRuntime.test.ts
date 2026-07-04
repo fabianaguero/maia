@@ -2,8 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import type { SessionBookmark } from "../../src/api/sessions";
 import {
+  buildReplayBookmarkDeleteErrorMessage,
+  buildReplayBookmarkLoadErrorMessage,
+  buildReplayBookmarkNativeRuntimeError,
+  buildReplayBookmarkSaveErrorMessage,
   buildReplayBookmarkUpsertInput,
   buildReplayBookmarkDraftState,
+  canSaveReplayBookmark,
+  resolveReplayBookmarkSaveContext,
   removeReplayBookmark,
   resolveActiveReplayBookmark,
   sortReplayBookmarks,
@@ -84,6 +90,20 @@ describe("replayBookmarksRuntime", () => {
 
     expect(upsertSortedReplayBookmark(current, saved).map((entry) => entry.id)).toEqual([1, 3]);
     expect(removeReplayBookmark(current, 1).map((entry) => entry.id)).toEqual([2]);
+    expect(canSaveReplayBookmark("session-1", 2)).toBe(true);
+    expect(canSaveReplayBookmark(null, 2)).toBe(false);
+    expect(canSaveReplayBookmark("session-1", null)).toBe(false);
+    expect(resolveReplayBookmarkSaveContext("session-1", 2)).toEqual({
+      replaySessionId: "session-1",
+      replayWindowIndex: 2,
+    });
+    expect(resolveReplayBookmarkSaveContext(null, 2)).toBeNull();
+    expect(buildReplayBookmarkNativeRuntimeError()).toBe(
+      "Replay bookmarks require the native desktop runtime.",
+    );
+    expect(buildReplayBookmarkLoadErrorMessage(new Error("load boom"))).toContain("load boom");
+    expect(buildReplayBookmarkSaveErrorMessage(new Error("save boom"))).toContain("save boom");
+    expect(buildReplayBookmarkDeleteErrorMessage(new Error("delete boom"))).toContain("delete boom");
     expect(toReplayBookmarkErrorMessage(new Error("boom"))).toBe("boom");
     expect(toReplayBookmarkErrorMessage("failed")).toBe("failed");
     expect(toReplayBookmarkErrorMessage({})).toBe("Unexpected replay bookmark failure.");

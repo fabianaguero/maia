@@ -2,10 +2,14 @@ import { startTransition, useCallback, useEffect, useState } from "react";
 
 import { deleteSessionBookmark, listSessionBookmarks, type SessionBookmark } from "../api/sessions";
 import {
-  removeReplayBookmark,
-  sortReplayBookmarks,
-  toReplayBookmarkErrorMessage,
-} from "./replayBookmarksRuntime";
+  buildReplayBookmarkPersistenceDeleteError,
+  buildReplayBookmarkPersistenceLoadedState,
+  buildReplayBookmarkPersistenceLoadError,
+  buildReplayBookmarkPersistenceNativeRuntimeError,
+  buildReplayBookmarkPersistenceResetState,
+  buildReplayBookmarkPersistenceResult,
+  buildReplayBookmarkDeleteSuccessState,
+} from "./replayBookmarkPersistenceRuntime";
 
 interface UseReplayBookmarkPersistenceOptions {
   replaySessionId: string | null;
@@ -23,10 +27,11 @@ export function useReplayBookmarkPersistence({
 
     async function loadBookmarks() {
       if (!replaySessionId) {
+        const resetState = buildReplayBookmarkPersistenceResetState();
         startTransition(() => {
-          setSessionBookmarks([]);
-          setBookmarkBusy(false);
-          setBookmarkError(null);
+          setSessionBookmarks(resetState.sessionBookmarks);
+          setBookmarkBusy(resetState.bookmarkBusy);
+          setBookmarkError(resetState.bookmarkError);
         });
         return;
       }
@@ -41,7 +46,7 @@ export function useReplayBookmarkPersistence({
         }
 
         startTransition(() => {
-          setSessionBookmarks(sortReplayBookmarks(bookmarks));
+          setSessionBookmarks(buildReplayBookmarkPersistenceLoadedState(bookmarks));
         });
       } catch (nextError) {
         if (cancelled) {
@@ -49,9 +54,7 @@ export function useReplayBookmarkPersistence({
         }
 
         startTransition(() => {
-          setBookmarkError(
-            `Failed to load replay bookmarks: ${toReplayBookmarkErrorMessage(nextError)}`,
-          );
+          setBookmarkError(buildReplayBookmarkPersistenceLoadError(nextError));
         });
       } finally {
         if (!cancelled) {
@@ -74,25 +77,25 @@ export function useReplayBookmarkPersistence({
     try {
       const deleted = await deleteSessionBookmark(bookmark.id);
       if (!deleted) {
-        setBookmarkError("Replay bookmarks require the native desktop runtime.");
+        setBookmarkError(buildReplayBookmarkPersistenceNativeRuntimeError());
         return false;
       }
 
       startTransition(() => {
-        setSessionBookmarks((current) => removeReplayBookmark(current, bookmark.id));
+        setSessionBookmarks((current) =>
+          buildReplayBookmarkDeleteSuccessState(current, bookmark.id),
+        );
       });
       return true;
     } catch (nextError) {
-      setBookmarkError(
-        `Failed to delete replay bookmark: ${toReplayBookmarkErrorMessage(nextError)}`,
-      );
+      setBookmarkError(buildReplayBookmarkPersistenceDeleteError(nextError));
       return false;
     } finally {
       setBookmarkBusy(false);
     }
   }, []);
 
-  return {
+  return buildReplayBookmarkPersistenceResult({
     sessionBookmarks,
     setSessionBookmarks,
     bookmarkBusy,
@@ -100,5 +103,5 @@ export function useReplayBookmarkPersistence({
     bookmarkError,
     setBookmarkError,
     deleteReplayBookmark,
-  };
+  });
 }

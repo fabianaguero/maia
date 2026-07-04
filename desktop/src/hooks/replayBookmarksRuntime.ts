@@ -27,6 +27,43 @@ export function toReplayBookmarkErrorMessage(error: unknown): string {
   return "Unexpected replay bookmark failure.";
 }
 
+export function canSaveReplayBookmark(
+  replaySessionId: string | null,
+  replayWindowIndex: number | null,
+): replayWindowIndex is number {
+  return Boolean(replaySessionId) && replayWindowIndex !== null;
+}
+
+export function resolveReplayBookmarkSaveContext(
+  replaySessionId: string | null,
+  replayWindowIndex: number | null,
+): { replaySessionId: string; replayWindowIndex: number } | null {
+  if (!canSaveReplayBookmark(replaySessionId, replayWindowIndex) || !replaySessionId) {
+    return null;
+  }
+
+  return {
+    replaySessionId,
+    replayWindowIndex,
+  };
+}
+
+export function buildReplayBookmarkNativeRuntimeError(): string {
+  return "Replay bookmarks require the native desktop runtime.";
+}
+
+export function buildReplayBookmarkLoadErrorMessage(error: unknown): string {
+  return `Failed to load replay bookmarks: ${toReplayBookmarkErrorMessage(error)}`;
+}
+
+export function buildReplayBookmarkSaveErrorMessage(error: unknown): string {
+  return `Failed to save replay bookmark: ${toReplayBookmarkErrorMessage(error)}`;
+}
+
+export function buildReplayBookmarkDeleteErrorMessage(error: unknown): string {
+  return `Failed to delete replay bookmark: ${toReplayBookmarkErrorMessage(error)}`;
+}
+
 export function sortReplayBookmarks(
   sessionBookmarks: readonly SessionBookmark[],
 ): SessionBookmark[] {

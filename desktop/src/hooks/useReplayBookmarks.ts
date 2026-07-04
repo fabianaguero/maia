@@ -2,9 +2,11 @@ import { startTransition, useCallback, useMemo } from "react";
 import { upsertSessionBookmark } from "../api/sessions";
 import {
   buildReplayBookmarkUpsertInput,
+  buildReplayBookmarkNativeRuntimeError,
+  buildReplayBookmarkSaveErrorMessage,
+  resolveReplayBookmarkSaveContext,
   resolveActiveReplayBookmark,
   sortReplayBookmarks,
-  toReplayBookmarkErrorMessage,
   type ReplayExplanationSnapshot,
   upsertSortedReplayBookmark,
 } from "./replayBookmarksRuntime";
@@ -55,7 +57,8 @@ export function useReplayBookmarks({
   });
 
   const saveReplayBookmark = useCallback(async () => {
-    if (!replaySessionId || replayWindowIndex === null) {
+    const saveContext = resolveReplayBookmarkSaveContext(replaySessionId, replayWindowIndex);
+    if (!saveContext) {
       return null;
     }
 
@@ -65,8 +68,8 @@ export function useReplayBookmarks({
     try {
       const savedBookmark = await upsertSessionBookmark(
         buildReplayBookmarkUpsertInput({
-          replaySessionId,
-          replayWindowIndex,
+          replaySessionId: saveContext.replaySessionId,
+          replayWindowIndex: saveContext.replayWindowIndex,
           bookmarkLabelDraft: syncedDraftState.bookmarkLabelDraft,
           bookmarkNoteDraft: syncedDraftState.bookmarkNoteDraft,
           bookmarkTagDraft: syncedDraftState.bookmarkTagDraft,
@@ -80,7 +83,7 @@ export function useReplayBookmarks({
       );
 
       if (!savedBookmark) {
-        persistence.setBookmarkError("Replay bookmarks require the native desktop runtime.");
+        persistence.setBookmarkError(buildReplayBookmarkNativeRuntimeError());
         return null;
       }
 
@@ -92,9 +95,7 @@ export function useReplayBookmarks({
 
       return savedBookmark;
     } catch (nextError) {
-      persistence.setBookmarkError(
-        `Failed to save replay bookmark: ${toReplayBookmarkErrorMessage(nextError)}`,
-      );
+      persistence.setBookmarkError(buildReplayBookmarkSaveErrorMessage(nextError));
       return null;
     } finally {
       persistence.setBookmarkBusy(false);
