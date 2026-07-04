@@ -7,10 +7,15 @@ interface UseSimpleMonitorDeckLiveRefsInput {
   deckDurationSeconds: number | null;
 }
 
+export interface UseSimpleMonitorDeckLiveRefsState {
+  activeTrackRef: React.MutableRefObject<LibraryTrack | null>;
+  deckDurationSecondsRef: React.MutableRefObject<number | null>;
+}
+
 export function useSimpleMonitorDeckLiveRefs({
   activeTrack,
   deckDurationSeconds,
-}: UseSimpleMonitorDeckLiveRefsInput) {
+}: UseSimpleMonitorDeckLiveRefsInput): UseSimpleMonitorDeckLiveRefsState {
   const activeTrackRef = useRef(activeTrack);
   const deckDurationSecondsRef = useRef(deckDurationSeconds);
 

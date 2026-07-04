@@ -7,7 +7,6 @@ import {
   buildSimpleMonitorDeckTrackAudioHookArgs,
 } from "./simpleMonitorDeckLiveControllerHookRuntime";
 import {
-  bindSimpleMonitorTrackMutation,
   buildSimpleMonitorLiveStreamControllerInput,
   buildSimpleMonitorReactiveAudioControllerInput,
   buildSimpleMonitorTrackAudioControllerInput,
@@ -46,24 +45,9 @@ export function useSimpleMonitorDeckLiveControllerSlices(
       buildSimpleMonitorLiveStreamControllerInput({
         ...buildSimpleMonitorDeckLiveStreamHookArgs({
           state: input,
-          reactiveAudio: {
-            audioContextRef: reactiveAudio.audioContextRef,
-            backgroundGraphRef: reactiveAudio.backgroundGraphRef,
-            deckControlsRef: reactiveAudio.deckControlsRef,
-            ensureBackgroundGraph: reactiveAudio.ensureBackgroundGraph,
-            applyTrackMutation: reactiveAudio.applyTrackMutation,
-            playTestTone: reactiveAudio.playTestTone,
-            playCueBatch: reactiveAudio.playCueBatch,
-          },
-          refs: {
-            activeTrackRef: refs.activeTrackRef,
-            deckDurationSecondsRef: refs.deckDurationSecondsRef,
-          },
+          reactiveAudio,
+          refs,
           backgroundAudioRef: trackAudio.backgroundAudioRef,
-          applyTrackMutation: bindSimpleMonitorTrackMutation({
-            applyTrackMutation: reactiveAudio.applyTrackMutation,
-            backgroundAudioRef: trackAudio.backgroundAudioRef,
-          }),
         }),
       }),
     ),

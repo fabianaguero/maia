@@ -52,7 +52,6 @@ describe("simpleMonitorDeckLiveControllerHookRuntime", () => {
       playCueBatch: vi.fn(),
     };
     const backgroundAudioRef = { current: null };
-    const applyTrackMutation = vi.fn();
 
     expect(
       buildSimpleMonitorDeckTrackAudioHookArgs({
@@ -75,16 +74,25 @@ describe("simpleMonitorDeckLiveControllerHookRuntime", () => {
           deckDurationSecondsRef: { current: 240 },
         },
         backgroundAudioRef,
-        applyTrackMutation,
       }),
     ).toEqual(
       expect.objectContaining({
         state,
         audioContextRef: reactiveAudio.audioContextRef,
         backgroundAudioRef,
-        applyTrackMutation,
         playCueBatch: reactiveAudio.playCueBatch,
       }),
     );
+
+    expect(reactiveAudio.applyTrackMutation).not.toHaveBeenCalled();
+    expect(typeof buildSimpleMonitorDeckLiveStreamHookArgs({
+      state,
+      reactiveAudio,
+      refs: {
+        activeTrackRef: { current: null },
+        deckDurationSecondsRef: { current: 240 },
+      },
+      backgroundAudioRef,
+    }).applyTrackMutation).toBe("function");
   });
 });

@@ -3,6 +3,7 @@ import type {
   BuildMonitorTrackAudioHookInputArgs,
 } from "./simpleMonitorDeckHookInputsRuntime";
 import type { UseSimpleMonitorDeckLiveControllerInput } from "./simpleMonitorDeckLiveControllerTypes";
+import type { SimpleMonitorTrackMutationUpdate } from "./simpleMonitorReactiveAudioTypes";
 
 export type SimpleMonitorDeckLiveControllerState = UseSimpleMonitorDeckLiveControllerInput;
 
@@ -35,40 +36,13 @@ export function buildSimpleMonitorTrackAudioControllerInput(input: {
 
 export function bindSimpleMonitorTrackMutation(input: {
   applyTrackMutation: (
-    update: {
-      summary?: string;
-      suggestedBpm?: number | null;
-      confidence?: number;
-      dominantLevel?: string;
-      lineCount?: number;
-      anomalyCount?: number;
-      levelCounts?: Record<string, number>;
-      anomalyMarkers?: Array<{
-        eventIndex: number;
-        level: string;
-        component: string;
-        excerpt: string;
-      }>;
-    },
+    update: SimpleMonitorTrackMutationUpdate,
     backgroundAudioRef: { current: HTMLAudioElement | null },
   ) => void;
   backgroundAudioRef: { current: HTMLAudioElement | null };
 }) {
-  return (update: {
-    summary?: string;
-    suggestedBpm?: number | null;
-    confidence?: number;
-    dominantLevel?: string;
-    lineCount?: number;
-    anomalyCount?: number;
-    levelCounts?: Record<string, number>;
-    anomalyMarkers?: Array<{
-      eventIndex: number;
-      level: string;
-      component: string;
-      excerpt: string;
-    }>;
-  }) => input.applyTrackMutation(update, input.backgroundAudioRef);
+  return (update: SimpleMonitorTrackMutationUpdate) =>
+    input.applyTrackMutation(update, input.backgroundAudioRef);
 }
 
 export function buildSimpleMonitorLiveStreamControllerInput(input: {

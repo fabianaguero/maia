@@ -1,12 +1,13 @@
-import type { BuildMonitorLiveStreamHookInputArgs } from "./simpleMonitorDeckHookInputsRuntime";
 import type {
   UseSimpleMonitorDeckLiveControllerInput,
 } from "./simpleMonitorDeckLiveControllerTypes";
 import type { SimpleMonitorReactiveAudioHookState } from "./simpleMonitorReactiveAudioTypes";
+import { bindSimpleMonitorTrackMutation } from "./simpleMonitorDeckLiveControllerRuntime";
+import type { UseSimpleMonitorDeckLiveRefsState } from "./useSimpleMonitorDeckLiveRefs";
 
 export function buildSimpleMonitorDeckTrackAudioHookArgs(input: {
   state: UseSimpleMonitorDeckLiveControllerInput;
-  reactiveAudio: Pick<SimpleMonitorReactiveAudioHookState, "ensureBackgroundGraph">;
+  reactiveAudio: SimpleMonitorReactiveAudioHookState;
   safeRuntime: boolean;
 }) {
   return {
@@ -18,22 +19,9 @@ export function buildSimpleMonitorDeckTrackAudioHookArgs(input: {
 
 export function buildSimpleMonitorDeckLiveStreamHookArgs(input: {
   state: UseSimpleMonitorDeckLiveControllerInput;
-  reactiveAudio: Pick<
-    SimpleMonitorReactiveAudioHookState,
-    | "audioContextRef"
-    | "backgroundGraphRef"
-    | "deckControlsRef"
-    | "ensureBackgroundGraph"
-    | "applyTrackMutation"
-    | "playTestTone"
-    | "playCueBatch"
-  >;
-  refs: {
-    activeTrackRef: BuildMonitorLiveStreamHookInputArgs["activeTrackRef"];
-    deckDurationSecondsRef: BuildMonitorLiveStreamHookInputArgs["deckDurationSecondsRef"];
-  };
+  reactiveAudio: SimpleMonitorReactiveAudioHookState;
+  refs: UseSimpleMonitorDeckLiveRefsState;
   backgroundAudioRef: { current: HTMLAudioElement | null };
-  applyTrackMutation: BuildMonitorLiveStreamHookInputArgs["applyTrackMutation"];
 }) {
   return {
     state: input.state,
@@ -44,7 +32,10 @@ export function buildSimpleMonitorDeckLiveStreamHookArgs(input: {
     deckDurationSecondsRef: input.refs.deckDurationSecondsRef,
     deckControlsRef: input.reactiveAudio.deckControlsRef,
     ensureBackgroundGraph: input.reactiveAudio.ensureBackgroundGraph,
-    applyTrackMutation: input.applyTrackMutation,
+    applyTrackMutation: bindSimpleMonitorTrackMutation({
+      applyTrackMutation: input.reactiveAudio.applyTrackMutation,
+      backgroundAudioRef: input.backgroundAudioRef,
+    }),
     playTestTone: input.reactiveAudio.playTestTone,
     playCueBatch: input.reactiveAudio.playCueBatch,
   };
