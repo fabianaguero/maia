@@ -14,12 +14,14 @@ import {
   createSessionStartPlan,
   createSessionTimestampId,
   resolveBookmarkContext,
+  resolveSessionBookmarkState,
   resolvePlaybackPercent,
   resolveReadyToRun,
   resolveReplayBookmarkError,
   resolveReplaySessionError,
   resolveReplaySessionFailure,
   resolveSessionControllerDerivedState,
+  resolveSessionSelection,
   resolveSourceOptions,
 } from "../../../src/features/session/sessionScreenRuntime";
 
@@ -337,6 +339,61 @@ describe("sessionScreenRuntime", () => {
     expect(derived.selectedSessionSourceDetails).toEqual({
       label: "production.log",
       path: "/logs/production.log",
+    });
+  });
+
+  it("resolves active/selected session state and bookmark contexts independently", () => {
+    const sessionTwo = {
+      ...session,
+      id: "session-2",
+      label: "Fallback session",
+      sourceId: null,
+      sourceTitle: null,
+      sourcePath: null,
+      trackId: null,
+      trackTitle: null,
+      playlistId: "playlist-1",
+      playlistName: "Night drive",
+    };
+
+    const selection = resolveSessionSelection({
+      sessions: [session, sessionTwo],
+      activeSessionId: "session-1",
+      selectedSessionId: "missing",
+      activeSessionMode: "playback",
+      monitorHasSession: true,
+      tracks: [track],
+      playlists: [playlist],
+    });
+
+    expect(selection.activeSession?.id).toBe("session-1");
+    expect(selection.selectedSession?.id).toBe("session-1");
+    expect(selection.selectedSessionIdForEvents).toBe("session-1");
+    expect(selection.playbackActive).toBe(true);
+    expect(selection.liveMonitorActive).toBe(false);
+    expect(selection.activeBedUrl).toBeNull();
+
+    const bookmarkState = resolveSessionBookmarkState({
+      selectedSession: selection.selectedSession,
+      sessionBookmarksBySessionId: {
+        "session-1": [{ id: 9, eventIndex: 0 } as SessionBookmark],
+      },
+      selectedSessionEvents: [
+        {
+          suggestedBpm: 122,
+          dominantLevel: "info",
+          anomalyCount: 1,
+          parsedLinesJson: JSON.stringify(["session resumed"]),
+        },
+      ] as SessionEvent[],
+    });
+
+    expect(bookmarkState.selectedSessionBookmarks).toHaveLength(1);
+    expect(bookmarkState.bookmarkContexts[9]).toEqual({
+      bpm: 122,
+      dominantLevel: "info",
+      anomalyCount: 1,
+      logExcerpt: "session resumed",
     });
   });
 });

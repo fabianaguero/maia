@@ -31,6 +31,15 @@ export interface SessionSourceSummary {
   path: string | null;
 }
 
+export interface SessionResolvedSelection {
+  activeSession: PersistedSession | null;
+  selectedSession: PersistedSession | null;
+  selectedSessionIdForEvents: string | null;
+  playbackActive: boolean;
+  liveMonitorActive: boolean;
+  activeBedUrl: string | null;
+}
+
 export interface SessionControllerDerivedState {
   sourceOptions: RepositoryAnalysis[];
   selectedSource: RepositoryAnalysis | null;
@@ -80,6 +89,59 @@ export function resolveSelectedEntities(input: {
   };
 }
 
+export function resolveSessionSelection(input: {
+  sessions: PersistedSession[];
+  activeSessionId: string | null;
+  selectedSessionId: string | null;
+  activeSessionMode: "live" | "playback" | null;
+  monitorHasSession: boolean;
+  tracks: LibraryTrack[];
+  playlists: BaseTrackPlaylist[];
+}): SessionResolvedSelection {
+  const activeSession =
+    input.sessions.find((session) => session.id === input.activeSessionId) ?? null;
+  const selectedSession =
+    input.sessions.find((session) => session.id === input.selectedSessionId) ??
+    activeSession ??
+    input.sessions[0] ??
+    null;
+  const playbackActive = input.activeSessionMode === "playback" && Boolean(activeSession);
+  const liveMonitorActive = input.monitorHasSession && !playbackActive;
+
+  return {
+    activeSession,
+    selectedSession,
+    selectedSessionIdForEvents: selectedSession?.id ?? null,
+    playbackActive,
+    liveMonitorActive,
+    activeBedUrl: resolveSessionBedUrl(
+      liveMonitorActive && !playbackActive
+        ? resolveSessionBedPath(activeSession, input.tracks, input.playlists)
+        : null,
+    ),
+  };
+}
+
+export function resolveSessionBookmarkState(input: {
+  selectedSession: PersistedSession | null;
+  sessionBookmarksBySessionId: Record<string, SessionBookmark[]>;
+  selectedSessionEvents: SessionEvent[];
+}) {
+  const selectedSessionBookmarks = input.selectedSession
+    ? (input.sessionBookmarksBySessionId[input.selectedSession.id] ?? [])
+    : [];
+  const bookmarkContexts: Record<number, SessionBookmarkContext> = {};
+
+  for (const bookmark of selectedSessionBookmarks) {
+    bookmarkContexts[bookmark.id] = resolveBookmarkContext(bookmark, input.selectedSessionEvents);
+  }
+
+  return {
+    selectedSessionBookmarks,
+    bookmarkContexts,
+  };
+}
+
 export function resolveSessionControllerDerivedState(input: {
   activePlaybackProgress: number | null;
   activeSessionId: string | null;
@@ -116,30 +178,20 @@ export function resolveSessionControllerDerivedState(input: {
     selectedPlaylist,
     input.tracks,
   );
-
-  const activeSession =
-    input.sessions.find((session) => session.id === input.activeSessionId) ?? null;
-  const selectedSession =
-    input.sessions.find((session) => session.id === input.selectedSessionId) ??
-    activeSession ??
-    input.sessions[0] ??
-    null;
-  const selectedSessionIdForEvents = selectedSession?.id ?? null;
-  const playbackActive = input.activeSessionMode === "playback" && Boolean(activeSession);
-  const liveMonitorActive = input.monitorHasSession && !playbackActive;
-  const activeBedUrl = resolveSessionBedUrl(
-    liveMonitorActive && !playbackActive
-      ? resolveSessionBedPath(activeSession, input.tracks, input.playlists)
-      : null,
-  );
-
-  const selectedSessionBookmarks = selectedSession
-    ? (input.sessionBookmarksBySessionId[selectedSession.id] ?? [])
-    : [];
-  const bookmarkContexts: Record<number, SessionBookmarkContext> = {};
-  for (const bookmark of selectedSessionBookmarks) {
-    bookmarkContexts[bookmark.id] = resolveBookmarkContext(bookmark, input.selectedSessionEvents);
-  }
+  const sessionSelection = resolveSessionSelection({
+    sessions: input.sessions,
+    activeSessionId: input.activeSessionId,
+    selectedSessionId: input.selectedSessionId,
+    activeSessionMode: input.activeSessionMode,
+    monitorHasSession: input.monitorHasSession,
+    tracks: input.tracks,
+    playlists: input.playlists,
+  });
+  const bookmarkState = resolveSessionBookmarkState({
+    selectedSession: sessionSelection.selectedSession,
+    sessionBookmarksBySessionId: input.sessionBookmarksBySessionId,
+    selectedSessionEvents: input.selectedSessionEvents,
+  });
 
   return {
     sourceOptions,
@@ -147,14 +199,14 @@ export function resolveSessionControllerDerivedState(input: {
     selectedTrack,
     selectedPlaylist,
     selectedBaseDetails,
-    activeSession,
-    selectedSession,
-    selectedSessionIdForEvents,
-    playbackActive,
-    liveMonitorActive,
-    activeBedUrl,
-    selectedSessionBookmarks,
-    bookmarkContexts,
+    activeSession: sessionSelection.activeSession,
+    selectedSession: sessionSelection.selectedSession,
+    selectedSessionIdForEvents: sessionSelection.selectedSessionIdForEvents,
+    playbackActive: sessionSelection.playbackActive,
+    liveMonitorActive: sessionSelection.liveMonitorActive,
+    activeBedUrl: sessionSelection.activeBedUrl,
+    selectedSessionBookmarks: bookmarkState.selectedSessionBookmarks,
+    bookmarkContexts: bookmarkState.bookmarkContexts,
     sessionLabelPlaceholder: buildSessionLabelPlaceholder({
       selectedBaseLabel: selectedBaseDetails.label,
       selectedSourceTitle: selectedSource?.title ?? null,
@@ -169,9 +221,20 @@ export function resolveSessionControllerDerivedState(input: {
       selectedSourceId: input.selectedSourceId,
       selectedTrackId: input.selectedTrackId,
     }),
-    activeBaseDetails: resolveBaseDetails(activeSession, input.tracks, input.playlists),
-    selectedSessionBaseDetails: resolveBaseDetails(selectedSession, input.tracks, input.playlists),
-    activeSourceDetails: resolveSourceDetails(activeSession, input.repositories),
-    selectedSessionSourceDetails: resolveSourceDetails(selectedSession, input.repositories),
+    activeBaseDetails: resolveBaseDetails(
+      sessionSelection.activeSession,
+      input.tracks,
+      input.playlists,
+    ),
+    selectedSessionBaseDetails: resolveBaseDetails(
+      sessionSelection.selectedSession,
+      input.tracks,
+      input.playlists,
+    ),
+    activeSourceDetails: resolveSourceDetails(sessionSelection.activeSession, input.repositories),
+    selectedSessionSourceDetails: resolveSourceDetails(
+      sessionSelection.selectedSession,
+      input.repositories,
+    ),
   };
 }
