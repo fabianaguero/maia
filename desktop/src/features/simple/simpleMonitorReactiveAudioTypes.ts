@@ -1,8 +1,8 @@
 import type { MutableRefObject } from "react";
 
-import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { MonitorCueBatchPlayer } from "./monitorCueBatchTypes";
 import type { MonitorDeckControls } from "./monitorDeckControls";
+import type { MonitorTrackMutationInput } from "./monitorAudioMutation";
 
 export interface BackgroundTrackGraph {
   context: AudioContext;
@@ -16,10 +16,7 @@ export interface BackgroundTrackGraph {
   deckGain: GainNode;
 }
 
-export type SimpleMonitorTrackMutationUpdate = Pick<
-  LiveLogStreamUpdate,
-  "lineCount" | "anomalyCount" | "levelCounts" | "anomalyMarkers"
->;
+export type SimpleMonitorTrackMutationUpdate = MonitorTrackMutationInput;
 
 export interface SimpleMonitorReactiveAudioHookState {
   backgroundGraphRef: MutableRefObject<BackgroundTrackGraph | null>;

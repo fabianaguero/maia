@@ -1,8 +1,8 @@
 import { useEffectEvent } from "react";
 
-import type { LiveLogMarker } from "../../types/monitor";
 import type { MonitorCueBatch } from "./monitorCueBatchTypes";
 import type { MonitorDeckControls } from "./monitorDeckControls";
+import type { MonitorTrackMutationInput } from "./monitorAudioMutation";
 import { playSimpleMonitorVoicePlans } from "./simpleMonitorReactiveAudioPlaybackRuntime";
 import {
   applySimpleMonitorTrackMutationRefState,
@@ -72,15 +72,7 @@ export function useSimpleMonitorReactiveAudioSlices({
   });
 
   const applyTrackMutation = useEffectEvent(
-    (
-      update: {
-        lineCount?: number;
-        anomalyCount?: number;
-        levelCounts?: Record<string, number>;
-        anomalyMarkers?: LiveLogMarker[];
-      },
-      backgroundAudioRef: { current: HTMLAudioElement | null },
-    ) => {
+    (update: MonitorTrackMutationInput, backgroundAudioRef: { current: HTMLAudioElement | null }) => {
       const result = applySimpleMonitorTrackMutationRefState({
         update,
         graph: backgroundGraphRef.current,

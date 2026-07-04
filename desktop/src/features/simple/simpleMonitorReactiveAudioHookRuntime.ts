@@ -1,7 +1,9 @@
-import type { LiveLogMarker } from "../../types/monitor";
 import type { MonitorCueBatch } from "./monitorCueBatchTypes";
 import type { MonitorDeckControls } from "./monitorDeckControls";
-import { buildMonitorTrackMutationPlan } from "./monitorAudioMutation";
+import {
+  buildMonitorTrackMutationPlan,
+  type MonitorTrackMutationInput,
+} from "./monitorAudioMutation";
 import { buildAdjustedMonitorTrackMutationPlan } from "./monitorTrackMutationRuntime";
 import {
   applySimpleMonitorTrackMutationState,
@@ -77,12 +79,7 @@ export function resolveSimpleMonitorBackgroundGraphState(input: {
 }
 
 export function applySimpleMonitorTrackMutationRefState(input: {
-  update: {
-    lineCount?: number;
-    anomalyCount?: number;
-    levelCounts?: Record<string, number>;
-    anomalyMarkers?: LiveLogMarker[];
-  };
+  update: MonitorTrackMutationInput;
   graph: BackgroundTrackGraph | null;
   backgroundAudio: HTMLAudioElement | null;
   currentPressure: number;
