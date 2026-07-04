@@ -62,6 +62,7 @@ The current state is materially better:
 - `App-v0.tsx` is now a thin mounted shell
 - section selection and shell composition are routed through dedicated view-model/runtime helpers
 - monitor startup is routed through `appV0MonitorOrchestration.ts` and `appV0MonitorRuntime.ts`
+- monitor startup now uses an explicit runtime seam in `appV0MonitorOrchestrationRuntime.ts`, so the public orchestrator is mostly wiring
 - monitor screen composition is now delegated to smaller screen and deck modules
 - preferences and setup live in dedicated routes instead of being mixed into the live deck
 
@@ -99,6 +100,7 @@ Recent refactors have been pushing large components toward:
 Current emphasis for the next iterations:
 
 - keep monitor-specific contracts inside `types/monitor.ts`
+- keep cross-screen monitor launch contracts in `types/monitorLaunch.ts` instead of feature-local UI folders
 - isolate orchestration from screen rendering
 - keep setup/preferences as a dedicated product surface, not mixed into live operations
 - make the open-source entrypoints understandable for first-time contributors
@@ -133,6 +135,7 @@ flowchart TD
   ScreenModel[useAppV0ScreenModel]
   SectionContent[AppV0SectionContent]
   MonitorOrchestrator[appV0MonitorOrchestration.ts]
+  MonitorOrchestratorRuntime[appV0MonitorOrchestrationRuntime.ts]
   MonitorLaunchRuntime[appV0MonitorRuntime.ts]
   MonitorProvider[MonitorProvider / MonitorContext]
   MonitorScreens[SimpleMonitorScreen / SessionScreen]
@@ -143,7 +146,8 @@ flowchart TD
   ContentModel --> ScreenModel
   ScreenModel --> SectionContent
   ContentModel --> MonitorOrchestrator
-  MonitorOrchestrator --> MonitorLaunchRuntime
+  MonitorOrchestrator --> MonitorOrchestratorRuntime
+  MonitorOrchestratorRuntime --> MonitorLaunchRuntime
   MonitorLaunchRuntime --> MonitorProvider
   SectionContent --> MonitorScreens
   MonitorScreens --> DeckRuntimes
@@ -154,6 +158,7 @@ Practical rule for contributors:
 
 - if you are deciding what to render, prefer a view-model/runtime helper
 - if you are deciding how to start, attach, replay, or stop monitoring, prefer orchestration helpers
+- if the logic is not UI-specific, keep launch-source contracts in `types/monitorLaunch.ts` rather than in `features/simple`
 - if you are deciding how live audio or waveforms mutate, stay inside monitor runtimes
 - if you need persistence or adapter behavior, do not re-implement it in React; push that concern to the existing native/api contract
 

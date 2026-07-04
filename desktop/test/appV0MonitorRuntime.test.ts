@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { LibraryTrack, RepositoryAnalysis } from "../src/types/library";
-import type { MonitorLaunchSource } from "../src/features/simple/monitorSourceOptions";
+import type { MonitorLaunchSource } from "../src/types/monitorLaunch";
 import {
   buildAppV0LibraryMonitorLaunchPlan,
   buildAppV0MonitorLaunchPlan,

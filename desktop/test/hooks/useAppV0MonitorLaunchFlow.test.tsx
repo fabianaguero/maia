@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { MonitorLaunchSource } from "../../src/features/simple/monitorSourceOptions";
+import type { MonitorLaunchSource } from "../../src/types/monitorLaunch";
 import { useAppV0MonitorScreenState } from "../../src/hooks/useAppV0MonitorScreenState";
 import type { LibraryTrack, RepositoryAnalysis } from "../../src/types/library";
 

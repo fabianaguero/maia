@@ -3,7 +3,7 @@ import type { ActiveMonitorSession } from "../monitor/MonitorContext";
 import type { BeatGridPoint, LibraryTrack } from "../../types/library";
 import { getTrackTitle as getLibraryTrackTitle } from "../../utils/track";
 import { getStreamAdapterCode } from "../../utils/monitorLabels";
-import type { MonitorLaunchSource } from "./monitorSourceOptions";
+import type { MonitorLaunchSource } from "../../types/monitorLaunch";
 import type { MonitorAlertShape } from "./monitorDeckControls";
 
 export interface SimpleMonitorScreenViewModel {

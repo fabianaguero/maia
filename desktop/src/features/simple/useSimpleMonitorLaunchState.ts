@@ -3,7 +3,8 @@ import { flushSync } from "react-dom";
 
 import type { AppTranslations } from "../../i18n/types";
 import type { RepositoryAnalysis } from "../../types/library";
-import { buildMonitorSourceCopy, type MonitorLaunchSource } from "./monitorSourceOptions";
+import { buildMonitorSourceCopy } from "./monitorSourceOptions";
+import type { MonitorLaunchSource } from "../../types/monitorLaunch";
 import { executeSimpleMonitorStartRequest } from "./simpleMonitorInteractionRuntime";
 import {
   buildSimpleMonitorLaunchSelectorInput,

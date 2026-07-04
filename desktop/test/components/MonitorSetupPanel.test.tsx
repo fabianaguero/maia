@@ -5,7 +5,7 @@ import { I18nContext } from "../../src/i18n/I18nContext";
 import { en } from "../../src/i18n/en";
 import { MonitorSetupPanel } from "../../src/features/simple/MonitorSetupPanel";
 import type { LibraryTrack } from "../../src/types/library";
-import type { MonitorLaunchSource } from "../../src/features/simple/monitorSourceOptions";
+import type { MonitorLaunchSource } from "../../src/types/monitorLaunch";
 
 afterEach(() => {
   cleanup();

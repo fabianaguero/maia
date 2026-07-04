@@ -6,7 +6,7 @@ import type { AppV0ShellViewModel } from "../appV0ShellViewModel";
 import type { ActiveMonitorSession, MonitorMetrics } from "../features/monitor/monitorContextTypes";
 import type { AppSection } from "../features/simple/appSections";
 import type { AppSkin } from "../features/simple/appSkin";
-import type { MonitorLaunchSource } from "../features/simple/monitorSourceOptions";
+import type { MonitorLaunchSource } from "../types/monitorLaunch";
 import type { MonitorSetupPreferences } from "../features/simple/monitorSetupPreferences";
 import type { UserMode } from "../features/simple/UserModeContext";
 import type {

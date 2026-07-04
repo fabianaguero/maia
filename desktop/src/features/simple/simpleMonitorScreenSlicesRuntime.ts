@@ -3,7 +3,8 @@ import type {
   SetStateAction,
   UIEvent as ReactUIEvent,
 } from "react";
-import type { MonitorLaunchSource, MonitorSourceFilter } from "./monitorSourceOptions";
+import type { MonitorLaunchSource } from "../../types/monitorLaunch";
+import type { MonitorSourceFilter } from "./monitorSourceOptions";
 import type { MonitorLogLine } from "./monitorLogParsing";
 import type { BuildSimpleMonitorDeckHookStateArgs } from "./simpleMonitorDeckHookStateRuntime";
 

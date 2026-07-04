@@ -1,6 +1,6 @@
 import type { AppV0MonitorLaunchExecutionResult } from "./appV0MonitorRuntime";
 import type { AppSection } from "./features/simple/appSections";
-import type { MonitorLaunchSource } from "./features/simple/monitorSourceOptions";
+import type { MonitorLaunchSource } from "./types/monitorLaunch";
 import type { ImportBaseAssetInput, ImportRepositoryInput } from "./types/library";
 
 export interface AppV0ContentActions {

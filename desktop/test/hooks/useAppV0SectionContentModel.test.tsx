@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { useAppV0SectionContentModel } from "../../src/hooks/useAppV0SectionContentModel";
-import type { MonitorLaunchSource } from "../../src/features/simple/monitorSourceOptions";
+import type { MonitorLaunchSource } from "../../src/types/monitorLaunch";
 
 function createInput() {
   return {

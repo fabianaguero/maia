@@ -9,7 +9,8 @@ import { MonitorSetupModernSelector } from "./MonitorSetupModernSelector";
 import { MonitorSetupSourceFilterBar } from "./MonitorSetupSourceFilterBar";
 import { MonitorSetupTrackPreviewAction } from "./MonitorSetupTrackPreviewAction";
 import { buildMonitorSetupSourceFilterOptions } from "./monitorSetupPanelRuntime";
-import type { MonitorLaunchSource, MonitorSourceFilter } from "./monitorSourceOptions";
+import type { MonitorLaunchSource } from "../../types/monitorLaunch";
+import type { MonitorSourceFilter } from "./monitorSourceOptions";
 
 export interface MonitorSetupPanelProps {
   sourceFilter: MonitorSourceFilter;

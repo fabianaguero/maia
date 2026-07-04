@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 
-import type { MonitorLaunchSource, MonitorSourceFilter } from "./monitorSourceOptions";
+import type { MonitorLaunchSource } from "../../types/monitorLaunch";
+import type { MonitorSourceFilter } from "./monitorSourceOptions";
 import type { MonitorSourceCopy } from "./monitorSourceOptions";
 import type { UseSimpleMonitorLaunchStateInput } from "./useSimpleMonitorLaunchState";
 import type { SimpleMonitorStartRequest } from "./simpleMonitorInteractionRuntime";

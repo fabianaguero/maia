@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { MonitorLogLine } from "../../../src/features/simple/monitorLogParsing";
-import type { MonitorLaunchSource } from "../../../src/features/simple/monitorSourceOptions";
+import type { MonitorLaunchSource } from "../../../src/types/monitorLaunch";
 import {
   buildMonitorTailSyncPlan,
   canStartSimpleMonitorRequest,

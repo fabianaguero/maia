@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { LibraryTrack, RepositoryAnalysis } from "../src/types/library";
-import type { MonitorLaunchSource } from "../src/features/simple/monitorSourceOptions";
+import type { MonitorLaunchSource } from "../src/types/monitorLaunch";
 import { createAppV0MonitorOrchestrator } from "../src/appV0MonitorOrchestration";
 
 const track: LibraryTrack = {

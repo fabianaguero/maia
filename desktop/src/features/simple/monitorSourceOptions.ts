@@ -1,19 +1,9 @@
 import type { AppTranslations } from "../../i18n/types";
 import type { RepositoryAnalysis } from "../../types/library";
+import type { MonitorLaunchSource } from "../../types/monitorLaunch";
 import type { LogSourceConnection } from "../../types/monitor";
 
 export type MonitorSourceFilter = "all" | "file" | "folder" | "cloud";
-
-export interface MonitorLaunchSource {
-  id: string;
-  title: string;
-  sourcePath: string;
-  sourceType: Exclude<MonitorSourceFilter, "all">;
-  sourceTypeLabel: string;
-  startable: boolean;
-  origin: "repository" | "connection";
-  connectionId?: string;
-}
 
 export interface MonitorSourceSelectionModel {
   allMonitorSourceOptions: MonitorLaunchSource[];

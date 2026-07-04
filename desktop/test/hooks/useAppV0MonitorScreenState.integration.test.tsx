@@ -3,7 +3,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
 import { useAppV0MonitorScreenState } from "../../src/hooks/useAppV0MonitorScreenState";
 import type { LibraryTrack, RepositoryAnalysis } from "../../src/types/library";
-import type { MonitorLaunchSource } from "../../src/features/simple/monitorSourceOptions";
+import type { MonitorLaunchSource } from "../../src/types/monitorLaunch";
 import type { StreamSessionRecord } from "../../src/types/monitor";
 
 const repositoriesApiMock = vi.hoisted(() => ({

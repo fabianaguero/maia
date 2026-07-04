@@ -1,6 +1,7 @@
 import type { LibraryTrack } from "../../types/library";
 import type { PersistedSession } from "../../api/sessions";
-import type { MonitorLaunchSource, MonitorSourceFilter } from "./monitorSourceOptions";
+import type { MonitorLaunchSource } from "../../types/monitorLaunch";
+import type { MonitorSourceFilter } from "./monitorSourceOptions";
 import { MonitorSetupPanel } from "./MonitorSetupPanel";
 import { PastSessionsPanel } from "./PastSessionsPanel";
 import { useT } from "../../i18n/I18nContext";

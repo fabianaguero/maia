@@ -2,7 +2,7 @@ import type { ActiveMonitorSession, MonitorMetrics } from "../monitor/monitorCon
 import type { PersistedSession } from "../../api/sessions";
 import type { LibraryTrack, RepositoryAnalysis } from "../../types/library";
 import type { LiveLogStreamUpdate } from "../../types/monitor";
-import type { MonitorLaunchSource } from "./monitorSourceOptions";
+import type { MonitorLaunchSource } from "../../types/monitorLaunch";
 import type { MonitorSetupPreferences } from "./monitorSetupPreferences";
 import type { AppSkin } from "./appSkin";
 import { buildSimpleMonitorScreenHookState } from "./simpleMonitorScreenRuntime";

@@ -1,5 +1,5 @@
 import type { ActiveMonitorSession } from "./features/monitor/monitorContextTypes";
-import type { MonitorLaunchSource } from "./features/simple/monitorSourceOptions";
+import type { MonitorLaunchSource } from "./types/monitorLaunch";
 import { getTrackTitle, resolvePlayableTrackPath } from "./utils/track";
 import type { LibraryTrack, RepositoryAnalysis } from "./types/library";
 import type {

@@ -4,7 +4,7 @@ import type { LibraryTrack, RepositoryAnalysis } from "../../types/library";
 import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { AppSkin } from "./appSkin";
 import type { MonitorSetupPreferences } from "./monitorSetupPreferences";
-import type { MonitorLaunchSource } from "./monitorSourceOptions";
+import type { MonitorLaunchSource } from "../../types/monitorLaunch";
 import type { UseSimpleMonitorDeckRuntimeInput } from "./simpleMonitorDeckRuntimeTypes";
 import type { UseSimpleMonitorLaunchStateInput } from "./useSimpleMonitorLaunchState";
 import type { SimpleMonitorCollectionsState } from "./simpleMonitorScreenStateRuntime";

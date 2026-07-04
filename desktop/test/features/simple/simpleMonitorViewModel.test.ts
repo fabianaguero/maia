@@ -12,7 +12,7 @@ import {
 } from "../../../src/features/simple/simpleMonitorViewModel";
 import type { ActiveMonitorSession } from "../../../src/features/monitor/MonitorContext";
 import type { LibraryTrack } from "../../../src/types/library";
-import type { MonitorLaunchSource } from "../../../src/features/simple/monitorSourceOptions";
+import type { MonitorLaunchSource } from "../../../src/types/monitorLaunch";
 
 function makeTrack(id: string, title: string, artist = "Maia"): LibraryTrack {
   const importedAt = "2026-06-25T12:00:00.000Z";
