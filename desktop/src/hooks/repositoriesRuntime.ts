@@ -1,5 +1,13 @@
 import type { AnalyzerResponse, MusicalAsset } from "../contracts";
 import type { ImportRepositoryInput, RepositoryAnalysis } from "../types/library";
+import {
+  appendUniqueEntity,
+  clearDeletedSelectedEntityId,
+  removeEntityById,
+  replaceEntityById,
+  resolveSelectedEntityId,
+  sortEntitiesByDescendingTimestamp,
+} from "./entityCollectionRuntime";
 
 export function toRepositoryErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error) {
@@ -14,28 +22,21 @@ export function toRepositoryErrorMessage(error: unknown, fallback: string): stri
 export function sortRepositoriesByImportedAt(
   repositories: RepositoryAnalysis[],
 ): RepositoryAnalysis[] {
-  return [...repositories].sort((left, right) => right.importedAt.localeCompare(left.importedAt));
+  return sortEntitiesByDescendingTimestamp(repositories, (repository) => repository.importedAt);
 }
 
 export function resolveSelectedRepositoryId(
   current: string | null,
   repositories: RepositoryAnalysis[],
 ): string | null {
-  if (current && repositories.some((repository) => repository.id === current)) {
-    return current;
-  }
-
-  return repositories[0]?.id ?? null;
+  return resolveSelectedEntityId(current, repositories);
 }
 
 export function appendImportedRepository(
   repositories: RepositoryAnalysis[],
   nextRepository: RepositoryAnalysis,
 ): RepositoryAnalysis[] {
-  return sortRepositoriesByImportedAt([
-    nextRepository,
-    ...repositories.filter((repository) => repository.id !== nextRepository.id),
-  ]);
+  return sortRepositoriesByImportedAt(appendUniqueEntity(repositories, nextRepository));
 }
 
 export function applyAnalyzedRepositoryMetadata(
@@ -79,9 +80,7 @@ export function replaceReanalyzedRepository(
   nextRepository: RepositoryAnalysis,
 ): RepositoryAnalysis[] {
   return sortRepositoriesByImportedAt(
-    repositories.map((repository) =>
-      repository.id === repositoryId ? nextRepository : repository,
-    ),
+    replaceEntityById(repositories, repositoryId, nextRepository),
   );
 }
 
@@ -89,14 +88,14 @@ export function removeDeletedRepository(
   repositories: RepositoryAnalysis[],
   repositoryId: string,
 ): RepositoryAnalysis[] {
-  return repositories.filter((repository) => repository.id !== repositoryId);
+  return removeEntityById(repositories, repositoryId);
 }
 
 export function clearDeletedSelectedRepositoryId(
   selectedRepositoryId: string | null,
   repositoryId: string,
 ): string | null {
-  return selectedRepositoryId === repositoryId ? null : selectedRepositoryId;
+  return clearDeletedSelectedEntityId(selectedRepositoryId, repositoryId);
 }
 
 export function resolveRepositoryAnalysisPayload(response: AnalyzerResponse): MusicalAsset | null {

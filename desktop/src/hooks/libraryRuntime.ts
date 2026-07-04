@@ -5,6 +5,14 @@ import type {
   LibraryTrack,
   RelinkMissingTracksResult,
 } from "../types/library";
+import {
+  appendUniqueEntity,
+  clearDeletedSelectedEntityId,
+  removeEntityById,
+  replaceEntityById,
+  resolveSelectedEntityId,
+  sortEntitiesByDescendingTimestamp,
+} from "./entityCollectionRuntime";
 
 export function toLibraryErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -19,45 +27,32 @@ export function toLibraryErrorMessage(error: unknown): string {
 }
 
 export function sortTracksByImportedAt(tracks: LibraryTrack[]): LibraryTrack[] {
-  return [...tracks].sort((left, right) =>
-    right.analysis.importedAt.localeCompare(left.analysis.importedAt),
-  );
+  return sortEntitiesByDescendingTimestamp(tracks, (track) => track.analysis.importedAt);
 }
 
 export function sortPlaylistsByUpdatedAt(playlists: BaseTrackPlaylist[]): BaseTrackPlaylist[] {
-  return [...playlists].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  return sortEntitiesByDescendingTimestamp(playlists, (playlist) => playlist.updatedAt);
 }
 
 export function resolveSelectedTrackId(
   current: string | null,
   tracks: LibraryTrack[],
 ): string | null {
-  if (current && tracks.some((track) => track.id === current)) {
-    return current;
-  }
-
-  return tracks[0]?.id ?? null;
+  return resolveSelectedEntityId(current, tracks);
 }
 
 export function resolveSelectedPlaylistId(
   current: string | null,
   playlists: BaseTrackPlaylist[],
 ): string | null {
-  if (current && playlists.some((playlist) => playlist.id === current)) {
-    return current;
-  }
-
-  return playlists[0]?.id ?? null;
+  return resolveSelectedEntityId(current, playlists);
 }
 
 export function appendImportedTrack(
   tracks: LibraryTrack[],
   nextTrack: LibraryTrack,
 ): LibraryTrack[] {
-  return sortTracksByImportedAt([
-    nextTrack,
-    ...tracks.filter((track) => track.id !== nextTrack.id),
-  ]);
+  return sortTracksByImportedAt(appendUniqueEntity(tracks, nextTrack));
 }
 
 export function shouldAnalyzeImportedTrack(track: LibraryTrack): boolean {
@@ -106,11 +101,11 @@ export function replaceTrack(
   trackId: string,
   nextTrack: LibraryTrack,
 ): LibraryTrack[] {
-  return sortTracksByImportedAt(tracks.map((track) => (track.id === trackId ? nextTrack : track)));
+  return sortTracksByImportedAt(replaceEntityById(tracks, trackId, nextTrack));
 }
 
 export function removeDeletedTrack(tracks: LibraryTrack[], trackId: string): LibraryTrack[] {
-  return tracks.filter((track) => track.id !== trackId);
+  return removeEntityById(tracks, trackId);
 }
 
 export function removeTrackFromPlaylists(
@@ -127,7 +122,7 @@ export function clearDeletedTrackSelection(
   selectedTrackId: string | null,
   trackId: string,
 ): string | null {
-  return selectedTrackId === trackId ? null : selectedTrackId;
+  return clearDeletedSelectedEntityId(selectedTrackId, trackId);
 }
 
 export function replaceRelinkedTracks(
@@ -147,22 +142,19 @@ export function appendSavedPlaylist(
   playlists: BaseTrackPlaylist[],
   nextPlaylist: BaseTrackPlaylist,
 ): BaseTrackPlaylist[] {
-  return sortPlaylistsByUpdatedAt([
-    nextPlaylist,
-    ...playlists.filter((playlist) => playlist.id !== nextPlaylist.id),
-  ]);
+  return sortPlaylistsByUpdatedAt(appendUniqueEntity(playlists, nextPlaylist));
 }
 
 export function removeDeletedPlaylist(
   playlists: BaseTrackPlaylist[],
   playlistId: string,
 ): BaseTrackPlaylist[] {
-  return playlists.filter((playlist) => playlist.id !== playlistId);
+  return removeEntityById(playlists, playlistId);
 }
 
 export function clearDeletedPlaylistSelection(
   selectedPlaylistId: string | null,
   playlistId: string,
 ): string | null {
-  return selectedPlaylistId === playlistId ? null : selectedPlaylistId;
+  return clearDeletedSelectedEntityId(selectedPlaylistId, playlistId);
 }
