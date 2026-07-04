@@ -1,9 +1,12 @@
 import { AlertCircle, Clock, Play, Radio, Trash2, TrendingUp } from "lucide-react";
 import type { PersistedSession, SessionBookmark } from "../../api/sessions";
 import { useT } from "../../i18n/I18nContext";
-import { formatShortDate } from "../../utils/date";
-import { formatBpmLabel, resolveSessionStatusLabel } from "../../utils/monitorLabels";
-import { resolveSessionTemplateLabel } from "./sessionDisplay";
+import {
+  buildSessionSavedSessionCardMetrics,
+  resolveSessionSavedSessionCardActions,
+  resolveSessionSavedSessionCardMeta,
+  resolveSessionSavedSessionCardStatusLabel,
+} from "./sessionSavedSessionCardRuntime";
 
 interface SessionSavedSessionCardProps {
   session: PersistedSession;
@@ -37,74 +40,78 @@ export function SessionSavedSessionCard({
   onDeleteSession,
 }: SessionSavedSessionCardProps) {
   const t = useT();
+  const statusLabel = resolveSessionSavedSessionCardStatusLabel({
+    session,
+    playbackActive,
+    t,
+  });
+  const metrics = buildSessionSavedSessionCardMetrics({
+    session,
+    active,
+    playbackActive,
+    liveWindowCount,
+    liveProcessedLines,
+    liveTotalAnomalies,
+    t,
+  });
+  const meta = resolveSessionSavedSessionCardMeta({
+    session,
+    bookmarks,
+    t,
+  });
+  const actions = resolveSessionSavedSessionCardActions({
+    active,
+    session,
+    mutating,
+  });
 
   return (
     <div className={`session-card${selected ? " selected" : ""}${active ? " active" : ""}`}>
       <div className="session-card-header" onClick={() => onSelectSession(session.id)}>
         <div className="session-card-title-row">
-          <h4>{session.label || t.session.unnamedSession}</h4>
+          <h4>{meta.title}</h4>
           <span
             className={`session-status-badge status-${session.status}${
               playbackActive ? " status-playback" : ""
             }`}
           >
-            {playbackActive ? t.session.replay : resolveSessionStatusLabel(session.status, t)}
+            {statusLabel}
           </span>
         </div>
-        <p className="session-card-source">
-          {session.sourceTitle || session.sourceId || t.session.unknownSource}
-        </p>
-        {(session.playlistName || session.trackTitle) && (
+        <p className="session-card-source">{meta.sourceLabel}</p>
+        {meta.baseLabel && (
           <p className="session-card-base">
-            {t.session.baseLabel}: {session.playlistName || session.trackTitle}
+            {t.session.baseLabel}: {meta.baseLabel}
           </p>
         )}
-        {bookmarks.length > 0 && (
-          <p className="session-card-bookmarks">
-            {t.session.replayNotesCount.replace("{count}", String(bookmarks.length))}
-          </p>
-        )}
+        {meta.bookmarksLabel ? <p className="session-card-bookmarks">{meta.bookmarksLabel}</p> : null}
       </div>
 
       <div className="session-card-metrics">
         <div className="session-metric">
           <TrendingUp size={12} />
-          <span>
-            {active && !playbackActive ? liveWindowCount : session.totalPolls} {t.session.polls}
-          </span>
+          <span>{metrics.pollsValue} {t.session.polls}</span>
         </div>
         <div className="session-metric">
           <Clock size={12} />
-          <span>
-            {active && !playbackActive ? liveProcessedLines : session.totalLines} {t.session.lines}
-          </span>
+          <span>{metrics.linesValue} {t.session.lines}</span>
         </div>
         <div className="session-metric">
           <AlertCircle size={12} />
-          <span>
-            {active && !playbackActive ? liveTotalAnomalies : session.totalAnomalies}{" "}
-            {t.session.anomalies}
-          </span>
+          <span>{metrics.anomaliesValue} {t.session.anomalies}</span>
         </div>
         <div className="session-metric">
-          <span className="session-chip">{formatBpmLabel(session.lastBpm)}</span>
+          <span className="session-chip">{metrics.bpmLabel}</span>
         </div>
         <div className="session-metric">
-          <span className="session-chip">
-            {resolveSessionTemplateLabel(
-              session.sourceTemplateId,
-              t,
-              t.session.noTemplate,
-              t.session.unknownTemplate,
-            )}
-          </span>
+          <span className="session-chip">{metrics.templateLabel}</span>
         </div>
       </div>
 
-      <p className="session-card-date">{formatShortDate(session.updatedAt)}</p>
+      <p className="session-card-date">{meta.updatedAtLabel}</p>
 
       <div className="session-card-actions">
-        {!active && session.totalPolls > 0 && (
+        {actions.showPlaybackAction && (
           <button
             type="button"
             className="action session-playback-action"
@@ -115,7 +122,7 @@ export function SessionSavedSessionCard({
             {t.session.playback}
           </button>
         )}
-        {!active && (
+        {actions.showResumeAction && (
           <button
             type="button"
             className="action session-resume-action"
@@ -130,7 +137,7 @@ export function SessionSavedSessionCard({
           type="button"
           className="secondary-action session-delete-action"
           onClick={() => onDeleteSession(session.id)}
-          disabled={mutating || active}
+          disabled={actions.deleteDisabled}
         >
           <Trash2 size={14} />
         </button>
