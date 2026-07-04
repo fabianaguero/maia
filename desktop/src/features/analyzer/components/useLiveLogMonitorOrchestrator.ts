@@ -20,7 +20,7 @@ import {
   buildSyncTailRows,
   resolveBackgroundTrackSecond,
   type SyncTailRow,
-} from "./liveLogMonitorPanelRuntime";
+} from "./liveLogMonitorSyncRuntime";
 import { resolveBeatClockLiveSync, type BeatClock } from "./liveLogMonitorBeatRuntime";
 import type { BackgroundDeckState } from "./liveLogMonitorBackgroundDeckRuntime";
 import type {

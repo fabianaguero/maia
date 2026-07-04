@@ -52,7 +52,7 @@ vi.mock("../../../../src/features/analyzer/components/wavRenderer", () => ({
   MAX_BOUNCE_WINDOWS: 4,
 }));
 
-vi.mock("../../../../src/features/analyzer/components/liveLogMonitorPanelRuntime", () => ({
+vi.mock("../../../../src/features/analyzer/components/liveLogMonitorSyncRuntime", () => ({
   resolveBackgroundTrackSecond: (...args: unknown[]) => resolveBackgroundTrackSecondMock(...args),
 }));
 

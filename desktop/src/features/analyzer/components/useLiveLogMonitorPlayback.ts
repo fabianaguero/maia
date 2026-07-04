@@ -11,7 +11,7 @@ import {
   buildExternalCueLayerPlan,
 } from "./liveLogMonitorCueExecutionRuntime";
 import { renderCuesToWav, MAX_BOUNCE_WINDOWS } from "./wavRenderer";
-import { resolveBackgroundTrackSecond } from "./liveLogMonitorPanelRuntime";
+import { resolveBackgroundTrackSecond } from "./liveLogMonitorSyncRuntime";
 import {
   scheduleSampleCue,
   scheduleSynthCue,
