@@ -7,7 +7,7 @@ import { useT } from "../../i18n/I18nContext";
 import { formatShortDateTime } from "../../utils/date";
 import { formatBpmLabel, formatDominantLevelLabel } from "../../utils/monitorLabels";
 import type { ReplayFeedbackRecommendation } from "../../utils/replayFeedback";
-import type { SessionBookmarkContext } from "./SessionSavedSessionsPanel";
+import type { SessionBookmarkContext } from "./sessionScreenRuntime";
 
 interface SessionReplayBookmarkPanelProps {
   selectedSession: PersistedSession;

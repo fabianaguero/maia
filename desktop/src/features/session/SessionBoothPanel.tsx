@@ -8,6 +8,12 @@ import { SessionBoothHeader } from "./SessionBoothHeader";
 import { SessionBoothProgress } from "./SessionBoothProgress";
 import { SessionBoothRouteGrid } from "./SessionBoothRouteGrid";
 import { SessionBoothStatsGrid } from "./SessionBoothStatsGrid";
+import {
+  buildSessionBoothDetailProps,
+  buildSessionBoothHeaderProps,
+  buildSessionBoothProgressProps,
+  buildSessionBoothRouteProps,
+} from "./sessionBoothPanelRuntime";
 
 interface SessionBoothPanelProps {
   booth: SessionBoothViewModel;
@@ -57,97 +63,59 @@ export function SessionBoothPanel({
   onStopSession,
 }: SessionBoothPanelProps) {
   const t = useT();
+  const headerProps = buildSessionBoothHeaderProps({
+    t,
+    booth,
+    playbackActive,
+    liveMonitorActive,
+    mutating,
+    readyToRun,
+    isPlaybackPaused,
+    directPath,
+    isDirectLoading,
+    selectedSession,
+    creating,
+    onDirectPathChange,
+    onDirectLaunch,
+    onResumeSelected,
+    onReplaySelected,
+    onCreateSession,
+    onStepPlaybackWindow,
+    onToggleReplayPlayback,
+    onStopSession,
+  });
+  const progressProps = buildSessionBoothProgressProps({
+    booth,
+    playbackActive,
+    liveMonitorActive,
+  });
+  const routeProps = buildSessionBoothRouteProps({
+    t,
+    booth,
+    monitorSessionId,
+    mode,
+  });
+  const detailProps = buildSessionBoothDetailProps({
+    t,
+    booth,
+    latestUpdate,
+    playbackActive,
+    readyToRun,
+  });
 
   return (
     <section className="panel session-booth-panel">
-      <SessionBoothHeader
-        stateTone={booth.state.tone}
-        stateLabel={booth.state.label}
-        eyebrowLabel={t.session.liveBooth}
-        headline={booth.headline}
-        summary={booth.summary}
-        playbackActive={playbackActive}
-        liveMonitorActive={liveMonitorActive}
-        mutating={mutating}
-        readyToRun={readyToRun}
-        isPlaybackPaused={isPlaybackPaused}
-        directPath={directPath}
-        isDirectLoading={isDirectLoading}
-        selectedSession={selectedSession}
-        creating={creating}
-        labels={{
-          prevWindow: t.session.prevWindow,
-          nextWindow: t.session.nextWindow,
-          resumeReplay: t.session.resumeReplay,
-          pauseReplay: t.session.pauseReplay,
-          exitReplay: t.session.exitReplay,
-          stopSession: t.session.stopSession,
-          pastePath: t.session.pastePath,
-          launching: t.session.launching,
-          launch: t.session.launch,
-          resumeSelected: t.session.resumeSelected,
-          replaySelected: t.session.replaySelected,
-          startSession: t.session.startSession,
-        }}
-        onDirectPathChange={onDirectPathChange}
-        onDirectLaunch={onDirectLaunch}
-        onResumeSelected={onResumeSelected}
-        onReplaySelected={onReplaySelected}
-        onCreateSession={onCreateSession}
-        onStepPlaybackWindow={onStepPlaybackWindow}
-        onToggleReplayPlayback={onToggleReplayPlayback}
-        onStopSession={onStopSession}
-      />
+      <SessionBoothHeader {...headerProps} />
 
-      <SessionBoothProgress
-        visible={playbackActive || liveMonitorActive}
-        progressAriaLabel={booth.progressAriaLabel}
-        progressWidth={booth.progressWidth}
-      />
+      <SessionBoothProgress {...progressProps} />
 
       <div className="session-booth-grid">
-        <SessionBoothRouteGrid
-          booth={booth}
-          monitorSessionId={monitorSessionId}
-          mode={mode}
-          labels={{
-            sourceFeed: t.session.sourceFeed,
-            baseBed: t.session.baseBed,
-            adapter: t.session.adapter,
-            notSelected: t.session.notSelected,
-            pickSourceHint: t.session.pickSourceHint,
-            notArmed: t.session.notArmed,
-            baseBedHint: t.session.baseBedHint,
-            sessionRef: t.session.sessionRef,
-            readyToLaunchMode: t.session.readyToLaunchMode,
-            logFile: t.session.logFile,
-            repository: t.session.repository,
-          }}
-        />
+        <SessionBoothRouteGrid {...routeProps} />
 
         <SessionBoothStatsGrid stats={booth.stats} />
       </div>
 
-      <SessionBoothDetailGrid
-        booth={booth}
-        latestUpdate={latestUpdate}
-        playbackActive={playbackActive}
-        readyToRun={readyToRun}
-        labels={{
-          signalSnapshot: t.session.signalSnapshot,
-          latestWindowLines: t.session.latestWindowLines,
-          waitingStreamData: t.session.waitingStreamData,
-          awaitingInput: t.session.awaitingInput,
-          noLevelBreakdown: t.session.noLevelBreakdown,
-          topComponentsSoon: t.session.topComponentsSoon,
-          replayNotes: t.session.replayNotes,
-          watchouts: t.session.watchouts,
-          latestWindowAnomalies: t.session.latestWindowAnomalies,
-          noCurrentBurst: t.session.noCurrentBurst,
-          runBoothHint: t.session.runBoothHint,
-          sourceActiveHint: t.session.sourceActiveHint,
-        }}
-      />
+      <SessionBoothDetailGrid {...detailProps} />
     </section>
   );
 }

@@ -3,13 +3,12 @@ import { useT } from "../../i18n/I18nContext";
 import type { ReplayFeedbackRecommendation } from "../../utils/replayFeedback";
 import { SessionReplayBookmarkPanel } from "./SessionReplayBookmarkPanel";
 import { SessionSavedSessionsList } from "./SessionSavedSessionsList";
-
-export interface SessionBookmarkContext {
-  bpm: number | null;
-  dominantLevel: string | null;
-  anomalyCount: number | null;
-  logExcerpt: string | null;
-}
+import type { SessionBookmarkContext } from "./sessionScreenRuntime";
+import {
+  buildSessionReplayBookmarkPanelProps,
+  buildSessionSavedSessionsListProps,
+  buildSessionSavedSessionsPanelHeader,
+} from "./sessionSavedSessionsPanelViewRuntime";
 
 interface SessionSavedSessionsPanelProps {
   sessions: PersistedSession[];
@@ -55,47 +54,50 @@ export function SessionSavedSessionsPanel({
   onDeleteSession,
 }: SessionSavedSessionsPanelProps) {
   const t = useT();
+  const header = buildSessionSavedSessionsPanelHeader({
+    t,
+    sessionsCount: sessions.length,
+  });
+  const listProps = buildSessionSavedSessionsListProps({
+    t,
+    sessions,
+    loading,
+    mutating,
+    selectedSessionId,
+    activeSessionId,
+    activeSessionMode,
+    sessionBookmarksBySessionId,
+    liveWindowCount,
+    liveProcessedLines,
+    liveTotalAnomalies,
+    onSelectSession,
+    onResumeSession,
+    onPlaybackSession,
+    onDeleteSession,
+  });
+  const replayPanelProps = selectedSession
+    ? buildSessionReplayBookmarkPanelProps({
+        selectedSession,
+        selectedSessionBookmarks,
+        selectedSessionReplayFeedbackRecommendation,
+        bookmarkContexts,
+        mutating,
+        onReplayBookmark,
+      })
+    : null;
 
   return (
     <section className="panel session-list-panel">
       <div className="panel-header">
-        <h3>{t.session.savedSessions}</h3>
-        <p className="support-copy">
-          {t.session.savedSessionsCount.replace("{count}", String(sessions.length))}
-        </p>
+        <h3>{header.title}</h3>
+        <p className="support-copy">{header.summary}</p>
       </div>
 
       <div className="session-card-list">
-        <SessionSavedSessionsList
-          sessions={sessions}
-          loading={loading}
-          mutating={mutating}
-          selectedSessionId={selectedSessionId}
-          activeSessionId={activeSessionId}
-          activeSessionMode={activeSessionMode}
-          sessionBookmarksBySessionId={sessionBookmarksBySessionId}
-          liveWindowCount={liveWindowCount}
-          liveProcessedLines={liveProcessedLines}
-          liveTotalAnomalies={liveTotalAnomalies}
-          emptyLabel={t.session.noSessions}
-          loadingLabel={t.session.loading}
-          onSelectSession={onSelectSession}
-          onResumeSession={onResumeSession}
-          onPlaybackSession={onPlaybackSession}
-          onDeleteSession={onDeleteSession}
-        />
+        <SessionSavedSessionsList {...listProps} />
       </div>
 
-      {selectedSession ? (
-        <SessionReplayBookmarkPanel
-          selectedSession={selectedSession}
-          selectedSessionBookmarks={selectedSessionBookmarks}
-          selectedSessionReplayFeedbackRecommendation={selectedSessionReplayFeedbackRecommendation}
-          bookmarkContexts={bookmarkContexts}
-          mutating={mutating}
-          onReplayBookmark={onReplayBookmark}
-        />
-      ) : null}
+      {replayPanelProps ? <SessionReplayBookmarkPanel {...replayPanelProps} /> : null}
     </section>
   );
 }
