@@ -1,12 +1,12 @@
 import type { PersistedSession, SessionBookmark, SessionEvent } from "../../api/sessions";
 import type { BaseTrackPlaylist, LibraryTrack, RepositoryAnalysis } from "../../types/library";
 import type { QuickSessionMode, SessionBaseMode } from "./sessionDisplay";
-import {
-  resolveBaseDetails,
-  resolveSelectedBaseDetails,
-  resolveSourceDetails,
-} from "./sessionDisplay";
 import type { SessionBookmarkContext } from "./sessionBookmarkRuntime";
+import {
+  resolveSessionControllerDerivedDetails,
+  type SessionDetailSummary,
+  type SessionSourceSummary,
+} from "./sessionControllerDerivedDetailsRuntime";
 import {
   resolveSelectedEntities,
   resolveSessionBookmarkState,
@@ -15,11 +15,6 @@ import {
   type SessionEntitySelection,
   type SessionResolvedSelection,
 } from "./sessionControllerDerivedSelectionRuntime";
-import {
-  buildSessionLabelPlaceholder,
-  resolvePlaybackPercent,
-  resolveReadyToRun,
-} from "./sessionStartPlanRuntime";
 export {
   resolveSelectedEntities,
   resolveSessionBookmarkState,
@@ -27,16 +22,7 @@ export {
   resolveSourceOptions,
 };
 export type { SessionEntitySelection, SessionResolvedSelection };
-
-export interface SessionDetailSummary {
-  label: string | null;
-  detail: string | null;
-}
-
-export interface SessionSourceSummary {
-  label: string | null;
-  path: string | null;
-}
+export type { SessionDetailSummary, SessionSourceSummary };
 
 export interface SessionControllerDerivedState {
   sourceOptions: RepositoryAnalysis[];
@@ -91,12 +77,6 @@ export function resolveSessionControllerDerivedState(input: {
     selectedTrackId: input.selectedTrackId,
     tracks: input.tracks,
   });
-  const selectedBaseDetails = resolveSelectedBaseDetails(
-    input.baseMode,
-    selectedTrack,
-    selectedPlaylist,
-    input.tracks,
-  );
   const sessionSelection = resolveSessionSelection({
     sessions: input.sessions,
     activeSessionId: input.activeSessionId,
@@ -111,13 +91,31 @@ export function resolveSessionControllerDerivedState(input: {
     sessionBookmarksBySessionId: input.sessionBookmarksBySessionId,
     selectedSessionEvents: input.selectedSessionEvents,
   });
+  const detailsState = resolveSessionControllerDerivedDetails({
+    baseMode: input.baseMode,
+    selectedTrack,
+    selectedPlaylist,
+    tracks: input.tracks,
+    selectedPlaylistId: input.selectedPlaylistId,
+    selectedSourceId: input.selectedSourceId,
+    selectedTrackId: input.selectedTrackId,
+    selectedSource,
+    templateGenre: input.templateGenre,
+    templateLabel: input.templateLabel,
+    sessionPlaceholderFallback: input.sessionPlaceholderFallback,
+    activePlaybackProgress: input.activePlaybackProgress,
+    activeSession: sessionSelection.activeSession,
+    selectedSession: sessionSelection.selectedSession,
+    repositories: input.repositories,
+    playlists: input.playlists,
+  });
 
   return {
     sourceOptions,
     selectedSource,
     selectedTrack,
     selectedPlaylist,
-    selectedBaseDetails,
+    selectedBaseDetails: detailsState.selectedBaseDetails,
     activeSession: sessionSelection.activeSession,
     selectedSession: sessionSelection.selectedSession,
     selectedSessionIdForEvents: sessionSelection.selectedSessionIdForEvents,
@@ -126,34 +124,12 @@ export function resolveSessionControllerDerivedState(input: {
     activeBedUrl: sessionSelection.activeBedUrl,
     selectedSessionBookmarks: bookmarkState.selectedSessionBookmarks,
     bookmarkContexts: bookmarkState.bookmarkContexts,
-    sessionLabelPlaceholder: buildSessionLabelPlaceholder({
-      selectedBaseLabel: selectedBaseDetails.label,
-      selectedSourceTitle: selectedSource?.title ?? null,
-      templateGenre: input.templateGenre,
-      templateLabel: input.templateLabel,
-      fallbackLabel: input.sessionPlaceholderFallback,
-    }),
-    playbackPercent: resolvePlaybackPercent(input.activePlaybackProgress),
-    readyToRun: resolveReadyToRun({
-      baseMode: input.baseMode,
-      selectedPlaylistId: input.selectedPlaylistId,
-      selectedSourceId: input.selectedSourceId,
-      selectedTrackId: input.selectedTrackId,
-    }),
-    activeBaseDetails: resolveBaseDetails(
-      sessionSelection.activeSession,
-      input.tracks,
-      input.playlists,
-    ),
-    selectedSessionBaseDetails: resolveBaseDetails(
-      sessionSelection.selectedSession,
-      input.tracks,
-      input.playlists,
-    ),
-    activeSourceDetails: resolveSourceDetails(sessionSelection.activeSession, input.repositories),
-    selectedSessionSourceDetails: resolveSourceDetails(
-      sessionSelection.selectedSession,
-      input.repositories,
-    ),
+    sessionLabelPlaceholder: detailsState.sessionLabelPlaceholder,
+    playbackPercent: detailsState.playbackPercent,
+    readyToRun: detailsState.readyToRun,
+    activeBaseDetails: detailsState.activeBaseDetails,
+    selectedSessionBaseDetails: detailsState.selectedSessionBaseDetails,
+    activeSourceDetails: detailsState.activeSourceDetails,
+    selectedSessionSourceDetails: detailsState.selectedSessionSourceDetails,
   };
 }

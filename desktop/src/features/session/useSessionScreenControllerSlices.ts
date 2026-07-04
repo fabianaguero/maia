@@ -15,6 +15,13 @@ import {
   resolveSessionScreenControllerSlicesDerivedState,
   resolveSessionScreenControllerSlicesTemplateSelection,
 } from "./sessionScreenControllerSlicesRuntime";
+import {
+  pickSessionScreenControllerSlicesActionLocalState,
+  pickSessionScreenControllerSlicesBoothLocalState,
+  pickSessionScreenControllerSlicesDerivedLocalState,
+  pickSessionScreenControllerSlicesEffectsLocalState,
+  resolveSessionScreenControllerTemplateMeta,
+} from "./sessionScreenControllerSlicesStateRuntime";
 
 type SessionScreenLocalState = ReturnType<typeof useSessionScreenLocalState>;
 type MonitorSnapshot = ReturnType<typeof buildSessionScreenControllerMonitorSnapshot>;
@@ -32,62 +39,29 @@ export function useSessionScreenControllerSlices({
   monitorSnapshot,
   localState,
 }: UseSessionScreenControllerSlicesInput) {
-  const {
-    mode,
-    baseMode,
-    selectedSourceId,
-    selectedTrackId,
-    selectedPlaylistId,
-    sessionLabel,
-    setSessionLabel,
-    setCreateError,
-    setCreating,
-    latestUpdate,
-    setLatestUpdate,
-    directPath,
-    setDirectPath,
-    setIsDirectLoading,
-    selectedTemplateId,
-    selectedSessionEvents,
-    setSelectedSessionEvents,
-    boothBedAudioRef,
-    setSelectedSourceId,
-    setSelectedTrackId,
-    setSelectedPlaylistId,
-  } = localState;
+  const actionLocalState = pickSessionScreenControllerSlicesActionLocalState(localState);
+  const derivedLocalState = pickSessionScreenControllerSlicesDerivedLocalState(localState);
+  const effectsLocalState = pickSessionScreenControllerSlicesEffectsLocalState(localState);
+  const boothLocalState = pickSessionScreenControllerSlicesBoothLocalState(localState);
 
   const actions = useSessionScreenActions(
     buildSessionScreenControllerSlicesActionsInput({
       t,
       controllerInput: input,
-      localState: {
-        baseMode,
-        mode,
-        selectedPlaylistId,
-        selectedSourceId,
-        selectedTrackId,
-        sessionLabel,
-        directPath,
-        setCreateError,
-        setCreating,
-        setIsDirectLoading,
-        setSessionLabel,
-        setSelectedSourceId,
-        setSelectedTrackId,
-        setSelectedPlaylistId,
-        setDirectPath,
-      },
+      localState: actionLocalState,
     }),
   );
 
   const { selectedTemplate, selectedTemplatePresentation } =
     resolveSessionScreenControllerSlicesTemplateSelection({
-      selectedTemplateId,
+      selectedTemplateId: localState.selectedTemplateId,
       t,
     });
-
-  const selectedTemplateGenre = selectedTemplatePresentation?.genre ?? selectedTemplate?.genre ?? null;
-  const selectedTemplateLabel = selectedTemplatePresentation?.label ?? selectedTemplate?.label ?? null;
+  const { selectedTemplateGenre, selectedTemplateLabel } =
+    resolveSessionScreenControllerTemplateMeta({
+      selectedTemplate,
+      selectedTemplatePresentation,
+    });
 
   const derivedState = useMemo(
     () =>
@@ -95,26 +69,14 @@ export function useSessionScreenControllerSlices({
         t,
         controllerInput: input,
         monitorSnapshot,
-        localState: {
-          baseMode,
-          mode,
-          selectedPlaylistId,
-          selectedSessionEvents,
-          selectedSourceId,
-          selectedTrackId,
-        },
+        localState: derivedLocalState,
         selectedTemplateGenre,
         selectedTemplateLabel,
       }),
     [
       input,
       monitorSnapshot,
-      baseMode,
-      mode,
-      selectedPlaylistId,
-      selectedSessionEvents,
-      selectedSourceId,
-      selectedTrackId,
+      derivedLocalState,
       t,
       selectedTemplateGenre,
       selectedTemplateLabel,
@@ -124,11 +86,7 @@ export function useSessionScreenControllerSlices({
   useSessionScreenEffects(
     buildSessionScreenControllerSlicesEffectsInput({
       monitorSnapshot,
-      localState: {
-        setLatestUpdate,
-        setSelectedSessionEvents,
-        boothBedAudioRef,
-      },
+      localState: effectsLocalState,
       derivedState: {
         selectedSessionIdForEvents: derivedState.selectedSessionIdForEvents,
         activeBedUrl: derivedState.activeBedUrl,
@@ -143,10 +101,7 @@ export function useSessionScreenControllerSlices({
   const booth = buildSessionScreenControllerSlicesBooth({
     t,
     monitorSnapshot,
-    localState: {
-      mode,
-      latestUpdate,
-    },
+    localState: boothLocalState,
     derivedState,
   });
 
