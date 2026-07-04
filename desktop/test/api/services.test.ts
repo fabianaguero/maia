@@ -58,14 +58,10 @@ describe("desktop service wrappers", () => {
     vi.useRealTimers();
   });
 
-  it.skip("retries native list calls before falling back to browser mocks", async () => {
-    // TODO: This test needs to be refactored to work with the new Tauri bridge detection
-    // The current test relies on bridge state changes during execution which conflicts
-    // with our new hasNativeBridge() check
-    vi.useFakeTimers();
-    vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 Tauri");
+  it("retries native list calls before falling back to browser mocks", async () => {
+    (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {};
 
-    const nativeTracks = [{ id: "native-track-1", title: "Native Track" }] as any[];
+    const nativeTracks = [{ id: "native-track-1", title: "Native Track" }] as const;
     let attempts = 0;
 
     invokeMock.mockImplementation(async () => {
@@ -78,14 +74,7 @@ describe("desktop service wrappers", () => {
       return nativeTracks;
     });
 
-    window.setTimeout(() => {
-      (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {};
-    }, 20);
-
-    const pendingTracks = listTracks();
-    await vi.advanceTimersByTimeAsync(120);
-
-    await expect(pendingTracks).resolves.toEqual(nativeTracks);
+    await expect(listTracks()).resolves.toEqual(nativeTracks);
     expect(invokeMock).toHaveBeenCalledTimes(2);
   });
 
@@ -185,12 +174,9 @@ describe("desktop service wrappers", () => {
     await expect(deleteSessionBookmark(1)).resolves.toBe(false);
   });
 
-  it.skip("passes persisted session creation through to the native layer when available", async () => {
-    // TODO: This test needs refactoring for the new bridge detection
-    // Make the bridge available for this test
-    (window as any).__TAURI_INTERNALS__ = {};
+  it("passes persisted session creation through to the native layer when available", async () => {
+    (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {};
     invokeMock.mockClear();
-    invokeMock.mockResolvedValueOnce(undefined); // Reset from beforeEach error
 
     const session: PersistedSession = {
       id: "session-1",
@@ -238,12 +224,9 @@ describe("desktop service wrappers", () => {
     });
   });
 
-  it.skip("passes bookmark upserts through to the native layer when available", async () => {
-    // TODO: This test needs refactoring for the new bridge detection
-    // Make the bridge available for this test
-    (window as any).__TAURI_INTERNALS__ = {};
+  it("passes bookmark upserts through to the native layer when available", async () => {
+    (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {};
     invokeMock.mockClear();
-    invokeMock.mockResolvedValueOnce(undefined); // Reset from beforeEach error
 
     const bookmark: SessionBookmark = {
       id: 1,
