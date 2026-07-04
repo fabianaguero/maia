@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import type { AppV0MonitorLaunchExecutionResult } from "../appV0MonitorRuntime";
 import {
+  buildAppV0MonitorOrchestratorInput,
   buildAppV0MonitorOrchestrator,
+  buildAppV0MonitorStateModelInput,
   buildAppV0MonitorStateModel,
 } from "./appV0MonitorScreenStateRuntime";
 import {
@@ -75,15 +77,17 @@ export function useAppV0MonitorScreenState(input: UseAppV0MonitorScreenStateInpu
 
   const stateModel = useMemo(
     () =>
-      buildAppV0MonitorStateModel({
-        lang,
-        currentSection,
-        selectedRepositoryTitle: selectedRepositoryTitle ?? null,
-        selectedTrack,
-        tracks,
-        session,
-        metrics,
-      }),
+      buildAppV0MonitorStateModel(
+        buildAppV0MonitorStateModelInput({
+          lang,
+          currentSection,
+          selectedRepositoryTitle,
+          selectedTrack,
+          tracks,
+          session,
+          metrics,
+        }),
+      ),
     [
       lang,
       currentSection,
@@ -96,17 +100,19 @@ export function useAppV0MonitorScreenState(input: UseAppV0MonitorScreenStateInpu
   );
   const monitorOrchestrator = useMemo(
     () =>
-      buildAppV0MonitorOrchestrator({
-        repositories,
-        tracks,
-        selectedTrack,
-        setGuideTrack,
-        resumeAudio,
-        attachSession,
-        startSession,
-        playbackSession,
-        onLaunchSuccess: () => setCurrentSection("monitor"),
-      }),
+      buildAppV0MonitorOrchestrator(
+        buildAppV0MonitorOrchestratorInput({
+          repositories,
+          tracks,
+          selectedTrack,
+          setGuideTrack,
+          resumeAudio,
+          attachSession,
+          startSession,
+          playbackSession,
+          onLaunchSuccess: () => setCurrentSection("monitor"),
+        }),
+      ),
     [
       repositories,
       tracks,

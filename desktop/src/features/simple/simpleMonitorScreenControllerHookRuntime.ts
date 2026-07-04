@@ -125,7 +125,7 @@ export function buildSimpleMonitorScreenControllerSlicesResult(input: {
   };
 }
 
-export function buildSimpleMonitorScreenControllerHookArgsInput(input: {
+export interface BuildSimpleMonitorScreenControllerHookArgsInput {
   state: Pick<
     SimpleMonitorScreenStateInput,
     | "session"
@@ -145,7 +145,11 @@ export function buildSimpleMonitorScreenControllerHookArgsInput(input: {
   deckRuntime: SimpleMonitorDeckRuntimeSlice;
   anomalyFilter: SimpleMonitorAnomalyFilterStateSlice;
   collections: SimpleMonitorCollectionsState;
-}) {
+}
+
+export function buildSimpleMonitorScreenControllerHookBaseArgs(
+  input: BuildSimpleMonitorScreenControllerHookArgsInput,
+) {
   return {
     session: input.state.session,
     metrics: input.state.metrics,
@@ -156,15 +160,34 @@ export function buildSimpleMonitorScreenControllerHookArgsInput(input: {
     onToggleConsole: input.state.onToggleConsole,
     onStop: input.state.onStop,
     onRefresh: input.onRefresh,
-    onSimulateLog: input.deckRuntime.simulateLog,
     onResumeAudio: input.state.onResumeAudio,
     onReplaySession: input.state.onReplaySession,
+    audioStatus: input.state.audioStatus,
+  };
+}
+
+export function buildSimpleMonitorScreenControllerHookInteractiveArgs(
+  input: Pick<
+    BuildSimpleMonitorScreenControllerHookArgsInput,
+    "launchState" | "deckRuntime" | "anomalyFilter" | "collections"
+  >,
+) {
+  return {
+    onSimulateLog: input.deckRuntime.simulateLog,
     isAnomalyFilterActive: input.anomalyFilter.isAnomalyFilterActive,
     onToggleAnomalyFilter: input.anomalyFilter.handleToggleAnomalyFilter,
     onClearAnomalyFilter: input.anomalyFilter.handleClearAnomalyFilter,
     launchState: input.launchState,
     deckRuntime: input.deckRuntime,
     collections: input.collections,
-    audioStatus: input.state.audioStatus,
+  };
+}
+
+export function buildSimpleMonitorScreenControllerHookArgsInput(
+  input: BuildSimpleMonitorScreenControllerHookArgsInput,
+) {
+  return {
+    ...buildSimpleMonitorScreenControllerHookBaseArgs(input),
+    ...buildSimpleMonitorScreenControllerHookInteractiveArgs(input),
   };
 }

@@ -5,6 +5,8 @@ import {
   buildSimpleMonitorScreenControllerAnomalyFilterArgs,
   buildSimpleMonitorScreenControllerCollectionsInput,
   buildSimpleMonitorScreenControllerHookArgsInput,
+  buildSimpleMonitorScreenControllerHookBaseArgs,
+  buildSimpleMonitorScreenControllerHookInteractiveArgs,
   buildSimpleMonitorScreenControllerDeckRuntimeInput,
   buildSimpleMonitorScreenControllerDeckHookArgs,
   buildSimpleMonitorScreenControllerLaunchStateInput,
@@ -200,6 +202,49 @@ describe("simpleMonitorScreenControllerHookRuntime", () => {
     });
 
     expect(
+      buildSimpleMonitorScreenControllerHookBaseArgs({
+        state: createInput(),
+        t: en,
+        nowMs: 1234,
+        onRefresh: vi.fn(),
+        launchState,
+        deckRuntime,
+        anomalyFilter,
+        collections: {
+          safePastSessions: [],
+          safeRepositories: [],
+          safeTracks: [],
+        } as never,
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        nowMs: 1234,
+        audioStatus: "running",
+      }),
+    );
+
+    expect(
+      buildSimpleMonitorScreenControllerHookInteractiveArgs({
+        launchState,
+        deckRuntime,
+        anomalyFilter,
+        collections: {
+          safePastSessions: [],
+          safeRepositories: [],
+          safeTracks: [],
+        } as never,
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        launchState,
+        deckRuntime,
+        isAnomalyFilterActive: false,
+        onToggleAnomalyFilter: anomalyFilter.handleToggleAnomalyFilter,
+        onClearAnomalyFilter: anomalyFilter.handleClearAnomalyFilter,
+      }),
+    );
+
+    expect(
       buildSimpleMonitorScreenControllerHookArgsInput({
         state: createInput(),
         t: en,
@@ -222,6 +267,7 @@ describe("simpleMonitorScreenControllerHookRuntime", () => {
         isAnomalyFilterActive: false,
         onToggleAnomalyFilter: anomalyFilter.handleToggleAnomalyFilter,
         onClearAnomalyFilter: anomalyFilter.handleClearAnomalyFilter,
+        audioStatus: "running",
       }),
     );
   });

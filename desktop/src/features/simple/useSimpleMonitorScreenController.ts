@@ -91,18 +91,22 @@ export function useSimpleMonitorScreenController({
     }),
   );
 
-  const hookStateArgs = buildSimpleMonitorScreenHookArgsInput({
-    ...buildSimpleMonitorScreenControllerHookArgsInput({
-      state: controllerState,
-      t,
-      nowMs: Date.now(),
-      onRefresh: () => window.location.reload(),
-      launchState,
-      deckRuntime,
-      anomalyFilter,
-      collections,
-    }),
-  });
+  const hookStateArgs = useMemo(
+    () =>
+      buildSimpleMonitorScreenHookArgsInput(
+        buildSimpleMonitorScreenControllerHookArgsInput({
+          state: controllerState,
+          t,
+          nowMs: Date.now(),
+          onRefresh: () => window.location.reload(),
+          launchState,
+          deckRuntime,
+          anomalyFilter,
+          collections,
+        }),
+      ),
+    [anomalyFilter, collections, controllerState, deckRuntime, launchState, t],
+  );
 
   return {
     hookStateArgs,

@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  buildAppV0MonitorOrchestratorInput,
   buildAppV0MonitorOrchestrator,
+  buildAppV0MonitorStateModelInput,
   buildAppV0MonitorStateModel,
   resolveAppV0Translations,
 } from "../../src/hooks/appV0MonitorScreenStateRuntime";
@@ -117,7 +119,7 @@ function createTrack(): LibraryTrack {
 describe("appV0MonitorScreenStateRuntime", () => {
   it("builds localized screen model data", () => {
     const track = createTrack();
-    const model = buildAppV0MonitorStateModel({
+    const modelInput = buildAppV0MonitorStateModelInput({
       lang: "es",
       currentSection: "monitor",
       selectedRepositoryTitle: "visits-service",
@@ -140,15 +142,17 @@ describe("appV0MonitorScreenStateRuntime", () => {
         totalAnomalies: 1,
       },
     });
+    const model = buildAppV0MonitorStateModel(modelInput);
 
     expect(resolveAppV0Translations("es").simpleMode.nav.monitor).toBeDefined();
+    expect(modelInput.selectedRepositoryTitle).toBe("visits-service");
     expect(model.isMonitoring).toBe(true);
     expect(model.waveformBins).toEqual([0.1, 0.2]);
     expect(model.fallbackViewModel.message.length).toBeGreaterThan(0);
   });
 
   it("builds an orchestrator with monitor launch methods", () => {
-    const orchestrator = buildAppV0MonitorOrchestrator({
+    const orchestratorInput = buildAppV0MonitorOrchestratorInput({
       repositories: [createRepository()],
       tracks: [createTrack()],
       selectedTrack: createTrack(),
@@ -159,7 +163,9 @@ describe("appV0MonitorScreenStateRuntime", () => {
       playbackSession: vi.fn(async () => true),
       onLaunchSuccess: vi.fn(),
     });
+    const orchestrator = buildAppV0MonitorOrchestrator(orchestratorInput);
 
+    expect(orchestratorInput.repositories).toHaveLength(1);
     expect(typeof orchestrator.startLibraryMonitoring).toBe("function");
     expect(typeof orchestrator.startSourceMonitoring).toBe("function");
     expect(typeof orchestrator.replaySession).toBe("function");

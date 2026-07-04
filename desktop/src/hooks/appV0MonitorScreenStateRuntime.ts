@@ -15,6 +15,7 @@ import type { AppSection } from "../features/simple/appSections";
 import type { LibraryTrack, RepositoryAnalysis, StartSessionInput } from "../types/library";
 import type { StreamSessionRecord } from "../types/monitor";
 import { getTrackTitle } from "../utils/track";
+import type { UseAppV0MonitorScreenStateInput } from "./useAppV0MonitorScreenState";
 
 export function resolveAppV0Translations(lang: AppV0Language) {
   return lang === "es" ? es : en;
@@ -28,6 +29,29 @@ export interface BuildAppV0MonitorStateModelInput {
   tracks: LibraryTrack[];
   session: ActiveMonitorSession | null;
   metrics: MonitorMetrics;
+}
+
+export function buildAppV0MonitorStateModelInput(
+  input: Pick<
+    UseAppV0MonitorScreenStateInput,
+    | "lang"
+    | "currentSection"
+    | "selectedRepositoryTitle"
+    | "selectedTrack"
+    | "tracks"
+    | "session"
+    | "metrics"
+  >,
+): BuildAppV0MonitorStateModelInput {
+  return {
+    lang: input.lang,
+    currentSection: input.currentSection,
+    selectedRepositoryTitle: input.selectedRepositoryTitle ?? null,
+    selectedTrack: input.selectedTrack,
+    tracks: input.tracks,
+    session: input.session,
+    metrics: input.metrics,
+  };
 }
 
 export function buildAppV0MonitorStateModel(input: BuildAppV0MonitorStateModelInput) {
@@ -81,6 +105,34 @@ export interface BuildAppV0MonitorOrchestratorInput {
     label: string;
   }) => Promise<boolean> | Promise<void>;
   onLaunchSuccess: () => void;
+}
+
+export function buildAppV0MonitorOrchestratorInput(
+  input: Pick<
+    UseAppV0MonitorScreenStateInput,
+    | "repositories"
+    | "tracks"
+    | "selectedTrack"
+    | "setGuideTrack"
+    | "resumeAudio"
+    | "attachSession"
+    | "startSession"
+    | "playbackSession"
+  > & {
+    onLaunchSuccess: () => void;
+  },
+): BuildAppV0MonitorOrchestratorInput {
+  return {
+    repositories: input.repositories,
+    tracks: input.tracks,
+    selectedTrack: input.selectedTrack,
+    setGuideTrack: input.setGuideTrack,
+    resumeAudio: input.resumeAudio,
+    attachSession: input.attachSession,
+    startSession: input.startSession,
+    playbackSession: input.playbackSession,
+    onLaunchSuccess: input.onLaunchSuccess,
+  };
 }
 
 export function buildAppV0MonitorOrchestrator(input: BuildAppV0MonitorOrchestratorInput) {
