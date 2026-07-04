@@ -5,6 +5,10 @@ import type { QuickSessionMode, SessionBaseMode } from "./sessionDisplay";
 import type { SessionBookmarkContext } from "./sessionScreenRuntime";
 import { SessionSavedSessionsPanel } from "./SessionSavedSessionsPanel";
 import { SessionSetupPanel } from "./SessionSetupPanel";
+import {
+  buildSessionSavedSessionsPanelProps,
+  buildSessionSetupPanelProps,
+} from "./sessionScreenPanelsViewRuntime";
 
 interface SessionScreenPanelsProps {
   tracks: LibraryTrack[];
@@ -99,58 +103,61 @@ export function SessionScreenPanels({
   onReplayBookmark,
   onDeleteSession,
 }: SessionScreenPanelsProps) {
+  const setupPanelProps = buildSessionSetupPanelProps({
+    tracks,
+    playlists,
+    sourceOptions,
+    mode,
+    baseMode,
+    selectedTemplateId,
+    selectedSourceId,
+    selectedTrackId,
+    selectedPlaylistId,
+    selectedSource,
+    selectedTrack,
+    selectedPlaylist,
+    selectedBaseLabel,
+    selectedBaseDetail,
+    sessionLabel,
+    sessionLabelPlaceholder,
+    creating,
+    mutating,
+    onTemplateSelect,
+    onBaseModeChange,
+    onTrackSelect,
+    onPlaylistSelect,
+    onModeChange,
+    onSourceSelect,
+    onSessionLabelChange,
+    onCreateSession,
+  });
+  const savedSessionsPanelProps = buildSessionSavedSessionsPanelProps({
+    sessions,
+    loading,
+    mutating,
+    selectedSessionId,
+    selectedSession,
+    selectedSessionBookmarks,
+    selectedSessionReplayFeedbackRecommendation,
+    sessionBookmarksBySessionId,
+    bookmarkContexts,
+    activeSessionId,
+    activeSessionMode,
+    liveWindowCount,
+    liveProcessedLines,
+    liveTotalAnomalies,
+    onSelectSession,
+    onResumeSession,
+    onPlaybackSession,
+    onReplayBookmark,
+    onDeleteSession,
+  });
+
   return (
     <div className="session-layout">
-      <SessionSetupPanel
-        tracks={tracks}
-        playlists={playlists}
-        sourceOptions={sourceOptions}
-        mode={mode}
-        baseMode={baseMode}
-        selectedTemplateId={selectedTemplateId}
-        selectedSourceId={selectedSourceId}
-        selectedTrackId={selectedTrackId}
-        selectedPlaylistId={selectedPlaylistId}
-        selectedSource={selectedSource}
-        selectedTrack={selectedTrack}
-        selectedPlaylist={selectedPlaylist}
-        selectedBaseLabel={selectedBaseLabel}
-        selectedBaseDetail={selectedBaseDetail}
-        sessionLabel={sessionLabel}
-        sessionLabelPlaceholder={sessionLabelPlaceholder}
-        creating={creating}
-        mutating={mutating}
-        onTemplateSelect={onTemplateSelect}
-        onBaseModeChange={onBaseModeChange}
-        onTrackSelect={onTrackSelect}
-        onPlaylistSelect={onPlaylistSelect}
-        onModeChange={onModeChange}
-        onSourceSelect={onSourceSelect}
-        onSessionLabelChange={onSessionLabelChange}
-        onCreateSession={onCreateSession}
-      />
+      <SessionSetupPanel {...setupPanelProps} />
 
-      <SessionSavedSessionsPanel
-        sessions={sessions}
-        loading={loading}
-        mutating={mutating}
-        selectedSessionId={selectedSessionId}
-        selectedSession={selectedSession}
-        selectedSessionBookmarks={selectedSessionBookmarks}
-        selectedSessionReplayFeedbackRecommendation={selectedSessionReplayFeedbackRecommendation}
-        sessionBookmarksBySessionId={sessionBookmarksBySessionId}
-        bookmarkContexts={bookmarkContexts}
-        activeSessionId={activeSessionId}
-        activeSessionMode={activeSessionMode}
-        liveWindowCount={liveWindowCount}
-        liveProcessedLines={liveProcessedLines}
-        liveTotalAnomalies={liveTotalAnomalies}
-        onSelectSession={onSelectSession}
-        onResumeSession={onResumeSession}
-        onPlaybackSession={onPlaybackSession}
-        onReplayBookmark={onReplayBookmark}
-        onDeleteSession={onDeleteSession}
-      />
+      <SessionSavedSessionsPanel {...savedSessionsPanelProps} />
     </div>
   );
 }
