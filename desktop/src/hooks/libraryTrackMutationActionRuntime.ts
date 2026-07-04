@@ -1,7 +1,23 @@
 import { startTransition } from "react";
 
+import { runAnalyzerRequest } from "../api/analyzer";
+import {
+  checkTrackExists,
+  pickTrackSourceDirectory,
+  pickTrackSourcePath,
+  resolveMissingTracksFromDirectory as persistMissingTrackRelink,
+  updateTrackSource as persistTrackSource,
+  importTrack,
+} from "../api/library";
+import { createAnalyzeTrackRequest } from "../contracts";
 import type { MusicalAsset } from "../contracts";
-import type { BaseTrackPlaylist, LibraryTrack, RelinkMissingTracksResult } from "../types/library";
+import type {
+  BaseTrackPlaylist,
+  ImportTrackInput,
+  LibraryTrack,
+  RelinkMissingTracksResult,
+  UpdateTrackSourceInput,
+} from "../types/library";
 import {
   appendImportedTrack,
   applyAnalyzedTrackMetadata,
@@ -11,6 +27,8 @@ import {
   replaceRelinkedTracks,
   replaceTrack,
   resolvePreferredRelinkSelection,
+  resolveReanalyzeTrackInput,
+  shouldAnalyzeImportedTrack,
   sortTracksByImportedAt,
   toLibraryErrorMessage,
 } from "./libraryRuntime";
@@ -106,4 +124,79 @@ export function commitRelinkedTracks(
   if (preferredSelection) {
     state.setSelectedTrackId(preferredSelection);
   }
+}
+
+export async function analyzeTrackInBackground(
+  state: Pick<LibraryTrackMutationState, "setTracks">,
+  track: LibraryTrack,
+): Promise<void> {
+  try {
+    const request = createAnalyzeTrackRequest(track.file.sourcePath);
+    const response = await runAnalyzerRequest(request);
+
+    if (response.status === "ok" && "musicalAsset" in response.payload) {
+      const analyzed = response.payload.musicalAsset;
+      commitAnalyzedTrackMetadata(state, track.id, analyzed);
+    }
+  } catch (error) {
+    console.debug("Background analysis failed:", error);
+  }
+}
+
+export async function importLibraryTrackWithBackgroundAnalysis(input: {
+  state: Pick<LibraryTrackMutationState, "setTracks">;
+  importInput: ImportTrackInput;
+}): Promise<LibraryTrack | null> {
+  const nextTrack = await importTrack(input.importInput);
+  if (nextTrack && shouldAnalyzeImportedTrack(nextTrack)) {
+    void analyzeTrackInBackground(input.state, nextTrack);
+  }
+  return nextTrack;
+}
+
+export async function reanalyzeLibraryTrack(input: {
+  tracks: LibraryTrack[];
+  trackId: string;
+}): Promise<LibraryTrack> {
+  const track = input.tracks.find((entry) => entry.id === input.trackId);
+  if (!track) {
+    throw new Error("Track not found");
+  }
+
+  const fileExists = await checkTrackExists(track.file.sourcePath);
+  if (!fileExists) {
+    throw new Error(`Track file not found: ${track.file.sourcePath}`);
+  }
+
+  return importTrack(resolveReanalyzeTrackInput(track));
+}
+
+export async function relinkLibraryTrack(input: {
+  tracks: LibraryTrack[];
+  trackId: string;
+}): Promise<LibraryTrack | null> {
+  const track = input.tracks.find((entry) => entry.id === input.trackId) ?? null;
+  if (!track) {
+    throw new Error("Track not found");
+  }
+
+  const pickedPath = await pickTrackSourcePath(track.file.sourcePath);
+  if (!pickedPath) {
+    return null;
+  }
+
+  const updateInput: UpdateTrackSourceInput = { sourcePath: pickedPath };
+  return persistTrackSource(input.trackId, updateInput);
+}
+
+export async function relinkMissingLibraryTracksFromDirectory(input: {
+  tracks: LibraryTrack[];
+}): Promise<RelinkMissingTracksResult | null> {
+  const firstMissingTrack = input.tracks.find((track) => track.file.availabilityState === "missing") ?? null;
+  const pickedDirectory = await pickTrackSourceDirectory(firstMissingTrack?.file.sourcePath ?? undefined);
+  if (!pickedDirectory) {
+    return null;
+  }
+
+  return persistMissingTrackRelink(pickedDirectory);
 }
