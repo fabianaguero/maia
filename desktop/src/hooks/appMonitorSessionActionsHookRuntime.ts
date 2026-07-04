@@ -1,6 +1,4 @@
-import type { PersistedSession } from "../api/sessions";
 import type { SessionMonitorDraft } from "../appMonitorActionsRuntime";
-import type { RepositoryAnalysis } from "../types/library";
 import type { UseAppMonitorActionsInput } from "./appMonitorActionsTypes";
 
 type SessionActionsInput = Pick<
@@ -90,15 +88,4 @@ export function buildAppMonitorOpenRepoActionInput(
     setScreen: input.setScreen,
     setPillar: input.setPillar,
   };
-}
-
-export function buildReplaySourceRepositoryId(
-  sourceRepository: Pick<RepositoryAnalysis, "id"> | null,
-  session: Pick<PersistedSession, "sourceId">,
-): string | null {
-  return sourceRepository?.id ?? session.sourceId ?? null;
-}
-
-export function shouldSeekReplayWindow(replayWindowIndex?: number): replayWindowIndex is number {
-  return typeof replayWindowIndex === "number";
 }
