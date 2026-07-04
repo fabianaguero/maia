@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useLiveLogMonitorLifecycle } from "../../src/features/analyzer/components/useLiveLogMonitorLifecycle";
@@ -82,7 +82,7 @@ describe("useLiveLogMonitorLifecycle", () => {
       }),
     );
     expect(input.setBasePlaylist).toHaveBeenCalledWith(expect.any(Function));
-    expect(input.subscribe).toHaveBeenCalledWith(input.onStreamUpdate);
+    expect(input.subscribe).toHaveBeenCalledWith(expect.any(Function));
 
     const setBasePlaylistUpdater = input.setBasePlaylist.mock.calls[0]?.[0] as (
       current: { trackIds: string[] } | null,
@@ -143,5 +143,44 @@ describe("useLiveLogMonitorLifecycle", () => {
     unmount();
 
     expect(close).not.toHaveBeenCalled();
+  });
+
+  it("keeps the stream listener subscribed while dispatching the latest update handler", () => {
+    const firstHandler = vi.fn();
+    const secondHandler = vi.fn();
+    const unsubscribe = vi.fn();
+    const subscribe = vi.fn(() => unsubscribe);
+    const input = createInput({
+      onStreamUpdate: firstHandler,
+      subscribe,
+    });
+
+    const { rerender, unmount } = renderHook(
+      ({ currentInput }) => useLiveLogMonitorLifecycle(currentInput),
+      {
+        initialProps: { currentInput: input },
+      },
+    );
+
+    const listener = subscribe.mock.calls[0]?.[0] as ((update: unknown) => void) | undefined;
+    expect(listener).toBeDefined();
+
+    rerender({
+      currentInput: {
+        ...input,
+        onStreamUpdate: secondHandler,
+      },
+    });
+
+    act(() => {
+      listener?.({ type: "pulse" });
+    });
+
+    expect(firstHandler).not.toHaveBeenCalled();
+    expect(secondHandler).toHaveBeenCalledWith({ type: "pulse" });
+    expect(subscribe).toHaveBeenCalledTimes(1);
+
+    unmount();
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
 });

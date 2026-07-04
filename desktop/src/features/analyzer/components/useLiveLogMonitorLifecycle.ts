@@ -75,6 +75,11 @@ export function useLiveLogMonitorLifecycle(input: LiveLogMonitorLifecycleInput):
       void audioContextRef.current.close();
     }
   });
+  const onStreamUpdateRef = useRef(onStreamUpdate);
+
+  useEffect(() => {
+    onStreamUpdateRef.current = onStreamUpdate;
+  }, [onStreamUpdate]);
 
   useEffect(() => {
     setSceneBaseAssetId((current) =>
@@ -147,10 +152,7 @@ export function useLiveLogMonitorLifecycle(input: LiveLogMonitorLifecycleInput):
     repository.id,
   ]);
 
-  const subscribeRef = useRef(subscribe);
-  subscribeRef.current = subscribe;
   useEffect(() => {
-    return subscribeRef.current(onStreamUpdate);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return subscribe((update) => onStreamUpdateRef.current(update));
+  }, [subscribe]);
 }
