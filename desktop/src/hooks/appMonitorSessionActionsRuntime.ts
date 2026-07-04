@@ -72,6 +72,63 @@ export function buildReplaySourceRepositoryId(input: {
   return input.sourceRepositoryId ?? input.sessionSourceId ?? null;
 }
 
+export function buildReplayMonitorExecutionPlan(input: {
+  session: PersistedSession;
+  sourceRepositoryId: string;
+  unnamedSessionLabel: string;
+  currentPersistedSessionId?: string | null;
+  isPlayback: boolean;
+  replayWindowIndex?: number;
+}) {
+  return {
+    playbackInput: buildReplayPlaybackInput({
+      session: input.session,
+      repoId: buildReplaySourceRepositoryId({
+        sourceRepositoryId: input.sourceRepositoryId,
+        sessionSourceId: input.session.sourceId,
+      }),
+      unnamedSessionLabel: input.unnamedSessionLabel,
+    }),
+    alreadyActiveReplay: shouldReuseActiveReplaySession({
+      currentPersistedSessionId: input.currentPersistedSessionId,
+      isPlayback: input.isPlayback,
+      replaySessionId: input.session.id,
+    }),
+    shouldSeekWindow: shouldSeekReplayWindow(input.replayWindowIndex),
+    replayWindowIndex: input.replayWindowIndex,
+  };
+}
+
+export function buildLiveMonitorExecutionPlan(input: {
+  startInput: StartSessionInput;
+  persistedSessionId: string;
+  draft?: SessionMonitorDraft & { sourceId?: string | null };
+  repositories: AppMonitorLiveActionInput["repositories"]["repositories"];
+  unnamedSessionLabel: string;
+  existingSessions: AppMonitorLiveActionInput["sessions"]["sessions"];
+}) {
+  return {
+    guideDraft: buildLiveSessionGuideDraft(input.draft),
+    repository: resolveSessionRepository({
+      adapterKind: input.startInput.adapterKind,
+      label: input.startInput.label ?? input.unnamedSessionLabel,
+      nowIso: new Date().toISOString(),
+      repositories: input.repositories,
+      sessionId: input.startInput.sessionId,
+      source: input.startInput.source,
+    }),
+    persistenceAction: resolveSessionPersistenceAction({
+      sessions: input.existingSessions,
+      persistedSessionId: input.persistedSessionId,
+    }),
+    persistenceInput: buildLiveSessionPersistenceInput({
+      sessionId: input.persistedSessionId,
+      startInput: input.startInput,
+      draft: input.draft,
+    }),
+  };
+}
+
 export async function startReplayMonitorSession(
   input: AppMonitorReplayActionInput,
   session: PersistedSession,
@@ -89,35 +146,29 @@ export async function startReplayMonitorSession(
     return false;
   }
 
+  const replayPlan = buildReplayMonitorExecutionPlan({
+    session,
+    sourceRepositoryId: sourceRepository.id,
+    unnamedSessionLabel: input.t.session.unnamedSession,
+    currentPersistedSessionId: input.monitor.session?.persistedSessionId,
+    isPlayback: input.monitor.isPlayback,
+    replayWindowIndex,
+  });
+
   input.repositories.setSelectedRepositoryId(sourceRepository.id);
   input.setAnalysisMode("repo");
 
-  const alreadyActiveReplay = shouldReuseActiveReplaySession({
-    currentPersistedSessionId: input.monitor.session?.persistedSessionId,
-    isPlayback: input.monitor.isPlayback,
-    replaySessionId: session.id,
-  });
-
-  const ok = alreadyActiveReplay
+  const ok = replayPlan.alreadyActiveReplay
     ? true
-    : await input.monitor.playbackSession(
-        buildReplayPlaybackInput({
-          session,
-          repoId: buildReplaySourceRepositoryId({
-            sourceRepositoryId: sourceRepository.id,
-            sessionSourceId: session.sourceId,
-          }),
-          unnamedSessionLabel: input.t.session.unnamedSession,
-        }),
-      );
+    : await input.monitor.playbackSession(replayPlan.playbackInput);
 
   if (!ok) {
     return false;
   }
 
-  if (shouldSeekReplayWindow(replayWindowIndex)) {
+  if (replayPlan.shouldSeekWindow && typeof replayPlan.replayWindowIndex === "number") {
     input.monitor.pausePlayback();
-    input.monitor.seekPlaybackWindow(replayWindowIndex);
+    input.monitor.seekPlaybackWindow(replayPlan.replayWindowIndex);
   }
 
   input.setAnalysisMode("repo");
@@ -132,19 +183,19 @@ export async function startLiveMonitorSession(
   draft?: SessionMonitorDraft & { sourceId?: string | null },
 ): Promise<boolean> {
   input.sessions.clearError();
-  const guideDraft = buildLiveSessionGuideDraft(draft);
-  input.armSessionMusicalBase(guideDraft);
-  input.primeMonitorGuideTrack(guideDraft);
+  const livePlan = buildLiveMonitorExecutionPlan({
+    startInput,
+    persistedSessionId,
+    draft,
+    repositories: input.repositories.repositories,
+    unnamedSessionLabel: input.t.session.unnamedSession,
+    existingSessions: input.sessions.sessions,
+  });
+  input.armSessionMusicalBase(livePlan.guideDraft);
+  input.primeMonitorGuideTrack(livePlan.guideDraft);
 
   const success = await input.monitor.startSession(
-    resolveSessionRepository({
-      adapterKind: startInput.adapterKind,
-      label: startInput.label ?? input.t.session.unnamedSession,
-      nowIso: new Date().toISOString(),
-      repositories: input.repositories.repositories,
-      sessionId: startInput.sessionId,
-      source: startInput.source,
-    }),
+    livePlan.repository,
     startInput,
     persistedSessionId,
   );
@@ -153,19 +204,8 @@ export async function startLiveMonitorSession(
     return false;
   }
 
-  const persistenceAction = resolveSessionPersistenceAction({
-    sessions: input.sessions.sessions,
-    persistedSessionId,
-  });
-
-  if (persistenceAction === "create") {
-    await input.sessions.createSession(
-      buildLiveSessionPersistenceInput({
-        sessionId: persistedSessionId,
-        startInput,
-        draft,
-      }),
-    );
+  if (livePlan.persistenceAction === "create") {
+    await input.sessions.createSession(livePlan.persistenceInput);
   } else {
     input.sessions.setSelectedSessionId(persistedSessionId);
   }

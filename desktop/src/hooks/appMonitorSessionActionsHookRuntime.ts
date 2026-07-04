@@ -1,4 +1,8 @@
 import type { SessionMonitorDraft } from "../appMonitorActionsRuntime";
+import {
+  buildReplaySourceRepositoryId as resolveReplaySourceRepositoryId,
+  shouldSeekReplayWindow as resolveShouldSeekReplayWindow,
+} from "./appMonitorSessionActionsRuntime";
 import type { UseAppMonitorActionsInput } from "./appMonitorActionsTypes";
 
 type SessionActionsInput = Pick<
@@ -47,6 +51,20 @@ export interface AppMonitorOpenRepoActionInput {
   setAnalysisMode: SessionActionsInput["setAnalysisMode"];
   setScreen: SessionActionsInput["setScreen"];
   setPillar: SessionActionsInput["setPillar"];
+}
+
+export function buildReplaySourceRepositoryId(
+  sourceRepository: { id: string } | null,
+  session: { sourceId?: string | null },
+): string | null {
+  return resolveReplaySourceRepositoryId({
+    sourceRepositoryId: sourceRepository?.id ?? null,
+    sessionSourceId: session.sourceId ?? null,
+  });
+}
+
+export function shouldSeekReplayWindow(replayWindowIndex?: number): replayWindowIndex is number {
+  return resolveShouldSeekReplayWindow(replayWindowIndex);
 }
 
 export function buildAppMonitorReplayActionInput(
