@@ -5,6 +5,13 @@ import { SessionCreateFooter } from "./SessionCreateFooter";
 import { SessionSetupSelectionGrid } from "./SessionSetupSelectionGrid";
 import { SessionTemplatePresetStrip } from "./SessionTemplatePresetStrip";
 import { SessionWorkflowStrip } from "./SessionWorkflowStrip";
+import {
+  buildSessionCreateFooterProps,
+  buildSessionSetupHeader,
+  buildSessionSetupSelectionGridProps,
+  buildSessionTemplatePresetStripProps,
+  buildSessionWorkflowStripProps,
+} from "./sessionSetupPanelRuntime";
 
 interface SessionSetupPanelProps {
   tracks: LibraryTrack[];
@@ -64,61 +71,66 @@ export function SessionSetupPanel({
   onCreateSession,
 }: SessionSetupPanelProps) {
   const t = useT();
-  const baseReady =
-    (baseMode === "track" && selectedTrackId) || (baseMode === "playlist" && selectedPlaylistId);
+  const header = buildSessionSetupHeader({ t });
+  const templateStripProps = buildSessionTemplatePresetStripProps({
+    selectedTemplateId,
+    onTemplateSelect,
+  });
+  const workflowProps = buildSessionWorkflowStripProps({
+    baseMode,
+    selectedTrackId,
+    selectedPlaylistId,
+    selectedSourceId,
+  });
+  const selectionGridProps = buildSessionSetupSelectionGridProps({
+    tracks,
+    playlists,
+    sourceOptions,
+    mode,
+    baseMode,
+    selectedSourceId,
+    selectedTrackId,
+    selectedPlaylistId,
+    selectedSource,
+    selectedTrack,
+    selectedPlaylist,
+    selectedBaseLabel,
+    selectedBaseDetail,
+    onBaseModeChange,
+    onTrackSelect,
+    onPlaylistSelect,
+    onModeChange,
+    onSourceSelect,
+  });
+  const createFooterProps = buildSessionCreateFooterProps({
+    baseMode,
+    selectedSourceId,
+    selectedTrackId,
+    selectedPlaylistId,
+    selectedSourceTitle: selectedSource?.title ?? null,
+    selectedBaseLabel,
+    sessionLabel,
+    sessionLabelPlaceholder,
+    creating,
+    mutating,
+    onSessionLabelChange,
+    onCreateSession,
+  });
 
   return (
     <section className="panel session-form-panel">
       <div className="panel-header">
-        <h3>{t.session.newSessionTitle}</h3>
-        <p className="support-copy">{t.session.newSessionHelp}</p>
+        <h3>{header.title}</h3>
+        <p className="support-copy">{header.summary}</p>
       </div>
 
-      <SessionTemplatePresetStrip
-        selectedTemplateId={selectedTemplateId}
-        onTemplateSelect={onTemplateSelect}
-      />
+      <SessionTemplatePresetStrip {...templateStripProps} />
 
-      <SessionWorkflowStrip
-        baseReady={Boolean(baseReady)}
-        sourceReady={Boolean(selectedSourceId)}
-      />
+      <SessionWorkflowStrip {...workflowProps} />
 
-      <SessionSetupSelectionGrid
-        tracks={tracks}
-        playlists={playlists}
-        sourceOptions={sourceOptions}
-        mode={mode}
-        baseMode={baseMode}
-        selectedSourceId={selectedSourceId}
-        selectedTrackId={selectedTrackId}
-        selectedPlaylistId={selectedPlaylistId}
-        selectedSource={selectedSource}
-        selectedTrack={selectedTrack}
-        selectedPlaylist={selectedPlaylist}
-        selectedBaseLabel={selectedBaseLabel}
-        selectedBaseDetail={selectedBaseDetail}
-        onBaseModeChange={onBaseModeChange}
-        onTrackSelect={onTrackSelect}
-        onPlaylistSelect={onPlaylistSelect}
-        onModeChange={onModeChange}
-        onSourceSelect={onSourceSelect}
-      />
+      <SessionSetupSelectionGrid {...selectionGridProps} />
 
-      <SessionCreateFooter
-        baseMode={baseMode}
-        selectedSourceId={selectedSourceId}
-        selectedTrackId={selectedTrackId}
-        selectedPlaylistId={selectedPlaylistId}
-        selectedSourceTitle={selectedSource?.title ?? null}
-        selectedBaseLabel={selectedBaseLabel}
-        sessionLabel={sessionLabel}
-        sessionLabelPlaceholder={sessionLabelPlaceholder}
-        creating={creating}
-        mutating={mutating}
-        onSessionLabelChange={onSessionLabelChange}
-        onCreateSession={onCreateSession}
-      />
+      <SessionCreateFooter {...createFooterProps} />
     </section>
   );
 }

@@ -1,6 +1,13 @@
 import { Pause, Play, Radio, SkipBack, SkipForward } from "lucide-react";
 
 import type { PersistedSession } from "../../api/sessions";
+import {
+  resolveSessionBoothActionBarMode,
+  resolveSessionBoothDirectLaunchDisabled,
+  resolveSessionBoothShowReplaySelected,
+  resolveSessionBoothShowResumeSelected,
+  resolveSessionBoothStartDisabled,
+} from "./sessionBoothActionBarRuntime";
 
 interface SessionBoothActionBarProps {
   playbackActive: boolean;
@@ -56,7 +63,23 @@ export function SessionBoothActionBar({
   onToggleReplayPlayback,
   onStopSession,
 }: SessionBoothActionBarProps) {
-  if (playbackActive) {
+  const mode = resolveSessionBoothActionBarMode({
+    playbackActive,
+    liveMonitorActive,
+  });
+  const showResumeSelected = resolveSessionBoothShowResumeSelected(selectedSession);
+  const showReplaySelected = resolveSessionBoothShowReplaySelected(selectedSession);
+  const directLaunchDisabled = resolveSessionBoothDirectLaunchDisabled({
+    directPath,
+    isDirectLoading,
+  });
+  const startDisabled = resolveSessionBoothStartDisabled({
+    creating,
+    mutating,
+    readyToRun,
+  });
+
+  if (mode === "playback") {
     return (
       <div className="session-booth-actions">
         <button
@@ -94,7 +117,7 @@ export function SessionBoothActionBar({
     );
   }
 
-  if (liveMonitorActive) {
+  if (mode === "live") {
     return (
       <div className="session-booth-actions">
         <button type="button" className="action" onClick={onStopSession} disabled={mutating}>
@@ -119,12 +142,12 @@ export function SessionBoothActionBar({
         <button
           className="direct-launch-btn"
           onClick={onDirectLaunch}
-          disabled={isDirectLoading || !directPath.trim()}
+          disabled={directLaunchDisabled}
         >
           {isDirectLoading ? labels.launching : labels.launch}
         </button>
       </div>
-      {selectedSession && selectedSession.status === "paused" ? (
+      {showResumeSelected ? (
         <button
           type="button"
           className="secondary-action"
@@ -135,7 +158,7 @@ export function SessionBoothActionBar({
           {labels.resumeSelected}
         </button>
       ) : null}
-      {selectedSession && selectedSession.totalPolls > 0 ? (
+      {showReplaySelected ? (
         <button
           type="button"
           className="secondary-action"
@@ -150,7 +173,7 @@ export function SessionBoothActionBar({
         type="button"
         className="action"
         onClick={onCreateSession}
-        disabled={creating || mutating || !readyToRun}
+        disabled={startDisabled}
       >
         <Play size={14} />
         {labels.startSession}
