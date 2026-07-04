@@ -1,16 +1,12 @@
 import { useCallback, useEffect } from "react";
 
-import {
-  resolveLibraryMonitorGuideState,
-  resolvePlaylistArmState,
-  resolveSessionMonitorGuideState,
-  resolveTrackArmState,
-} from "../appRuntime";
 import type { SessionMonitorDraft } from "../appMonitorActionsRuntime";
 import {
-  applyLibraryArmState,
-  applyMonitorGuideState,
-  clearLibraryArmState,
+  performPlaylistArm,
+  performSessionArm,
+  performSessionGuidePrime,
+  performTrackArm,
+  syncLibraryMonitorGuide,
 } from "./appMonitorGuideActionsRuntime";
 import {
   buildAppMonitorLibraryGuideEffectInput,
@@ -26,85 +22,34 @@ type GuideActionsInput = Pick<UseAppMonitorActionsInput, "library" | "monitor">;
 export function useAppMonitorGuideActions({ library, monitor }: GuideActionsInput) {
   const armTrackBase = useCallback(
     (trackId: string | null | undefined) => {
-      const trackArmInput = buildAppMonitorTrackArmInput({ library, monitor }, trackId);
-      const nextState = resolveTrackArmState(trackArmInput.trackId, trackArmInput.tracks);
-      applyLibraryArmState(nextState, {
-        setSelectedPlaylistId: trackArmInput.setSelectedPlaylistId,
-        setSelectedTrackId: trackArmInput.setSelectedTrackId,
-      });
+      performTrackArm(buildAppMonitorTrackArmInput({ library, monitor }, trackId));
     },
     [library, monitor],
   );
 
   const armPlaylistBase = useCallback(
     (playlistId: string | null | undefined) => {
-      const playlistArmInput = buildAppMonitorPlaylistArmInput({ library, monitor }, playlistId);
-      const nextState = resolvePlaylistArmState(
-        playlistArmInput.playlistId,
-        playlistArmInput.playlists,
-        playlistArmInput.tracks,
-      );
-      applyLibraryArmState(nextState, {
-        setSelectedPlaylistId: playlistArmInput.setSelectedPlaylistId,
-        setSelectedTrackId: playlistArmInput.setSelectedTrackId,
-      });
+      performPlaylistArm(buildAppMonitorPlaylistArmInput({ library, monitor }, playlistId));
     },
     [library, monitor],
   );
 
   useEffect(() => {
-    const libraryGuideInput = buildAppMonitorLibraryGuideEffectInput({ library, monitor });
-    const guideState = resolveLibraryMonitorGuideState({
-      selectedPlaylist: libraryGuideInput.selectedPlaylist,
-      selectedTrack: libraryGuideInput.selectedTrack,
-      tracks: libraryGuideInput.tracks,
-    });
-
-    applyMonitorGuideState(guideState, {
-      setGuideTrack: libraryGuideInput.setGuideTrack,
-      setGuideTrackPlaylist: libraryGuideInput.setGuideTrackPlaylist,
-    });
+    syncLibraryMonitorGuide(buildAppMonitorLibraryGuideEffectInput({ library, monitor }));
   }, [library, monitor]);
 
   const armSessionMusicalBase = useCallback(
     (draft?: SessionMonitorDraft) => {
-      const sessionArmInput = buildAppMonitorSessionArmInput(
-        { library, monitor },
-        draft,
-        armPlaylistBase,
-        armTrackBase,
+      performSessionArm(
+        buildAppMonitorSessionArmInput({ library, monitor }, draft, armPlaylistBase, armTrackBase),
       );
-
-      if (sessionArmInput.draft?.playlistId) {
-        sessionArmInput.armPlaylistBase(sessionArmInput.draft.playlistId);
-        return;
-      }
-
-      if (sessionArmInput.draft?.trackId) {
-        sessionArmInput.armTrackBase(sessionArmInput.draft.trackId);
-        return;
-      }
-
-      clearLibraryArmState({
-        setSelectedPlaylistId: sessionArmInput.setSelectedPlaylistId,
-        setSelectedTrackId: sessionArmInput.setSelectedTrackId,
-      });
     },
     [armPlaylistBase, armTrackBase, library, monitor],
   );
 
   const primeMonitorGuideTrack = useCallback(
     (draft?: SessionMonitorDraft) => {
-      const sessionGuideInput = buildAppMonitorSessionGuideInput({ library, monitor }, draft);
-      const guideState = resolveSessionMonitorGuideState(
-        sessionGuideInput.draft,
-        sessionGuideInput.playlists,
-        sessionGuideInput.tracks,
-      );
-      applyMonitorGuideState(guideState, {
-        setGuideTrack: sessionGuideInput.setGuideTrack,
-        setGuideTrackPlaylist: sessionGuideInput.setGuideTrackPlaylist,
-      });
+      performSessionGuidePrime(buildAppMonitorSessionGuideInput({ library, monitor }, draft));
     },
     [library, monitor],
   );
