@@ -5,6 +5,11 @@ import {
   buildSessionScreenControllerMonitorSnapshot,
 } from "./sessionScreenControllerHookRuntime";
 import { buildSessionScreenControllerState } from "./sessionScreenControllerRuntime";
+import {
+  buildSessionScreenControllerMonitorSnapshotInput,
+  buildSessionScreenControllerSlicesInput,
+  buildSessionScreenControllerStateInput,
+} from "./sessionScreenControllerStateRuntime";
 import type { SessionScreenControllerInput } from "./sessionScreenControllerTypes";
 import { useSessionScreenLocalState } from "./useSessionScreenLocalState";
 import { useSessionScreenControllerSlices } from "./useSessionScreenControllerSlices";
@@ -12,43 +17,10 @@ import { useSessionScreenControllerSlices } from "./useSessionScreenControllerSl
 export function useSessionScreenController(input: SessionScreenControllerInput) {
   const t = useT();
   const monitor = useMonitor();
-  const monitorSnapshot = buildSessionScreenControllerMonitorSnapshot({
-    session: monitor.session,
-    metrics: monitor.metrics,
-    subscribe: monitor.subscribe,
-    isPlaybackPaused: monitor.isPlaybackPaused,
-    playbackEventIndex: monitor.playbackEventIndex,
-    playbackEventCount: monitor.playbackEventCount,
-  });
-  const {
-    mode,
-    setMode,
-    baseMode,
-    setBaseMode,
-    selectedSourceId,
-    setSelectedSourceId,
-    selectedTrackId,
-    setSelectedTrackId,
-    selectedPlaylistId,
-    setSelectedPlaylistId,
-    sessionLabel,
-    setSessionLabel,
-    creating,
-    setCreating,
-    createError,
-    setCreateError,
-    latestUpdate,
-    setLatestUpdate,
-    directPath,
-    setDirectPath,
-    isDirectLoading,
-    setIsDirectLoading,
-    selectedTemplateId,
-    setSelectedTemplateId,
-    selectedSessionEvents,
-    setSelectedSessionEvents,
-    boothBedAudioRef,
-  } = useSessionScreenLocalState({
+  const monitorSnapshot = buildSessionScreenControllerMonitorSnapshot(
+    buildSessionScreenControllerMonitorSnapshotInput(monitor),
+  );
+  const localState = useSessionScreenLocalState({
     trackCount: input.tracks.length,
   });
 
@@ -63,100 +35,32 @@ export function useSessionScreenController(input: SessionScreenControllerInput) 
     derivedState,
     selectedSessionReplayFeedbackRecommendation,
     booth,
-  } = useSessionScreenControllerSlices({
-    t,
-    input,
-    monitorSnapshot,
-    localState: {
-      mode,
-      setMode,
-      baseMode,
-      setBaseMode,
-      selectedSourceId,
-      setSelectedSourceId,
-      selectedTrackId,
-      setSelectedTrackId,
-      selectedPlaylistId,
-      setSelectedPlaylistId,
-      sessionLabel,
-      setSessionLabel,
-      creating,
-      setCreating,
-      createError,
-      setCreateError,
-      latestUpdate,
-      setLatestUpdate,
-      directPath,
-      setDirectPath,
-      isDirectLoading,
-      setIsDirectLoading,
-      selectedTemplateId,
-      setSelectedTemplateId,
-      selectedSessionEvents,
-      setSelectedSessionEvents,
-      boothBedAudioRef,
-    },
-  });
-  const {
-    sourceOptions,
-    selectedSource,
-    selectedTrack,
-    selectedPlaylist,
-    selectedBaseDetails,
-    activeSession,
-    selectedSession,
-    playbackActive,
-    liveMonitorActive,
-    selectedSessionBookmarks,
-    bookmarkContexts,
-    sessionLabelPlaceholder,
-    readyToRun,
-  } = derivedState;
+  } = useSessionScreenControllerSlices(
+    buildSessionScreenControllerSlicesInput({
+      t,
+      controllerInput: input,
+      monitorSnapshot,
+      localState,
+    }),
+  );
 
   return buildSessionScreenControllerHookResult(
-    buildSessionScreenControllerState({
-      t,
-      monitor,
-      mode,
-      setMode,
-      baseMode,
-      setBaseMode,
-      selectedSourceId,
-      setSelectedSourceId,
-      selectedTrackId,
-      setSelectedTrackId,
-      selectedPlaylistId,
-      setSelectedPlaylistId,
-      sessionLabel,
-      setSessionLabel,
-      creating,
-      createError,
-      latestUpdate,
-      directPath,
-      setDirectPath,
-      isDirectLoading,
-      selectedTemplateId,
-      setSelectedTemplateId,
-      sourceOptions,
-      selectedSource,
-      selectedTrack,
-      selectedPlaylist,
-      selectedBaseDetails,
-      handleCreateSession,
-      handleDirectLaunch,
-      handleResumeSession,
-      handlePlaybackSession,
-      handleReplayBookmark,
-      activeSession,
-      selectedSession,
-      playbackActive,
-      liveMonitorActive,
-      selectedSessionBookmarks,
-      bookmarkContexts,
-      selectedSessionReplayFeedbackRecommendation,
-      sessionLabelPlaceholder,
-      readyToRun,
-      booth,
-    }),
+    buildSessionScreenControllerState(
+      buildSessionScreenControllerStateInput({
+        t,
+        monitor,
+        localState,
+        derivedState,
+        actions: {
+          handleCreateSession,
+          handleDirectLaunch,
+          handleResumeSession,
+          handlePlaybackSession,
+          handleReplayBookmark,
+        },
+        selectedSessionReplayFeedbackRecommendation,
+        booth,
+      }),
+    ),
   );
 }

@@ -1,8 +1,17 @@
 import type { PersistedSession, SessionBookmark } from "../../api/sessions";
+import type { AppTranslations } from "../../i18n/types";
 import type { BaseTrackPlaylist, LibraryTrack, RepositoryAnalysis } from "../../types/library";
+import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { StartSessionInput } from "../../types/monitor";
+import type { ReplayFeedbackRecommendation } from "../../utils/replayFeedback";
+import type { MonitorContextValue } from "../monitor/monitorContextTypes";
 import type { QuickSessionMode, SessionBaseMode } from "./sessionDisplay";
-import type { SessionStartDraft } from "./sessionScreenRuntime";
+import type {
+  SessionBookmarkContext,
+  SessionDetailSummary,
+  SessionStartDraft,
+} from "./sessionScreenRuntime";
+import type { SessionBoothViewModel } from "./sessionBoothViewModel";
 
 export interface SessionScreenControllerInput {
   tracks: LibraryTrack[];
@@ -26,8 +35,8 @@ export interface SessionScreenControllerInput {
 }
 
 export interface SessionScreenControllerState {
-  t: unknown;
-  monitor: unknown;
+  t: AppTranslations;
+  monitor: MonitorContextValue;
   mode: QuickSessionMode;
   setMode: (mode: QuickSessionMode) => void;
   baseMode: SessionBaseMode;
@@ -42,30 +51,30 @@ export interface SessionScreenControllerState {
   setSessionLabel: (label: string) => void;
   creating: boolean;
   createError: string | null;
-  latestUpdate: unknown;
+  latestUpdate: LiveLogStreamUpdate | null;
   directPath: string;
   setDirectPath: (path: string) => void;
   isDirectLoading: boolean;
   selectedTemplateId: string;
   setSelectedTemplateId: (templateId: string) => void;
-  sourceOptions: unknown;
-  selectedSource: unknown;
-  selectedTrack: unknown;
-  selectedPlaylist: unknown;
-  selectedBaseDetails: unknown;
+  sourceOptions: RepositoryAnalysis[];
+  selectedSource: RepositoryAnalysis | null;
+  selectedTrack: LibraryTrack | null;
+  selectedPlaylist: BaseTrackPlaylist | null;
+  selectedBaseDetails: SessionDetailSummary;
   handleCreateSession: () => Promise<void>;
   handleDirectLaunch: () => Promise<void>;
   handleResumeSession: (sessionId: string) => void;
   handlePlaybackSession: (session: PersistedSession) => Promise<void>;
   handleReplayBookmark: (session: PersistedSession, replayWindowIndex: number) => Promise<void>;
-  activeSession: unknown;
-  selectedSession: unknown;
+  activeSession: PersistedSession | null;
+  selectedSession: PersistedSession | null;
   playbackActive: boolean;
   liveMonitorActive: boolean;
   selectedSessionBookmarks: SessionBookmark[];
-  bookmarkContexts: unknown;
-  selectedSessionReplayFeedbackRecommendation: unknown;
+  bookmarkContexts: Record<number, SessionBookmarkContext>;
+  selectedSessionReplayFeedbackRecommendation: ReplayFeedbackRecommendation | null;
   sessionLabelPlaceholder: string;
   readyToRun: boolean;
-  booth: unknown;
+  booth: SessionBoothViewModel;
 }
