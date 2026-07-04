@@ -2,26 +2,19 @@ import { useMemo } from "react";
 
 import type { AppTranslations } from "../../i18n/types";
 import { useReplayFeedbackRecommendation } from "../../hooks/useReplayFeedbackRecommendation";
-import { buildSessionBoothViewModel } from "./sessionBoothViewModel";
-import {
-  buildSessionScreenControllerActionsHookInput,
-  buildSessionScreenControllerBoothHookInput,
-  buildSessionScreenControllerDerivedHookInput,
-  buildSessionScreenBoothViewModelInput,
-  buildSessionScreenEffectsHookInput,
-  type buildSessionScreenControllerMonitorSnapshot,
-} from "./sessionScreenControllerHookRuntime";
-import {
-  buildSessionBoothInput,
-  buildSessionControllerDerivedInput,
-  buildSessionScreenActionsInput,
-  resolveSessionScreenTemplateSelection,
-} from "./sessionScreenControllerRuntime";
-import { resolveSessionControllerDerivedState } from "./sessionScreenRuntime";
+import type { buildSessionScreenControllerMonitorSnapshot } from "./sessionScreenControllerHookRuntime";
 import type { SessionScreenControllerInput } from "./sessionScreenControllerTypes";
 import { useSessionScreenActions } from "./useSessionScreenActions";
 import { useSessionScreenEffects } from "./useSessionScreenEffects";
 import type { useSessionScreenLocalState } from "./useSessionScreenLocalState";
+import {
+  buildSessionScreenControllerSlicesActionsInput,
+  buildSessionScreenControllerSlicesBooth,
+  buildSessionScreenControllerSlicesEffectsInput,
+  buildSessionScreenControllerSlicesResult,
+  resolveSessionScreenControllerSlicesDerivedState,
+  resolveSessionScreenControllerSlicesTemplateSelection,
+} from "./sessionScreenControllerSlicesRuntime";
 
 type SessionScreenLocalState = ReturnType<typeof useSessionScreenLocalState>;
 type MonitorSnapshot = ReturnType<typeof buildSessionScreenControllerMonitorSnapshot>;
@@ -64,10 +57,10 @@ export function useSessionScreenControllerSlices({
   } = localState;
 
   const actions = useSessionScreenActions(
-    buildSessionScreenActionsInput(
-      buildSessionScreenControllerActionsHookInput({
-        t,
-        controllerInput: input,
+    buildSessionScreenControllerSlicesActionsInput({
+      t,
+      controllerInput: input,
+      localState: {
         baseMode,
         mode,
         selectedPlaylistId,
@@ -83,63 +76,63 @@ export function useSessionScreenControllerSlices({
         setSelectedTrackId,
         setSelectedPlaylistId,
         setDirectPath,
-      }),
-    ),
+      },
+    }),
   );
 
-  const { selectedTemplate, selectedTemplatePresentation } = resolveSessionScreenTemplateSelection({
-    selectedTemplateId,
-    t,
-  });
+  const { selectedTemplate, selectedTemplatePresentation } =
+    resolveSessionScreenControllerSlicesTemplateSelection({
+      selectedTemplateId,
+      t,
+    });
+
+  const selectedTemplateGenre = selectedTemplatePresentation?.genre ?? selectedTemplate?.genre ?? null;
+  const selectedTemplateLabel = selectedTemplatePresentation?.label ?? selectedTemplate?.label ?? null;
 
   const derivedState = useMemo(
     () =>
-      resolveSessionControllerDerivedState(
-        buildSessionControllerDerivedInput(
-          buildSessionScreenControllerDerivedHookInput({
-            controllerInput: input,
-            activePlaybackProgress: input.activePlaybackProgress,
-            activeSessionId: input.activeSessionId,
-            activeSessionMode: input.activeSessionMode,
-            baseMode,
-            mode,
-            monitorHasSession: monitorSnapshot.monitorHasSession,
-            selectedPlaylistId,
-            selectedSessionEvents,
-            selectedSourceId,
-            selectedTrackId,
-            sessionPlaceholderFallback: t.session.sessionPlaceholder,
-            templateGenre: selectedTemplatePresentation?.genre ?? selectedTemplate?.genre ?? null,
-            templateLabel: selectedTemplatePresentation?.label ?? selectedTemplate?.label ?? null,
-          }),
-      ),
-    ),
+      resolveSessionScreenControllerSlicesDerivedState({
+        t,
+        controllerInput: input,
+        monitorSnapshot,
+        localState: {
+          baseMode,
+          mode,
+          selectedPlaylistId,
+          selectedSessionEvents,
+          selectedSourceId,
+          selectedTrackId,
+        },
+        selectedTemplateGenre,
+        selectedTemplateLabel,
+      }),
     [
-      baseMode,
       input,
+      monitorSnapshot,
+      baseMode,
       mode,
-      monitorSnapshot.monitorHasSession,
       selectedPlaylistId,
       selectedSessionEvents,
       selectedSourceId,
       selectedTrackId,
-      selectedTemplate?.genre,
-      selectedTemplate?.label,
-      selectedTemplatePresentation?.genre,
-      selectedTemplatePresentation?.label,
-      t.session.sessionPlaceholder,
+      t,
+      selectedTemplateGenre,
+      selectedTemplateLabel,
     ],
   );
 
   useSessionScreenEffects(
-    buildSessionScreenEffectsHookInput({
-      monitorSessionId: monitorSnapshot.monitorSessionId,
-      subscribeToMonitor: monitorSnapshot.subscribeToMonitor,
-      setLatestUpdate,
-      selectedSessionIdForEvents: derivedState.selectedSessionIdForEvents,
-      setSelectedSessionEvents,
-      activeBedUrl: derivedState.activeBedUrl,
-      boothBedAudioRef,
+    buildSessionScreenControllerSlicesEffectsInput({
+      monitorSnapshot,
+      localState: {
+        setLatestUpdate,
+        setSelectedSessionEvents,
+        boothBedAudioRef,
+      },
+      derivedState: {
+        selectedSessionIdForEvents: derivedState.selectedSessionIdForEvents,
+        activeBedUrl: derivedState.activeBedUrl,
+      },
     }),
   );
 
@@ -147,26 +140,22 @@ export function useSessionScreenControllerSlices({
     derivedState.selectedSessionBookmarks,
   );
 
-  const booth = buildSessionBoothViewModel(
-    buildSessionBoothInput(
-      buildSessionScreenBoothViewModelInput(
-        buildSessionScreenControllerBoothHookInput({
-          t,
-          mode,
-          latestUpdate,
-          derivedState,
-          monitorSnapshot,
-        }),
-      ),
-    ),
-  );
+  const booth = buildSessionScreenControllerSlicesBooth({
+    t,
+    monitorSnapshot,
+    localState: {
+      mode,
+      latestUpdate,
+    },
+    derivedState,
+  });
 
-  return {
+  return buildSessionScreenControllerSlicesResult({
     actions,
     selectedTemplate,
     selectedTemplatePresentation,
     derivedState,
     selectedSessionReplayFeedbackRecommendation,
     booth,
-  };
+  });
 }
