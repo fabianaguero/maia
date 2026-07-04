@@ -82,6 +82,31 @@ interface RunCatalogUpdateActionInput {
   onError: (error: unknown) => CatalogNotice;
 }
 
+interface BuildCatalogNamedResultActionInput<T> {
+  task: () => Promise<T | null>;
+  resolveName: (result: T) => string;
+  successTitle: string;
+  successBodyTemplate: string;
+  errorTitle: string;
+  notify: CatalogNotify;
+}
+
+interface BuildCatalogBooleanNoticeActionInput {
+  task: () => Promise<boolean>;
+  successTitle: string;
+  successBody: string;
+  errorTitle: string;
+  notify: CatalogNotify;
+}
+
+interface BuildCatalogUpdateNoticeActionInput {
+  task: () => Promise<unknown>;
+  notify: CatalogNotify;
+  missingTitle: string;
+  missingBody: string;
+  errorTitle: string;
+}
+
 export async function runCatalogUpdateAction({
   task,
   notify,
@@ -99,26 +124,90 @@ export async function runCatalogUpdateAction({
   }
 }
 
+export function buildCatalogNamedResultAction<T>({
+  task,
+  resolveName,
+  successTitle,
+  successBodyTemplate,
+  errorTitle,
+  notify,
+}: BuildCatalogNamedResultActionInput<T>): RunCatalogResultActionInput<T> {
+  return {
+    task,
+    onSuccess: (result) => ({
+      tone: "success",
+      title: successTitle,
+      body: successBodyTemplate.replace("{title}", resolveName(result)),
+    }),
+    onError: (error) => ({
+      tone: "error",
+      title: errorTitle,
+      body: String(error),
+    }),
+    notify,
+  };
+}
+
+export function buildCatalogBooleanNoticeAction({
+  task,
+  successTitle,
+  successBody,
+  errorTitle,
+  notify,
+}: BuildCatalogBooleanNoticeActionInput): RunCatalogBooleanActionInput {
+  return {
+    task,
+    onSuccess: () => ({
+      tone: "success",
+      title: successTitle,
+      body: successBody,
+    }),
+    onError: (error) => ({
+      tone: "error",
+      title: errorTitle,
+      body: String(error),
+    }),
+    notify,
+  };
+}
+
+export function buildCatalogUpdateNoticeAction({
+  task,
+  notify,
+  missingTitle,
+  missingBody,
+  errorTitle,
+}: BuildCatalogUpdateNoticeActionInput): RunCatalogUpdateActionInput {
+  return {
+    task,
+    notify,
+    onMissing: {
+      tone: "error",
+      title: missingTitle,
+      body: missingBody,
+    },
+    onError: (error) => ({
+      tone: "error",
+      title: errorTitle,
+      body: String(error),
+    }),
+  };
+}
+
 export function buildCatalogTrackReanalyzeAction(input: {
   library: Pick<CatalogLibrary, "reanalyzeTrack">;
   trackId: string;
   t: AppTranslations;
   notify: CatalogNotify;
 }): RunCatalogResultActionInput<{ tags: { title: string } }> {
-  return {
+  return buildCatalogNamedResultAction<{ tags: { title: string } }>({
     task: () => input.library.reanalyzeTrack(input.trackId),
-    onSuccess: (nextTrack) => ({
-      tone: "success",
-      title: input.t.appShell.reanalysisCompleteTitle,
-      body: input.t.appShell.reanalysisCompleteBody.replace("{title}", nextTrack.tags.title),
-    }),
-    onError: (error) => ({
-      tone: "error",
-      title: input.t.appShell.reanalysisFailedTitle,
-      body: String(error),
-    }),
+    resolveName: (nextTrack) => nextTrack.tags.title,
+    successTitle: input.t.appShell.reanalysisCompleteTitle,
+    successBodyTemplate: input.t.appShell.reanalysisCompleteBody,
+    errorTitle: input.t.appShell.reanalysisFailedTitle,
     notify: input.notify,
-  };
+  });
 }
 
 export function buildCatalogTrackRelinkAction(input: {
@@ -127,20 +216,14 @@ export function buildCatalogTrackRelinkAction(input: {
   t: AppTranslations;
   notify: CatalogNotify;
 }): RunCatalogResultActionInput<{ tags: { title: string } }> {
-  return {
+  return buildCatalogNamedResultAction<{ tags: { title: string } }>({
     task: () => input.library.relinkTrack(input.trackId),
-    onSuccess: (nextTrack) => ({
-      tone: "success",
-      title: input.t.appShell.trackRelinkedTitle,
-      body: input.t.appShell.trackRelinkedBody.replace("{title}", nextTrack.tags.title),
-    }),
-    onError: (error) => ({
-      tone: "error",
-      title: input.t.appShell.relinkFailedTitle,
-      body: String(error),
-    }),
+    resolveName: (nextTrack) => nextTrack.tags.title,
+    successTitle: input.t.appShell.trackRelinkedTitle,
+    successBodyTemplate: input.t.appShell.trackRelinkedBody,
+    errorTitle: input.t.appShell.relinkFailedTitle,
     notify: input.notify,
-  };
+  });
 }
 
 export function buildCatalogRelinkMissingTracksAction(input: {
@@ -166,20 +249,14 @@ export function buildCatalogRepositoryReanalyzeAction(input: {
   t: AppTranslations;
   notify: CatalogNotify;
 }): RunCatalogResultActionInput<{ title: string }> {
-  return {
+  return buildCatalogNamedResultAction<{ title: string }>({
     task: () => input.repositories.reanalyzeRepository(input.repositoryId),
-    onSuccess: (nextRepository) => ({
-      tone: "success",
-      title: input.t.appShell.reanalysisCompleteTitle,
-      body: input.t.appShell.reanalysisCompleteBody.replace("{title}", nextRepository.title),
-    }),
-    onError: (error) => ({
-      tone: "error",
-      title: input.t.appShell.reanalysisFailedTitle,
-      body: String(error),
-    }),
+    resolveName: (nextRepository) => nextRepository.title,
+    successTitle: input.t.appShell.reanalysisCompleteTitle,
+    successBodyTemplate: input.t.appShell.reanalysisCompleteBody,
+    errorTitle: input.t.appShell.reanalysisFailedTitle,
     notify: input.notify,
-  };
+  });
 }
 
 export function buildCatalogTrackDeleteAction(input: {
@@ -188,20 +265,13 @@ export function buildCatalogTrackDeleteAction(input: {
   t: AppTranslations;
   notify: CatalogNotify;
 }): RunCatalogBooleanActionInput {
-  return {
+  return buildCatalogBooleanNoticeAction({
     task: () => input.library.deleteLibraryTrack(input.trackId),
-    onSuccess: () => ({
-      tone: "success",
-      title: input.t.appShell.trackDeletedTitle,
-      body: input.t.appShell.trackDeletedBody,
-    }),
-    onError: (error) => ({
-      tone: "error",
-      title: input.t.appShell.deleteFailedTitle,
-      body: String(error),
-    }),
+    successTitle: input.t.appShell.trackDeletedTitle,
+    successBody: input.t.appShell.trackDeletedBody,
+    errorTitle: input.t.appShell.deleteFailedTitle,
     notify: input.notify,
-  };
+  });
 }
 
 export function buildCatalogRepositoryDeleteAction(input: {
@@ -210,20 +280,13 @@ export function buildCatalogRepositoryDeleteAction(input: {
   t: AppTranslations;
   notify: CatalogNotify;
 }): RunCatalogBooleanActionInput {
-  return {
+  return buildCatalogBooleanNoticeAction({
     task: () => input.repositories.deleteLibraryRepository(input.repositoryId),
-    onSuccess: () => ({
-      tone: "success",
-      title: input.t.appShell.repositoryDeletedTitle,
-      body: input.t.appShell.repositoryDeletedBody,
-    }),
-    onError: (error) => ({
-      tone: "error",
-      title: input.t.appShell.deleteFailedTitle,
-      body: String(error),
-    }),
+    successTitle: input.t.appShell.repositoryDeletedTitle,
+    successBody: input.t.appShell.repositoryDeletedBody,
+    errorTitle: input.t.appShell.deleteFailedTitle,
     notify: input.notify,
-  };
+  });
 }
 
 export function buildCatalogTrackPerformanceUpdateAction(input: {
@@ -233,20 +296,13 @@ export function buildCatalogTrackPerformanceUpdateAction(input: {
   t: AppTranslations;
   notify: CatalogNotify;
 }): RunCatalogUpdateActionInput {
-  return {
+  return buildCatalogUpdateNoticeAction({
     task: () => input.library.updateTrackPerformance(input.trackId, input.performanceInput),
     notify: input.notify,
-    onMissing: {
-      tone: "error",
-      title: input.t.appShell.trackUpdateFailedTitle,
-      body: input.t.appShell.trackUpdateFailedBody,
-    },
-    onError: (error) => ({
-      tone: "error",
-      title: input.t.appShell.trackUpdateFailedTitle,
-      body: String(error),
-    }),
-  };
+    missingTitle: input.t.appShell.trackUpdateFailedTitle,
+    missingBody: input.t.appShell.trackUpdateFailedBody,
+    errorTitle: input.t.appShell.trackUpdateFailedTitle,
+  });
 }
 
 export function buildCatalogTrackAnalysisUpdateAction(input: {
@@ -256,20 +312,13 @@ export function buildCatalogTrackAnalysisUpdateAction(input: {
   t: AppTranslations;
   notify: CatalogNotify;
 }): RunCatalogUpdateActionInput {
-  return {
+  return buildCatalogUpdateNoticeAction({
     task: () => input.library.updateTrackAnalysis(input.trackId, input.analysisInput),
     notify: input.notify,
-    onMissing: {
-      tone: "error",
-      title: input.t.appShell.beatGridUpdateFailedTitle,
-      body: input.t.appShell.beatGridUpdateFailedBody,
-    },
-    onError: (error) => ({
-      tone: "error",
-      title: input.t.appShell.beatGridUpdateFailedTitle,
-      body: String(error),
-    }),
-  };
+    missingTitle: input.t.appShell.beatGridUpdateFailedTitle,
+    missingBody: input.t.appShell.beatGridUpdateFailedBody,
+    errorTitle: input.t.appShell.beatGridUpdateFailedTitle,
+  });
 }
 
 export function buildCatalogPlaylistSaveAction(input: {
@@ -278,20 +327,14 @@ export function buildCatalogPlaylistSaveAction(input: {
   t: AppTranslations;
   notify: CatalogNotify;
 }): RunCatalogResultActionInput<{ name: string }> {
-  return {
+  return buildCatalogNamedResultAction<{ name: string }>({
     task: () => input.library.savePlaylist(input.playlistInput),
-    onSuccess: (nextPlaylist) => ({
-      tone: "success",
-      title: input.t.appShell.playlistSavedTitle,
-      body: input.t.appShell.playlistSavedBody.replace("{name}", nextPlaylist.name),
-    }),
-    onError: (error) => ({
-      tone: "error",
-      title: input.t.appShell.playlistSaveFailedTitle,
-      body: String(error),
-    }),
+    resolveName: (nextPlaylist) => nextPlaylist.name,
+    successTitle: input.t.appShell.playlistSavedTitle,
+    successBodyTemplate: input.t.appShell.playlistSavedBody.replace("{name}", "{title}"),
+    errorTitle: input.t.appShell.playlistSaveFailedTitle,
     notify: input.notify,
-  };
+  });
 }
 
 export function buildCatalogPlaylistDeleteAction(input: {
@@ -300,18 +343,11 @@ export function buildCatalogPlaylistDeleteAction(input: {
   t: AppTranslations;
   notify: CatalogNotify;
 }): RunCatalogBooleanActionInput {
-  return {
+  return buildCatalogBooleanNoticeAction({
     task: () => input.library.deletePlaylist(input.playlistId),
-    onSuccess: () => ({
-      tone: "success",
-      title: input.t.appShell.playlistDeletedTitle,
-      body: input.t.appShell.playlistDeletedBody,
-    }),
-    onError: (error) => ({
-      tone: "error",
-      title: input.t.appShell.playlistDeleteFailedTitle,
-      body: String(error),
-    }),
+    successTitle: input.t.appShell.playlistDeletedTitle,
+    successBody: input.t.appShell.playlistDeletedBody,
+    errorTitle: input.t.appShell.playlistDeleteFailedTitle,
     notify: input.notify,
-  };
+  });
 }

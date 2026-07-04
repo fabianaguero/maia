@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  buildCatalogBooleanNoticeAction,
+  buildCatalogNamedResultAction,
   buildCatalogPlaylistDeleteAction,
   buildCatalogPlaylistSaveAction,
   buildCatalogRelinkMissingTracksAction,
@@ -11,6 +13,7 @@ import {
   buildCatalogTrackPerformanceUpdateAction,
   buildCatalogTrackReanalyzeAction,
   buildCatalogTrackRelinkAction,
+  buildCatalogUpdateNoticeAction,
   runCatalogBooleanAction,
   runCatalogResultAction,
   runCatalogUpdateAction,
@@ -141,6 +144,51 @@ describe("appCatalogLibraryActionsRuntime", () => {
     ).resolves.toBe(false);
 
     expect(notify).toHaveBeenCalledWith("error", "err", expect.stringContaining("delete broke"));
+  });
+
+  it("builds generic named, boolean and update action payloads", async () => {
+    const notify = vi.fn();
+
+    await expect(
+      runCatalogResultAction(
+        buildCatalogNamedResultAction({
+          task: async () => ({ name: "Deck A" }),
+          resolveName: (result) => result.name,
+          successTitle: "saved",
+          successBodyTemplate: "Saved {title}",
+          errorTitle: "failed",
+          notify,
+        }),
+      ),
+    ).resolves.toBe(true);
+
+    await expect(
+      runCatalogBooleanAction(
+        buildCatalogBooleanNoticeAction({
+          task: async () => true,
+          successTitle: "deleted",
+          successBody: "done",
+          errorTitle: "failed",
+          notify,
+        }),
+      ),
+    ).resolves.toBe(true);
+
+    await expect(
+      runCatalogUpdateAction(
+        buildCatalogUpdateNoticeAction({
+          task: async () => null,
+          notify,
+          missingTitle: "missing",
+          missingBody: "not found",
+          errorTitle: "failed",
+        }),
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(notify).toHaveBeenCalledWith("success", "saved", "Saved Deck A");
+    expect(notify).toHaveBeenCalledWith("success", "deleted", "done");
+    expect(notify).toHaveBeenCalledWith("error", "missing", "not found");
   });
 
   it("builds catalog action payloads with the expected tasks and notices", async () => {
