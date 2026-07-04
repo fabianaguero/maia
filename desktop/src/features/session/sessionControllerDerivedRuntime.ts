@@ -4,22 +4,29 @@ import type { QuickSessionMode, SessionBaseMode } from "./sessionDisplay";
 import {
   resolveBaseDetails,
   resolveSelectedBaseDetails,
-  resolveSessionBedPath,
-  resolveSessionBedUrl,
   resolveSourceDetails,
 } from "./sessionDisplay";
-import { resolveBookmarkContext, type SessionBookmarkContext } from "./sessionBookmarkRuntime";
+import type { SessionBookmarkContext } from "./sessionBookmarkRuntime";
+import {
+  resolveSelectedEntities,
+  resolveSessionBookmarkState,
+  resolveSessionSelection,
+  resolveSourceOptions,
+  type SessionEntitySelection,
+  type SessionResolvedSelection,
+} from "./sessionControllerDerivedSelectionRuntime";
 import {
   buildSessionLabelPlaceholder,
   resolvePlaybackPercent,
   resolveReadyToRun,
 } from "./sessionStartPlanRuntime";
-
-export interface SessionEntitySelection {
-  selectedPlaylist: BaseTrackPlaylist | null;
-  selectedSource: RepositoryAnalysis | null;
-  selectedTrack: LibraryTrack | null;
-}
+export {
+  resolveSelectedEntities,
+  resolveSessionBookmarkState,
+  resolveSessionSelection,
+  resolveSourceOptions,
+};
+export type { SessionEntitySelection, SessionResolvedSelection };
 
 export interface SessionDetailSummary {
   label: string | null;
@@ -29,15 +36,6 @@ export interface SessionDetailSummary {
 export interface SessionSourceSummary {
   label: string | null;
   path: string | null;
-}
-
-export interface SessionResolvedSelection {
-  activeSession: PersistedSession | null;
-  selectedSession: PersistedSession | null;
-  selectedSessionIdForEvents: string | null;
-  playbackActive: boolean;
-  liveMonitorActive: boolean;
-  activeBedUrl: string | null;
 }
 
 export interface SessionControllerDerivedState {
@@ -61,85 +59,6 @@ export interface SessionControllerDerivedState {
   selectedSessionBaseDetails: SessionDetailSummary;
   activeSourceDetails: SessionSourceSummary;
   selectedSessionSourceDetails: SessionSourceSummary;
-}
-
-export function resolveSourceOptions(
-  mode: QuickSessionMode,
-  repositories: RepositoryAnalysis[],
-): RepositoryAnalysis[] {
-  return repositories.filter((entry) =>
-    mode === "log" ? entry.sourceKind === "file" : entry.sourceKind !== "file",
-  );
-}
-
-export function resolveSelectedEntities(input: {
-  playlists: BaseTrackPlaylist[];
-  repositories: RepositoryAnalysis[];
-  selectedPlaylistId: string | null;
-  selectedSourceId: string | null;
-  selectedTrackId: string | null;
-  tracks: LibraryTrack[];
-}): SessionEntitySelection {
-  return {
-    selectedSource:
-      input.repositories.find((repository) => repository.id === input.selectedSourceId) ?? null,
-    selectedTrack: input.tracks.find((track) => track.id === input.selectedTrackId) ?? null,
-    selectedPlaylist:
-      input.playlists.find((playlist) => playlist.id === input.selectedPlaylistId) ?? null,
-  };
-}
-
-export function resolveSessionSelection(input: {
-  sessions: PersistedSession[];
-  activeSessionId: string | null;
-  selectedSessionId: string | null;
-  activeSessionMode: "live" | "playback" | null;
-  monitorHasSession: boolean;
-  tracks: LibraryTrack[];
-  playlists: BaseTrackPlaylist[];
-}): SessionResolvedSelection {
-  const activeSession =
-    input.sessions.find((session) => session.id === input.activeSessionId) ?? null;
-  const selectedSession =
-    input.sessions.find((session) => session.id === input.selectedSessionId) ??
-    activeSession ??
-    input.sessions[0] ??
-    null;
-  const playbackActive = input.activeSessionMode === "playback" && Boolean(activeSession);
-  const liveMonitorActive = input.monitorHasSession && !playbackActive;
-
-  return {
-    activeSession,
-    selectedSession,
-    selectedSessionIdForEvents: selectedSession?.id ?? null,
-    playbackActive,
-    liveMonitorActive,
-    activeBedUrl: resolveSessionBedUrl(
-      liveMonitorActive && !playbackActive
-        ? resolveSessionBedPath(activeSession, input.tracks, input.playlists)
-        : null,
-    ),
-  };
-}
-
-export function resolveSessionBookmarkState(input: {
-  selectedSession: PersistedSession | null;
-  sessionBookmarksBySessionId: Record<string, SessionBookmark[]>;
-  selectedSessionEvents: SessionEvent[];
-}) {
-  const selectedSessionBookmarks = input.selectedSession
-    ? (input.sessionBookmarksBySessionId[input.selectedSession.id] ?? [])
-    : [];
-  const bookmarkContexts: Record<number, SessionBookmarkContext> = {};
-
-  for (const bookmark of selectedSessionBookmarks) {
-    bookmarkContexts[bookmark.id] = resolveBookmarkContext(bookmark, input.selectedSessionEvents);
-  }
-
-  return {
-    selectedSessionBookmarks,
-    bookmarkContexts,
-  };
 }
 
 export function resolveSessionControllerDerivedState(input: {
