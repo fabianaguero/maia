@@ -5,7 +5,7 @@ import {
   buildRepositoryImportSuccessMessage,
   scheduleImportedHighlightReset,
 } from "./appCatalogActionsRuntime";
-import type { AppTranslations } from "./appCatalogActionsTypes";
+import type { AppTranslations, UseAppCatalogActionsInput } from "./appCatalogActionsTypes";
 
 interface CatalogImportNotice {
   tone: "success" | "error";
@@ -17,6 +17,12 @@ interface CatalogImportNavigation {
   analysisMode: "track" | "repo" | "base";
   screen: "inspect";
 }
+
+type CatalogNotify = (tone: "success" | "error" | "info", title: string, body: string) => void;
+type CatalogLibrary = UseAppCatalogActionsInput["library"];
+type CatalogRepositories = UseAppCatalogActionsInput["repositories"];
+type CatalogBaseAssets = UseAppCatalogActionsInput["baseAssets"];
+type CatalogCompositions = UseAppCatalogActionsInput["compositions"];
 
 export function buildCatalogImportNavigation(
   analysisMode: "track" | "repo" | "base",
@@ -123,4 +129,135 @@ export function applyCatalogImportSuccess(input: {
     input.setAnalysisMode(input.navigation.analysisMode);
     input.setScreen(input.navigation.screen);
   }
+}
+
+export function buildCatalogTrackImportAction(input: {
+  library: Pick<CatalogLibrary, "importLibraryTrack">;
+  importInput: Parameters<CatalogLibrary["importLibraryTrack"]>[0];
+  t: AppTranslations;
+  notify: CatalogNotify;
+  setNewlyImportedId: (id: string | null) => void;
+  setAnalysisMode: (mode: "track" | "repo" | "base") => void;
+  setScreen: (screen: "inspect" | "compose") => void;
+}) {
+  return {
+    task: () => input.library.importLibraryTrack(input.importInput),
+    onSuccess: (nextTrack: { id: string; tags: { title: string } }) => {
+      applyCatalogImportSuccess({
+        id: nextTrack.id,
+        notice: buildTrackImportNotice(input.t, nextTrack.tags.title),
+        notify: input.notify,
+        setNewlyImportedId: input.setNewlyImportedId,
+        navigation: buildCatalogImportNavigation("track"),
+        setAnalysisMode: input.setAnalysisMode,
+        setScreen: input.setScreen,
+      });
+    },
+    onError: (error: unknown) => ({
+      tone: "error" as const,
+      title: input.t.appShell.importFailedTitle,
+      body: String(error),
+    }),
+    notify: input.notify,
+  };
+}
+
+export function buildCatalogRepositoryImportAction(input: {
+  repositories: Pick<CatalogRepositories, "importRepositorySource">;
+  importInput: Parameters<CatalogRepositories["importRepositorySource"]>[0];
+  t: AppTranslations;
+  notify: CatalogNotify;
+  setNewlyImportedId: (id: string | null) => void;
+  setAnalysisMode: (mode: "track" | "repo" | "base") => void;
+  setScreen: (screen: "inspect" | "compose") => void;
+}) {
+  return {
+    task: () => input.repositories.importRepositorySource(input.importInput),
+    onSuccess: async (nextRepository: { id: string; title: string }) => {
+      const rescuedLogCount = await resolveRepositoryImportRescue({
+        sourceKind: input.importInput.sourceKind,
+        sourcePath: input.importInput.sourcePath,
+        importRepositorySource: input.repositories.importRepositorySource,
+      });
+      applyCatalogImportSuccess({
+        id: nextRepository.id,
+        notice: buildRepositoryImportNotice({
+          t: input.t,
+          title: nextRepository.title,
+          rescuedLogCount,
+        }),
+        notify: input.notify,
+        setNewlyImportedId: input.setNewlyImportedId,
+        navigation: buildCatalogImportNavigation("repo"),
+        setAnalysisMode: input.setAnalysisMode,
+        setScreen: input.setScreen,
+      });
+    },
+    onError: (error: unknown) => ({
+      tone: "error" as const,
+      title: input.t.appShell.connectionFailedTitle,
+      body: String(error),
+    }),
+    notify: input.notify,
+  };
+}
+
+export function buildCatalogBaseAssetImportAction(input: {
+  baseAssets: Pick<CatalogBaseAssets, "importLibraryBaseAsset">;
+  importInput: Parameters<CatalogBaseAssets["importLibraryBaseAsset"]>[0];
+  t: AppTranslations;
+  notify: CatalogNotify;
+  setNewlyImportedId: (id: string | null) => void;
+  setAnalysisMode: (mode: "track" | "repo" | "base") => void;
+  setScreen: (screen: "inspect" | "compose") => void;
+}) {
+  return {
+    task: () => input.baseAssets.importLibraryBaseAsset(input.importInput),
+    onSuccess: (nextBaseAsset: { id: string; title: string }) => {
+      applyCatalogImportSuccess({
+        id: nextBaseAsset.id,
+        notice: buildBaseAssetImportNotice(input.t, nextBaseAsset.title),
+        notify: input.notify,
+        setNewlyImportedId: input.setNewlyImportedId,
+        navigation: buildCatalogImportNavigation("base"),
+        setAnalysisMode: input.setAnalysisMode,
+        setScreen: input.setScreen,
+      });
+    },
+    onError: (error: unknown) => ({
+      tone: "error" as const,
+      title: input.t.appShell.assetImportFailedTitle,
+      body: String(error),
+    }),
+    notify: input.notify,
+  };
+}
+
+export function buildCatalogCompositionImportAction(input: {
+  compositions: Pick<CatalogCompositions, "importLibraryComposition">;
+  importInput: Parameters<CatalogCompositions["importLibraryComposition"]>[0];
+  t: AppTranslations;
+  notify: CatalogNotify;
+  setNewlyImportedId: (id: string | null) => void;
+  setAnalysisMode: (mode: "track" | "repo" | "base") => void;
+  setScreen: (screen: "inspect" | "compose") => void;
+}) {
+  return {
+    task: () => input.compositions.importLibraryComposition(input.importInput),
+    onSuccess: (nextComposition: { title: string }) => {
+      applyCatalogImportSuccess({
+        notice: buildCompositionImportNotice(input.t, nextComposition.title),
+        notify: input.notify,
+        setNewlyImportedId: input.setNewlyImportedId,
+        setAnalysisMode: input.setAnalysisMode,
+        setScreen: input.setScreen,
+      });
+    },
+    onError: (error: unknown) => ({
+      tone: "error" as const,
+      title: input.t.appShell.compositionFailedTitle,
+      body: String(error),
+    }),
+    notify: input.notify,
+  };
 }

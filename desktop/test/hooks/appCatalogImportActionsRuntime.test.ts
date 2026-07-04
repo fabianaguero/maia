@@ -3,7 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import {
   applyCatalogImportSuccess,
   buildBaseAssetImportNotice,
+  buildCatalogBaseAssetImportAction,
+  buildCatalogCompositionImportAction,
   buildCatalogImportNavigation,
+  buildCatalogRepositoryImportAction,
+  buildCatalogTrackImportAction,
   buildCompositionImportNotice,
   buildRepositoryImportNotice,
   buildTrackImportNotice,
@@ -98,5 +102,109 @@ describe("appCatalogImportActionsRuntime", () => {
     expect(setAnalysisMode).toHaveBeenCalledWith("track");
     expect(setScreen).toHaveBeenCalledWith("inspect");
     expect(notify).toHaveBeenCalledWith("error", "fail", expect.stringContaining("broken"));
+  });
+
+  it("builds import action payloads for track, repo, base asset and composition", async () => {
+    const notify = vi.fn();
+    const setNewlyImportedId = vi.fn();
+    const setAnalysisMode = vi.fn();
+    const setScreen = vi.fn();
+    const importRepositorySource = vi.fn(async (input: { label?: string }) =>
+      input.label === "Repo A"
+        ? { id: "repo-1", title: "Repo A" }
+        : { id: "repo-log", title: String(input.label ?? "") },
+    );
+
+    await expect(
+      runCatalogImportAction(
+        buildCatalogTrackImportAction({
+          library: {
+            importLibraryTrack: async () => ({ id: "track-1", tags: { title: "Track A" } }),
+          },
+          importInput: {
+            sourcePath: "/music/track-a.wav",
+            label: "Track A",
+            musicStyleId: "house",
+          },
+          t: en,
+          notify,
+          setNewlyImportedId,
+          setAnalysisMode,
+          setScreen,
+        }),
+      ),
+    ).resolves.toBe(true);
+
+    await expect(
+      runCatalogImportAction(
+        buildCatalogRepositoryImportAction({
+          repositories: { importRepositorySource },
+          importInput: { sourcePath: "/repo-a", label: "Repo A", sourceKind: "file" },
+          t: en,
+          notify,
+          setNewlyImportedId,
+          setAnalysisMode,
+          setScreen,
+        }),
+      ),
+    ).resolves.toBe(true);
+
+    await expect(
+      runCatalogImportAction(
+        buildCatalogBaseAssetImportAction({
+          baseAssets: {
+            importLibraryBaseAsset: async () => ({ id: "base-1", title: "Base A" }),
+          },
+          importInput: { title: "Base A", category: "drums", sourcePath: "/base-a.wav" },
+          t: en,
+          notify,
+          setNewlyImportedId,
+          setAnalysisMode,
+          setScreen,
+        }),
+      ),
+    ).resolves.toBe(true);
+
+    await expect(
+      runCatalogImportAction(
+        buildCatalogCompositionImportAction({
+          compositions: {
+            importLibraryComposition: async () => ({ title: "Composition A" }),
+          },
+          importInput: { title: "Composition A", sourcePath: "/comp-a.json" },
+          t: en,
+          notify,
+          setNewlyImportedId,
+          setAnalysisMode,
+          setScreen,
+        }),
+      ),
+    ).resolves.toBe(true);
+
+    expect(importRepositorySource).toHaveBeenCalledWith({
+      sourcePath: "/repo-a",
+      label: "Repo A",
+      sourceKind: "file",
+    });
+    expect(notify).toHaveBeenCalledWith(
+      "success",
+      en.appShell.trackImportedTitle,
+      expect.stringContaining("Track A"),
+    );
+    expect(notify).toHaveBeenCalledWith(
+      "success",
+      en.appShell.repositoryConnectedTitle,
+      expect.stringContaining("Repo A"),
+    );
+    expect(notify).toHaveBeenCalledWith(
+      "success",
+      en.appShell.assetImportedTitle,
+      expect.stringContaining("Base A"),
+    );
+    expect(notify).toHaveBeenCalledWith(
+      "success",
+      en.appShell.compositionReadyTitle,
+      expect.stringContaining("Composition A"),
+    );
   });
 });
