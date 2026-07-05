@@ -137,8 +137,7 @@ export function buildLiveLogMonitorDeckRuntimeInputSlices(input: {
       setBookmarkTagDraft: input.runtimeState.replayState.setBookmarkTagDraft,
       bookmarkStyleProfileIdDraft: input.runtimeState.replayState.bookmarkStyleProfileIdDraft,
       setBookmarkStyleProfileIdDraft: input.runtimeState.replayState.setBookmarkStyleProfileIdDraft,
-      bookmarkMutationProfileIdDraft:
-        input.runtimeState.replayState.bookmarkMutationProfileIdDraft,
+      bookmarkMutationProfileIdDraft: input.runtimeState.replayState.bookmarkMutationProfileIdDraft,
       setBookmarkMutationProfileIdDraft:
         input.runtimeState.replayState.setBookmarkMutationProfileIdDraft,
       bookmarkBusy: input.runtimeState.replayState.bookmarkBusy,

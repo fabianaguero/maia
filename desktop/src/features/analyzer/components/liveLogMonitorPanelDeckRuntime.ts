@@ -27,9 +27,7 @@ export function buildLiveLogMonitorPanelDeckRuntimeState(
   );
 }
 
-export function useLiveLogMonitorPanelDeckHookState(
-  input: UseLiveLogMonitorPanelDeckRuntimeInput,
-) {
+export function useLiveLogMonitorPanelDeckHookState(input: UseLiveLogMonitorPanelDeckRuntimeInput) {
   const sessionActions = useLiveLogMonitorSessionActions(
     buildLiveLogMonitorSessionActionsInput(input),
   );

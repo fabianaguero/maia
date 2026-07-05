@@ -12,7 +12,8 @@ const buildLiveLogMonitorDeckModelState = vi.fn(() => ({
 const applyLiveLogMonitorComponentOverride = vi.fn();
 
 vi.mock("../../src/features/analyzer/components/liveLogMonitorDeckModelRuntime", () => ({
-  buildLiveLogMonitorDeckModelState: (...args: unknown[]) => buildLiveLogMonitorDeckModelState(...args),
+  buildLiveLogMonitorDeckModelState: (...args: unknown[]) =>
+    buildLiveLogMonitorDeckModelState(...args),
   applyLiveLogMonitorComponentOverride: (...args: unknown[]) =>
     applyLiveLogMonitorComponentOverride(...args),
 }));
