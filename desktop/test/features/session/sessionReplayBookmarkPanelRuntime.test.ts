@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import { en } from "../../../src/i18n/en";
 import {
+  buildSessionReplayBookmarkCardPropsList,
   buildSessionReplayBookmarkCardProps,
   buildSessionReplayBookmarkPanelSections,
   buildSessionReplayBookmarkContext,
   buildSessionReplayBookmarkMeta,
   buildSessionReplayBookmarkPanelHeader,
+  buildSessionReplayBookmarkRecommendationProps,
   resolveSessionReplayBookmarkDisabled,
 } from "../../../src/features/session/sessionReplayBookmarkPanelRuntime";
 
@@ -91,6 +93,18 @@ describe("sessionReplayBookmarkPanelRuntime", () => {
       t: en,
       onReplayBookmark: () => undefined,
     });
+    const cardPropsList = buildSessionReplayBookmarkCardPropsList({
+      selectedSession: session,
+      selectedSessionBookmarks: [bookmark],
+      bookmarkContexts: {},
+      replayDisabled: false,
+      t: en,
+      onReplayBookmark: () => undefined,
+    });
+    const recommendationProps = buildSessionReplayBookmarkRecommendationProps({
+      recommendation: { summary: "Keep this groove" } as never,
+      t: en,
+    });
     const sections = buildSessionReplayBookmarkPanelSections({
       t: en,
       selectedSession: session,
@@ -103,6 +117,8 @@ describe("sessionReplayBookmarkPanelRuntime", () => {
 
     expect(cardProps.windowLabel).toContain("4");
     expect(cardProps.context?.excerpt).toBe("burst detected");
+    expect(cardPropsList).toHaveLength(1);
+    expect(recommendationProps?.title).toBe(en.session.recommendedMix);
     expect(sections.bookmarkCardPropsList).toHaveLength(1);
     expect(sections.emptyLabel).toBe(en.session.noReplayNotesSavedYet);
   });

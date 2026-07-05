@@ -8,13 +8,19 @@ import { formatShortDateTime } from "../../utils/date";
 import { formatBpmLabel, formatDominantLevelLabel } from "../../utils/monitorLabels";
 import type { ReplayFeedbackSummaryCard } from "../../components/ReplayFeedbackSummaryCard";
 import type { SessionReplayBookmarkCard } from "./SessionReplayBookmarkCard";
+import type {
+  SessionReplayBookmarkContextState,
+  SessionReplayBookmarkMetaState,
+  SessionReplayBookmarkPanelHeaderState,
+  SessionReplayBookmarkPanelSections,
+} from "./sessionReplayBookmarkPanelContracts";
 import type { SessionBookmarkContext } from "./sessionScreenRuntime";
 import type { SessionReplayBookmarkPanelProps } from "./sessionReplayBookmarkPanelTypes";
 
 export function buildSessionReplayBookmarkPanelHeader(input: {
   selectedSession: PersistedSession;
   t: AppTranslations;
-}) {
+}): SessionReplayBookmarkPanelHeaderState {
   return {
     title: input.t.session.replayNotes,
     summary: input.t.session.replayNotesFor.replace(
@@ -27,7 +33,7 @@ export function buildSessionReplayBookmarkPanelHeader(input: {
 export function buildSessionReplayBookmarkMeta(input: {
   bookmark: SessionBookmark;
   t: AppTranslations;
-}) {
+}): SessionReplayBookmarkMetaState {
   return {
     windowLabel: input.t.session.windowShort.replace(
       "{index}",
@@ -54,7 +60,7 @@ export function buildSessionReplayBookmarkMeta(input: {
 export function buildSessionReplayBookmarkContext(input: {
   context: SessionBookmarkContext | null;
   t: AppTranslations;
-}) {
+}): SessionReplayBookmarkContextState | null {
   if (!input.context) {
     return null;
   }
@@ -106,9 +112,42 @@ export function buildSessionReplayBookmarkCardProps(input: {
   };
 }
 
+export function buildSessionReplayBookmarkRecommendationProps(input: {
+  recommendation: SessionReplayBookmarkPanelProps["selectedSessionReplayFeedbackRecommendation"];
+  t: AppTranslations;
+}): ComponentProps<typeof ReplayFeedbackSummaryCard> | null {
+  return input.recommendation
+    ? {
+        recommendation: input.recommendation,
+        title: input.t.session.recommendedMix,
+        className: "top-spaced",
+      }
+    : null;
+}
+
+export function buildSessionReplayBookmarkCardPropsList(input: {
+  selectedSession: PersistedSession;
+  selectedSessionBookmarks: SessionBookmark[];
+  bookmarkContexts: Record<number, SessionBookmarkContext>;
+  replayDisabled: boolean;
+  t: AppTranslations;
+  onReplayBookmark: (session: PersistedSession, replayWindowIndex: number) => void | Promise<void>;
+}): Array<ComponentProps<typeof SessionReplayBookmarkCard>> {
+  return input.selectedSessionBookmarks.map((bookmark) =>
+    buildSessionReplayBookmarkCardProps({
+      bookmark,
+      selectedSession: input.selectedSession,
+      bookmarkContext: input.bookmarkContexts[bookmark.id] ?? null,
+      replayDisabled: input.replayDisabled,
+      t: input.t,
+      onReplayBookmark: input.onReplayBookmark,
+    }),
+  );
+}
+
 export function buildSessionReplayBookmarkPanelSections(
   input: SessionReplayBookmarkPanelProps & { t: AppTranslations },
-) {
+): SessionReplayBookmarkPanelSections {
   const header = buildSessionReplayBookmarkPanelHeader({
     selectedSession: input.selectedSession,
     t: input.t,
@@ -121,23 +160,18 @@ export function buildSessionReplayBookmarkPanelSections(
   return {
     header,
     replayDisabled,
-    recommendationProps: input.selectedSessionReplayFeedbackRecommendation
-      ? {
-          recommendation: input.selectedSessionReplayFeedbackRecommendation,
-          title: input.t.session.recommendedMix,
-          className: "top-spaced",
-        }
-      : (null satisfies ComponentProps<typeof ReplayFeedbackSummaryCard> | null),
-    bookmarkCardPropsList: input.selectedSessionBookmarks.map((bookmark) =>
-      buildSessionReplayBookmarkCardProps({
-        bookmark,
-        selectedSession: input.selectedSession,
-        bookmarkContext: input.bookmarkContexts[bookmark.id] ?? null,
-        replayDisabled,
-        t: input.t,
-        onReplayBookmark: input.onReplayBookmark,
-      }),
-    ),
+    recommendationProps: buildSessionReplayBookmarkRecommendationProps({
+      recommendation: input.selectedSessionReplayFeedbackRecommendation,
+      t: input.t,
+    }),
+    bookmarkCardPropsList: buildSessionReplayBookmarkCardPropsList({
+      selectedSession: input.selectedSession,
+      selectedSessionBookmarks: input.selectedSessionBookmarks,
+      bookmarkContexts: input.bookmarkContexts,
+      replayDisabled,
+      t: input.t,
+      onReplayBookmark: input.onReplayBookmark,
+    }),
     emptyLabel: input.t.session.noReplayNotesSavedYet,
   };
 }

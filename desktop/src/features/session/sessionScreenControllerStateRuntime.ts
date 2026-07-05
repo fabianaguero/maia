@@ -1,25 +1,20 @@
-import type { AppTranslations } from "../../i18n/types";
-import type { MonitorContextValue } from "../monitor/monitorContextTypes";
-import type { buildSessionScreenControllerMonitorSnapshot } from "./sessionScreenControllerHookRuntime";
-import type {
-  SessionScreenControllerInput,
-  SessionScreenControllerState,
-} from "./sessionScreenControllerTypes";
-import type { SessionControllerDerivedState } from "./sessionScreenRuntime";
+import type { SessionScreenControllerState } from "./sessionScreenControllerTypes";
 import type {
   SessionScreenControllerActionBindings,
+  SessionScreenControllerDerivedBindingsInput,
   SessionScreenControllerDerivedBindings,
   SessionScreenControllerLocalBindings,
-  SessionScreenControllerSlicesResult,
+  SessionScreenControllerLocalState,
+  SessionScreenControllerMonitorSnapshotInput,
+  SessionScreenControllerSlicesHookInput,
+  SessionScreenControllerStateFromSlicesInput,
+  SessionScreenControllerStateInput,
+  SessionScreenControllerStateSectionsInput,
   SessionScreenControllerStateSections,
 } from "./sessionScreenControllerStateContracts";
-import type { useSessionScreenLocalState } from "./useSessionScreenLocalState";
-
-type MonitorSnapshot = ReturnType<typeof buildSessionScreenControllerMonitorSnapshot>;
-type SessionScreenLocalState = ReturnType<typeof useSessionScreenLocalState>;
 
 export function buildSessionScreenControllerLocalBindings(
-  localState: SessionScreenLocalState,
+  localState: SessionScreenControllerLocalState,
 ): SessionScreenControllerLocalBindings {
   return {
     mode: localState.mode,
@@ -57,11 +52,9 @@ export function buildSessionScreenControllerActionBindings(
   };
 }
 
-export function buildSessionScreenControllerDerivedBindings(input: {
-  derivedState: SessionControllerDerivedState;
-  selectedSessionReplayFeedbackRecommendation: SessionScreenControllerSlicesResult["selectedSessionReplayFeedbackRecommendation"];
-  booth: SessionScreenControllerSlicesResult["booth"];
-}): SessionScreenControllerDerivedBindings {
+export function buildSessionScreenControllerDerivedBindings(
+  input: SessionScreenControllerDerivedBindingsInput,
+): SessionScreenControllerDerivedBindings {
   return {
     sourceOptions: input.derivedState.sourceOptions,
     selectedSource: input.derivedState.selectedSource,
@@ -81,13 +74,9 @@ export function buildSessionScreenControllerDerivedBindings(input: {
   };
 }
 
-export function buildSessionScreenControllerStateSections(input: {
-  localState: SessionScreenLocalState;
-  actions: SessionScreenControllerActionBindings;
-  derivedState: SessionControllerDerivedState;
-  selectedSessionReplayFeedbackRecommendation: SessionScreenControllerSlicesResult["selectedSessionReplayFeedbackRecommendation"];
-  booth: SessionScreenControllerSlicesResult["booth"];
-}): SessionScreenControllerStateSections {
+export function buildSessionScreenControllerStateSections(
+  input: SessionScreenControllerStateSectionsInput,
+): SessionScreenControllerStateSections {
   return {
     localBindings: buildSessionScreenControllerLocalBindings(input.localState),
     actionBindings: buildSessionScreenControllerActionBindings(input.actions),
@@ -101,15 +90,7 @@ export function buildSessionScreenControllerStateSections(input: {
 }
 
 export function buildSessionScreenControllerMonitorSnapshotInput(
-  monitor: Pick<
-    MonitorContextValue,
-    | "session"
-    | "metrics"
-    | "subscribe"
-    | "isPlaybackPaused"
-    | "playbackEventIndex"
-    | "playbackEventCount"
-  >,
+  monitor: SessionScreenControllerMonitorSnapshotInput,
 ) {
   return {
     session: monitor.session,
@@ -121,12 +102,9 @@ export function buildSessionScreenControllerMonitorSnapshotInput(
   };
 }
 
-export function buildSessionScreenControllerSlicesInput(input: {
-  t: AppTranslations;
-  controllerInput: SessionScreenControllerInput;
-  monitorSnapshot: MonitorSnapshot;
-  localState: SessionScreenLocalState;
-}) {
+export function buildSessionScreenControllerSlicesInput(
+  input: SessionScreenControllerSlicesHookInput,
+) {
   return {
     t: input.t,
     input: input.controllerInput,
@@ -135,15 +113,9 @@ export function buildSessionScreenControllerSlicesInput(input: {
   };
 }
 
-export function buildSessionScreenControllerStateInput(input: {
-  t: AppTranslations;
-  monitor: MonitorContextValue;
-  localState: SessionScreenLocalState;
-  derivedState: SessionControllerDerivedState;
-  actions: SessionScreenControllerActionBindings;
-  selectedSessionReplayFeedbackRecommendation: SessionScreenControllerSlicesResult["selectedSessionReplayFeedbackRecommendation"];
-  booth: SessionScreenControllerSlicesResult["booth"];
-}): SessionScreenControllerState {
+export function buildSessionScreenControllerStateInput(
+  input: SessionScreenControllerStateInput,
+): SessionScreenControllerState {
   const sections = buildSessionScreenControllerStateSections({
     localState: input.localState,
     actions: input.actions,
@@ -161,12 +133,9 @@ export function buildSessionScreenControllerStateInput(input: {
   };
 }
 
-export function buildSessionScreenControllerStateFromSlices(input: {
-  t: AppTranslations;
-  monitor: MonitorContextValue;
-  localState: SessionScreenLocalState;
-  slicesResult: SessionScreenControllerSlicesResult;
-}): SessionScreenControllerState {
+export function buildSessionScreenControllerStateFromSlices(
+  input: SessionScreenControllerStateFromSlicesInput,
+): SessionScreenControllerState {
   return buildSessionScreenControllerStateInput({
     t: input.t,
     monitor: input.monitor,

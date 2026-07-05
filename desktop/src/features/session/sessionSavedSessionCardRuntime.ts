@@ -8,6 +8,12 @@ import type { SessionSavedSessionCardActions } from "./SessionSavedSessionCardAc
 import type { SessionSavedSessionCardHeader } from "./SessionSavedSessionCardHeader";
 import type { SessionSavedSessionCardMetrics } from "./SessionSavedSessionCardMetrics";
 import { resolveSessionTemplateLabel } from "./sessionDisplay";
+import type {
+  SessionSavedSessionCardActionsState,
+  SessionSavedSessionCardMetaState,
+  SessionSavedSessionCardMetricsState,
+  SessionSavedSessionCardSections,
+} from "./sessionSavedSessionCardContracts";
 import type { SessionSavedSessionCardProps } from "./sessionSavedSessionCardTypes";
 
 export function resolveSessionSavedSessionCardStatusLabel(input: {
@@ -28,7 +34,7 @@ export function buildSessionSavedSessionCardMetrics(input: {
   liveProcessedLines: number;
   liveTotalAnomalies: number;
   t: AppTranslations;
-}) {
+}): SessionSavedSessionCardMetricsState {
   return {
     pollsValue: activeAndLive(input) ? input.liveWindowCount : input.session.totalPolls,
     linesValue: activeAndLive(input) ? input.liveProcessedLines : input.session.totalLines,
@@ -51,7 +57,7 @@ export function resolveSessionSavedSessionCardMeta(input: {
   session: PersistedSession;
   bookmarks: SessionBookmark[];
   t: AppTranslations;
-}) {
+}): SessionSavedSessionCardMetaState {
   return {
     title: input.session.label || input.t.session.unnamedSession,
     sourceLabel:
@@ -69,7 +75,7 @@ export function resolveSessionSavedSessionCardActions(input: {
   active: boolean;
   session: PersistedSession;
   mutating: boolean;
-}) {
+}): SessionSavedSessionCardActionsState {
   return {
     showPlaybackAction: !input.active && input.session.totalPolls > 0,
     showResumeAction: !input.active,
@@ -77,9 +83,73 @@ export function resolveSessionSavedSessionCardActions(input: {
   };
 }
 
+export function buildSessionSavedSessionCardHeaderProps(input: {
+  session: PersistedSession;
+  selected: boolean;
+  active: boolean;
+  statusLabel: string;
+  statusTone: string;
+  meta: SessionSavedSessionCardMetaState;
+  t: AppTranslations;
+  onSelectSession: (sessionId: string) => void;
+}): ComponentProps<typeof SessionSavedSessionCardHeader> {
+  return {
+    selected: input.selected,
+    active: input.active,
+    sessionId: input.session.id,
+    status: input.statusLabel,
+    statusTone: input.statusTone,
+    title: input.meta.title,
+    sourceLabel: input.meta.sourceLabel,
+    baseLabel: input.meta.baseLabel,
+    bookmarksLabel: input.meta.bookmarksLabel,
+    baseLabelPrefix: input.t.session.baseLabel,
+    onSelectSession: input.onSelectSession,
+  };
+}
+
+export function buildSessionSavedSessionCardMetricsProps(input: {
+  metrics: SessionSavedSessionCardMetricsState;
+  t: AppTranslations;
+}): ComponentProps<typeof SessionSavedSessionCardMetrics> {
+  return {
+    pollsValue: input.metrics.pollsValue,
+    linesValue: input.metrics.linesValue,
+    anomaliesValue: input.metrics.anomaliesValue,
+    bpmLabel: input.metrics.bpmLabel,
+    templateLabel: input.metrics.templateLabel,
+    pollsLabel: input.t.session.polls,
+    linesLabel: input.t.session.lines,
+    anomaliesLabel: input.t.session.anomalies,
+  };
+}
+
+export function buildSessionSavedSessionCardActionsProps(input: {
+  session: PersistedSession;
+  mutating: boolean;
+  actions: SessionSavedSessionCardActionsState;
+  t: AppTranslations;
+  onResumeSession: (sessionId: string) => void | Promise<void>;
+  onPlaybackSession: (session: PersistedSession) => void | Promise<void>;
+  onDeleteSession: (sessionId: string) => void | Promise<void>;
+}): ComponentProps<typeof SessionSavedSessionCardActions> {
+  return {
+    session: input.session,
+    mutating: input.mutating,
+    showPlaybackAction: input.actions.showPlaybackAction,
+    showResumeAction: input.actions.showResumeAction,
+    deleteDisabled: input.actions.deleteDisabled,
+    playbackLabel: input.t.session.playback,
+    resumeLabel: input.t.session.resume,
+    onResumeSession: input.onResumeSession,
+    onPlaybackSession: input.onPlaybackSession,
+    onDeleteSession: input.onDeleteSession,
+  };
+}
+
 export function buildSessionSavedSessionCardSections(
   input: SessionSavedSessionCardProps & { t: AppTranslations },
-) {
+): SessionSavedSessionCardSections {
   const statusLabel = resolveSessionSavedSessionCardStatusLabel({
     session: input.session,
     playbackActive: input.playbackActive,
@@ -109,40 +179,28 @@ export function buildSessionSavedSessionCardSections(
   return {
     statusTone,
     updatedAtLabel: meta.updatedAtLabel,
-    headerProps: {
+    headerProps: buildSessionSavedSessionCardHeaderProps({
+      session: input.session,
       selected: input.selected,
       active: input.active,
-      sessionId: input.session.id,
-      status: statusLabel,
+      statusLabel,
       statusTone,
-      title: meta.title,
-      sourceLabel: meta.sourceLabel,
-      baseLabel: meta.baseLabel,
-      bookmarksLabel: meta.bookmarksLabel,
-      baseLabelPrefix: input.t.session.baseLabel,
+      meta,
+      t: input.t,
       onSelectSession: input.onSelectSession,
-    } satisfies ComponentProps<typeof SessionSavedSessionCardHeader>,
-    metricsProps: {
-      pollsValue: metrics.pollsValue,
-      linesValue: metrics.linesValue,
-      anomaliesValue: metrics.anomaliesValue,
-      bpmLabel: metrics.bpmLabel,
-      templateLabel: metrics.templateLabel,
-      pollsLabel: input.t.session.polls,
-      linesLabel: input.t.session.lines,
-      anomaliesLabel: input.t.session.anomalies,
-    } satisfies ComponentProps<typeof SessionSavedSessionCardMetrics>,
-    actionsProps: {
+    }),
+    metricsProps: buildSessionSavedSessionCardMetricsProps({
+      metrics,
+      t: input.t,
+    }),
+    actionsProps: buildSessionSavedSessionCardActionsProps({
       session: input.session,
       mutating: input.mutating,
-      showPlaybackAction: actions.showPlaybackAction,
-      showResumeAction: actions.showResumeAction,
-      deleteDisabled: actions.deleteDisabled,
-      playbackLabel: input.t.session.playback,
-      resumeLabel: input.t.session.resume,
+      actions,
+      t: input.t,
       onResumeSession: input.onResumeSession,
       onPlaybackSession: input.onPlaybackSession,
       onDeleteSession: input.onDeleteSession,
-    } satisfies ComponentProps<typeof SessionSavedSessionCardActions>,
+    }),
   };
 }

@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import { en } from "../../../src/i18n/en";
 import {
+  buildSessionSavedSessionCardActionsProps,
+  buildSessionSavedSessionCardHeaderProps,
+  buildSessionSavedSessionCardMetricsProps,
   buildSessionSavedSessionCardSections,
   buildSessionSavedSessionCardMetrics,
   resolveSessionSavedSessionCardActions,
@@ -67,6 +70,48 @@ describe("sessionSavedSessionCardRuntime", () => {
   });
 
   it("builds card sections from the saved session contract", () => {
+    const metrics = buildSessionSavedSessionCardMetrics({
+      session,
+      active: false,
+      playbackActive: false,
+      liveWindowCount: 5,
+      liveProcessedLines: 50,
+      liveTotalAnomalies: 4,
+      t: en,
+    });
+    const meta = resolveSessionSavedSessionCardMeta({
+      session,
+      bookmarks: [{ id: 1 }] as never,
+      t: en,
+    });
+    const actions = resolveSessionSavedSessionCardActions({
+      active: false,
+      session,
+      mutating: false,
+    });
+    const headerProps = buildSessionSavedSessionCardHeaderProps({
+      session,
+      selected: true,
+      active: false,
+      statusLabel: "Replay",
+      statusTone: "status-paused",
+      meta,
+      t: en,
+      onSelectSession: () => undefined,
+    });
+    const metricsProps = buildSessionSavedSessionCardMetricsProps({
+      metrics,
+      t: en,
+    });
+    const actionsProps = buildSessionSavedSessionCardActionsProps({
+      session,
+      mutating: false,
+      actions,
+      t: en,
+      onResumeSession: () => undefined,
+      onPlaybackSession: () => undefined,
+      onDeleteSession: () => undefined,
+    });
     const sections = buildSessionSavedSessionCardSections({
       t: en,
       session,
@@ -84,6 +129,9 @@ describe("sessionSavedSessionCardRuntime", () => {
       onDeleteSession: () => undefined,
     });
 
+    expect(headerProps.title).toBe("Night watch");
+    expect(metricsProps.bpmLabel).toContain("126");
+    expect(actionsProps.showPlaybackAction).toBe(true);
     expect(sections.headerProps.title).toBe("Night watch");
     expect(sections.metricsProps.anomaliesValue).toBe(2);
     expect(sections.actionsProps.showResumeAction).toBe(true);
