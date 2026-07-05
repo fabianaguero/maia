@@ -17,21 +17,9 @@ import type { ArrangementVoice, ComponentOverride, RoutedLiveCue } from "./liveS
 import type { SyncTailRow } from "./liveLogMonitorPanelRuntime";
 import type { AudioEngineStatus, LiveLogMonitorViewModel } from "./liveLogMonitorViewModel";
 import {
-  buildLiveLogMonitorDeckModelReturnValue,
-  buildLiveLogMonitorDeckSectionContentInput,
-  buildLiveLogMonitorLiveDeckPropsInput,
-  buildLiveLogMonitorPanelViewModelInput,
-  buildLiveLogMonitorRoutingPanelInput,
-  buildLiveLogMonitorScenePanelInput,
-} from "./liveLogMonitorDeckModelBridge";
-import { buildLiveLogMonitorPanelViewModel } from "./liveLogMonitorPanelViewModel";
-import {
-  buildLiveLogMonitorDeckSectionContent,
-  buildLiveLogMonitorLiveDeckProps,
-  buildLiveLogMonitorRoutingPanel,
-  buildLiveLogMonitorScenePanel,
-} from "./liveLogMonitorDeckPropsViewModel";
-import { updateLiveLogMonitorComponentOverrides } from "./liveLogMonitorRoutingRuntime";
+  applyLiveLogMonitorComponentOverride,
+  buildLiveLogMonitorDeckModelState,
+} from "./liveLogMonitorDeckModelRuntime";
 
 export interface UseLiveLogMonitorDeckModelInput {
   t: AppTranslations;
@@ -150,59 +138,23 @@ export interface UseLiveLogMonitorDeckModelInput {
 }
 
 export function useLiveLogMonitorDeckModel(input: UseLiveLogMonitorDeckModelInput) {
-  const panelViewState = useMemo(
-    () => buildLiveLogMonitorPanelViewModel(buildLiveLogMonitorPanelViewModelInput(input)),
-    [input],
-  );
-
-  const activeDeckContent = useMemo(
-    () =>
-      buildLiveLogMonitorDeckSectionContent(
-        buildLiveLogMonitorDeckSectionContentInput(input, panelViewState),
-      ),
-    [input, panelViewState],
-  );
-
-  const scenePanel = useMemo(
-    () => buildLiveLogMonitorScenePanel(buildLiveLogMonitorScenePanelInput(input)),
-    [input],
-  );
-
   const handleComponentOverrideChange = useCallback(
     (component: string, override: ComponentOverride) => {
-      input.setComponentOverrides((current) =>
-        updateLiveLogMonitorComponentOverrides(current, component, override),
-      );
+      applyLiveLogMonitorComponentOverride({
+        setComponentOverrides: input.setComponentOverrides,
+        component,
+        override,
+      });
     },
     [input],
   );
 
-  const routingPanel = useMemo(
+  return useMemo(
     () =>
-      buildLiveLogMonitorRoutingPanel(
-        buildLiveLogMonitorRoutingPanelInput({
-          knownComponents: input.knownComponents,
-          componentOverrides: input.componentOverrides,
-          liveActive: input.sessionRepoId === input.repository.id,
-          onOverrideChange: handleComponentOverrideChange,
-        }),
-      ),
-    [input, handleComponentOverrideChange],
+      buildLiveLogMonitorDeckModelState({
+        deckInput: input,
+        onOverrideChange: handleComponentOverrideChange,
+      }),
+    [handleComponentOverrideChange, input],
   );
-
-  const liveDeckProps = useMemo(
-    () =>
-      buildLiveLogMonitorLiveDeckProps(
-        buildLiveLogMonitorLiveDeckPropsInput(
-          input,
-          panelViewState,
-          activeDeckContent,
-          scenePanel,
-          routingPanel,
-        ),
-      ),
-    [input, panelViewState, activeDeckContent, scenePanel, routingPanel],
-  );
-
-  return buildLiveLogMonitorDeckModelReturnValue(panelViewState, liveDeckProps);
 }

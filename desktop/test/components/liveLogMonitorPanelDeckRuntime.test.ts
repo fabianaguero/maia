@@ -1,16 +1,32 @@
-import { renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { useLiveLogMonitorPanelDeckRuntime } from "../../src/features/analyzer/components/useLiveLogMonitorPanelDeckRuntime";
+import {
+  buildLiveLogMonitorPanelDeckRuntimeState,
+  useLiveLogMonitorPanelDeckHookState,
+} from "../../src/features/analyzer/components/liveLogMonitorPanelDeckRuntime";
 
-const buildLiveLogMonitorPanelDeckHookStateMock = vi.fn();
-const buildLiveLogMonitorPanelDeckRuntimeStateMock = vi.fn();
+const useLiveLogMonitorSessionActionsMock = vi.fn();
+const useLiveLogMonitorOperatorActionsMock = vi.fn();
+const useLiveLogMonitorDeckModelMock = vi.fn();
+const buildLiveLogMonitorPanelRenderStateMock = vi.fn();
 
-vi.mock("../../src/features/analyzer/components/liveLogMonitorPanelDeckRuntime", () => ({
-  useLiveLogMonitorPanelDeckHookState: (...args: unknown[]) =>
-    buildLiveLogMonitorPanelDeckHookStateMock(...args),
-  buildLiveLogMonitorPanelDeckRuntimeState: (...args: unknown[]) =>
-    buildLiveLogMonitorPanelDeckRuntimeStateMock(...args),
+vi.mock("../../src/features/analyzer/components/useLiveLogMonitorSessionActions", () => ({
+  useLiveLogMonitorSessionActions: (...args: unknown[]) =>
+    useLiveLogMonitorSessionActionsMock(...args),
+}));
+
+vi.mock("../../src/features/analyzer/components/useLiveLogMonitorOperatorActions", () => ({
+  useLiveLogMonitorOperatorActions: (...args: unknown[]) =>
+    useLiveLogMonitorOperatorActionsMock(...args),
+}));
+
+vi.mock("../../src/features/analyzer/components/useLiveLogMonitorDeckModel", () => ({
+  useLiveLogMonitorDeckModel: (...args: unknown[]) => useLiveLogMonitorDeckModelMock(...args),
+}));
+
+vi.mock("../../src/features/analyzer/components/liveLogMonitorPanelRenderState", () => ({
+  buildLiveLogMonitorPanelRenderState: (...args: unknown[]) =>
+    buildLiveLogMonitorPanelRenderStateMock(...args),
 }));
 
 function createInput() {
@@ -156,58 +172,67 @@ function createInput() {
   } as never;
 }
 
-describe("useLiveLogMonitorPanelDeckRuntime", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    buildLiveLogMonitorPanelDeckHookStateMock.mockReturnValue({
-      sessionActions: {
-        handleStart: vi.fn(),
-        handleStop: vi.fn(),
-        handleBounce: vi.fn(),
-      },
-      operatorActions: {
-        handleSelectTraceExplanation: vi.fn(),
-        handleSetMasterVolume: vi.fn(),
-      },
-      liveDeckProps: {
-        basePlaylistTrackOptions: [],
-        savedPlaylistOptions: [],
-        basePlaylistEditorItems: [],
-        ctaMetaLabel: "BPM 126",
-        deckStatusLabel: "Live",
-        audioBadgeTone: "ready",
-        audioBadgeLabel: "Audio on",
-        bounceAction: null,
-        liveDeckProps: { mode: "live" },
-      },
+describe("liveLogMonitorPanelDeckRuntime", () => {
+  it("builds hook state for session/operator/deck dependencies", () => {
+    useLiveLogMonitorSessionActionsMock.mockReturnValue({
+      handleStart: vi.fn(),
+      handleStop: vi.fn(),
+      handleBounce: vi.fn(),
     });
-    buildLiveLogMonitorPanelDeckRuntimeStateMock.mockReturnValue({
+    useLiveLogMonitorOperatorActionsMock.mockReturnValue({
+      handleSelectTraceExplanation: vi.fn(),
+      handleSetMasterVolume: vi.fn(),
+    });
+    useLiveLogMonitorDeckModelMock.mockReturnValue({
+      liveDeckProps: { mode: "live" },
+    });
+
+    const input = createInput();
+    const state = useLiveLogMonitorPanelDeckHookState(input);
+
+    expect(useLiveLogMonitorSessionActionsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repository: input.repository,
+        referenceAnchorBpm: 126,
+      }),
+    );
+    expect(useLiveLogMonitorOperatorActionsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repositoryId: "repo-1",
+        replayActive: true,
+      }),
+    );
+    expect(useLiveLogMonitorDeckModelMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        playbackPercent: 42,
+        playbackWindowLabel: "4/12",
+        adapterTarget: "/logs/service.log",
+      }),
+    );
+    expect(state.liveDeckProps).toEqual({ liveDeckProps: { mode: "live" } });
+  });
+
+  it("builds final panel deck render state from hook state", () => {
+    buildLiveLogMonitorPanelRenderStateMock.mockReturnValue({
       ctaMetaLabel: "BPM 126",
       liveDeckProps: { mode: "live" },
     });
-  });
 
-  it("composes hook state and final render state through the runtime layer", () => {
-    const input = createInput();
+    const result = buildLiveLogMonitorPanelDeckRuntimeState(createInput(), {
+      sessionActions: { handleStart: vi.fn() } as never,
+      operatorActions: { handleSelectTraceExplanation: vi.fn() } as never,
+      liveDeckProps: { liveDeckProps: { mode: "live" } } as never,
+    });
 
-    const { result } = renderHook(() => useLiveLogMonitorPanelDeckRuntime(input));
-
-    expect(buildLiveLogMonitorPanelDeckHookStateMock).toHaveBeenCalledWith(input);
-    expect(buildLiveLogMonitorPanelDeckRuntimeStateMock).toHaveBeenCalledWith(
-      input,
+    expect(buildLiveLogMonitorPanelRenderStateMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        sessionActions: expect.objectContaining({
-          handleStart: expect.any(Function),
-        }),
-        operatorActions: expect.objectContaining({
-          handleSelectTraceExplanation: expect.any(Function),
-        }),
-        liveDeckProps: expect.objectContaining({
-          ctaMetaLabel: "BPM 126",
-        }),
+        activeAdapterLabel: "FILE_TAIL",
+        liveEnabled: true,
+        replayActive: true,
+        liveDeckProps: { mode: "live" },
       }),
     );
-    expect(result.current).toEqual({
+    expect(result).toEqual({
       ctaMetaLabel: "BPM 126",
       liveDeckProps: { mode: "live" },
     });
