@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  buildAppMonitorGuideActionInputs,
   buildAppMonitorLibraryGuideEffectInput,
   buildAppMonitorPlaylistArmInput,
   buildAppMonitorSessionArmInput,
@@ -40,12 +41,15 @@ describe("appMonitorGuideActionsHookRuntime", () => {
 
   it("builds guide-effect and session-guide inputs without exposing the whole hook payload", () => {
     const input = createInput();
+    const guideInputs = buildAppMonitorGuideActionInputs(input as never);
 
     const libraryGuideInput = buildAppMonitorLibraryGuideEffectInput(input as never);
     const sessionGuideInput = buildAppMonitorSessionGuideInput(input as never, {
       playlistId: "playlist-1",
     });
 
+    expect(guideInputs.trackArmInput.tracks).toBe(input.library.tracks);
+    expect(guideInputs.libraryGuideEffectInput.selectedPlaylist).toBe(input.library.selectedPlaylist);
     expect(libraryGuideInput.selectedTrack).toBe(input.library.selectedTrack);
     expect(libraryGuideInput.setGuideTrack).toBe(input.monitor.setGuideTrack);
     expect(sessionGuideInput.draft?.playlistId).toBe("playlist-1");

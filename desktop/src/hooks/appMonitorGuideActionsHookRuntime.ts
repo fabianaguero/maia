@@ -42,6 +42,12 @@ export interface AppMonitorSessionArmInput {
   setSelectedTrackId: GuideActionsInput["library"]["setSelectedTrackId"];
 }
 
+export interface AppMonitorGuideActionInputs {
+  trackArmInput: AppMonitorTrackArmInput;
+  playlistArmInput: AppMonitorPlaylistArmInput;
+  libraryGuideEffectInput: AppMonitorLibraryGuideEffectInput;
+}
+
 export function buildAppMonitorTrackArmInput(
   input: GuideActionsInput,
   trackId: string | null | undefined,
@@ -104,5 +110,15 @@ export function buildAppMonitorSessionArmInput(
     armTrackBase,
     setSelectedPlaylistId: input.library.setSelectedPlaylistId,
     setSelectedTrackId: input.library.setSelectedTrackId,
+  };
+}
+
+export function buildAppMonitorGuideActionInputs(
+  input: GuideActionsInput,
+): AppMonitorGuideActionInputs {
+  return {
+    trackArmInput: buildAppMonitorTrackArmInput(input, undefined),
+    playlistArmInput: buildAppMonitorPlaylistArmInput(input, undefined),
+    libraryGuideEffectInput: buildAppMonitorLibraryGuideEffectInput(input),
   };
 }

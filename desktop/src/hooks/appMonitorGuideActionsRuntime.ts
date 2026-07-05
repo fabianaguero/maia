@@ -14,6 +14,13 @@ import type {
   AppMonitorTrackArmInput,
 } from "./appMonitorGuideActionsHookRuntime";
 
+export interface AppMonitorGuideActionRunners {
+  armTrackBase: (trackId: string | null | undefined) => void;
+  armPlaylistBase: (playlistId: string | null | undefined) => void;
+  armSessionMusicalBase: (draft?: { playlistId?: string; trackId?: string }) => void;
+  primeMonitorGuideTrack: (draft?: { playlistId?: string; trackId?: string }) => void;
+}
+
 export function applyLibraryArmState(
   state: AppArmState,
   input: {
@@ -100,4 +107,36 @@ export function performSessionArm(input: AppMonitorSessionArmInput): void {
     setSelectedPlaylistId: input.setSelectedPlaylistId,
     setSelectedTrackId: input.setSelectedTrackId,
   });
+}
+
+export function buildAppMonitorGuideActionRunners(input: {
+  buildTrackArmInput: (trackId: string | null | undefined) => AppMonitorTrackArmInput;
+  buildPlaylistArmInput: (playlistId: string | null | undefined) => AppMonitorPlaylistArmInput;
+  buildSessionArmInput: (
+    draft: { playlistId?: string; trackId?: string } | undefined,
+    armPlaylistBase: (playlistId: string | null | undefined) => void,
+    armTrackBase: (trackId: string | null | undefined) => void,
+  ) => AppMonitorSessionArmInput;
+  buildSessionGuideInput: (
+    draft?: { playlistId?: string; trackId?: string },
+  ) => AppMonitorSessionGuideInput;
+}): AppMonitorGuideActionRunners {
+  const armTrackBase = (trackId: string | null | undefined) => {
+    performTrackArm(input.buildTrackArmInput(trackId));
+  };
+
+  const armPlaylistBase = (playlistId: string | null | undefined) => {
+    performPlaylistArm(input.buildPlaylistArmInput(playlistId));
+  };
+
+  return {
+    armTrackBase,
+    armPlaylistBase,
+    armSessionMusicalBase: (draft) => {
+      performSessionArm(input.buildSessionArmInput(draft, armPlaylistBase, armTrackBase));
+    },
+    primeMonitorGuideTrack: (draft) => {
+      performSessionGuidePrime(input.buildSessionGuideInput(draft));
+    },
+  };
 }

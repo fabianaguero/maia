@@ -1,15 +1,10 @@
-import { useCallback, useEffect } from "react";
-
-import type { SessionMonitorDraft } from "../appMonitorActionsRuntime";
+import { useEffect, useMemo } from "react";
 import {
-  performPlaylistArm,
-  performSessionArm,
-  performSessionGuidePrime,
-  performTrackArm,
+  buildAppMonitorGuideActionRunners,
   syncLibraryMonitorGuide,
 } from "./appMonitorGuideActionsRuntime";
 import {
-  buildAppMonitorLibraryGuideEffectInput,
+  buildAppMonitorGuideActionInputs,
   buildAppMonitorPlaylistArmInput,
   buildAppMonitorSessionArmInput,
   buildAppMonitorSessionGuideInput,
@@ -20,44 +15,32 @@ import type { UseAppMonitorActionsInput } from "./appMonitorActionsTypes";
 type GuideActionsInput = Pick<UseAppMonitorActionsInput, "library" | "monitor">;
 
 export function useAppMonitorGuideActions({ library, monitor }: GuideActionsInput) {
-  const armTrackBase = useCallback(
-    (trackId: string | null | undefined) => {
-      performTrackArm(buildAppMonitorTrackArmInput({ library, monitor }, trackId));
-    },
+  const guideInputs = useMemo(
+    () => buildAppMonitorGuideActionInputs({ library, monitor }),
     [library, monitor],
   );
-
-  const armPlaylistBase = useCallback(
-    (playlistId: string | null | undefined) => {
-      performPlaylistArm(buildAppMonitorPlaylistArmInput({ library, monitor }, playlistId));
-    },
+  const guideActions = useMemo(
+    () =>
+      buildAppMonitorGuideActionRunners({
+        buildTrackArmInput: (trackId) => buildAppMonitorTrackArmInput({ library, monitor }, trackId),
+        buildPlaylistArmInput: (playlistId) =>
+          buildAppMonitorPlaylistArmInput({ library, monitor }, playlistId),
+        buildSessionArmInput: (draft, armPlaylistBase, armTrackBase) =>
+          buildAppMonitorSessionArmInput(
+            { library, monitor },
+            draft,
+            armPlaylistBase,
+            armTrackBase,
+          ),
+        buildSessionGuideInput: (draft) =>
+          buildAppMonitorSessionGuideInput({ library, monitor }, draft),
+      }),
     [library, monitor],
   );
 
   useEffect(() => {
-    syncLibraryMonitorGuide(buildAppMonitorLibraryGuideEffectInput({ library, monitor }));
-  }, [library, monitor]);
+    syncLibraryMonitorGuide(guideInputs.libraryGuideEffectInput);
+  }, [guideInputs]);
 
-  const armSessionMusicalBase = useCallback(
-    (draft?: SessionMonitorDraft) => {
-      performSessionArm(
-        buildAppMonitorSessionArmInput({ library, monitor }, draft, armPlaylistBase, armTrackBase),
-      );
-    },
-    [armPlaylistBase, armTrackBase, library, monitor],
-  );
-
-  const primeMonitorGuideTrack = useCallback(
-    (draft?: SessionMonitorDraft) => {
-      performSessionGuidePrime(buildAppMonitorSessionGuideInput({ library, monitor }, draft));
-    },
-    [library, monitor],
-  );
-
-  return {
-    armTrackBase,
-    armPlaylistBase,
-    armSessionMusicalBase,
-    primeMonitorGuideTrack,
-  };
+  return guideActions;
 }

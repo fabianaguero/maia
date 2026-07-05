@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   applyLibraryArmState,
   applyMonitorGuideState,
+  buildAppMonitorGuideActionRunners,
   performPlaylistArm,
   performSessionArm,
   performSessionGuidePrime,
@@ -123,5 +124,60 @@ describe("appMonitorGuideActionsRuntime", () => {
     expect(armTrackBase).toHaveBeenCalledWith("track-4");
     expect(setSelectedPlaylistId).toHaveBeenCalledWith(null);
     expect(setSelectedTrackId).toHaveBeenCalledWith(null);
+  });
+
+  it("builds executable guide action runners", () => {
+    const calls: string[] = [];
+    appRuntimeMock.resolveTrackArmState.mockReturnValue({
+      selectedPlaylistId: null,
+      selectedTrackId: "track-5",
+    });
+    appRuntimeMock.resolvePlaylistArmState.mockReturnValue({
+      selectedPlaylistId: "playlist-2",
+      selectedTrackId: "track-7",
+    });
+    appRuntimeMock.resolveSessionMonitorGuideState.mockReturnValue({
+      trackPath: "/music/prime.wav",
+      playlistPaths: null,
+    });
+
+    const runners = buildAppMonitorGuideActionRunners({
+      buildTrackArmInput: (trackId) => ({
+        trackId,
+        tracks: [],
+        setSelectedPlaylistId: (value) => calls.push(`playlist:${String(value)}`),
+        setSelectedTrackId: (value) => calls.push(`track:${String(value)}`),
+      }),
+      buildPlaylistArmInput: (playlistId) => ({
+        playlistId,
+        playlists: [],
+        tracks: [],
+        setSelectedPlaylistId: (value) => calls.push(`playlist:${String(value)}`),
+        setSelectedTrackId: (value) => calls.push(`track:${String(value)}`),
+      }),
+      buildSessionArmInput: (draft, armPlaylistBase, armTrackBase) => ({
+        draft,
+        armPlaylistBase,
+        armTrackBase,
+        setSelectedPlaylistId: (value) => calls.push(`playlist:${String(value)}`),
+        setSelectedTrackId: (value) => calls.push(`track:${String(value)}`),
+      }),
+      buildSessionGuideInput: (draft) => ({
+        draft,
+        playlists: [],
+        tracks: [],
+        setGuideTrack: (value) => calls.push(`guide:${String(value)}`),
+        setGuideTrackPlaylist: (value) => calls.push(`playlistGuide:${value.join(",")}`),
+      }),
+    });
+
+    runners.armTrackBase("track-5");
+    runners.armPlaylistBase("playlist-2");
+    runners.armSessionMusicalBase({ trackId: "track-5" });
+    runners.primeMonitorGuideTrack({ trackId: "track-5" });
+
+    expect(calls).toContain("track:track-5");
+    expect(calls).toContain("playlist:playlist-2");
+    expect(calls).toContain("guide:/music/prime.wav");
   });
 });
