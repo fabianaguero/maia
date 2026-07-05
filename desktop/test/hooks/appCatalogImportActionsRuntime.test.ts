@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   applyCatalogImportSuccess,
   buildBaseAssetImportNotice,
+  buildCatalogImportActionRunners,
   buildCatalogBaseAssetImportAction,
   buildCatalogCompositionImportAction,
   buildCatalogImportNavigation,
@@ -206,5 +207,63 @@ describe("appCatalogImportActionsRuntime", () => {
       en.appShell.compositionReadyTitle,
       expect.stringContaining("Composition A"),
     );
+  });
+
+  it("builds executable import runners", async () => {
+    const notify = vi.fn();
+    const setNewlyImportedId = vi.fn();
+    const setAnalysisMode = vi.fn();
+    const setScreen = vi.fn();
+    const runners = buildCatalogImportActionRunners({
+      t: en,
+      notify,
+      setNewlyImportedId,
+      setAnalysisMode,
+      setScreen,
+      library: {
+        importLibraryTrack: async () => ({ id: "track-1", tags: { title: "Track A" } }),
+      } as never,
+      repositories: {
+        importRepositorySource: async () => ({ id: "repo-1", title: "Repo A" }),
+      } as never,
+      baseAssets: {
+        importLibraryBaseAsset: async () => ({ id: "base-1", title: "Base A" }),
+      } as never,
+      compositions: {
+        importLibraryComposition: async () => ({ title: "Composition A" }),
+      } as never,
+    });
+
+    await expect(
+      runners.handleImportTrack({
+        sourcePath: "/music/track-a.wav",
+        label: "Track A",
+        musicStyleId: "house",
+      } as never),
+    ).resolves.toBe(true);
+    await expect(
+      runners.handleImportRepository({
+        sourcePath: "/repo-a",
+        label: "Repo A",
+        sourceKind: "file",
+      }),
+    ).resolves.toBe(true);
+    await expect(
+      runners.handleImportBaseAsset({
+        title: "Base A",
+        category: "drums",
+        sourcePath: "/base-a.wav",
+      } as never),
+    ).resolves.toBe(true);
+    await expect(
+      runners.handleImportComposition({
+        title: "Composition A",
+        sourcePath: "/comp-a.json",
+      } as never),
+    ).resolves.toBe(true);
+
+    expect(setNewlyImportedId).toHaveBeenCalledWith("track-1");
+    expect(setAnalysisMode).toHaveBeenCalled();
+    expect(setScreen).toHaveBeenCalledWith("inspect");
   });
 });

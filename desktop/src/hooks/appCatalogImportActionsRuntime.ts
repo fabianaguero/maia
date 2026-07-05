@@ -6,6 +6,11 @@ import {
   scheduleImportedHighlightReset,
 } from "./appCatalogActionsRuntime";
 import type { AppTranslations, UseAppCatalogActionsInput } from "./appCatalogActionsTypes";
+import type {
+  ImportBaseAssetInput,
+  ImportCompositionInput,
+  ImportTrackInput,
+} from "../types/library";
 
 interface CatalogImportNotice {
   tone: "success" | "error";
@@ -23,6 +28,25 @@ type CatalogLibrary = UseAppCatalogActionsInput["library"];
 type CatalogRepositories = UseAppCatalogActionsInput["repositories"];
 type CatalogBaseAssets = UseAppCatalogActionsInput["baseAssets"];
 type CatalogCompositions = UseAppCatalogActionsInput["compositions"];
+
+export interface CatalogImportActionRunners {
+  handleImportTrack: (input: ImportTrackInput) => Promise<boolean>;
+  handleImportRepository: (input: ImportRepositoryInput) => Promise<boolean>;
+  handleImportBaseAsset: (input: ImportBaseAssetInput) => Promise<boolean>;
+  handleImportComposition: (input: ImportCompositionInput) => Promise<boolean>;
+}
+
+export interface BuildCatalogImportActionRunnersInput {
+  t: AppTranslations;
+  notify: CatalogNotify;
+  setNewlyImportedId: (id: string | null) => void;
+  setAnalysisMode: (mode: "track" | "repo" | "base") => void;
+  setScreen: (screen: "inspect" | "compose") => void;
+  library: CatalogLibrary;
+  repositories: CatalogRepositories;
+  baseAssets: CatalogBaseAssets;
+  compositions: CatalogCompositions;
+}
 
 export function buildCatalogImportNavigation(
   analysisMode: "track" | "repo" | "base",
@@ -259,5 +283,60 @@ export function buildCatalogCompositionImportAction(input: {
       body: String(error),
     }),
     notify: input.notify,
+  };
+}
+
+export function buildCatalogImportActionRunners(
+  input: BuildCatalogImportActionRunnersInput,
+): CatalogImportActionRunners {
+  return {
+    handleImportTrack: async (importInput) =>
+      runCatalogImportAction(
+        buildCatalogTrackImportAction({
+          library: input.library,
+          importInput,
+          t: input.t,
+          notify: input.notify,
+          setNewlyImportedId: input.setNewlyImportedId,
+          setAnalysisMode: input.setAnalysisMode,
+          setScreen: input.setScreen,
+        }),
+      ),
+    handleImportRepository: async (importInput) =>
+      runCatalogImportAction(
+        buildCatalogRepositoryImportAction({
+          repositories: input.repositories,
+          importInput,
+          t: input.t,
+          notify: input.notify,
+          setNewlyImportedId: input.setNewlyImportedId,
+          setAnalysisMode: input.setAnalysisMode,
+          setScreen: input.setScreen,
+        }),
+      ),
+    handleImportBaseAsset: async (importInput) =>
+      runCatalogImportAction(
+        buildCatalogBaseAssetImportAction({
+          baseAssets: input.baseAssets,
+          importInput,
+          t: input.t,
+          notify: input.notify,
+          setNewlyImportedId: input.setNewlyImportedId,
+          setAnalysisMode: input.setAnalysisMode,
+          setScreen: input.setScreen,
+        }),
+      ),
+    handleImportComposition: async (importInput) =>
+      runCatalogImportAction(
+        buildCatalogCompositionImportAction({
+          compositions: input.compositions,
+          importInput,
+          t: input.t,
+          notify: input.notify,
+          setNewlyImportedId: input.setNewlyImportedId,
+          setAnalysisMode: input.setAnalysisMode,
+          setScreen: input.setScreen,
+        }),
+      ),
   };
 }

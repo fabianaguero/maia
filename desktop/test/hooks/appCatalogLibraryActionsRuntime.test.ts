@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  buildCatalogLibraryActionRunners,
   buildCatalogBooleanNoticeAction,
   buildCatalogNamedResultAction,
   buildCatalogPlaylistDeleteAction,
@@ -296,5 +297,51 @@ describe("appCatalogLibraryActionsRuntime", () => {
     expect(library.savePlaylist).toHaveBeenCalledWith({ name: "Night Set", trackIds: [] });
     expect(library.updateTrackPerformance).toHaveBeenCalledWith("track-4", { rating: 4 });
     expect(library.updateTrackAnalysis).toHaveBeenCalledWith("track-5", { bpm: 126 });
+  });
+
+  it("builds executable catalog library runners", async () => {
+    const notify = vi.fn();
+    const library = {
+      reanalyzeTrack: vi.fn(async () => ({ tags: { title: "Track A" } })),
+      relinkTrack: vi.fn(async () => ({ tags: { title: "Track B" } })),
+      relinkMissingTracksFromDirectory: vi.fn(async () => ({
+        relinkedTracks: [{ id: "track-1" }],
+        unresolvedTrackIds: [],
+      })),
+      deleteLibraryTrack: vi.fn(async () => true),
+      updateTrackPerformance: vi.fn(async () => ({ id: "track-1" })),
+      updateTrackAnalysis: vi.fn(async () => ({ id: "track-1" })),
+      savePlaylist: vi.fn(async () => ({ name: "Night Set" })),
+      deletePlaylist: vi.fn(async () => true),
+    };
+    const repositories = {
+      reanalyzeRepository: vi.fn(async () => ({ title: "Repo A" })),
+      deleteLibraryRepository: vi.fn(async () => true),
+    };
+    const runners = buildCatalogLibraryActionRunners({
+      t: en,
+      notify,
+      library: library as never,
+      repositories: repositories as never,
+    });
+
+    await expect(runners.handleReanalyzeTrack("track-1")).resolves.toBe(true);
+    await expect(runners.handleRelinkTrack("track-2")).resolves.toBe(true);
+    await expect(runners.handleRelinkMissingTracks()).resolves.toBe(true);
+    await expect(runners.handleReanalyzeRepository("repo-1")).resolves.toBe(true);
+    await expect(runners.handleDeleteTrack("track-3")).resolves.toBe(true);
+    await expect(runners.handleDeleteRepository("repo-2")).resolves.toBe(true);
+    await expect(runners.handleSavePlaylist({ name: "Night Set", trackIds: [] })).resolves.toBe(
+      true,
+    );
+    await expect(runners.handleDeletePlaylist("playlist-1")).resolves.toBe(true);
+    await expect(runners.handleUpdateTrackPerformance("track-4", { rating: 5 } as never)).resolves
+      .toBeUndefined();
+    await expect(runners.handleUpdateTrackAnalysis("track-5", { bpm: 126 } as never)).resolves
+      .toBeUndefined();
+
+    expect(library.reanalyzeTrack).toHaveBeenCalledWith("track-1");
+    expect(repositories.reanalyzeRepository).toHaveBeenCalledWith("repo-1");
+    expect(library.savePlaylist).toHaveBeenCalledWith({ name: "Night Set", trackIds: [] });
   });
 });

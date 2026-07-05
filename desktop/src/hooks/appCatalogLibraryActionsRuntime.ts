@@ -1,5 +1,10 @@
 import { buildRelinkMissingTracksNotice } from "./appCatalogActionsRuntime";
 import type { AppTranslations, UseAppCatalogActionsInput } from "./appCatalogActionsTypes";
+import type {
+  SaveBaseTrackPlaylistInput,
+  UpdateTrackAnalysisInput,
+  UpdateTrackPerformanceInput,
+} from "../types/library";
 
 interface CatalogNotice {
   tone: "success" | "error" | "info";
@@ -10,6 +15,29 @@ interface CatalogNotice {
 type CatalogNotify = (tone: "success" | "error" | "info", title: string, body: string) => void;
 type CatalogLibrary = UseAppCatalogActionsInput["library"];
 type CatalogRepositories = UseAppCatalogActionsInput["repositories"];
+
+export interface CatalogLibraryActionRunners {
+  handleReanalyzeTrack: (trackId: string) => Promise<boolean>;
+  handleRelinkTrack: (trackId: string) => Promise<boolean>;
+  handleRelinkMissingTracks: () => Promise<boolean>;
+  handleReanalyzeRepository: (repositoryId: string) => Promise<boolean>;
+  handleDeleteTrack: (trackId: string) => Promise<boolean>;
+  handleDeleteRepository: (repositoryId: string) => Promise<boolean>;
+  handleUpdateTrackPerformance: (
+    trackId: string,
+    input: UpdateTrackPerformanceInput,
+  ) => Promise<void>;
+  handleUpdateTrackAnalysis: (trackId: string, input: UpdateTrackAnalysisInput) => Promise<void>;
+  handleSavePlaylist: (input: SaveBaseTrackPlaylistInput) => Promise<boolean>;
+  handleDeletePlaylist: (playlistId: string) => Promise<boolean>;
+}
+
+export interface BuildCatalogLibraryActionRunnersInput {
+  t: AppTranslations;
+  notify: CatalogNotify;
+  library: CatalogLibrary;
+  repositories: CatalogRepositories;
+}
 
 interface RunCatalogResultActionInput<T> {
   task: () => Promise<T | null>;
@@ -352,4 +380,102 @@ export function buildCatalogPlaylistDeleteAction(input: {
     errorTitle: input.t.appShell.playlistDeleteFailedTitle,
     notify: input.notify,
   });
+}
+
+export function buildCatalogLibraryActionRunners(
+  input: BuildCatalogLibraryActionRunnersInput,
+): CatalogLibraryActionRunners {
+  return {
+    handleReanalyzeTrack: async (trackId) =>
+      runCatalogResultAction(
+        buildCatalogTrackReanalyzeAction({
+          library: input.library,
+          trackId,
+          t: input.t,
+          notify: input.notify,
+        }),
+      ),
+    handleRelinkTrack: async (trackId) =>
+      runCatalogResultAction(
+        buildCatalogTrackRelinkAction({
+          library: input.library,
+          trackId,
+          t: input.t,
+          notify: input.notify,
+        }),
+      ),
+    handleRelinkMissingTracks: async () =>
+      runCatalogResultAction(
+        buildCatalogRelinkMissingTracksAction({
+          library: input.library,
+          t: input.t,
+          notify: input.notify,
+        }),
+      ),
+    handleReanalyzeRepository: async (repositoryId) =>
+      runCatalogResultAction(
+        buildCatalogRepositoryReanalyzeAction({
+          repositories: input.repositories,
+          repositoryId,
+          t: input.t,
+          notify: input.notify,
+        }),
+      ),
+    handleDeleteTrack: async (trackId) =>
+      runCatalogBooleanAction(
+        buildCatalogTrackDeleteAction({
+          library: input.library,
+          trackId,
+          t: input.t,
+          notify: input.notify,
+        }),
+      ),
+    handleDeleteRepository: async (repositoryId) =>
+      runCatalogBooleanAction(
+        buildCatalogRepositoryDeleteAction({
+          repositories: input.repositories,
+          repositoryId,
+          t: input.t,
+          notify: input.notify,
+        }),
+      ),
+    handleUpdateTrackPerformance: async (trackId, performanceInput) =>
+      runCatalogUpdateAction(
+        buildCatalogTrackPerformanceUpdateAction({
+          library: input.library,
+          trackId,
+          performanceInput,
+          t: input.t,
+          notify: input.notify,
+        }),
+      ),
+    handleUpdateTrackAnalysis: async (trackId, analysisInput) =>
+      runCatalogUpdateAction(
+        buildCatalogTrackAnalysisUpdateAction({
+          library: input.library,
+          trackId,
+          analysisInput,
+          t: input.t,
+          notify: input.notify,
+        }),
+      ),
+    handleSavePlaylist: async (playlistInput) =>
+      runCatalogResultAction(
+        buildCatalogPlaylistSaveAction({
+          library: input.library,
+          playlistInput,
+          t: input.t,
+          notify: input.notify,
+        }),
+      ),
+    handleDeletePlaylist: async (playlistId) =>
+      runCatalogBooleanAction(
+        buildCatalogPlaylistDeleteAction({
+          library: input.library,
+          playlistId,
+          t: input.t,
+          notify: input.notify,
+        }),
+      ),
+  };
 }
