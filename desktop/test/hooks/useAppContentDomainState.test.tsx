@@ -1,12 +1,16 @@
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import {
+  buildAppContentDomainStateValue,
+  resolveAppContentTranslations,
+} from "../../src/hooks/appContentDomainStateRuntime";
 import { useAppContentDomainState } from "../../src/hooks/useAppContentDomainState";
 import { en } from "../../src/i18n/en";
 import { es } from "../../src/i18n/es";
 
 const state = vi.hoisted(() => ({
-  userMode: "basic",
+  userMode: "simple" as const,
   isTransitioning: false,
   manifest: { version: "1.0.0" },
   health: { status: "ok" },
@@ -67,10 +71,13 @@ vi.mock("../../src/hooks/useSessions", () => ({
 describe("useAppContentDomainState", () => {
   it("composes the domain state and resolves english copy by default", () => {
     state.shellState.lang = "en";
+    const domainState = buildAppContentDomainStateValue(state as never);
 
     const { result } = renderHook(() => useAppContentDomainState());
 
-    expect(result.current.userMode).toBe("basic");
+    expect(resolveAppContentTranslations("en")).toBe(en);
+    expect(domainState.t).toBe(en);
+    expect(result.current.userMode).toBe("simple");
     expect(result.current.isTransitioning).toBe(false);
     expect(result.current.manifest).toBe(state.manifest);
     expect(result.current.health).toBe(state.health);
@@ -87,9 +94,12 @@ describe("useAppContentDomainState", () => {
 
   it("switches to spanish copy when the shell language is es", () => {
     state.shellState.lang = "es";
+    const domainState = buildAppContentDomainStateValue(state as never);
 
     const { result } = renderHook(() => useAppContentDomainState());
 
+    expect(resolveAppContentTranslations("es")).toBe(es);
+    expect(domainState.t).toBe(es);
     expect(result.current.t).toBe(es);
   });
 });

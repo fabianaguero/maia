@@ -1,11 +1,11 @@
 import type { useNotify } from "../components/NotificationSystem";
 import type { useAppCatalogActions } from "./useAppCatalogActions";
-import type { useAppContentDomainState } from "./useAppContentDomainState";
 import type { useAppContentNavigationActions } from "./useAppContentNavigationActions";
 import type { useAppMonitorActions } from "./useAppMonitorActions";
 import type { useAppSelectionActions } from "./useAppSelectionActions";
+import type { AppContentDomainStateValue } from "./appContentDomainStateRuntime";
 
-export type AppContentDomainState = ReturnType<typeof useAppContentDomainState>;
+export type AppContentDomainState = AppContentDomainStateValue;
 
 export interface AppContentActionBundles {
   notify: ReturnType<typeof useNotify>["notify"];

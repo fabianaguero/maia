@@ -9,6 +9,7 @@ vi.mock("../../src/hooks/useAppContentSessionEffects", () => ({
   useAppContentSessionEffects: mocks.useSessionScreenEffects,
 }));
 
+import { buildAppContentDerivedStateValue } from "../../src/hooks/appContentDerivedStateRuntime";
 import { useAppContentDerivedState } from "../../src/hooks/useAppContentDerivedState";
 
 function createDomainState() {
@@ -81,13 +82,15 @@ function createDomainState() {
 describe("useAppContentDerivedState", () => {
   it("derives route, status, mutation state, and session effects input", () => {
     const domainState = createDomainState();
+    const derivedState = buildAppContentDerivedStateValue(domainState as never);
 
     const { result } = renderHook(() => useAppContentDerivedState(domainState));
 
-    expect(mocks.useSessionScreenEffects).toHaveBeenCalledWith({
+    expect(derivedState.sessionEffectsInput).toEqual({
       screen: "library",
       refreshSessionBookmarks: domainState.sessions.refreshBookmarks,
     });
+    expect(mocks.useSessionScreenEffects).toHaveBeenCalledWith(derivedState.sessionEffectsInput);
     expect(result.current).toEqual({
       effectivePillar: "curate",
       effectiveScreen: "library",

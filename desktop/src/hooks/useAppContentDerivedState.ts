@@ -1,47 +1,20 @@
-import {
-  buildAppContentStatusViewModel,
-  resolveAppContentRouteState,
-  resolveAppMutationState,
-} from "../appContentRuntime";
 import { useAppContentSessionEffects } from "../hooks/useAppContentSessionEffects";
 import type { AppContentDomainState } from "./appContentControllerTypes";
-import {
-  buildAppContentMutationInput,
-  buildAppContentSessionEffectsInput,
-  buildAppContentStatusInput,
-} from "./appContentControllerRuntime";
+import { buildAppContentDerivedStateValue } from "./appContentDerivedStateRuntime";
 
 export function useAppContentDerivedState(domainState: AppContentDomainState) {
-  const {
-    userMode,
-    shellState: { screen, pillar },
-    t,
-  } = domainState;
+  const derivedState = buildAppContentDerivedStateValue(domainState);
 
-  const { effectivePillar, effectiveScreen } = resolveAppContentRouteState(
-    userMode,
-    pillar,
-    screen,
-  );
-
-  useAppContentSessionEffects(buildAppContentSessionEffectsInput(domainState));
-
-  const { analyzerLabel, detailDeckLabel, screenLabel, selectedItemTitle } =
-    buildAppContentStatusViewModel(buildAppContentStatusInput(domainState), t);
-
-  const { isMutating, mutateLabel } = resolveAppMutationState(
-    buildAppContentMutationInput(domainState),
-    t,
-  );
+  useAppContentSessionEffects(derivedState.sessionEffectsInput);
 
   return {
-    effectivePillar,
-    effectiveScreen,
-    analyzerLabel,
-    detailDeckLabel,
-    screenLabel,
-    selectedItemTitle,
-    isMutating,
-    mutateLabel,
+    effectivePillar: derivedState.effectivePillar,
+    effectiveScreen: derivedState.effectiveScreen,
+    analyzerLabel: derivedState.analyzerLabel,
+    detailDeckLabel: derivedState.detailDeckLabel,
+    screenLabel: derivedState.screenLabel,
+    selectedItemTitle: derivedState.selectedItemTitle,
+    isMutating: derivedState.isMutating,
+    mutateLabel: derivedState.mutateLabel,
   };
 }
