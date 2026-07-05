@@ -42,7 +42,6 @@ export function buildLiveLogMonitorSurfaceInitialState(
     basePlaylist: repoResetState.basePlaylist,
     sceneBaseAssetId: repoResetState.sceneBaseAssetId,
     sceneCompositionId: repoResetState.sceneCompositionId,
-    previousAudibleVolume:
-      repoResetState.masterVolume > 0 ? repoResetState.masterVolume : 0.45,
+    previousAudibleVolume: repoResetState.masterVolume > 0 ? repoResetState.masterVolume : 0.45,
   };
 }

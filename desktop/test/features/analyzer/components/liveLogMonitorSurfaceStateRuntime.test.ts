@@ -4,12 +4,9 @@ import { buildLiveLogMonitorSurfaceInitialState } from "../../../../src/features
 
 const buildRepoResetMonitorStateMock = vi.fn();
 
-vi.mock(
-  "../../../../src/features/analyzer/components/liveLogMonitorPreferencesRuntime",
-  () => ({
-    buildRepoResetMonitorState: (...args: unknown[]) => buildRepoResetMonitorStateMock(...args),
-  }),
-);
+vi.mock("../../../../src/features/analyzer/components/liveLogMonitorPreferencesRuntime", () => ({
+  buildRepoResetMonitorState: (...args: unknown[]) => buildRepoResetMonitorStateMock(...args),
+}));
 
 describe("liveLogMonitorSurfaceStateRuntime", () => {
   it("maps repo reset defaults into the surface initial state", () => {
