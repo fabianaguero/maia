@@ -46,6 +46,7 @@ describe("useLiveLogMonitorSurfaceState", () => {
 
     const { result } = renderHook(() => useLiveLogMonitorSurfaceState(createInput()));
 
+    expect(loadMonitorPrefsMock).toHaveBeenCalledTimes(1);
     expect(loadMonitorPrefsMock).toHaveBeenCalledWith("repo-1");
     expect(result.current.masterVolume).toBe(0.61);
     expect(result.current.selectedStyleProfileId).toBe("style-x");

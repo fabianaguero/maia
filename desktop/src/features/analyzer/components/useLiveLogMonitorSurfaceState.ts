@@ -11,18 +11,13 @@ import type {
 } from "../../../types/library";
 import type { PlaylistTransitionPlan } from "../../../utils/playlistTransition";
 import type { LiveMutationExplanation } from "../../../utils/liveMutationExplainability";
-import { createBasePlaylist, loadMonitorPrefs } from "../../../utils/monitorPrefs";
+import { loadMonitorPrefs } from "../../../utils/monitorPrefs";
 import type { AudioEngineStatus, ForcedLiveMutationState } from "./liveLogMonitorViewModel";
-import { preferredBaseAssetId, preferredCompositionId } from "./liveLogMonitorViewModel";
 import type { ArrangementVoice, ComponentOverride, RoutedLiveCue } from "./liveSonificationScene";
-import type { BeatClock, BeatLooperState } from "./liveLogMonitorBeatRuntime";
 import type { LiveMutationState } from "./liveLogMonitorAudioRuntime";
-import type { BackgroundDeckState } from "./liveLogMonitorBackgroundDeckRuntime";
 import type { SyncTailRow } from "./liveLogMonitorPanelRuntime";
-import {
-  DEFAULT_MUTATION_PROFILE_ID,
-  DEFAULT_STYLE_PROFILE_ID,
-} from "../../../config/liveProfiles";
+import { useLiveLogMonitorSurfaceRefs } from "./useLiveLogMonitorSurfaceRefs";
+import { buildLiveLogMonitorSurfaceInitialState } from "./liveLogMonitorSurfaceStateRuntime";
 
 export type LiveLogMonitorSampleStatus = "unavailable" | "loading" | "ready" | "error";
 
@@ -35,41 +30,56 @@ export interface UseLiveLogMonitorSurfaceStateInput {
 }
 
 export function useLiveLogMonitorSurfaceState(input: UseLiveLogMonitorSurfaceStateInput) {
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const usingSharedAudioContextRef = useRef(false);
-  const masterGainRef = useRef<GainNode | null>(null);
-  const backgroundGainRef = useRef<GainNode | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const backgroundDryGainRef = useRef<GainNode | null>(null);
-  const backgroundDriveWetGainRef = useRef<GainNode | null>(null);
-  const backgroundDriveNodeRef = useRef<WaveShaperNode | null>(null);
-  const sampleBuffersRef = useRef(new Map<string, AudioBuffer>());
-  const [masterVolume, setMasterVolume] = useState(
-    () => loadMonitorPrefs(input.repository.id)?.masterVolume ?? 0.45,
+  const initialStateRef = useRef<ReturnType<typeof buildLiveLogMonitorSurfaceInitialState> | null>(
+    null,
   );
+  if (initialStateRef.current === null) {
+    initialStateRef.current = buildLiveLogMonitorSurfaceInitialState({
+      availableBaseAssets: input.availableBaseAssets,
+      availableCompositions: input.availableCompositions,
+      preferredBaseAssetId: input.preferredBaseAssetId,
+      preferredCompositionId: input.preferredCompositionId,
+      prefs: loadMonitorPrefs(input.repository.id),
+    });
+  }
+
+  const initialState = initialStateRef.current;
+  const {
+    audioContextRef,
+    usingSharedAudioContextRef,
+    masterGainRef,
+    backgroundGainRef,
+    analyserRef,
+    backgroundDryGainRef,
+    backgroundDriveWetGainRef,
+    backgroundDriveNodeRef,
+    sampleBuffersRef,
+    beatClockRef,
+    beatLooperRef,
+    backgroundDeckRef,
+    panelAudioProbePlayedRef,
+    backgroundTransitionTimerRef,
+    backgroundBufferCacheRef,
+    filterNodeRef,
+    bounceCuesRef,
+    knownComponentsRef,
+    syncTailListRef,
+    previousAudibleVolumeRef,
+  } = useLiveLogMonitorSurfaceRefs(initialState.masterVolume);
+  const [masterVolume, setMasterVolume] = useState(initialState.masterVolume);
   const [adapterKind, setAdapterKind] = useState<StreamAdapterKind>("file");
   const [selectedStyleProfileId, setSelectedStyleProfileId] = useState(
-    () => loadMonitorPrefs(input.repository.id)?.selectedStyleProfileId ?? DEFAULT_STYLE_PROFILE_ID,
+    initialState.selectedStyleProfileId,
   );
   const [selectedMutationProfileId, setSelectedMutationProfileId] = useState(
-    () =>
-      loadMonitorPrefs(input.repository.id)?.selectedMutationProfileId ??
-      DEFAULT_MUTATION_PROFILE_ID,
+    initialState.selectedMutationProfileId,
   );
   const [basePlaylist, setBasePlaylist] = useState<BaseTrackPlaylist | null>(
-    () => loadMonitorPrefs(input.repository.id)?.basePlaylist ?? createBasePlaylist([]),
+    initialState.basePlaylist,
   );
   const [pendingAddTrackId, setPendingAddTrackId] = useState("");
   const [pendingLoadPlaylistId, setPendingLoadPlaylistId] = useState("");
-  const beatClockRef = useRef<BeatClock | null>(null);
-  const beatLooperRef = useRef<BeatLooperState | null>(null);
-  const backgroundDeckRef = useRef<BackgroundDeckState | null>(null);
-  const panelAudioProbePlayedRef = useRef(false);
-  const backgroundTransitionTimerRef = useRef<number | null>(null);
-  const backgroundBufferCacheRef = useRef(new Map<string, Promise<AudioBuffer>>());
-  const filterNodeRef = useRef<BiquadFilterNode | null>(null);
   const [beatClockBpm, setBeatClockBpm] = useState<number | null>(null);
-  const bounceCuesRef = useRef<RoutedLiveCue[][]>([]);
   const [bounceWindowCount, setBounceWindowCount] = useState(0);
   const [beatLooperActive, setBeatLooperActive] = useState(false);
   const [backgroundNowPlayingId, setBackgroundNowPlayingId] = useState<string | null>(null);
@@ -78,17 +88,12 @@ export function useLiveLogMonitorSurfaceState(input: UseLiveLogMonitorSurfaceSta
   const [liveMutationState, setLiveMutationState] = useState<LiveMutationState>("normal");
   const [forcedLiveMutationState, setForcedLiveMutationState] =
     useState<ForcedLiveMutationState>("auto");
-  const knownComponentsRef = useRef<string[]>([]);
   const [knownComponents, setKnownComponents] = useState<string[]>([]);
   const [componentOverrides, setComponentOverrides] = useState<Map<string, ComponentOverride>>(
     () => new Map(),
   );
-  const [sceneBaseAssetId, setSceneBaseAssetId] = useState(
-    preferredBaseAssetId(input.availableBaseAssets, input.preferredBaseAssetId) ?? "",
-  );
-  const [sceneCompositionId, setSceneCompositionId] = useState(
-    preferredCompositionId(input.availableCompositions, input.preferredCompositionId) ?? "",
-  );
+  const [sceneBaseAssetId, setSceneBaseAssetId] = useState(initialState.sceneBaseAssetId);
+  const [sceneCompositionId, setSceneCompositionId] = useState(initialState.sceneCompositionId);
   const [audioStatus, setAudioStatus] = useState<AudioEngineStatus>("idle");
   const [sampleStatus, setSampleStatus] = useState<LiveLogMonitorSampleStatus>("unavailable");
   const [lastUpdate, setLastUpdate] = useState<LiveLogStreamUpdate | null>(null);
@@ -107,8 +112,6 @@ export function useLiveLogMonitorSurfaceState(input: UseLiveLogMonitorSurfaceSta
   const [expanded, setExpanded] = useState(false);
   const [syncTailRows, setSyncTailRows] = useState<SyncTailRow[]>([]);
   const [activeTailWindowId, setActiveTailWindowId] = useState<string | null>(null);
-  const syncTailListRef = useRef<HTMLDivElement | null>(null);
-  const previousAudibleVolumeRef = useRef(masterVolume > 0 ? masterVolume : 0.45);
 
   return {
     audioContextRef,
@@ -134,16 +137,8 @@ export function useLiveLogMonitorSurfaceState(input: UseLiveLogMonitorSurfaceSta
     setPendingAddTrackId,
     pendingLoadPlaylistId,
     setPendingLoadPlaylistId,
-    beatClockRef,
-    beatLooperRef,
-    backgroundDeckRef,
-    panelAudioProbePlayedRef,
-    backgroundTransitionTimerRef,
-    backgroundBufferCacheRef,
-    filterNodeRef,
     beatClockBpm,
     setBeatClockBpm,
-    bounceCuesRef,
     bounceWindowCount,
     setBounceWindowCount,
     beatLooperActive,
@@ -156,7 +151,6 @@ export function useLiveLogMonitorSurfaceState(input: UseLiveLogMonitorSurfaceSta
     setLiveMutationState,
     forcedLiveMutationState,
     setForcedLiveMutationState,
-    knownComponentsRef,
     knownComponents,
     setKnownComponents,
     componentOverrides,
@@ -201,6 +195,15 @@ export function useLiveLogMonitorSurfaceState(input: UseLiveLogMonitorSurfaceSta
     setSyncTailRows,
     activeTailWindowId,
     setActiveTailWindowId,
+    beatClockRef,
+    beatLooperRef,
+    backgroundDeckRef,
+    panelAudioProbePlayedRef,
+    backgroundTransitionTimerRef,
+    backgroundBufferCacheRef,
+    filterNodeRef,
+    bounceCuesRef,
+    knownComponentsRef,
     syncTailListRef,
     previousAudibleVolumeRef,
   };
