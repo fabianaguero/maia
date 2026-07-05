@@ -54,14 +54,7 @@ export function useMonitorProviderPollTransportCallbacks(
         doPoll,
       }),
     );
-  }, [
-    emitUpdate,
-    live,
-    logger,
-    schedulePoll,
-    session,
-    transport,
-  ]);
+  }, [emitUpdate, live, logger, schedulePoll, session, transport]);
 
   return {
     emitUpdate,

@@ -1,9 +1,11 @@
 import type { BuildSessionScreenViewModelInput } from "./sessionScreenViewModelTypes";
+import { buildSessionScreenBoothInteractions } from "./sessionScreenInteractionRuntime";
 
 export function buildSessionScreenBoothProps(
   input: Pick<BuildSessionScreenViewModelInput, "mutating" | "onStopSession" | "controller">,
 ) {
   const { controller } = input;
+  const interactions = buildSessionScreenBoothInteractions(input);
 
   return {
     booth: controller.booth,
@@ -13,32 +15,19 @@ export function buildSessionScreenBoothProps(
     readyToRun: controller.readyToRun,
     mode: controller.mode,
     latestUpdate: controller.latestUpdate,
-    monitorSessionId: controller.monitor.session?.sessionId ?? null,
+    monitorSessionId: interactions.monitorSessionId,
     isPlaybackPaused: controller.monitor.isPlaybackPaused,
     directPath: controller.directPath,
     isDirectLoading: controller.isDirectLoading,
     selectedSession: controller.selectedSession,
     creating: controller.creating,
-    onDirectPathChange: controller.setDirectPath,
-    onDirectLaunch: controller.handleDirectLaunch,
-    onResumeSelected: () => {
-      if (controller.selectedSession) {
-        void controller.handleResumeSession(controller.selectedSession.id);
-      }
-    },
-    onReplaySelected: async () => {
-      if (controller.selectedSession) {
-        await controller.handlePlaybackSession(controller.selectedSession);
-      }
-    },
-    onCreateSession: controller.handleCreateSession,
-    onStepPlaybackWindow: (direction: 1 | -1) => controller.monitor.stepPlaybackWindow(direction),
-    onToggleReplayPlayback: () =>
-      controller.monitor.isPlaybackPaused
-        ? controller.monitor.resumePlayback()
-        : controller.monitor.pausePlayback(),
-    onStopSession: () => {
-      void input.onStopSession();
-    },
+    onDirectPathChange: interactions.onDirectPathChange,
+    onDirectLaunch: interactions.onDirectLaunch,
+    onResumeSelected: interactions.onResumeSelected,
+    onReplaySelected: interactions.onReplaySelected,
+    onCreateSession: interactions.onCreateSession,
+    onStepPlaybackWindow: interactions.onStepPlaybackWindow,
+    onToggleReplayPlayback: interactions.onToggleReplayPlayback,
+    onStopSession: interactions.onStopSession,
   };
 }

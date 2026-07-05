@@ -7,10 +7,7 @@ import type { AppContentActionBundles, AppContentDomainState } from "./appConten
 
 type NotifyFn = ReturnType<typeof useNotify>["notify"];
 
-export function buildAppContentMonitorActionsInput(
-  input: AppContentDomainState,
-  notify: NotifyFn,
-) {
+export function buildAppContentMonitorActionsInput(input: AppContentDomainState, notify: NotifyFn) {
   return {
     t: input.t,
     library: input.library,
@@ -24,10 +21,7 @@ export function buildAppContentMonitorActionsInput(
   };
 }
 
-export function buildAppContentCatalogActionsInput(
-  input: AppContentDomainState,
-  notify: NotifyFn,
-) {
+export function buildAppContentCatalogActionsInput(input: AppContentDomainState, notify: NotifyFn) {
   return {
     t: input.t,
     notify,

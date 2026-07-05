@@ -33,7 +33,9 @@ export function buildSimpleMonitorScreenControllerState(
 export function buildSimpleMonitorScreenControllerCollections(
   input: Pick<SimpleMonitorScreenStateInput, "pastSessions" | "repositories" | "tracks">,
 ) {
-  return buildSimpleMonitorCollectionsState(buildSimpleMonitorScreenControllerCollectionsInput(input));
+  return buildSimpleMonitorCollectionsState(
+    buildSimpleMonitorScreenControllerCollectionsInput(input),
+  );
 }
 
 export function buildSimpleMonitorScreenControllerSlicesInput(input: {

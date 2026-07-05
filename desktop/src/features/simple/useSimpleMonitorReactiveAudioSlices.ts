@@ -72,7 +72,10 @@ export function useSimpleMonitorReactiveAudioSlices({
   });
 
   const applyTrackMutation = useEffectEvent(
-    (update: MonitorTrackMutationInput, backgroundAudioRef: { current: HTMLAudioElement | null }) => {
+    (
+      update: MonitorTrackMutationInput,
+      backgroundAudioRef: { current: HTMLAudioElement | null },
+    ) => {
       const result = applySimpleMonitorTrackMutationRefState({
         update,
         graph: backgroundGraphRef.current,

@@ -16,11 +16,8 @@ import {
   resolveSessionScreenControllerSlicesTemplateSelection,
 } from "./sessionScreenControllerSlicesRuntime";
 import {
-  pickSessionScreenControllerSlicesActionLocalState,
-  pickSessionScreenControllerSlicesBoothLocalState,
-  pickSessionScreenControllerSlicesDerivedLocalState,
-  pickSessionScreenControllerSlicesEffectsLocalState,
-  resolveSessionScreenControllerTemplateMeta,
+  buildSessionScreenControllerSlicesLocalState,
+  buildSessionScreenControllerTemplateState,
 } from "./sessionScreenControllerSlicesStateRuntime";
 
 type SessionScreenLocalState = ReturnType<typeof useSessionScreenLocalState>;
@@ -39,10 +36,8 @@ export function useSessionScreenControllerSlices({
   monitorSnapshot,
   localState,
 }: UseSessionScreenControllerSlicesInput) {
-  const actionLocalState = pickSessionScreenControllerSlicesActionLocalState(localState);
-  const derivedLocalState = pickSessionScreenControllerSlicesDerivedLocalState(localState);
-  const effectsLocalState = pickSessionScreenControllerSlicesEffectsLocalState(localState);
-  const boothLocalState = pickSessionScreenControllerSlicesBoothLocalState(localState);
+  const { actionLocalState, derivedLocalState, effectsLocalState, boothLocalState } =
+    buildSessionScreenControllerSlicesLocalState(localState);
 
   const actions = useSessionScreenActions(
     buildSessionScreenControllerSlicesActionsInput({
@@ -52,16 +47,16 @@ export function useSessionScreenControllerSlices({
     }),
   );
 
-  const { selectedTemplate, selectedTemplatePresentation } =
-    resolveSessionScreenControllerSlicesTemplateSelection({
-      selectedTemplateId: localState.selectedTemplateId,
-      t,
-    });
-  const { selectedTemplateGenre, selectedTemplateLabel } =
-    resolveSessionScreenControllerTemplateMeta({
-      selectedTemplate,
-      selectedTemplatePresentation,
-    });
+  const {
+    selectedTemplate,
+    selectedTemplatePresentation,
+    selectedTemplateGenre,
+    selectedTemplateLabel,
+  } = buildSessionScreenControllerTemplateState({
+    selectedTemplateId: localState.selectedTemplateId,
+    t,
+    resolveTemplateSelection: resolveSessionScreenControllerSlicesTemplateSelection,
+  });
 
   const derivedState = useMemo(
     () =>
@@ -73,14 +68,7 @@ export function useSessionScreenControllerSlices({
         selectedTemplateGenre,
         selectedTemplateLabel,
       }),
-    [
-      input,
-      monitorSnapshot,
-      derivedLocalState,
-      t,
-      selectedTemplateGenre,
-      selectedTemplateLabel,
-    ],
+    [input, monitorSnapshot, derivedLocalState, t, selectedTemplateGenre, selectedTemplateLabel],
   );
 
   useSessionScreenEffects(

@@ -126,7 +126,7 @@ describe("simpleMonitorScreenControllerHookRuntime", () => {
         safeTracks: input.tracks,
         isLaunchingMonitor: true,
         t: en,
-        }),
+      }),
     );
   });
 

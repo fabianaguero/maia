@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { en } from "../../../src/i18n/en";
 import {
+  buildSessionSavedSessionCardSections,
   buildSessionSavedSessionCardMetrics,
   resolveSessionSavedSessionCardActions,
   resolveSessionSavedSessionCardMeta,
@@ -63,5 +64,29 @@ describe("sessionSavedSessionCardRuntime", () => {
     expect(actions.showPlaybackAction).toBe(true);
     expect(actions.showResumeAction).toBe(true);
     expect(actions.deleteDisabled).toBe(false);
+  });
+
+  it("builds card sections from the saved session contract", () => {
+    const sections = buildSessionSavedSessionCardSections({
+      t: en,
+      session,
+      selected: true,
+      active: false,
+      playbackActive: false,
+      mutating: false,
+      bookmarks: [{ id: 1 }] as never,
+      liveWindowCount: 5,
+      liveProcessedLines: 50,
+      liveTotalAnomalies: 4,
+      onSelectSession: () => undefined,
+      onResumeSession: () => undefined,
+      onPlaybackSession: () => undefined,
+      onDeleteSession: () => undefined,
+    });
+
+    expect(sections.headerProps.title).toBe("Night watch");
+    expect(sections.metricsProps.anomaliesValue).toBe(2);
+    expect(sections.actionsProps.showResumeAction).toBe(true);
+    expect(sections.updatedAtLabel).toBeTruthy();
   });
 });

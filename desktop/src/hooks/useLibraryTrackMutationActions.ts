@@ -49,7 +49,8 @@ export function useLibraryTrackMutationActions({
   async function importLibraryTrack(input: ImportTrackInput): Promise<LibraryTrack | null> {
     return runLibraryTrackMutation({
       state: mutationState,
-      task: () => importLibraryTrackWithBackgroundAnalysis({ state: mutationState, importInput: input }),
+      task: () =>
+        importLibraryTrackWithBackgroundAnalysis({ state: mutationState, importInput: input }),
       onSuccess: (nextTrack) => {
         if (nextTrack) {
           commitImportedTrack(mutationState, nextTrack);

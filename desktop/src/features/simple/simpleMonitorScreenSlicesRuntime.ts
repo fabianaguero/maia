@@ -1,8 +1,4 @@
-import type {
-  Dispatch,
-  SetStateAction,
-  UIEvent as ReactUIEvent,
-} from "react";
+import type { Dispatch, SetStateAction, UIEvent as ReactUIEvent } from "react";
 import type { MonitorLaunchSource } from "../../types/monitorLaunch";
 import type { MonitorSourceFilter } from "./monitorSourceOptions";
 import type { MonitorLogLine } from "./monitorLogParsing";
@@ -53,8 +49,7 @@ export interface SimpleMonitorDeckRuntimeSlice {
   handleOverviewPointerDown: BuildSimpleMonitorDeckHookStateArgs["handleOverviewPointerDown"];
   handleOverviewClick: BuildSimpleMonitorDeckHookStateArgs["handleOverviewClick"];
   handleOverviewAnomalyClick: BuildSimpleMonitorDeckHookStateArgs["handleOverviewAnomalyClick"];
-  handleOverviewAnomalyPointerDown:
-    BuildSimpleMonitorDeckHookStateArgs["handleOverviewAnomalyPointerDown"];
+  handleOverviewAnomalyPointerDown: BuildSimpleMonitorDeckHookStateArgs["handleOverviewAnomalyPointerDown"];
   selectedDeckMarker: BuildSimpleMonitorDeckHookStateArgs["selectedDeckMarker"];
   deckTimelineMarkers: BuildSimpleMonitorDeckHookStateArgs["deckTimelineMarkers"];
   deckBeatMarkers: BuildSimpleMonitorDeckHookStateArgs["deckBeatMarkers"];

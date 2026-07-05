@@ -28,8 +28,7 @@ export function resolveSimpleMonitorTrackLabel(input: {
   tracks: LibraryTrack[];
   t: AppTranslations;
 }): string {
-  const selectedTrack =
-    input.tracks.find((track) => track.id === input.selectedSoundId) ?? null;
+  const selectedTrack = input.tracks.find((track) => track.id === input.selectedSoundId) ?? null;
 
   return (
     input.trackName ||

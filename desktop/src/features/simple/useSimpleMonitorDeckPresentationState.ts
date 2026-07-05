@@ -1,8 +1,6 @@
 import { useSimpleMonitorDeckVisualState } from "./useSimpleMonitorDeckVisualState";
 import { useSimpleMonitorLiveTail } from "./useSimpleMonitorLiveTail";
-import {
-  buildSimpleMonitorDeckPresentationVisualHookArgs,
-} from "./simpleMonitorDeckPresentationHookRuntime";
+import { buildSimpleMonitorDeckPresentationVisualHookArgs } from "./simpleMonitorDeckPresentationHookRuntime";
 import {
   buildSimpleMonitorDeckVisualHookInput,
   buildSimpleMonitorLiveTailHookInput,

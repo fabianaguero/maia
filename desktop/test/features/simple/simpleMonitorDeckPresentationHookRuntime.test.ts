@@ -1,8 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  buildSimpleMonitorDeckPresentationVisualHookArgs,
-} from "../../../src/features/simple/simpleMonitorDeckPresentationHookRuntime";
+import { buildSimpleMonitorDeckPresentationVisualHookArgs } from "../../../src/features/simple/simpleMonitorDeckPresentationHookRuntime";
 import type { UseSimpleMonitorDeckPresentationStateInput } from "../../../src/features/simple/simpleMonitorDeckPresentationTypes";
 
 function createInput(): UseSimpleMonitorDeckPresentationStateInput {

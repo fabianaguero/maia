@@ -192,8 +192,11 @@ export async function relinkLibraryTrack(input: {
 export async function relinkMissingLibraryTracksFromDirectory(input: {
   tracks: LibraryTrack[];
 }): Promise<RelinkMissingTracksResult | null> {
-  const firstMissingTrack = input.tracks.find((track) => track.file.availabilityState === "missing") ?? null;
-  const pickedDirectory = await pickTrackSourceDirectory(firstMissingTrack?.file.sourcePath ?? undefined);
+  const firstMissingTrack =
+    input.tracks.find((track) => track.file.availabilityState === "missing") ?? null;
+  const pickedDirectory = await pickTrackSourceDirectory(
+    firstMissingTrack?.file.sourcePath ?? undefined,
+  );
   if (!pickedDirectory) {
     return null;
   }

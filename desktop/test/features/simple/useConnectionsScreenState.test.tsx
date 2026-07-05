@@ -25,15 +25,18 @@ vi.mock("../../../src/api/repositories", () => ({
 }));
 
 vi.mock("../../../src/features/simple/useConnectionsFormController", () => ({
-  useConnectionsFormController: (input: unknown) => controllerHooks.useConnectionsFormController(input),
+  useConnectionsFormController: (input: unknown) =>
+    controllerHooks.useConnectionsFormController(input),
 }));
 
 vi.mock("../../../src/features/simple/useConnectionTailController", () => ({
-  useConnectionTailController: (input: unknown) => controllerHooks.useConnectionTailController(input),
+  useConnectionTailController: (input: unknown) =>
+    controllerHooks.useConnectionTailController(input),
 }));
 
 vi.mock("../../../src/features/simple/useConnectionTestController", () => ({
-  useConnectionTestController: (input: unknown) => controllerHooks.useConnectionTestController(input),
+  useConnectionTestController: (input: unknown) =>
+    controllerHooks.useConnectionTestController(input),
 }));
 
 function createConnection(overrides: Partial<LogSourceConnection> = {}): LogSourceConnection {

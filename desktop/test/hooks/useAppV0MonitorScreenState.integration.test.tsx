@@ -7,9 +7,14 @@ import type { MonitorLaunchSource } from "../../src/types/monitorLaunch";
 import type { StreamSessionRecord } from "../../src/types/monitor";
 
 const repositoriesApiMock = vi.hoisted(() => ({
-  startLogSourceConnection: vi.fn<
-    (input: { connectionId: string; sessionId: string; startFromBeginning?: boolean }) => Promise<StreamSessionRecord>
-  >(),
+  startLogSourceConnection:
+    vi.fn<
+      (input: {
+        connectionId: string;
+        sessionId: string;
+        startFromBeginning?: boolean;
+      }) => Promise<StreamSessionRecord>
+    >(),
 }));
 
 vi.mock("../../src/api/repositories", () => repositoriesApiMock);

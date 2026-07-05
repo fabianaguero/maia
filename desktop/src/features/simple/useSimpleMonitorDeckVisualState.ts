@@ -1,10 +1,6 @@
 import { useMemo } from "react";
-import {
-  buildSimpleMonitorDeckVisualCanvasEffectsInput,
-} from "./simpleMonitorDeckVisualComposeRuntime";
-import {
-  buildSimpleMonitorDeckVisualDerivedState,
-} from "./simpleMonitorDeckVisualRuntime";
+import { buildSimpleMonitorDeckVisualCanvasEffectsInput } from "./simpleMonitorDeckVisualComposeRuntime";
+import { buildSimpleMonitorDeckVisualDerivedState } from "./simpleMonitorDeckVisualRuntime";
 import { useSimpleMonitorDeckCanvasEffects } from "./useSimpleMonitorDeckCanvasEffects";
 import { useMonitorDeckScrub } from "./useMonitorDeckScrub";
 import type { UseSimpleMonitorDeckVisualStateInput } from "./simpleMonitorDeckVisualTypes";
@@ -28,20 +24,15 @@ export function useSimpleMonitorDeckVisualState({
   waveformScale,
   safeRuntime = false,
 }: UseSimpleMonitorDeckVisualStateInput) {
-  const { visibleWindowSeconds, trackWaveSamples, deckTimelineMarkers, deckBeatMarkers, derivedDeckState } =
-    useMemo(
-      () =>
-        buildSimpleMonitorDeckVisualDerivedState({
-          waveformBins,
-          waveformAnomalies,
-          trackWaveProgress,
-          deckDurationSeconds,
-          deckBpm,
-          activeBeatGrid,
-          logSignalBuffer,
-          selectedAnomalyId,
-        }),
-      [
+  const {
+    visibleWindowSeconds,
+    trackWaveSamples,
+    deckTimelineMarkers,
+    deckBeatMarkers,
+    derivedDeckState,
+  } = useMemo(
+    () =>
+      buildSimpleMonitorDeckVisualDerivedState({
         waveformBins,
         waveformAnomalies,
         trackWaveProgress,
@@ -50,20 +41,28 @@ export function useSimpleMonitorDeckVisualState({
         activeBeatGrid,
         logSignalBuffer,
         selectedAnomalyId,
-      ],
-    );
-  const scrub = useMonitorDeckScrub(
-    {
-      backgroundAudioRef,
+      }),
+    [
+      waveformBins,
       waveformAnomalies,
       trackWaveProgress,
-      setTrackWaveProgress,
-      setTrackElapsedSeconds,
-      isConsoleExpanded,
-      onToggleConsole,
-      onSelectAnomalyForFocus,
-    },
+      deckDurationSeconds,
+      deckBpm,
+      activeBeatGrid,
+      logSignalBuffer,
+      selectedAnomalyId,
+    ],
   );
+  const scrub = useMonitorDeckScrub({
+    backgroundAudioRef,
+    waveformAnomalies,
+    trackWaveProgress,
+    setTrackWaveProgress,
+    setTrackElapsedSeconds,
+    isConsoleExpanded,
+    onToggleConsole,
+    onSelectAnomalyForFocus,
+  });
   useSimpleMonitorDeckCanvasEffects(
     buildSimpleMonitorDeckVisualCanvasEffectsInput({
       visualState: {

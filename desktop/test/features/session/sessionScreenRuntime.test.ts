@@ -8,6 +8,13 @@ import type {
   RepositoryAnalysis,
 } from "../../../src/types/library";
 import {
+  buildSessionControllerDerivedBookmarkInput,
+  buildSessionControllerDerivedBookmarkState,
+  buildSessionControllerDerivedDetailsInput,
+  buildSessionControllerDerivedDetailsState,
+  buildSessionControllerDerivedSections,
+  buildSessionControllerDerivedSelectionState,
+  buildSessionControllerDerivedState,
   buildSessionLabelPlaceholder,
   createDirectSessionStartPlan,
   createResumeSessionPlan,
@@ -20,6 +27,8 @@ import {
   resolveReplayBookmarkError,
   resolveReplaySessionError,
   resolveReplaySessionFailure,
+  resolveSessionControllerDerivedSections,
+  resolveSessionControllerDerivedSelectionState,
   resolveSessionControllerDerivedState,
   resolveSessionSelection,
   resolveSourceOptions,
@@ -279,7 +288,7 @@ describe("sessionScreenRuntime", () => {
   });
 
   it("derives controller state for the active session booth", () => {
-    const derived = resolveSessionControllerDerivedState({
+    const input = {
       activePlaybackProgress: 0.42,
       activeSessionId: "session-1",
       activeSessionMode: "live",
@@ -308,9 +317,62 @@ describe("sessionScreenRuntime", () => {
       templateGenre: "House",
       templateLabel: "Night monitor",
       tracks: [track],
+    };
+    const selectionState = resolveSessionControllerDerivedSelectionState(input);
+    const rebuiltSelectionState = buildSessionControllerDerivedSelectionState({
+      sourceOptions: [repository],
+      entitySelection: {
+        selectedSource: repository,
+        selectedTrack: track,
+        selectedPlaylist: null,
+      },
+      sessionSelection: selectionState.sessionSelection,
     });
+    const bookmarkInput = buildSessionControllerDerivedBookmarkInput({
+      selectedSession: selectionState.sessionSelection.selectedSession,
+      sessionBookmarksBySessionId: input.sessionBookmarksBySessionId,
+      selectedSessionEvents: input.selectedSessionEvents,
+    });
+    const bookmarkState = buildSessionControllerDerivedBookmarkState(bookmarkInput);
+    const detailsInput = buildSessionControllerDerivedDetailsInput({
+      baseMode: input.baseMode,
+      selectedTrack: selectionState.selectedTrack,
+      selectedPlaylist: selectionState.selectedPlaylist,
+      tracks: input.tracks,
+      selectedPlaylistId: input.selectedPlaylistId,
+      selectedSourceId: input.selectedSourceId,
+      selectedTrackId: input.selectedTrackId,
+      selectedSource: selectionState.selectedSource,
+      templateGenre: input.templateGenre,
+      templateLabel: input.templateLabel,
+      sessionPlaceholderFallback: input.sessionPlaceholderFallback,
+      activePlaybackProgress: input.activePlaybackProgress,
+      activeSession: selectionState.sessionSelection.activeSession,
+      selectedSession: selectionState.sessionSelection.selectedSession,
+      repositories: input.repositories,
+      playlists: input.playlists,
+    });
+    const detailsState = buildSessionControllerDerivedDetailsState(detailsInput);
+    const sections = resolveSessionControllerDerivedSections(input);
+    const builtSections = buildSessionControllerDerivedSections({
+      input,
+      selectionState,
+    });
+    const rebuiltState = buildSessionControllerDerivedState(sections);
+    const derived = resolveSessionControllerDerivedState(input);
 
     expect(derived.sourceOptions).toEqual([repository]);
+    expect(rebuiltSelectionState.selectedSource?.id).toBe("repo-1");
+    expect(selectionState.sourceOptions).toEqual([repository]);
+    expect(selectionState.sessionSelection.activeSession?.id).toBe("session-1");
+    expect(bookmarkInput.selectedSession?.id).toBe("session-1");
+    expect(bookmarkState.selectedSessionBookmarks).toHaveLength(1);
+    expect(detailsInput.selectedSource?.id).toBe("repo-1");
+    expect(detailsState.readyToRun).toBe(true);
+    expect(sections.bookmarkState.selectedSessionBookmarks).toHaveLength(1);
+    expect(builtSections.detailsState.readyToRun).toBe(true);
+    expect(rebuiltState.selectedSession?.id).toBe("session-1");
+    expect(sections.detailsState.readyToRun).toBe(true);
     expect(derived.selectedSource?.id).toBe("repo-1");
     expect(derived.selectedTrack?.id).toBe("track-1");
     expect(derived.selectedBaseDetails).toEqual({

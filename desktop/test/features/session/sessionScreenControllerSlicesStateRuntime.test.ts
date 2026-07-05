@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  buildSessionScreenControllerSlicesLocalState,
+  buildSessionScreenControllerTemplateState,
   buildSessionScreenControllerSlicesDerivedDeps,
   pickSessionScreenControllerSlicesActionLocalState,
   pickSessionScreenControllerSlicesBoothLocalState,
@@ -44,6 +46,10 @@ describe("sessionScreenControllerSlicesStateRuntime", () => {
     expect(derivedLocalState.selectedSourceId).toBe("repo-1");
     expect(effectsLocalState.boothBedAudioRef.current).toBeNull();
     expect(boothLocalState.latestUpdate?.suggestedBpm).toBe(126);
+
+    const groupedLocalState = buildSessionScreenControllerSlicesLocalState(localState);
+    expect(groupedLocalState.actionLocalState.directPath).toBe("/logs/service.log");
+    expect(groupedLocalState.derivedLocalState.selectedTrackId).toBe("track-1");
   });
 
   it("resolves template meta and derived dependencies", () => {
@@ -71,5 +77,16 @@ describe("sessionScreenControllerSlicesStateRuntime", () => {
     expect(meta.selectedTemplateLabel).toBe("Club");
     expect(deps).toHaveLength(11);
     expect(deps[0]).toEqual({ id: "controller" });
+
+    const templateState = buildSessionScreenControllerTemplateState({
+      selectedTemplateId: "deep-house",
+      t: en,
+      resolveTemplateSelection: () => ({
+        selectedTemplate: { genre: "House", label: "Deep House" },
+        selectedTemplatePresentation: { genre: "Club House", label: "Club" },
+      }),
+    });
+    expect(templateState.selectedTemplateGenre).toBe("Club House");
+    expect(templateState.selectedTemplateLabel).toBe("Club");
   });
 });

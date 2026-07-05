@@ -1,29 +1,20 @@
 import type { AppTranslations } from "../../i18n/types";
-import type { SessionScreenControllerInput } from "./sessionScreenControllerTypes";
+import type {
+  SessionScreenControllerSlicesActionLocalState,
+  SessionScreenControllerSlicesBoothLocalState,
+  SessionScreenControllerSlicesDerivedDepsInput,
+  SessionScreenControllerSlicesDerivedLocalState,
+  SessionScreenControllerSlicesEffectsLocalState,
+  SessionScreenControllerSlicesLocalStateGroups,
+  SessionScreenControllerTemplateState,
+} from "./sessionScreenControllerSlicesStateContracts";
 import type { useSessionScreenLocalState } from "./useSessionScreenLocalState";
 
 type SessionScreenLocalState = ReturnType<typeof useSessionScreenLocalState>;
 
 export function pickSessionScreenControllerSlicesActionLocalState(
-  localState: Pick<
-    SessionScreenLocalState,
-    | "baseMode"
-    | "mode"
-    | "selectedPlaylistId"
-    | "selectedSourceId"
-    | "selectedTrackId"
-    | "sessionLabel"
-    | "directPath"
-    | "setCreateError"
-    | "setCreating"
-    | "setIsDirectLoading"
-    | "setSessionLabel"
-    | "setSelectedSourceId"
-    | "setSelectedTrackId"
-    | "setSelectedPlaylistId"
-    | "setDirectPath"
-  >,
-) {
+  localState: SessionScreenControllerSlicesActionLocalState,
+): SessionScreenControllerSlicesActionLocalState {
   return {
     baseMode: localState.baseMode,
     mode: localState.mode,
@@ -44,16 +35,8 @@ export function pickSessionScreenControllerSlicesActionLocalState(
 }
 
 export function pickSessionScreenControllerSlicesDerivedLocalState(
-  localState: Pick<
-    SessionScreenLocalState,
-    | "baseMode"
-    | "mode"
-    | "selectedPlaylistId"
-    | "selectedSessionEvents"
-    | "selectedSourceId"
-    | "selectedTrackId"
-  >,
-) {
+  localState: SessionScreenControllerSlicesDerivedLocalState,
+): SessionScreenControllerSlicesDerivedLocalState {
   return {
     baseMode: localState.baseMode,
     mode: localState.mode,
@@ -65,11 +48,8 @@ export function pickSessionScreenControllerSlicesDerivedLocalState(
 }
 
 export function pickSessionScreenControllerSlicesEffectsLocalState(
-  localState: Pick<
-    SessionScreenLocalState,
-    "setLatestUpdate" | "setSelectedSessionEvents" | "boothBedAudioRef"
-  >,
-) {
+  localState: SessionScreenControllerSlicesEffectsLocalState,
+): SessionScreenControllerSlicesEffectsLocalState {
   return {
     setLatestUpdate: localState.setLatestUpdate,
     setSelectedSessionEvents: localState.setSelectedSessionEvents,
@@ -78,11 +58,22 @@ export function pickSessionScreenControllerSlicesEffectsLocalState(
 }
 
 export function pickSessionScreenControllerSlicesBoothLocalState(
-  localState: Pick<SessionScreenLocalState, "mode" | "latestUpdate">,
-) {
+  localState: SessionScreenControllerSlicesBoothLocalState,
+): SessionScreenControllerSlicesBoothLocalState {
   return {
     mode: localState.mode,
     latestUpdate: localState.latestUpdate,
+  };
+}
+
+export function buildSessionScreenControllerSlicesLocalState(
+  localState: SessionScreenLocalState,
+): SessionScreenControllerSlicesLocalStateGroups {
+  return {
+    actionLocalState: pickSessionScreenControllerSlicesActionLocalState(localState),
+    derivedLocalState: pickSessionScreenControllerSlicesDerivedLocalState(localState),
+    effectsLocalState: pickSessionScreenControllerSlicesEffectsLocalState(localState),
+    boothLocalState: pickSessionScreenControllerSlicesBoothLocalState(localState),
   };
 }
 
@@ -98,14 +89,35 @@ export function resolveSessionScreenControllerTemplateMeta(input: {
   };
 }
 
-export function buildSessionScreenControllerSlicesDerivedDeps(input: {
-  controllerInput: SessionScreenControllerInput;
-  monitorSnapshot: unknown;
-  localState: ReturnType<typeof pickSessionScreenControllerSlicesDerivedLocalState>;
+export function buildSessionScreenControllerTemplateState(input: {
+  selectedTemplateId: string;
   t: AppTranslations;
-  selectedTemplateGenre: string | null;
-  selectedTemplateLabel: string | null;
-}) {
+  resolveTemplateSelection: (input: { selectedTemplateId: string; t: AppTranslations }) => {
+    selectedTemplate: { genre?: string | null; label?: string | null } | null;
+    selectedTemplatePresentation: { genre?: string | null; label?: string | null } | null;
+  };
+}): SessionScreenControllerTemplateState {
+  const { selectedTemplate, selectedTemplatePresentation } = input.resolveTemplateSelection({
+    selectedTemplateId: input.selectedTemplateId,
+    t: input.t,
+  });
+  const { selectedTemplateGenre, selectedTemplateLabel } =
+    resolveSessionScreenControllerTemplateMeta({
+      selectedTemplate,
+      selectedTemplatePresentation,
+    });
+
+  return {
+    selectedTemplate,
+    selectedTemplatePresentation,
+    selectedTemplateGenre,
+    selectedTemplateLabel,
+  };
+}
+
+export function buildSessionScreenControllerSlicesDerivedDeps(
+  input: SessionScreenControllerSlicesDerivedDepsInput,
+) {
   return [
     input.controllerInput,
     input.monitorSnapshot,

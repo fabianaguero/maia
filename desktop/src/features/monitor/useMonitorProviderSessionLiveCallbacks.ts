@@ -16,10 +16,7 @@ import {
 export function useMonitorProviderSessionLiveCallbacks(
   input: UseMonitorProviderSessionActionsInput,
 ) {
-  const dependencies = useMemo(
-    () => buildMonitorProviderSessionLiveCallbacksInput(input),
-    [input],
-  );
+  const dependencies = useMemo(() => buildMonitorProviderSessionLiveCallbacksInput(input), [input]);
 
   const replaceExistingSessionIfPresent = useCallback(async () => {
     await replaceExistingMonitorProviderSessionState(dependencies);

@@ -1,8 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  buildAppV0MonitorScreenStateHookResult,
-} from "../../src/hooks/appV0MonitorScreenStateHookRuntime";
+import { buildAppV0MonitorScreenStateHookResult } from "../../src/hooks/appV0MonitorScreenStateHookRuntime";
 
 describe("appV0MonitorScreenStateHookRuntime", () => {
   it("returns a stable app-v0 monitor hook result envelope", () => {

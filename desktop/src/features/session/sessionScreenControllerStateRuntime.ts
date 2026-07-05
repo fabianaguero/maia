@@ -1,14 +1,104 @@
 import type { AppTranslations } from "../../i18n/types";
-import type { ReplayFeedbackRecommendation } from "../../utils/replayFeedback";
 import type { MonitorContextValue } from "../monitor/monitorContextTypes";
-import type { SessionBoothViewModel } from "./sessionBoothViewModel";
 import type { buildSessionScreenControllerMonitorSnapshot } from "./sessionScreenControllerHookRuntime";
-import type { SessionScreenControllerInput, SessionScreenControllerState } from "./sessionScreenControllerTypes";
+import type {
+  SessionScreenControllerInput,
+  SessionScreenControllerState,
+} from "./sessionScreenControllerTypes";
 import type { SessionControllerDerivedState } from "./sessionScreenRuntime";
+import type {
+  SessionScreenControllerActionBindings,
+  SessionScreenControllerDerivedBindings,
+  SessionScreenControllerLocalBindings,
+  SessionScreenControllerSlicesResult,
+  SessionScreenControllerStateSections,
+} from "./sessionScreenControllerStateContracts";
 import type { useSessionScreenLocalState } from "./useSessionScreenLocalState";
 
 type MonitorSnapshot = ReturnType<typeof buildSessionScreenControllerMonitorSnapshot>;
 type SessionScreenLocalState = ReturnType<typeof useSessionScreenLocalState>;
+
+export function buildSessionScreenControllerLocalBindings(
+  localState: SessionScreenLocalState,
+): SessionScreenControllerLocalBindings {
+  return {
+    mode: localState.mode,
+    setMode: localState.setMode,
+    baseMode: localState.baseMode,
+    setBaseMode: localState.setBaseMode,
+    selectedSourceId: localState.selectedSourceId,
+    setSelectedSourceId: localState.setSelectedSourceId,
+    selectedTrackId: localState.selectedTrackId,
+    setSelectedTrackId: localState.setSelectedTrackId,
+    selectedPlaylistId: localState.selectedPlaylistId,
+    setSelectedPlaylistId: localState.setSelectedPlaylistId,
+    sessionLabel: localState.sessionLabel,
+    setSessionLabel: localState.setSessionLabel,
+    creating: localState.creating,
+    createError: localState.createError,
+    latestUpdate: localState.latestUpdate,
+    directPath: localState.directPath,
+    setDirectPath: localState.setDirectPath,
+    isDirectLoading: localState.isDirectLoading,
+    selectedTemplateId: localState.selectedTemplateId,
+    setSelectedTemplateId: localState.setSelectedTemplateId,
+  };
+}
+
+export function buildSessionScreenControllerActionBindings(
+  actions: SessionScreenControllerActionBindings,
+): SessionScreenControllerActionBindings {
+  return {
+    handleCreateSession: actions.handleCreateSession,
+    handleDirectLaunch: actions.handleDirectLaunch,
+    handleResumeSession: actions.handleResumeSession,
+    handlePlaybackSession: actions.handlePlaybackSession,
+    handleReplayBookmark: actions.handleReplayBookmark,
+  };
+}
+
+export function buildSessionScreenControllerDerivedBindings(input: {
+  derivedState: SessionControllerDerivedState;
+  selectedSessionReplayFeedbackRecommendation: SessionScreenControllerSlicesResult["selectedSessionReplayFeedbackRecommendation"];
+  booth: SessionScreenControllerSlicesResult["booth"];
+}): SessionScreenControllerDerivedBindings {
+  return {
+    sourceOptions: input.derivedState.sourceOptions,
+    selectedSource: input.derivedState.selectedSource,
+    selectedTrack: input.derivedState.selectedTrack,
+    selectedPlaylist: input.derivedState.selectedPlaylist,
+    selectedBaseDetails: input.derivedState.selectedBaseDetails,
+    activeSession: input.derivedState.activeSession,
+    selectedSession: input.derivedState.selectedSession,
+    playbackActive: input.derivedState.playbackActive,
+    liveMonitorActive: input.derivedState.liveMonitorActive,
+    selectedSessionBookmarks: input.derivedState.selectedSessionBookmarks,
+    bookmarkContexts: input.derivedState.bookmarkContexts,
+    selectedSessionReplayFeedbackRecommendation: input.selectedSessionReplayFeedbackRecommendation,
+    sessionLabelPlaceholder: input.derivedState.sessionLabelPlaceholder,
+    readyToRun: input.derivedState.readyToRun,
+    booth: input.booth,
+  };
+}
+
+export function buildSessionScreenControllerStateSections(input: {
+  localState: SessionScreenLocalState;
+  actions: SessionScreenControllerActionBindings;
+  derivedState: SessionControllerDerivedState;
+  selectedSessionReplayFeedbackRecommendation: SessionScreenControllerSlicesResult["selectedSessionReplayFeedbackRecommendation"];
+  booth: SessionScreenControllerSlicesResult["booth"];
+}): SessionScreenControllerStateSections {
+  return {
+    localBindings: buildSessionScreenControllerLocalBindings(input.localState),
+    actionBindings: buildSessionScreenControllerActionBindings(input.actions),
+    derivedBindings: buildSessionScreenControllerDerivedBindings({
+      derivedState: input.derivedState,
+      selectedSessionReplayFeedbackRecommendation:
+        input.selectedSessionReplayFeedbackRecommendation,
+      booth: input.booth,
+    }),
+  };
+}
 
 export function buildSessionScreenControllerMonitorSnapshotInput(
   monitor: Pick<
@@ -50,60 +140,41 @@ export function buildSessionScreenControllerStateInput(input: {
   monitor: MonitorContextValue;
   localState: SessionScreenLocalState;
   derivedState: SessionControllerDerivedState;
-  actions: Pick<
-    SessionScreenControllerState,
-    | "handleCreateSession"
-    | "handleDirectLaunch"
-    | "handleResumeSession"
-    | "handlePlaybackSession"
-    | "handleReplayBookmark"
-  >;
-  selectedSessionReplayFeedbackRecommendation: ReplayFeedbackRecommendation | null;
-  booth: SessionBoothViewModel;
+  actions: SessionScreenControllerActionBindings;
+  selectedSessionReplayFeedbackRecommendation: SessionScreenControllerSlicesResult["selectedSessionReplayFeedbackRecommendation"];
+  booth: SessionScreenControllerSlicesResult["booth"];
 }): SessionScreenControllerState {
+  const sections = buildSessionScreenControllerStateSections({
+    localState: input.localState,
+    actions: input.actions,
+    derivedState: input.derivedState,
+    selectedSessionReplayFeedbackRecommendation: input.selectedSessionReplayFeedbackRecommendation,
+    booth: input.booth,
+  });
+
   return {
     t: input.t,
     monitor: input.monitor,
-    mode: input.localState.mode,
-    setMode: input.localState.setMode,
-    baseMode: input.localState.baseMode,
-    setBaseMode: input.localState.setBaseMode,
-    selectedSourceId: input.localState.selectedSourceId,
-    setSelectedSourceId: input.localState.setSelectedSourceId,
-    selectedTrackId: input.localState.selectedTrackId,
-    setSelectedTrackId: input.localState.setSelectedTrackId,
-    selectedPlaylistId: input.localState.selectedPlaylistId,
-    setSelectedPlaylistId: input.localState.setSelectedPlaylistId,
-    sessionLabel: input.localState.sessionLabel,
-    setSessionLabel: input.localState.setSessionLabel,
-    creating: input.localState.creating,
-    createError: input.localState.createError,
-    latestUpdate: input.localState.latestUpdate,
-    directPath: input.localState.directPath,
-    setDirectPath: input.localState.setDirectPath,
-    isDirectLoading: input.localState.isDirectLoading,
-    selectedTemplateId: input.localState.selectedTemplateId,
-    setSelectedTemplateId: input.localState.setSelectedTemplateId,
-    sourceOptions: input.derivedState.sourceOptions,
-    selectedSource: input.derivedState.selectedSource,
-    selectedTrack: input.derivedState.selectedTrack,
-    selectedPlaylist: input.derivedState.selectedPlaylist,
-    selectedBaseDetails: input.derivedState.selectedBaseDetails,
-    handleCreateSession: input.actions.handleCreateSession,
-    handleDirectLaunch: input.actions.handleDirectLaunch,
-    handleResumeSession: input.actions.handleResumeSession,
-    handlePlaybackSession: input.actions.handlePlaybackSession,
-    handleReplayBookmark: input.actions.handleReplayBookmark,
-    activeSession: input.derivedState.activeSession,
-    selectedSession: input.derivedState.selectedSession,
-    playbackActive: input.derivedState.playbackActive,
-    liveMonitorActive: input.derivedState.liveMonitorActive,
-    selectedSessionBookmarks: input.derivedState.selectedSessionBookmarks,
-    bookmarkContexts: input.derivedState.bookmarkContexts,
-    selectedSessionReplayFeedbackRecommendation:
-      input.selectedSessionReplayFeedbackRecommendation,
-    sessionLabelPlaceholder: input.derivedState.sessionLabelPlaceholder,
-    readyToRun: input.derivedState.readyToRun,
-    booth: input.booth,
+    ...sections.localBindings,
+    ...sections.actionBindings,
+    ...sections.derivedBindings,
   };
+}
+
+export function buildSessionScreenControllerStateFromSlices(input: {
+  t: AppTranslations;
+  monitor: MonitorContextValue;
+  localState: SessionScreenLocalState;
+  slicesResult: SessionScreenControllerSlicesResult;
+}): SessionScreenControllerState {
+  return buildSessionScreenControllerStateInput({
+    t: input.t,
+    monitor: input.monitor,
+    localState: input.localState,
+    derivedState: input.slicesResult.derivedState,
+    actions: input.slicesResult.actions,
+    selectedSessionReplayFeedbackRecommendation:
+      input.slicesResult.selectedSessionReplayFeedbackRecommendation,
+    booth: input.slicesResult.booth,
+  });
 }

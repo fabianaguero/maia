@@ -1,8 +1,6 @@
 import { useCallback } from "react";
 
-import {
-  type SessionMonitorDraft,
-} from "../appMonitorActionsRuntime";
+import { type SessionMonitorDraft } from "../appMonitorActionsRuntime";
 import {
   openCurrentMonitoredRepo,
   startLiveMonitorSession,
@@ -79,7 +77,10 @@ export function useAppMonitorSessionActions({
     [liveInput],
   );
 
-  const openMonitoredRepo = useCallback(() => openCurrentMonitoredRepo(openRepoInput), [openRepoInput]);
+  const openMonitoredRepo = useCallback(
+    () => openCurrentMonitoredRepo(openRepoInput),
+    [openRepoInput],
+  );
 
   return {
     startReplaySession,

@@ -8,9 +8,7 @@ import {
   applyDecodedGuideTrackSuccess,
 } from "./monitorGuideTrackLoadResolutionRuntime";
 import { createGuideTrackLoadPromise } from "./monitorGuideTrackLoadPromiseRuntime";
-import type {
-  LoadGuideTrackPathStateInput,
-} from "./monitorStartupRuntimeTypes";
+import type { LoadGuideTrackPathStateInput } from "./monitorStartupRuntimeTypes";
 
 export function loadGuideTrackPathState(input: LoadGuideTrackPathStateInput): void {
   if (

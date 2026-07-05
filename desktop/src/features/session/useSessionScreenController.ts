@@ -6,9 +6,9 @@ import {
 } from "./sessionScreenControllerHookRuntime";
 import { buildSessionScreenControllerState } from "./sessionScreenControllerRuntime";
 import {
+  buildSessionScreenControllerStateFromSlices,
   buildSessionScreenControllerMonitorSnapshotInput,
   buildSessionScreenControllerSlicesInput,
-  buildSessionScreenControllerStateInput,
 } from "./sessionScreenControllerStateRuntime";
 import type { SessionScreenControllerInput } from "./sessionScreenControllerTypes";
 import { useSessionScreenLocalState } from "./useSessionScreenLocalState";
@@ -24,18 +24,7 @@ export function useSessionScreenController(input: SessionScreenControllerInput) 
     trackCount: input.tracks.length,
   });
 
-  const {
-    actions: {
-      handleCreateSession,
-      handleDirectLaunch,
-      handleResumeSession,
-      handlePlaybackSession,
-      handleReplayBookmark,
-    },
-    derivedState,
-    selectedSessionReplayFeedbackRecommendation,
-    booth,
-  } = useSessionScreenControllerSlices(
+  const slicesResult = useSessionScreenControllerSlices(
     buildSessionScreenControllerSlicesInput({
       t,
       controllerInput: input,
@@ -46,20 +35,11 @@ export function useSessionScreenController(input: SessionScreenControllerInput) 
 
   return buildSessionScreenControllerHookResult(
     buildSessionScreenControllerState(
-      buildSessionScreenControllerStateInput({
+      buildSessionScreenControllerStateFromSlices({
         t,
         monitor,
         localState,
-        derivedState,
-        actions: {
-          handleCreateSession,
-          handleDirectLaunch,
-          handleResumeSession,
-          handlePlaybackSession,
-          handleReplayBookmark,
-        },
-        selectedSessionReplayFeedbackRecommendation,
-        booth,
+        slicesResult,
       }),
     ),
   );

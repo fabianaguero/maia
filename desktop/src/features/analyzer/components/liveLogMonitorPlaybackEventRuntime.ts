@@ -125,11 +125,7 @@ export function executeLiveLogMonitorPlaybackWindow(
 
   const nextBounceCueWindows =
     playbackPlan.voicedCues.length > 0
-      ? appendBounceCueWindows(
-          input.bounceCueWindows,
-          playbackPlan.voicedCues,
-          MAX_BOUNCE_WINDOWS,
-        )
+      ? appendBounceCueWindows(input.bounceCueWindows, playbackPlan.voicedCues, MAX_BOUNCE_WINDOWS)
       : input.bounceCueWindows;
 
   const graphSchedulePlan = buildCueGraphSchedulePlan({
@@ -142,7 +138,10 @@ export function executeLiveLogMonitorPlaybackWindow(
   });
 
   if (input.audioContext && graphSchedulePlan.shouldSchedule && input.masterGain) {
-    const currentTrackSecond = resolveBackgroundTrackSecond(input.audioContext, input.backgroundDeck);
+    const currentTrackSecond = resolveBackgroundTrackSecond(
+      input.audioContext,
+      input.backgroundDeck,
+    );
     for (const scheduledEvent of graphSchedulePlan.events) {
       const entry = scheduledEvent.entry;
       const voice = entry.voice;
@@ -190,8 +189,7 @@ export function executeLiveLogMonitorPlaybackWindow(
 
   return {
     nextBounceCueWindows,
-    bounceWindowCount:
-      playbackPlan.voicedCues.length > 0 ? nextBounceCueWindows.length : null,
+    bounceWindowCount: playbackPlan.voicedCues.length > 0 ? nextBounceCueWindows.length : null,
     emittedVoiceCount: playbackPlan.voicedCues.length,
   };
 }

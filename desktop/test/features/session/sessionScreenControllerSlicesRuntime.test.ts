@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import { en } from "../../../src/i18n/en";
 import {
   buildSessionScreenControllerSlicesActionsInput,
+  buildSessionScreenControllerSlicesDerivedArgs,
+  buildSessionScreenControllerSlicesDerivedMemoInput,
   buildSessionScreenControllerSlicesDerivedMemoDeps,
+  buildSessionScreenControllerSlicesDerivedStateInput,
   buildSessionScreenControllerSlicesEffectsInput,
   buildSessionScreenControllerSlicesResult,
   resolveSessionScreenControllerSlicesDerivedState,
@@ -142,6 +145,24 @@ describe("sessionScreenControllerSlicesRuntime", () => {
         templateSelection.selectedTemplate?.label ??
         null,
     });
+    const derivedArgs = buildSessionScreenControllerSlicesDerivedArgs({
+      t: en,
+      controllerInput,
+      monitorSnapshot: {
+        monitorHasSession: true,
+        monitorSession: { sessionId: "monitor-1" } as never,
+      },
+      localState,
+      selectedTemplateGenre: templateSelection.selectedTemplate?.genre ?? null,
+      selectedTemplateLabel: templateSelection.selectedTemplate?.label ?? null,
+    });
+    const derivedStateInput = buildSessionScreenControllerSlicesDerivedStateInput(derivedArgs);
+    const derivedMemoInput = buildSessionScreenControllerSlicesDerivedMemoInput(derivedArgs, {
+      selectedTemplatePresentationGenre:
+        templateSelection.selectedTemplatePresentation?.genre ?? null,
+      selectedTemplatePresentationLabel:
+        templateSelection.selectedTemplatePresentation?.label ?? null,
+    });
     const deps = buildSessionScreenControllerSlicesDerivedMemoDeps({
       t: en,
       controllerInput,
@@ -151,12 +172,17 @@ describe("sessionScreenControllerSlicesRuntime", () => {
       localState,
       selectedTemplateGenre: templateSelection.selectedTemplate?.genre ?? null,
       selectedTemplateLabel: templateSelection.selectedTemplate?.label ?? null,
-      selectedTemplatePresentationGenre: templateSelection.selectedTemplatePresentation?.genre ?? null,
+      selectedTemplatePresentationGenre:
+        templateSelection.selectedTemplatePresentation?.genre ?? null,
       selectedTemplatePresentationLabel:
         templateSelection.selectedTemplatePresentation?.label ?? null,
     });
 
     expect(templateSelection.selectedTemplate).not.toBeNull();
+    expect(derivedArgs.monitorHasSession).toBe(true);
+    expect(derivedArgs.mode).toBe("log");
+    expect(derivedStateInput.mode).toBe("log");
+    expect(derivedMemoInput.monitorSession?.sessionId).toBe("monitor-1");
     expect(derivedState.selectedSource?.id).toBe("repo-1");
     expect(derivedState.selectedTrack?.id).toBe("track-1");
     expect(derivedState.sessionLabelPlaceholder.length).toBeGreaterThan(0);

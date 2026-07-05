@@ -18,4 +18,8 @@ export function buildMonitorDeckCanvasScenePlan(input: {
   };
 }
 export { buildMonitorDeckLogContourPoints } from "./monitorDeckMainCanvasLogRuntime";
-export type { MonitorDeckCanvasScenePlan, MonitorDeckGradientStop, MonitorDeckRect } from "./monitorDeckMainCanvasSceneTypes";
+export type {
+  MonitorDeckCanvasScenePlan,
+  MonitorDeckGradientStop,
+  MonitorDeckRect,
+} from "./monitorDeckMainCanvasSceneTypes";

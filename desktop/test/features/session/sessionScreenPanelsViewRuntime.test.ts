@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  buildSessionScreenPanelsSections,
   buildSessionSavedSessionsPanelProps,
   buildSessionSetupPanelProps,
 } from "../../../src/features/session/sessionScreenPanelsViewRuntime";
@@ -82,5 +83,57 @@ describe("sessionScreenPanelsViewRuntime", () => {
     expect(props.onSelectSession).toBe(onSelectSession);
     expect(props.onReplayBookmark).toBe(onReplayBookmark);
     expect(props.liveProcessedLines).toBe(48);
+  });
+
+  it("builds both panel sections from one shared props contract", () => {
+    const sections = buildSessionScreenPanelsSections({
+      tracks: [],
+      playlists: [],
+      sessions: [],
+      loading: false,
+      mutating: false,
+      selectedSessionId: null,
+      activeSessionId: null,
+      activeSessionMode: null,
+      mode: "log",
+      baseMode: "track",
+      selectedTemplateId: "deep-house",
+      selectedSourceId: null,
+      selectedTrackId: null,
+      selectedPlaylistId: null,
+      selectedSource: null,
+      selectedTrack: null,
+      selectedPlaylist: null,
+      selectedBaseLabel: null,
+      selectedBaseDetail: null,
+      sessionLabel: "Night watch",
+      sessionLabelPlaceholder: "Session",
+      creating: false,
+      sourceOptions: [],
+      selectedSession: null,
+      selectedSessionBookmarks: [],
+      selectedSessionReplayFeedbackRecommendation: null,
+      sessionBookmarksBySessionId: {},
+      bookmarkContexts: {},
+      liveWindowCount: 0,
+      liveProcessedLines: 0,
+      liveTotalAnomalies: 0,
+      onTemplateSelect: vi.fn(),
+      onBaseModeChange: vi.fn(),
+      onTrackSelect: vi.fn(),
+      onPlaylistSelect: vi.fn(),
+      onModeChange: vi.fn(),
+      onSourceSelect: vi.fn(),
+      onSessionLabelChange: vi.fn(),
+      onCreateSession: vi.fn(),
+      onSelectSession: vi.fn(),
+      onResumeSession: vi.fn(),
+      onPlaybackSession: vi.fn(async () => undefined),
+      onReplayBookmark: vi.fn(async () => undefined),
+      onDeleteSession: vi.fn(),
+    });
+
+    expect(sections.setupPanelProps.sessionLabel).toBe("Night watch");
+    expect(sections.savedSessionsPanelProps.liveWindowCount).toBe(0);
   });
 });

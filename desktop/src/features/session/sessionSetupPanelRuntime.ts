@@ -7,6 +7,7 @@ import type { SessionSetupSelectionGrid } from "./SessionSetupSelectionGrid";
 import type { SessionTemplatePresetStrip } from "./SessionTemplatePresetStrip";
 import type { SessionWorkflowStrip } from "./SessionWorkflowStrip";
 import type { QuickSessionMode, SessionBaseMode } from "./sessionDisplay";
+import type { SessionSetupPanelProps } from "./sessionSetupPanelTypes";
 
 export function resolveSessionSetupBaseReady(input: {
   baseMode: SessionBaseMode;
@@ -15,7 +16,7 @@ export function resolveSessionSetupBaseReady(input: {
 }): boolean {
   return Boolean(
     (input.baseMode === "track" && input.selectedTrackId) ||
-      (input.baseMode === "playlist" && input.selectedPlaylistId),
+    (input.baseMode === "playlist" && input.selectedPlaylistId),
   );
 }
 
@@ -83,4 +84,37 @@ export function buildSessionCreateFooterProps(input: {
   onCreateSession: () => void | Promise<void>;
 }): ComponentProps<typeof SessionCreateFooter> {
   return input;
+}
+
+export function buildSessionSetupPanelSections(
+  input: SessionSetupPanelProps & { t: AppTranslations },
+) {
+  return {
+    header: buildSessionSetupHeader({ t: input.t }),
+    templateStripProps: buildSessionTemplatePresetStripProps({
+      selectedTemplateId: input.selectedTemplateId,
+      onTemplateSelect: input.onTemplateSelect,
+    }),
+    workflowProps: buildSessionWorkflowStripProps({
+      baseMode: input.baseMode,
+      selectedTrackId: input.selectedTrackId,
+      selectedPlaylistId: input.selectedPlaylistId,
+      selectedSourceId: input.selectedSourceId,
+    }),
+    selectionGridProps: buildSessionSetupSelectionGridProps(input),
+    createFooterProps: buildSessionCreateFooterProps({
+      baseMode: input.baseMode,
+      selectedSourceId: input.selectedSourceId,
+      selectedTrackId: input.selectedTrackId,
+      selectedPlaylistId: input.selectedPlaylistId,
+      selectedSourceTitle: input.selectedSource?.title ?? null,
+      selectedBaseLabel: input.selectedBaseLabel,
+      sessionLabel: input.sessionLabel,
+      sessionLabelPlaceholder: input.sessionLabelPlaceholder,
+      creating: input.creating,
+      mutating: input.mutating,
+      onSessionLabelChange: input.onSessionLabelChange,
+      onCreateSession: input.onCreateSession,
+    }),
+  };
 }

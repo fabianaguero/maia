@@ -1,8 +1,14 @@
+import type { ComponentProps } from "react";
+
 import type { AppTranslations } from "../../i18n/types";
 import { formatShortDate } from "../../utils/date";
 import { formatBpmLabel, resolveSessionStatusLabel } from "../../utils/monitorLabels";
 import type { PersistedSession, SessionBookmark } from "../../api/sessions";
+import type { SessionSavedSessionCardActions } from "./SessionSavedSessionCardActions";
+import type { SessionSavedSessionCardHeader } from "./SessionSavedSessionCardHeader";
+import type { SessionSavedSessionCardMetrics } from "./SessionSavedSessionCardMetrics";
 import { resolveSessionTemplateLabel } from "./sessionDisplay";
+import type { SessionSavedSessionCardProps } from "./sessionSavedSessionCardTypes";
 
 export function resolveSessionSavedSessionCardStatusLabel(input: {
   session: PersistedSession;
@@ -26,9 +32,7 @@ export function buildSessionSavedSessionCardMetrics(input: {
   return {
     pollsValue: activeAndLive(input) ? input.liveWindowCount : input.session.totalPolls,
     linesValue: activeAndLive(input) ? input.liveProcessedLines : input.session.totalLines,
-    anomaliesValue: activeAndLive(input)
-      ? input.liveTotalAnomalies
-      : input.session.totalAnomalies,
+    anomaliesValue: activeAndLive(input) ? input.liveTotalAnomalies : input.session.totalAnomalies,
     bpmLabel: formatBpmLabel(input.session.lastBpm),
     templateLabel: resolveSessionTemplateLabel(
       input.session.sourceTemplateId,
@@ -50,7 +54,8 @@ export function resolveSessionSavedSessionCardMeta(input: {
 }) {
   return {
     title: input.session.label || input.t.session.unnamedSession,
-    sourceLabel: input.session.sourceTitle || input.session.sourceId || input.t.session.unknownSource,
+    sourceLabel:
+      input.session.sourceTitle || input.session.sourceId || input.t.session.unknownSource,
     baseLabel: input.session.playlistName || input.session.trackTitle,
     bookmarksLabel:
       input.bookmarks.length > 0
@@ -69,5 +74,75 @@ export function resolveSessionSavedSessionCardActions(input: {
     showPlaybackAction: !input.active && input.session.totalPolls > 0,
     showResumeAction: !input.active,
     deleteDisabled: input.mutating || input.active,
+  };
+}
+
+export function buildSessionSavedSessionCardSections(
+  input: SessionSavedSessionCardProps & { t: AppTranslations },
+) {
+  const statusLabel = resolveSessionSavedSessionCardStatusLabel({
+    session: input.session,
+    playbackActive: input.playbackActive,
+    t: input.t,
+  });
+  const metrics = buildSessionSavedSessionCardMetrics({
+    session: input.session,
+    active: input.active,
+    playbackActive: input.playbackActive,
+    liveWindowCount: input.liveWindowCount,
+    liveProcessedLines: input.liveProcessedLines,
+    liveTotalAnomalies: input.liveTotalAnomalies,
+    t: input.t,
+  });
+  const meta = resolveSessionSavedSessionCardMeta({
+    session: input.session,
+    bookmarks: input.bookmarks,
+    t: input.t,
+  });
+  const actions = resolveSessionSavedSessionCardActions({
+    active: input.active,
+    session: input.session,
+    mutating: input.mutating,
+  });
+  const statusTone = `status-${input.session.status}${input.playbackActive ? " status-playback" : ""}`;
+
+  return {
+    statusTone,
+    updatedAtLabel: meta.updatedAtLabel,
+    headerProps: {
+      selected: input.selected,
+      active: input.active,
+      sessionId: input.session.id,
+      status: statusLabel,
+      statusTone,
+      title: meta.title,
+      sourceLabel: meta.sourceLabel,
+      baseLabel: meta.baseLabel,
+      bookmarksLabel: meta.bookmarksLabel,
+      baseLabelPrefix: input.t.session.baseLabel,
+      onSelectSession: input.onSelectSession,
+    } satisfies ComponentProps<typeof SessionSavedSessionCardHeader>,
+    metricsProps: {
+      pollsValue: metrics.pollsValue,
+      linesValue: metrics.linesValue,
+      anomaliesValue: metrics.anomaliesValue,
+      bpmLabel: metrics.bpmLabel,
+      templateLabel: metrics.templateLabel,
+      pollsLabel: input.t.session.polls,
+      linesLabel: input.t.session.lines,
+      anomaliesLabel: input.t.session.anomalies,
+    } satisfies ComponentProps<typeof SessionSavedSessionCardMetrics>,
+    actionsProps: {
+      session: input.session,
+      mutating: input.mutating,
+      showPlaybackAction: actions.showPlaybackAction,
+      showResumeAction: actions.showResumeAction,
+      deleteDisabled: actions.deleteDisabled,
+      playbackLabel: input.t.session.playback,
+      resumeLabel: input.t.session.resume,
+      onResumeSession: input.onResumeSession,
+      onPlaybackSession: input.onPlaybackSession,
+      onDeleteSession: input.onDeleteSession,
+    } satisfies ComponentProps<typeof SessionSavedSessionCardActions>,
   };
 }

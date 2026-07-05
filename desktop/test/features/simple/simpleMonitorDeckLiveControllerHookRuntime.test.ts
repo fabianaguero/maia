@@ -85,14 +85,16 @@ describe("simpleMonitorDeckLiveControllerHookRuntime", () => {
     );
 
     expect(reactiveAudio.applyTrackMutation).not.toHaveBeenCalled();
-    expect(typeof buildSimpleMonitorDeckLiveStreamHookArgs({
-      state,
-      reactiveAudio,
-      refs: {
-        activeTrackRef: { current: null },
-        deckDurationSecondsRef: { current: 240 },
-      },
-      backgroundAudioRef,
-    }).applyTrackMutation).toBe("function");
+    expect(
+      typeof buildSimpleMonitorDeckLiveStreamHookArgs({
+        state,
+        reactiveAudio,
+        refs: {
+          activeTrackRef: { current: null },
+          deckDurationSecondsRef: { current: 240 },
+        },
+        backgroundAudioRef,
+      }).applyTrackMutation,
+    ).toBe("function");
   });
 });

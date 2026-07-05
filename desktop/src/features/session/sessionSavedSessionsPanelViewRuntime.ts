@@ -6,6 +6,7 @@ import type { ReplayFeedbackRecommendation } from "../../utils/replayFeedback";
 import type { SessionReplayBookmarkPanel } from "./SessionReplayBookmarkPanel";
 import type { SessionSavedSessionsList } from "./SessionSavedSessionsList";
 import type { SessionBookmarkContext } from "./sessionScreenRuntime";
+import type { SessionSavedSessionsPanelProps } from "./sessionSavedSessionsPanelTypes";
 
 export function buildSessionSavedSessionsPanelHeader(input: {
   t: AppTranslations;
@@ -65,10 +66,48 @@ export function buildSessionReplayBookmarkPanelProps(input: {
   return {
     selectedSession: input.selectedSession,
     selectedSessionBookmarks: input.selectedSessionBookmarks,
-    selectedSessionReplayFeedbackRecommendation:
-      input.selectedSessionReplayFeedbackRecommendation,
+    selectedSessionReplayFeedbackRecommendation: input.selectedSessionReplayFeedbackRecommendation,
     bookmarkContexts: input.bookmarkContexts,
     mutating: input.mutating,
     onReplayBookmark: input.onReplayBookmark,
+  };
+}
+
+export function buildSessionSavedSessionsPanelSections(
+  input: SessionSavedSessionsPanelProps & { t: AppTranslations },
+) {
+  return {
+    header: buildSessionSavedSessionsPanelHeader({
+      t: input.t,
+      sessionsCount: input.sessions.length,
+    }),
+    listProps: buildSessionSavedSessionsListProps({
+      t: input.t,
+      sessions: input.sessions,
+      loading: input.loading,
+      mutating: input.mutating,
+      selectedSessionId: input.selectedSessionId,
+      activeSessionId: input.activeSessionId,
+      activeSessionMode: input.activeSessionMode,
+      sessionBookmarksBySessionId: input.sessionBookmarksBySessionId,
+      liveWindowCount: input.liveWindowCount,
+      liveProcessedLines: input.liveProcessedLines,
+      liveTotalAnomalies: input.liveTotalAnomalies,
+      onSelectSession: input.onSelectSession,
+      onResumeSession: input.onResumeSession,
+      onPlaybackSession: input.onPlaybackSession,
+      onDeleteSession: input.onDeleteSession,
+    }),
+    replayPanelProps: input.selectedSession
+      ? buildSessionReplayBookmarkPanelProps({
+          selectedSession: input.selectedSession,
+          selectedSessionBookmarks: input.selectedSessionBookmarks,
+          selectedSessionReplayFeedbackRecommendation:
+            input.selectedSessionReplayFeedbackRecommendation,
+          bookmarkContexts: input.bookmarkContexts,
+          mutating: input.mutating,
+          onReplayBookmark: input.onReplayBookmark,
+        })
+      : null,
   };
 }

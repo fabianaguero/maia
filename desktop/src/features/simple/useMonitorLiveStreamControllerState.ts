@@ -4,9 +4,7 @@ import type {
   MonitorLiveStreamControllerRefs,
   MonitorLiveStreamControllerSetters,
 } from "./monitorLiveStreamControllerRuntime";
-import {
-  createMonitorLiveStreamSimulateLogHandler,
-} from "./monitorLiveStreamControllerStateHookRuntime";
+import { createMonitorLiveStreamSimulateLogHandler } from "./monitorLiveStreamControllerStateHookRuntime";
 import { createMonitorSignalBuffer, type MonitorLogSignalPoint } from "./monitorLiveStreamRuntime";
 import type { WaveformAnomalyMarker } from "./monitorDeckViewModel";
 import type { MonitorLogLine } from "./monitorLogParsing";

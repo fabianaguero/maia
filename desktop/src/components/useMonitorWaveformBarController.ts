@@ -83,13 +83,7 @@ export function useMonitorWaveformBarController({
     });
 
     return () => unsubscribe();
-  }, [
-    audioContext,
-    hasSession,
-    isPlayback,
-    resumeAudio,
-    subscribe,
-  ]);
+  }, [audioContext, hasSession, isPlayback, resumeAudio, subscribe]);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;

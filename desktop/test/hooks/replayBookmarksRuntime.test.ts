@@ -103,7 +103,9 @@ describe("replayBookmarksRuntime", () => {
     );
     expect(buildReplayBookmarkLoadErrorMessage(new Error("load boom"))).toContain("load boom");
     expect(buildReplayBookmarkSaveErrorMessage(new Error("save boom"))).toContain("save boom");
-    expect(buildReplayBookmarkDeleteErrorMessage(new Error("delete boom"))).toContain("delete boom");
+    expect(buildReplayBookmarkDeleteErrorMessage(new Error("delete boom"))).toContain(
+      "delete boom",
+    );
     expect(toReplayBookmarkErrorMessage(new Error("boom"))).toBe("boom");
     expect(toReplayBookmarkErrorMessage("failed")).toBe("failed");
     expect(toReplayBookmarkErrorMessage({})).toBe("Unexpected replay bookmark failure.");

@@ -23,7 +23,8 @@ export function createAppV0MonitorOrchestrator(
 ): AppV0MonitorOrchestrator {
   return {
     startLibraryMonitoring: async (repoId) => startAppV0LibraryMonitoring(deps, repoId),
-    startSourceMonitoring: async (source, trackId) => startAppV0SourceMonitoring(deps, source, trackId),
+    startSourceMonitoring: async (source, trackId) =>
+      startAppV0SourceMonitoring(deps, source, trackId),
     replaySession: async (sessionId, sourcePath, repoTitle) =>
       replayAppV0MonitorSession(deps, sessionId, sourcePath, repoTitle),
   };

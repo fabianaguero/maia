@@ -88,24 +88,26 @@ describe("useConnectionsScreenState integration", () => {
     let connectionStore: LogSourceConnection[] = [];
 
     repositoriesApi.listLogSourceConnections.mockImplementation(async () => [...connectionStore]);
-    repositoriesApi.upsertLogSourceConnection.mockImplementation(async (payload: {
-      id?: string;
-      kind: "file_log";
-      label: string;
-      sourceUri: string;
-      config: { path: string };
-    }) => {
-      const next: LogSourceConnection = createConnection({
-        id: payload.id ?? "conn-new",
-        kind: payload.kind,
-        label: payload.label,
-        sourceUri: payload.sourceUri,
-        config: payload.config,
-        updatedAt: "2026-06-26T10:06:00.000Z",
-      });
-      connectionStore = [next];
-      return next;
-    });
+    repositoriesApi.upsertLogSourceConnection.mockImplementation(
+      async (payload: {
+        id?: string;
+        kind: "file_log";
+        label: string;
+        sourceUri: string;
+        config: { path: string };
+      }) => {
+        const next: LogSourceConnection = createConnection({
+          id: payload.id ?? "conn-new",
+          kind: payload.kind,
+          label: payload.label,
+          sourceUri: payload.sourceUri,
+          config: payload.config,
+          updatedAt: "2026-06-26T10:06:00.000Z",
+        });
+        connectionStore = [next];
+        return next;
+      },
+    );
     repositoriesApi.pickRepositoryFile.mockResolvedValue("/logs/generated.log");
     repositoriesApi.deleteLogSourceConnection.mockResolvedValue(undefined);
     repositoriesApi.startLogSourceConnection.mockResolvedValue(undefined);

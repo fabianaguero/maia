@@ -12,10 +12,7 @@ export interface AppMonitorGuideActionBindings {
 }
 
 export interface AppMonitorSessionActionBindings {
-  startReplaySession: (
-    session: PersistedSession,
-    replayWindowIndex?: number,
-  ) => Promise<boolean>;
+  startReplaySession: (session: PersistedSession, replayWindowIndex?: number) => Promise<boolean>;
   startLiveSession: (
     input: SessionStartInput,
     persistedSessionId: string,

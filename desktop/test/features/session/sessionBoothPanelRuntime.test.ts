@@ -6,6 +6,7 @@ import {
   buildSessionBoothDetailProps,
   buildSessionBoothHeaderLabels,
   buildSessionBoothHeaderProps,
+  buildSessionBoothPanelSections,
   buildSessionBoothProgressProps,
   buildSessionBoothRouteLabels,
   buildSessionBoothRouteProps,
@@ -84,5 +85,38 @@ describe("sessionBoothPanelRuntime", () => {
     expect(routeProps.labels.adapter).toBe(en.session.adapter);
     expect(detailProps.readyToRun).toBe(true);
     expect(detailProps.labels.watchouts).toBe(en.session.watchouts);
+  });
+
+  it("builds all booth sections from one panel contract", () => {
+    const sections = buildSessionBoothPanelSections({
+      t: en,
+      booth,
+      playbackActive: false,
+      liveMonitorActive: true,
+      mutating: false,
+      readyToRun: true,
+      mode: "log",
+      latestUpdate: null,
+      monitorSessionId: "monitor-1",
+      isPlaybackPaused: false,
+      directPath: "/logs/service.log",
+      isDirectLoading: false,
+      selectedSession: { id: "session-1" } as never,
+      creating: false,
+      onDirectPathChange: vi.fn(),
+      onDirectLaunch: vi.fn(),
+      onResumeSelected: vi.fn(),
+      onReplaySelected: vi.fn(),
+      onCreateSession: vi.fn(),
+      onStepPlaybackWindow: vi.fn(),
+      onToggleReplayPlayback: vi.fn(),
+      onStopSession: vi.fn(),
+    });
+
+    expect(sections.headerProps.headline).toBe("Session live");
+    expect(sections.progressProps.visible).toBe(true);
+    expect(sections.routeProps.monitorSessionId).toBe("monitor-1");
+    expect(sections.detailProps.readyToRun).toBe(true);
+    expect(sections.stats).toBe(booth.stats);
   });
 });

@@ -2,9 +2,7 @@ import type { useAppSelectionEntityActions } from "./useAppSelectionEntityAction
 import type { useAppSelectionMonitorActions } from "./useAppSelectionMonitorActions";
 import type { UseAppSelectionActionsInput } from "./appSelectionActionsTypes";
 
-export function buildAppSelectionEntityActionsInput(
-  input: UseAppSelectionActionsInput,
-) {
+export function buildAppSelectionEntityActionsInput(input: UseAppSelectionActionsInput) {
   return {
     armPlaylistBase: input.armPlaylistBase,
     armTrackBase: input.armTrackBase,
@@ -17,9 +15,7 @@ export function buildAppSelectionEntityActionsInput(
   };
 }
 
-export function buildAppSelectionMonitorActionsInput(
-  input: UseAppSelectionActionsInput,
-) {
+export function buildAppSelectionMonitorActionsInput(input: UseAppSelectionActionsInput) {
   return {
     library: input.library,
     repositories: input.repositories,

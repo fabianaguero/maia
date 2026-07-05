@@ -8,12 +8,8 @@ import {
 import type { UseAppSelectionActionsInput } from "./appSelectionActionsTypes";
 
 export function useAppSelectionActions(input: UseAppSelectionActionsInput) {
-  const entityActions = useAppSelectionEntityActions(
-    buildAppSelectionEntityActionsInput(input),
-  );
-  const monitorActions = useAppSelectionMonitorActions(
-    buildAppSelectionMonitorActionsInput(input),
-  );
+  const entityActions = useAppSelectionEntityActions(buildAppSelectionEntityActionsInput(input));
+  const monitorActions = useAppSelectionMonitorActions(buildAppSelectionMonitorActionsInput(input));
 
   return buildAppSelectionActionsResult({
     entityActions,

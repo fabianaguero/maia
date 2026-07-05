@@ -1,8 +1,6 @@
 import { useMemo } from "react";
 import { useT } from "../../i18n/I18nContext";
-import {
-  buildSimpleMonitorScreenControllerHookArgsInput,
-} from "./simpleMonitorScreenControllerHookRuntime";
+import { buildSimpleMonitorScreenControllerHookArgsInput } from "./simpleMonitorScreenControllerHookRuntime";
 import { buildSimpleMonitorScreenHookArgsInput } from "./simpleMonitorScreenOrchestrationRuntime";
 import {
   buildSimpleMonitorScreenControllerCollections,

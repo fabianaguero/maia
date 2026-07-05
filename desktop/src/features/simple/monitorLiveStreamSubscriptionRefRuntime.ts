@@ -26,7 +26,8 @@ export function buildMonitorLiveStreamSubscriptionUpdateInput(input: {
     previousWaveformAnomalies: input.subscription.waveformAnomaliesRef.current,
     previousLogSignalBuffer: input.subscription.logSignalBufferRef.current,
     hasBackgroundTrack: Boolean(
-      input.subscription.backgroundGraphRef.current || input.subscription.backgroundAudioRef.current,
+      input.subscription.backgroundGraphRef.current ||
+      input.subscription.backgroundAudioRef.current,
     ),
     audioProbePlayed: input.subscription.audioProbePlayedRef.current,
     lastCueAccentAtMs: input.subscription.lastCueAccentAtRef.current,

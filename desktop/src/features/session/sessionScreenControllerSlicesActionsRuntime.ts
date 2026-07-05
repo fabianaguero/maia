@@ -1,7 +1,5 @@
 import type { AppTranslations } from "../../i18n/types";
-import {
-  buildSessionScreenControllerActionsHookInput,
-} from "./sessionScreenControllerHookRuntime";
+import { buildSessionScreenControllerActionsHookInput } from "./sessionScreenControllerHookRuntime";
 import { buildSessionScreenActionsInput } from "./sessionScreenControllerRuntime";
 import type { SessionScreenControllerInput } from "./sessionScreenControllerTypes";
 import type { useSessionScreenLocalState } from "./useSessionScreenLocalState";

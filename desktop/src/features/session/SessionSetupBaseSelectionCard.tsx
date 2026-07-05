@@ -1,8 +1,13 @@
-import { getPlaylistMedianBpm } from "../../utils/playlist";
-import { getTrackTitle } from "../../utils/track";
 import { useT } from "../../i18n/I18nContext";
 import type { BaseTrackPlaylist, LibraryTrack } from "../../types/library";
 import type { SessionBaseMode } from "./sessionDisplay";
+import {
+  buildSessionSetupBaseModeTabs,
+  buildSessionSetupBaseSummary,
+  buildSessionSetupPlaylistOptions,
+  buildSessionSetupTrackOptions,
+  resolveSessionSetupBaseEmptyState,
+} from "./sessionSetupBaseSelectionCardRuntime";
 
 interface SessionSetupBaseSelectionCardProps {
   tracks: LibraryTrack[];
@@ -34,6 +39,30 @@ export function SessionSetupBaseSelectionCard({
   onPlaylistSelect,
 }: SessionSetupBaseSelectionCardProps) {
   const t = useT();
+  const modeTabs = buildSessionSetupBaseModeTabs({
+    t,
+    baseMode,
+    trackCount: tracks.length,
+    playlistCount: playlists.length,
+  });
+  const emptyState = resolveSessionSetupBaseEmptyState({
+    t,
+    baseMode,
+    trackCount: tracks.length,
+    playlistCount: playlists.length,
+  });
+  const trackOptions = buildSessionSetupTrackOptions({ tracks, selectedTrackId });
+  const playlistOptions = buildSessionSetupPlaylistOptions({
+    playlists,
+    tracks,
+    selectedPlaylistId,
+    t,
+  });
+  const summary = buildSessionSetupBaseSummary({
+    t,
+    selectedBaseLabel,
+    selectedBaseDetail,
+  });
 
   return (
     <div className="audio-path-card monitor-setup-card">
@@ -41,72 +70,58 @@ export function SessionSetupBaseSelectionCard({
       <p className="monitor-empty-hint">{t.session.stepBaseHelp}</p>
 
       <div className="session-mode-tabs">
-        <button
-          type="button"
-          className={`session-mode-tab${baseMode === "track" ? " active" : ""}`}
-          onClick={() => onBaseModeChange("track")}
-          disabled={tracks.length === 0}
-        >
-          {t.session.track}
-        </button>
-        <button
-          type="button"
-          className={`session-mode-tab${baseMode === "playlist" ? " active" : ""}`}
-          onClick={() => onBaseModeChange("playlist")}
-          disabled={playlists.length === 0}
-        >
-          {t.session.playlist}
-        </button>
+        {modeTabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={`session-mode-tab${tab.active ? " active" : ""}`}
+            onClick={() => onBaseModeChange(tab.id)}
+            disabled={tab.disabled}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {baseMode === "track" ? (
-        tracks.length === 0 ? (
-          <p className="placeholder">{t.session.noTracks}</p>
-        ) : (
-          <div className="session-asset-options">
-            {tracks.map((track) => (
-              <button
-                key={track.id}
-                type="button"
-                className={`session-asset-option${selectedTrackId === track.id ? " selected" : ""}`}
-                onClick={() => onTrackSelect(track.id)}
-              >
-                <span className="session-asset-title">{getTrackTitle(track)}</span>
-                <span className="session-asset-path">
-                  {track.analysis.bpm?.toFixed(0) ?? "—"} BPM
-                </span>
-              </button>
-            ))}
-          </div>
-        )
-      ) : playlists.length === 0 ? (
-        <p className="placeholder">{t.session.noPlaylists}</p>
+      {emptyState ? (
+        <p className="placeholder">{emptyState}</p>
+      ) : baseMode === "track" ? (
+        <div className="session-asset-options">
+          {trackOptions.map((track) => (
+            <button
+              key={track.id}
+              type="button"
+              className={`session-asset-option${track.selected ? " selected" : ""}`}
+              onClick={() => onTrackSelect(track.id)}
+            >
+              <span className="session-asset-title">{track.title}</span>
+              <span className="session-asset-path">{track.detail}</span>
+            </button>
+          ))}
+        </div>
       ) : (
         <div className="session-asset-options">
-          {playlists.map((playlist) => (
+          {playlistOptions.map((playlist) => (
             <button
               key={playlist.id}
               type="button"
-              className={`session-asset-option${selectedPlaylistId === playlist.id ? " selected" : ""}`}
+              className={`session-asset-option${playlist.selected ? " selected" : ""}`}
               onClick={() => onPlaylistSelect(playlist.id)}
             >
-              <span className="session-asset-title">{playlist.name}</span>
-              <span className="session-asset-path">
-                {playlist.trackIds.length} {t.library.sounds.toLowerCase()} · {t.session.median}{" "}
-                {getPlaylistMedianBpm(playlist, tracks)?.toFixed(0) ?? "?"} BPM
-              </span>
+              <span className="session-asset-title">{playlist.title}</span>
+              <span className="session-asset-path">{playlist.detail}</span>
             </button>
           ))}
         </div>
       )}
 
-      {(selectedTrack || selectedPlaylist) && (
+      {summary && (selectedTrack || selectedPlaylist) ? (
         <div className="monitor-source-summary">
-          <small>{t.session.armed}</small>
-          <strong>{selectedBaseLabel}</strong>
-          <small style={{ marginTop: 4 }}>{selectedBaseDetail}</small>
+          <small>{summary.eyebrow}</small>
+          <strong>{summary.title}</strong>
+          <small style={{ marginTop: 4 }}>{summary.detail}</small>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

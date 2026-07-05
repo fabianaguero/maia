@@ -1,7 +1,9 @@
 import type { BuildSessionScreenViewModelInput } from "./sessionScreenViewModelTypes";
+import { buildSessionScreenPanelsInteractions } from "./sessionScreenInteractionRuntime";
 
 export function buildSessionScreenPanelsProps(input: BuildSessionScreenViewModelInput) {
   const { controller } = input;
+  const interactions = buildSessionScreenPanelsInteractions(input);
 
   return {
     tracks: input.tracks,
@@ -36,25 +38,6 @@ export function buildSessionScreenPanelsProps(input: BuildSessionScreenViewModel
     liveWindowCount: controller.monitor.metrics.windowCount,
     liveProcessedLines: controller.monitor.metrics.processedLines,
     liveTotalAnomalies: controller.monitor.metrics.totalAnomalies,
-    onTemplateSelect: controller.setSelectedTemplateId,
-    onBaseModeChange: controller.setBaseMode,
-    onTrackSelect: controller.setSelectedTrackId,
-    onPlaylistSelect: controller.setSelectedPlaylistId,
-    onModeChange: (nextMode: typeof controller.mode) => {
-      controller.setMode(nextMode);
-      controller.setSelectedSourceId(null);
-    },
-    onSourceSelect: controller.setSelectedSourceId,
-    onSessionLabelChange: controller.setSessionLabel,
-    onCreateSession: controller.handleCreateSession,
-    onSelectSession: input.onSelectSession,
-    onResumeSession: (sessionId: string) => {
-      void controller.handleResumeSession(sessionId);
-    },
-    onPlaybackSession: controller.handlePlaybackSession,
-    onReplayBookmark: controller.handleReplayBookmark,
-    onDeleteSession: (sessionId: string) => {
-      void input.onDelete(sessionId);
-    },
+    ...interactions,
   };
 }

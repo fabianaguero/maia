@@ -138,7 +138,11 @@ describe("libraryTrackMutationActionRuntime", () => {
 
   it("analyzes/imports/reanalyzes/relinks through runtime helpers", async () => {
     const setTracks = vi.fn();
-    const track = createTrack("track-a", { analyzerStatus: "pending", bpm: null, bpmConfidence: 0.1 });
+    const track = createTrack("track-a", {
+      analyzerStatus: "pending",
+      bpm: null,
+      bpmConfidence: 0.1,
+    });
     const analyzedTrack = createTrack("track-a", { bpm: 128, bpmConfidence: 0.9 });
 
     analyzerMock.runAnalyzerRequest.mockResolvedValue({

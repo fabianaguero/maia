@@ -13,8 +13,7 @@ export function useMonitorProviderSessionStopCallback(
   );
 
   const stopSession = useCallback(
-    async (): Promise<void> =>
-      stopMonitorProviderSessionAction(stopSessionInput),
+    async (): Promise<void> => stopMonitorProviderSessionAction(stopSessionInput),
     [stopSessionInput],
   );
 

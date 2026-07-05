@@ -142,7 +142,11 @@ export async function startReplayMonitorSession(
   const sourceRepository = resolveReplaySourceRepository(session, input.repositories.repositories);
 
   if (!sourceRepository) {
-    input.notify("error", input.t.appShell.replayUnavailableTitle, input.t.appShell.replayUnavailableBody);
+    input.notify(
+      "error",
+      input.t.appShell.replayUnavailableTitle,
+      input.t.appShell.replayUnavailableBody,
+    );
     return false;
   }
 

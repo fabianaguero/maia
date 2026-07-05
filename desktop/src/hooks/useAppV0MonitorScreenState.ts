@@ -6,9 +6,7 @@ import {
   buildAppV0MonitorStateModelInput,
   buildAppV0MonitorStateModel,
 } from "./appV0MonitorScreenStateRuntime";
-import {
-  buildAppV0MonitorScreenStateHookResult,
-} from "./appV0MonitorScreenStateHookRuntime";
+import { buildAppV0MonitorScreenStateHookResult } from "./appV0MonitorScreenStateHookRuntime";
 import type { ActiveMonitorSession, MonitorMetrics } from "../features/monitor/monitorContextTypes";
 import type { AppSection } from "../features/simple/appSections";
 import type { AppV0Language } from "../appV0Preferences";
@@ -88,15 +86,7 @@ export function useAppV0MonitorScreenState(input: UseAppV0MonitorScreenStateInpu
           metrics,
         }),
       ),
-    [
-      lang,
-      currentSection,
-      selectedRepositoryTitle,
-      selectedTrack,
-      tracks,
-      session,
-      metrics,
-    ],
+    [lang, currentSection, selectedRepositoryTitle, selectedTrack, tracks, session, metrics],
   );
   const monitorOrchestrator = useMemo(
     () =>

@@ -2,9 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 
 import { en } from "../../../src/i18n/en";
 import {
+  buildSessionScreenControllerStateFromSlices,
+  buildSessionScreenControllerActionBindings,
+  buildSessionScreenControllerDerivedBindings,
+  buildSessionScreenControllerLocalBindings,
   buildSessionScreenControllerMonitorSnapshotInput,
   buildSessionScreenControllerSlicesInput,
   buildSessionScreenControllerStateInput,
+  buildSessionScreenControllerStateSections,
 } from "../../../src/features/session/sessionScreenControllerStateRuntime";
 
 describe("sessionScreenControllerStateRuntime", () => {
@@ -86,6 +91,42 @@ describe("sessionScreenControllerStateRuntime", () => {
       monitorSnapshot,
       localState,
     });
+    const localBindings = buildSessionScreenControllerLocalBindings(localState);
+    const actionBindings = buildSessionScreenControllerActionBindings({
+      handleCreateSession: vi.fn(async () => undefined),
+      handleDirectLaunch: vi.fn(async () => undefined),
+      handleResumeSession: vi.fn(),
+      handlePlaybackSession: vi.fn(async () => undefined),
+      handleReplayBookmark: vi.fn(async () => undefined),
+    });
+    const derivedBindings = buildSessionScreenControllerDerivedBindings({
+      derivedState: {
+        sourceOptions: [{ id: "repo-1" }],
+        selectedSource: { id: "repo-1", title: "orders-service" },
+        selectedTrack: { id: "track-1", title: "Track One" },
+        selectedPlaylist: null,
+        selectedBaseDetails: { label: "Deck A", detail: "126 BPM" },
+        activeSession: null,
+        selectedSession: null,
+        selectedSessionIdForEvents: null,
+        playbackActive: false,
+        liveMonitorActive: true,
+        activeBedUrl: null,
+        selectedSessionBookmarks: [],
+        bookmarkContexts: {},
+        sessionLabelPlaceholder: "Session placeholder",
+        playbackPercent: null,
+        readyToRun: true,
+        activeBaseDetails: { label: "Deck A", detail: "126 BPM" },
+        selectedSessionBaseDetails: { label: "Deck A", detail: "126 BPM" },
+        activeSourceDetails: { label: "orders-service", path: "/logs/orders-service.log" },
+        selectedSessionSourceDetails: { label: "orders-service", path: "/logs/orders-service.log" },
+      } as never,
+      selectedSessionReplayFeedbackRecommendation: null,
+      booth: {
+        headline: "Session live",
+      } as never,
+    });
 
     const state = buildSessionScreenControllerStateInput({
       t: en,
@@ -156,9 +197,102 @@ describe("sessionScreenControllerStateRuntime", () => {
 
     expect(slicesInput.localState).toBe(localState);
     expect(slicesInput.monitorSnapshot).toBe(monitorSnapshot);
+    expect(localBindings.directPath).toBe("/logs/service.log");
+    expect(actionBindings.handleCreateSession).toBeTypeOf("function");
+    expect(derivedBindings.readyToRun).toBe(true);
     expect(state.mode).toBe("log");
     expect(state.selectedSource?.id).toBe("repo-1");
     expect(state.selectedBaseDetails.detail).toBe("126 BPM");
     expect(state.booth.headline).toBe("Session live");
+
+    const stateFromSlices = buildSessionScreenControllerStateFromSlices({
+      t: en,
+      monitor: {
+        session: null,
+        metrics: { windowCount: 3, processedLines: 120, totalAnomalies: 4 },
+      } as never,
+      localState,
+      slicesResult: {
+        actions: {
+          handleCreateSession: vi.fn(async () => undefined),
+          handleDirectLaunch: vi.fn(async () => undefined),
+          handleResumeSession: vi.fn(),
+          handlePlaybackSession: vi.fn(async () => undefined),
+          handleReplayBookmark: vi.fn(async () => undefined),
+        },
+        selectedTemplate: null,
+        selectedTemplatePresentation: null,
+        derivedState: {
+          sourceOptions: [{ id: "repo-1" }],
+          selectedSource: { id: "repo-1", title: "orders-service" },
+          selectedTrack: { id: "track-1", title: "Track One" },
+          selectedPlaylist: null,
+          selectedBaseDetails: { label: "Deck A", detail: "126 BPM" },
+          activeSession: null,
+          selectedSession: null,
+          selectedSessionIdForEvents: null,
+          playbackActive: false,
+          liveMonitorActive: true,
+          activeBedUrl: null,
+          selectedSessionBookmarks: [],
+          bookmarkContexts: {},
+          sessionLabelPlaceholder: "Session placeholder",
+          playbackPercent: null,
+          readyToRun: true,
+          activeBaseDetails: { label: "Deck A", detail: "126 BPM" },
+          selectedSessionBaseDetails: { label: "Deck A", detail: "126 BPM" },
+          activeSourceDetails: { label: "orders-service", path: "/logs/orders-service.log" },
+          selectedSessionSourceDetails: {
+            label: "orders-service",
+            path: "/logs/orders-service.log",
+          },
+        } as never,
+        selectedSessionReplayFeedbackRecommendation: null,
+        booth: {
+          headline: "Session live",
+        } as never,
+      },
+    });
+    expect(stateFromSlices.readyToRun).toBe(true);
+    expect(stateFromSlices.booth.headline).toBe("Session live");
+
+    const sections = buildSessionScreenControllerStateSections({
+      localState,
+      actions: {
+        handleCreateSession: vi.fn(async () => undefined),
+        handleDirectLaunch: vi.fn(async () => undefined),
+        handleResumeSession: vi.fn(),
+        handlePlaybackSession: vi.fn(async () => undefined),
+        handleReplayBookmark: vi.fn(async () => undefined),
+      },
+      derivedState: {
+        sourceOptions: [{ id: "repo-1" }],
+        selectedSource: { id: "repo-1", title: "orders-service" },
+        selectedTrack: { id: "track-1", title: "Track One" },
+        selectedPlaylist: null,
+        selectedBaseDetails: { label: "Deck A", detail: "126 BPM" },
+        activeSession: null,
+        selectedSession: null,
+        selectedSessionIdForEvents: null,
+        playbackActive: false,
+        liveMonitorActive: true,
+        activeBedUrl: null,
+        selectedSessionBookmarks: [],
+        bookmarkContexts: {},
+        sessionLabelPlaceholder: "Session placeholder",
+        playbackPercent: null,
+        readyToRun: true,
+        activeBaseDetails: { label: "Deck A", detail: "126 BPM" },
+        selectedSessionBaseDetails: { label: "Deck A", detail: "126 BPM" },
+        activeSourceDetails: { label: "orders-service", path: "/logs/orders-service.log" },
+        selectedSessionSourceDetails: { label: "orders-service", path: "/logs/orders-service.log" },
+      } as never,
+      selectedSessionReplayFeedbackRecommendation: null,
+      booth: {
+        headline: "Session live",
+      } as never,
+    });
+    expect(sections.localBindings.selectedSourceId).toBe("repo-1");
+    expect(sections.derivedBindings.booth.headline).toBe("Session live");
   });
 });

@@ -12,7 +12,8 @@ const controllerHooks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../../src/features/simple/useConnectionsFormLocalState", () => ({
-  useConnectionsFormLocalState: (input: unknown) => controllerHooks.useConnectionsFormLocalState(input),
+  useConnectionsFormLocalState: (input: unknown) =>
+    controllerHooks.useConnectionsFormLocalState(input),
 }));
 
 vi.mock("../../../src/features/simple/useConnectionsFormActions", () => ({

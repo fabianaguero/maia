@@ -1,24 +1,24 @@
-import type { MutableRefObject } from "react";
-
-import type { SessionEvent } from "../../api/sessions";
 import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { AppTranslations } from "../../i18n/types";
-import type { ActiveMonitorSession, MonitorMetrics } from "../monitor/monitorContextTypes";
 import type { BuildSessionBoothViewModelInput } from "./sessionBoothViewModelTypes";
 import type { PersistedSession } from "../../api/sessions";
 import type { QuickSessionMode } from "./sessionDisplay";
+import type {
+  SessionScreenControllerBoothDerivedState,
+  SessionScreenControllerBoothMonitorSnapshot,
+  SessionScreenEffectsHookBindings,
+} from "./sessionScreenControllerBoothContracts";
 import type { SessionScreenControllerState } from "./sessionScreenControllerTypes";
-import type { SessionControllerDerivedState } from "./sessionScreenRuntime";
 
 export function buildSessionScreenEffectsHookInput(input: {
-  monitorSessionId: string | null;
-  subscribeToMonitor: (listener: (update: LiveLogStreamUpdate) => void) => () => void;
-  setLatestUpdate: (update: LiveLogStreamUpdate | null) => void;
-  selectedSessionIdForEvents: string | null;
-  setSelectedSessionEvents: (events: SessionEvent[]) => void;
-  activeBedUrl: string | null;
-  boothBedAudioRef: MutableRefObject<HTMLAudioElement | null>;
-}) {
+  monitorSessionId: SessionScreenEffectsHookBindings["monitorSessionId"];
+  subscribeToMonitor: SessionScreenEffectsHookBindings["subscribeToMonitor"];
+  setLatestUpdate: SessionScreenEffectsHookBindings["setLatestUpdate"];
+  selectedSessionIdForEvents: SessionScreenEffectsHookBindings["selectedSessionIdForEvents"];
+  setSelectedSessionEvents: SessionScreenEffectsHookBindings["setSelectedSessionEvents"];
+  activeBedUrl: SessionScreenEffectsHookBindings["activeBedUrl"];
+  boothBedAudioRef: SessionScreenEffectsHookBindings["boothBedAudioRef"];
+}): SessionScreenEffectsHookBindings {
   return {
     monitorSessionId: input.monitorSessionId,
     subscribeToMonitor: input.subscribeToMonitor,
@@ -52,68 +52,72 @@ export function buildSessionScreenBoothViewModelInput(input: {
   activeBaseDetail: string | null;
   activeSourceLabel: string | null;
   activeSourcePath: string | null;
-  monitorSession: ActiveMonitorSession | null;
-  monitorMetrics: MonitorMetrics;
-  isPlaybackPaused: boolean;
-  playbackEventIndex: number | null;
-  playbackEventCount: number | null;
+  monitorSession: SessionScreenControllerBoothMonitorSnapshot["monitorSession"];
+  monitorMetrics: SessionScreenControllerBoothMonitorSnapshot["monitorMetrics"];
+  isPlaybackPaused: SessionScreenControllerBoothMonitorSnapshot["isPlaybackPaused"];
+  playbackEventIndex: SessionScreenControllerBoothMonitorSnapshot["playbackEventIndex"];
+  playbackEventCount: SessionScreenControllerBoothMonitorSnapshot["playbackEventCount"];
 }): BuildSessionBoothViewModelInput {
   return input;
+}
+
+export function buildSessionScreenControllerBoothDerivedBindings(
+  derivedState: SessionScreenControllerBoothDerivedState,
+) {
+  return {
+    playbackActive: derivedState.playbackActive,
+    liveMonitorActive: derivedState.liveMonitorActive,
+    readyToRun: derivedState.readyToRun,
+    playbackPercent: derivedState.playbackPercent,
+    activeSession: derivedState.activeSession,
+    selectedSourceTitle: derivedState.selectedSource?.title ?? null,
+    selectedSourcePath: derivedState.selectedSource?.sourcePath ?? null,
+    selectedSourceSuggestedBpm: derivedState.selectedSource?.suggestedBpm ?? null,
+    selectedSessionSourceLabel: derivedState.selectedSessionSourceDetails.label,
+    selectedSessionSourcePath: derivedState.selectedSessionSourceDetails.path,
+    selectedBaseLabel: derivedState.selectedBaseDetails.label,
+    selectedBaseDetail: derivedState.selectedBaseDetails.detail,
+    selectedSessionBaseLabel: derivedState.selectedSessionBaseDetails.label,
+    selectedSessionBaseDetail: derivedState.selectedSessionBaseDetails.detail,
+    activeBaseLabel: derivedState.activeBaseDetails.label,
+    activeBaseDetail: derivedState.activeBaseDetails.detail,
+    activeSourceLabel: derivedState.activeSourceDetails.label,
+    activeSourcePath: derivedState.activeSourceDetails.path,
+  };
+}
+
+export function buildSessionScreenControllerBoothMonitorBindings(input: {
+  monitorSession: SessionScreenControllerBoothMonitorSnapshot["monitorSession"];
+  monitorMetrics: SessionScreenControllerBoothMonitorSnapshot["monitorMetrics"];
+  isPlaybackPaused: SessionScreenControllerBoothMonitorSnapshot["isPlaybackPaused"];
+  playbackEventIndex: SessionScreenControllerBoothMonitorSnapshot["playbackEventIndex"];
+  playbackEventCount: SessionScreenControllerBoothMonitorSnapshot["playbackEventCount"];
+}): SessionScreenControllerBoothMonitorSnapshot {
+  return {
+    monitorSession: input.monitorSession,
+    monitorMetrics: input.monitorMetrics,
+    isPlaybackPaused: input.isPlaybackPaused,
+    playbackEventIndex: input.playbackEventIndex,
+    playbackEventCount: input.playbackEventCount,
+  };
 }
 
 export function buildSessionScreenControllerBoothHookInput(input: {
   t: AppTranslations;
   mode: QuickSessionMode;
   latestUpdate: LiveLogStreamUpdate | null;
-  derivedState: Pick<
-    SessionControllerDerivedState,
-    | "playbackActive"
-    | "liveMonitorActive"
-    | "readyToRun"
-    | "playbackPercent"
-    | "activeSession"
-    | "selectedSource"
-    | "selectedBaseDetails"
-    | "selectedSessionBaseDetails"
-    | "activeBaseDetails"
-    | "activeSourceDetails"
-    | "selectedSessionSourceDetails"
-  >;
-  monitorSnapshot: {
-    monitorSession: ActiveMonitorSession | null;
-    monitorMetrics: MonitorMetrics;
-    isPlaybackPaused: boolean;
-    playbackEventIndex: number | null;
-    playbackEventCount: number | null;
-  };
+  derivedState: SessionScreenControllerBoothDerivedState;
+  monitorSnapshot: SessionScreenControllerBoothMonitorSnapshot;
 }) {
+  const derivedBindings = buildSessionScreenControllerBoothDerivedBindings(input.derivedState);
+  const monitorBindings = buildSessionScreenControllerBoothMonitorBindings(input.monitorSnapshot);
+
   return {
     t: input.t,
     mode: input.mode,
     latestUpdate: input.latestUpdate,
-    playbackActive: input.derivedState.playbackActive,
-    liveMonitorActive: input.derivedState.liveMonitorActive,
-    readyToRun: input.derivedState.readyToRun,
-    playbackPercent: input.derivedState.playbackPercent,
-    activeSession: input.derivedState.activeSession,
-    selectedSourceTitle: input.derivedState.selectedSource?.title ?? null,
-    selectedSourcePath: input.derivedState.selectedSource?.sourcePath ?? null,
-    selectedSourceSuggestedBpm: input.derivedState.selectedSource?.suggestedBpm ?? null,
-    selectedSessionSourceLabel: input.derivedState.selectedSessionSourceDetails.label,
-    selectedSessionSourcePath: input.derivedState.selectedSessionSourceDetails.path,
-    selectedBaseLabel: input.derivedState.selectedBaseDetails.label,
-    selectedBaseDetail: input.derivedState.selectedBaseDetails.detail,
-    selectedSessionBaseLabel: input.derivedState.selectedSessionBaseDetails.label,
-    selectedSessionBaseDetail: input.derivedState.selectedSessionBaseDetails.detail,
-    activeBaseLabel: input.derivedState.activeBaseDetails.label,
-    activeBaseDetail: input.derivedState.activeBaseDetails.detail,
-    activeSourceLabel: input.derivedState.activeSourceDetails.label,
-    activeSourcePath: input.derivedState.activeSourceDetails.path,
-    monitorSession: input.monitorSnapshot.monitorSession,
-    monitorMetrics: input.monitorSnapshot.monitorMetrics,
-    isPlaybackPaused: input.monitorSnapshot.isPlaybackPaused,
-    playbackEventIndex: input.monitorSnapshot.playbackEventIndex,
-    playbackEventCount: input.monitorSnapshot.playbackEventCount,
+    ...derivedBindings,
+    ...monitorBindings,
   };
 }
 

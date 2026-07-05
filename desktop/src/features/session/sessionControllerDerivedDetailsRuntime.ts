@@ -80,9 +80,6 @@ export function resolveSessionControllerDerivedDetails(input: {
       input.playlists,
     ),
     activeSourceDetails: resolveSourceDetails(input.activeSession, input.repositories),
-    selectedSessionSourceDetails: resolveSourceDetails(
-      input.selectedSession,
-      input.repositories,
-    ),
+    selectedSessionSourceDetails: resolveSourceDetails(input.selectedSession, input.repositories),
   };
 }

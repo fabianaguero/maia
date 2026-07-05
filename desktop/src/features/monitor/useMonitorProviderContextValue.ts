@@ -1,9 +1,7 @@
 import { useMemo, type MutableRefObject } from "react";
 
 import type { MonitorContextValue, StreamListener } from "./monitorContextTypes";
-import {
-  buildMonitorProviderContextHookValue,
-} from "./monitorProviderContextValueHookRuntime";
+import { buildMonitorProviderContextHookValue } from "./monitorProviderContextValueHookRuntime";
 import { buildMonitorProviderMemoContextValue } from "./monitorProviderContextValueMemoRuntime";
 import { useMonitorProviderSubscribeCallback } from "./useMonitorProviderSubscribeCallback";
 

@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 import { en } from "../../../src/i18n/en";
 import {
   buildSessionScreenControllerActionsHookInput,
+  buildSessionScreenControllerBoothDerivedBindings,
   buildSessionScreenControllerBoothHookInput,
+  buildSessionScreenControllerBoothMonitorBindings,
   buildSessionScreenControllerDerivedHookInput,
   buildSessionScreenControllerDerivedMemoDeps,
   buildSessionScreenControllerHookResult,
@@ -174,11 +176,31 @@ describe("sessionScreenControllerHookRuntime", () => {
       } as never,
       monitorSnapshot,
     });
+    const derivedBindings = buildSessionScreenControllerBoothDerivedBindings({
+      playbackActive: true,
+      liveMonitorActive: false,
+      readyToRun: true,
+      playbackPercent: 50,
+      activeSession: null,
+      selectedSource: {
+        title: "customers-service",
+        sourcePath: "/logs/customers-service.log",
+        suggestedBpm: 124,
+      },
+      selectedBaseDetails: { label: "Night Ops", detail: "2 tracks · median 125 BPM" },
+      selectedSessionBaseDetails: { label: null, detail: null },
+      activeBaseDetails: { label: null, detail: null },
+      activeSourceDetails: { label: null, path: null },
+      selectedSessionSourceDetails: { label: null, path: null },
+    } as never);
+    const monitorBindings = buildSessionScreenControllerBoothMonitorBindings(monitorSnapshot);
     const input = buildSessionScreenBoothViewModelInput(boothArgs);
     const result = buildSessionScreenControllerHookResult({
       booth: input,
     });
 
+    expect(derivedBindings.selectedSourceTitle).toBe("customers-service");
+    expect(monitorBindings.playbackEventCount).toBe(12);
     expect(input.selectedSourceTitle).toBe("customers-service");
     expect(input.monitorMetrics.totalAnomalies).toBe(5);
     expect(input.playbackEventCount).toBe(12);

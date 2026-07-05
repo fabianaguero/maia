@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { en } from "../../../src/i18n/en";
 import {
+  buildSessionReplayBookmarkCardProps,
+  buildSessionReplayBookmarkPanelSections,
   buildSessionReplayBookmarkContext,
   buildSessionReplayBookmarkMeta,
   buildSessionReplayBookmarkPanelHeader,
@@ -73,5 +75,35 @@ describe("sessionReplayBookmarkPanelRuntime", () => {
         selectedSession: session,
       }),
     ).toBe(false);
+  });
+
+  it("builds bookmark card props and panel sections", () => {
+    const cardProps = buildSessionReplayBookmarkCardProps({
+      bookmark,
+      selectedSession: session,
+      bookmarkContext: {
+        bpm: 126,
+        dominantLevel: "warn",
+        anomalyCount: 2,
+        logExcerpt: "burst detected",
+      },
+      replayDisabled: false,
+      t: en,
+      onReplayBookmark: () => undefined,
+    });
+    const sections = buildSessionReplayBookmarkPanelSections({
+      t: en,
+      selectedSession: session,
+      selectedSessionBookmarks: [bookmark],
+      selectedSessionReplayFeedbackRecommendation: null,
+      bookmarkContexts: {},
+      mutating: false,
+      onReplayBookmark: () => undefined,
+    });
+
+    expect(cardProps.windowLabel).toContain("4");
+    expect(cardProps.context?.excerpt).toBe("burst detected");
+    expect(sections.bookmarkCardPropsList).toHaveLength(1);
+    expect(sections.emptyLabel).toBe(en.session.noReplayNotesSavedYet);
   });
 });

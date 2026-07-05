@@ -1,6 +1,8 @@
 export { buildSessionScreenControllerActionsHookInput } from "./sessionScreenControllerActionsRuntime";
 export {
+  buildSessionScreenControllerBoothDerivedBindings,
   buildSessionScreenControllerBoothHookInput,
+  buildSessionScreenControllerBoothMonitorBindings,
   buildSessionScreenBoothViewModelInput,
   buildSessionScreenControllerHookResult,
   buildSessionScreenEffectsHookInput,

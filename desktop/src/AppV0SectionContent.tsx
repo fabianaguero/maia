@@ -1,5 +1,8 @@
 import { AppV0SectionRenderer } from "./AppV0SectionRenderer";
-import { buildAppV0SectionRenderModel, type AppV0SectionContentInput } from "./appV0SectionContentRuntime";
+import {
+  buildAppV0SectionRenderModel,
+  type AppV0SectionContentInput,
+} from "./appV0SectionContentRuntime";
 
 type AppV0SectionContentProps = AppV0SectionContentInput;
 

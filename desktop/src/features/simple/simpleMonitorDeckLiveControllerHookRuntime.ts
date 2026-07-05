@@ -1,6 +1,4 @@
-import type {
-  UseSimpleMonitorDeckLiveControllerInput,
-} from "./simpleMonitorDeckLiveControllerTypes";
+import type { UseSimpleMonitorDeckLiveControllerInput } from "./simpleMonitorDeckLiveControllerTypes";
 import type { SimpleMonitorReactiveAudioHookState } from "./simpleMonitorReactiveAudioTypes";
 import { bindSimpleMonitorTrackMutation } from "./simpleMonitorDeckLiveControllerRuntime";
 import type { UseSimpleMonitorDeckLiveRefsState } from "./useSimpleMonitorDeckLiveRefs";

@@ -1,6 +1,12 @@
 import { useT } from "../../i18n/I18nContext";
 import type { RepositoryAnalysis } from "../../types/library";
 import type { QuickSessionMode } from "./sessionDisplay";
+import {
+  buildSessionSetupSourceModeTabs,
+  buildSessionSetupSourceOptions,
+  buildSessionSetupSourceSummary,
+  resolveSessionSetupSourceEmptyState,
+} from "./sessionSetupSourceSelectionCardRuntime";
 
 interface SessionSetupSourceSelectionCardProps {
   sourceOptions: RepositoryAnalysis[];
@@ -20,6 +26,20 @@ export function SessionSetupSourceSelectionCard({
   onSourceSelect,
 }: SessionSetupSourceSelectionCardProps) {
   const t = useT();
+  const modeTabs = buildSessionSetupSourceModeTabs({ t, mode });
+  const emptyState = resolveSessionSetupSourceEmptyState({
+    t,
+    mode,
+    sourceCount: sourceOptions.length,
+  });
+  const options = buildSessionSetupSourceOptions({
+    sourceOptions,
+    selectedSourceId,
+  });
+  const summary = buildSessionSetupSourceSummary({
+    t,
+    selectedSource,
+  });
 
   return (
     <div className="audio-path-card monitor-setup-card">
@@ -27,48 +47,42 @@ export function SessionSetupSourceSelectionCard({
       <p className="monitor-empty-hint">{t.session.stepSourceHelp}</p>
 
       <div className="session-mode-tabs">
-        <button
-          type="button"
-          className={`session-mode-tab${mode === "log" ? " active" : ""}`}
-          onClick={() => onModeChange("log")}
-        >
-          {t.session.logFile}
-        </button>
-        <button
-          type="button"
-          className={`session-mode-tab${mode === "repo" ? " active" : ""}`}
-          onClick={() => onModeChange("repo")}
-        >
-          {t.session.repository}
-        </button>
+        {modeTabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={`session-mode-tab${tab.active ? " active" : ""}`}
+            onClick={() => onModeChange(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {sourceOptions.length === 0 ? (
-        <p className="placeholder">
-          {mode === "log" ? t.session.noImportedLogs : t.session.noImportedRepos}
-        </p>
+      {emptyState ? (
+        <p className="placeholder">{emptyState}</p>
       ) : (
         <div className="session-asset-options">
-          {sourceOptions.map((source) => (
+          {options.map((source) => (
             <button
               key={source.id}
               type="button"
-              className={`session-asset-option${selectedSourceId === source.id ? " selected" : ""}`}
+              className={`session-asset-option${source.selected ? " selected" : ""}`}
               onClick={() => onSourceSelect(source.id)}
             >
               <span className="session-asset-title">{source.title}</span>
-              <span className="session-asset-path">{source.sourcePath}</span>
+              <span className="session-asset-path">{source.path}</span>
             </button>
           ))}
         </div>
       )}
 
-      {selectedSource && (
+      {summary ? (
         <div className="monitor-source-summary">
-          <small>{t.session.selected}</small>
-          <strong>{selectedSource.title}</strong>
+          <small>{summary.eyebrow}</small>
+          <strong>{summary.title}</strong>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

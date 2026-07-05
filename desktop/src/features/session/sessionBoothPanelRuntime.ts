@@ -1,16 +1,23 @@
 import type { ComponentProps } from "react";
 
-import type { AppTranslations } from "../../i18n/types";
 import type { SessionBoothDetailGrid } from "./SessionBoothDetailGrid";
 import type { SessionBoothHeader } from "./SessionBoothHeader";
 import type { SessionBoothProgress } from "./SessionBoothProgress";
 import type { SessionBoothRouteGrid } from "./SessionBoothRouteGrid";
-import type { SessionBoothViewModel } from "./sessionBoothViewModel";
-import type { QuickSessionMode } from "./sessionDisplay";
-import type { LiveLogStreamUpdate } from "../../types/monitor";
-import type { PersistedSession } from "../../api/sessions";
+import type {
+  SessionBoothDetailInput,
+  SessionBoothDetailLabels,
+  SessionBoothHeaderInput,
+  SessionBoothHeaderLabels,
+  SessionBoothProgressInput,
+  SessionBoothRouteInput,
+  SessionBoothRouteLabels,
+} from "./sessionBoothPanelContracts";
+import type { SessionBoothPanelProps } from "./sessionBoothPanelTypes";
 
-export function buildSessionBoothHeaderLabels(t: AppTranslations) {
+export function buildSessionBoothHeaderLabels(
+  t: SessionBoothHeaderInput["t"],
+): SessionBoothHeaderLabels {
   return {
     prevWindow: t.session.prevWindow,
     nextWindow: t.session.nextWindow,
@@ -27,7 +34,9 @@ export function buildSessionBoothHeaderLabels(t: AppTranslations) {
   };
 }
 
-export function buildSessionBoothRouteLabels(t: AppTranslations) {
+export function buildSessionBoothRouteLabels(
+  t: SessionBoothRouteInput["t"],
+): SessionBoothRouteLabels {
   return {
     sourceFeed: t.session.sourceFeed,
     baseBed: t.session.baseBed,
@@ -43,7 +52,9 @@ export function buildSessionBoothRouteLabels(t: AppTranslations) {
   };
 }
 
-export function buildSessionBoothDetailLabels(t: AppTranslations) {
+export function buildSessionBoothDetailLabels(
+  t: SessionBoothDetailInput["t"],
+): SessionBoothDetailLabels {
   return {
     signalSnapshot: t.session.signalSnapshot,
     latestWindowLines: t.session.latestWindowLines,
@@ -60,27 +71,9 @@ export function buildSessionBoothDetailLabels(t: AppTranslations) {
   };
 }
 
-export function buildSessionBoothHeaderProps(input: {
-  t: AppTranslations;
-  booth: SessionBoothViewModel;
-  playbackActive: boolean;
-  liveMonitorActive: boolean;
-  mutating: boolean;
-  readyToRun: boolean;
-  isPlaybackPaused: boolean;
-  directPath: string;
-  isDirectLoading: boolean;
-  selectedSession: PersistedSession | null;
-  creating: boolean;
-  onDirectPathChange: (value: string) => void;
-  onDirectLaunch: () => void | Promise<void>;
-  onResumeSelected: () => void;
-  onReplaySelected: () => void | Promise<void>;
-  onCreateSession: () => void | Promise<void>;
-  onStepPlaybackWindow: (direction: 1 | -1) => void;
-  onToggleReplayPlayback: () => void;
-  onStopSession: () => void | Promise<void>;
-}): ComponentProps<typeof SessionBoothHeader> {
+export function buildSessionBoothHeaderProps(
+  input: SessionBoothHeaderInput,
+): ComponentProps<typeof SessionBoothHeader> {
   return {
     stateTone: input.booth.state.tone,
     stateLabel: input.booth.state.label,
@@ -108,11 +101,9 @@ export function buildSessionBoothHeaderProps(input: {
   };
 }
 
-export function buildSessionBoothProgressProps(input: {
-  booth: SessionBoothViewModel;
-  playbackActive: boolean;
-  liveMonitorActive: boolean;
-}): ComponentProps<typeof SessionBoothProgress> {
+export function buildSessionBoothProgressProps(
+  input: SessionBoothProgressInput,
+): ComponentProps<typeof SessionBoothProgress> {
   return {
     visible: input.playbackActive || input.liveMonitorActive,
     progressAriaLabel: input.booth.progressAriaLabel,
@@ -120,12 +111,9 @@ export function buildSessionBoothProgressProps(input: {
   };
 }
 
-export function buildSessionBoothRouteProps(input: {
-  t: AppTranslations;
-  booth: SessionBoothViewModel;
-  monitorSessionId: string | null;
-  mode: QuickSessionMode;
-}): ComponentProps<typeof SessionBoothRouteGrid> {
+export function buildSessionBoothRouteProps(
+  input: SessionBoothRouteInput,
+): ComponentProps<typeof SessionBoothRouteGrid> {
   return {
     booth: input.booth,
     monitorSessionId: input.monitorSessionId,
@@ -134,18 +122,26 @@ export function buildSessionBoothRouteProps(input: {
   };
 }
 
-export function buildSessionBoothDetailProps(input: {
-  t: AppTranslations;
-  booth: SessionBoothViewModel;
-  latestUpdate: LiveLogStreamUpdate | null;
-  playbackActive: boolean;
-  readyToRun: boolean;
-}): ComponentProps<typeof SessionBoothDetailGrid> {
+export function buildSessionBoothDetailProps(
+  input: SessionBoothDetailInput,
+): ComponentProps<typeof SessionBoothDetailGrid> {
   return {
     booth: input.booth,
     latestUpdate: input.latestUpdate,
     playbackActive: input.playbackActive,
     readyToRun: input.readyToRun,
     labels: buildSessionBoothDetailLabels(input.t),
+  };
+}
+
+export function buildSessionBoothPanelSections(
+  input: SessionBoothPanelProps & { t: SessionBoothHeaderInput["t"] },
+) {
+  return {
+    headerProps: buildSessionBoothHeaderProps(input),
+    progressProps: buildSessionBoothProgressProps(input),
+    routeProps: buildSessionBoothRouteProps(input),
+    detailProps: buildSessionBoothDetailProps(input),
+    stats: input.booth.stats,
   };
 }

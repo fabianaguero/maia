@@ -230,7 +230,9 @@ export function buildCatalogRelinkMissingTracksAction(input: {
   library: Pick<CatalogLibrary, "relinkMissingTracksFromDirectory">;
   t: AppTranslations;
   notify: CatalogNotify;
-}): RunCatalogResultActionInput<NonNullable<Awaited<ReturnType<CatalogLibrary["relinkMissingTracksFromDirectory"]>>>> {
+}): RunCatalogResultActionInput<
+  NonNullable<Awaited<ReturnType<CatalogLibrary["relinkMissingTracksFromDirectory"]>>>
+> {
   return {
     task: () => input.library.relinkMissingTracksFromDirectory(),
     onSuccess: (result) => buildRelinkMissingTracksNotice({ t: input.t, result }),

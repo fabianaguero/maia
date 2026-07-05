@@ -13,10 +13,7 @@ export function useMonitorProviderRuntimeOrchestration(
 ) {
   const poll = useMonitorProviderPollRuntime(input);
   const replayHookInput = buildMonitorProviderReplayHookInput(input, poll.emitUpdate);
-  const replay = useMonitorProviderReplayRuntime(
-    replayHookInput.input,
-    replayHookInput.emitUpdate,
-  );
+  const replay = useMonitorProviderReplayRuntime(replayHookInput.input, replayHookInput.emitUpdate);
   const audioHookInput = buildMonitorProviderAudioHookInput(input, {
     resetReplayTelemetry: replay.resetReplayTelemetry,
     doPoll: poll.doPoll,

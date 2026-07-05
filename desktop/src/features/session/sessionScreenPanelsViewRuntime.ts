@@ -7,6 +7,14 @@ import type { SessionBookmarkContext } from "./sessionScreenRuntime";
 import type { BaseTrackPlaylist, LibraryTrack, RepositoryAnalysis } from "../../types/library";
 import type { SessionSavedSessionsPanel } from "./SessionSavedSessionsPanel";
 import type { SessionSetupPanel } from "./SessionSetupPanel";
+import type { SessionScreenPanelsProps } from "./sessionScreenPanelsTypes";
+
+export function buildSessionScreenPanelsSections(input: SessionScreenPanelsProps) {
+  return {
+    setupPanelProps: buildSessionSetupPanelProps(input),
+    savedSessionsPanelProps: buildSessionSavedSessionsPanelProps(input),
+  };
+}
 
 export function buildSessionSetupPanelProps(input: {
   tracks: LibraryTrack[];

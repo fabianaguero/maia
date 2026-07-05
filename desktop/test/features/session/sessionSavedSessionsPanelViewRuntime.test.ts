@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { en } from "../../../src/i18n/en";
 import {
   buildSessionReplayBookmarkPanelProps,
+  buildSessionSavedSessionsPanelSections,
   buildSessionSavedSessionsListProps,
   buildSessionSavedSessionsPanelHeader,
 } from "../../../src/features/session/sessionSavedSessionsPanelViewRuntime";
@@ -56,5 +57,34 @@ describe("sessionSavedSessionsPanelViewRuntime", () => {
     expect(listProps.onSelectSession).toBe(onSelectSession);
     expect(replayProps.selectedSession.id).toBe("session-1");
     expect(replayProps.onReplayBookmark).toBe(onReplayBookmark);
+  });
+
+  it("builds both sections from the saved sessions panel contract", () => {
+    const sections = buildSessionSavedSessionsPanelSections({
+      t: en,
+      sessions: [{ id: "session-1" }] as never,
+      loading: false,
+      mutating: false,
+      selectedSessionId: "session-1",
+      selectedSession: { id: "session-1" } as never,
+      selectedSessionBookmarks: [{ id: 1 }] as never,
+      selectedSessionReplayFeedbackRecommendation: null,
+      sessionBookmarksBySessionId: {},
+      bookmarkContexts: {},
+      activeSessionId: null,
+      activeSessionMode: null,
+      liveWindowCount: 2,
+      liveProcessedLines: 24,
+      liveTotalAnomalies: 1,
+      onSelectSession: vi.fn(),
+      onResumeSession: vi.fn(),
+      onPlaybackSession: vi.fn(),
+      onReplayBookmark: vi.fn(),
+      onDeleteSession: vi.fn(),
+    });
+
+    expect(sections.header.summary).toContain("1");
+    expect(sections.listProps.liveProcessedLines).toBe(24);
+    expect(sections.replayPanelProps?.selectedSession.id).toBe("session-1");
   });
 });

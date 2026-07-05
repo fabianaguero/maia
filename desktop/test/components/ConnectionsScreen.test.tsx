@@ -144,7 +144,9 @@ describe("ConnectionsScreen", () => {
     fireEvent.click(screen.getByRole("button", { name: en.simpleMode.connections.startLiveTail }));
     expect(state.handleStartTail).toHaveBeenCalledWith(connection);
 
-    fireEvent.click(screen.getByRole("button", { name: en.simpleMode.connections.deleteConnection }));
+    fireEvent.click(
+      screen.getByRole("button", { name: en.simpleMode.connections.deleteConnection }),
+    );
     expect(state.handleDeleteConnection).toHaveBeenCalledWith(connection.id);
   });
 

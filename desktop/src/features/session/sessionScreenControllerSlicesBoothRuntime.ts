@@ -20,9 +20,7 @@ export function buildSessionScreenControllerSlicesEffectsInput(input: {
   monitorSnapshot: Pick<MonitorSnapshot, "monitorSessionId" | "subscribeToMonitor">;
   localState: Pick<
     SessionScreenLocalState,
-    | "setLatestUpdate"
-    | "setSelectedSessionEvents"
-    | "boothBedAudioRef"
+    "setLatestUpdate" | "setSelectedSessionEvents" | "boothBedAudioRef"
   >;
   derivedState: Pick<SessionControllerDerivedState, "selectedSessionIdForEvents" | "activeBedUrl">;
 }) {
@@ -33,7 +31,8 @@ export function buildSessionScreenControllerSlicesEffectsInput(input: {
     selectedSessionIdForEvents: input.derivedState.selectedSessionIdForEvents,
     setSelectedSessionEvents: input.localState.setSelectedSessionEvents,
     activeBedUrl: input.derivedState.activeBedUrl,
-    boothBedAudioRef: input.localState.boothBedAudioRef as MutableRefObject<HTMLAudioElement | null>,
+    boothBedAudioRef: input.localState
+      .boothBedAudioRef as MutableRefObject<HTMLAudioElement | null>,
   });
 }
 
