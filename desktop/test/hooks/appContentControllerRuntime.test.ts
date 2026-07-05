@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  buildAppContentControllerActionProjection,
+  buildAppContentControllerShellView,
   buildAppContentControllerValue,
   buildAppContentMutationInput,
   buildAppContentSessionEffectsInput,
@@ -54,12 +56,36 @@ describe("appContentControllerRuntime", () => {
         refreshBookmarks: vi.fn(),
       },
     } as never;
+    const shellView = buildAppContentControllerShellView(domainState);
+    const actionBundles = {
+      monitorActions: {
+        startReplaySession: vi.fn(),
+        startLiveSession: vi.fn(),
+        openMonitoredRepo: vi.fn(),
+      },
+      catalogActions: {
+        handleImportTrack: vi.fn(),
+      },
+      selectionActions: {
+        startSimpleMonitoring: vi.fn(),
+      },
+      navigationActions: {
+        handleOpenConnections: vi.fn(),
+      },
+    } as never;
+    const actionProjection = buildAppContentControllerActionProjection(actionBundles);
 
     expect(buildAppContentStatusInput(domainState)).toMatchObject({
       analysisMode: "repo",
       playlistName: "Late Night",
       screen: "library",
     });
+    expect(shellView.screen).toBe("library");
+    expect(shellView.setAnalysisMode).toBe(domainState.shellState.setAnalysisMode);
+    expect(actionProjection.startReplaySession).toBe(actionBundles.monitorActions.startReplaySession);
+    expect(actionProjection.handleOpenConnections).toBe(
+      actionBundles.navigationActions.handleOpenConnections,
+    );
     expect(buildAppContentMutationInput(domainState)).toEqual({
       baseAssetsMutating: false,
       compositionsMutating: true,
@@ -73,22 +99,7 @@ describe("appContentControllerRuntime", () => {
 
     const controller = buildAppContentControllerValue({
       domainState,
-      actionBundles: {
-        monitorActions: {
-          startReplaySession: vi.fn(),
-          startLiveSession: vi.fn(),
-          openMonitoredRepo: vi.fn(),
-        },
-        catalogActions: {
-          handleImportTrack: vi.fn(),
-        },
-        selectionActions: {
-          startSimpleMonitoring: vi.fn(),
-        },
-        navigationActions: {
-          handleOpenConnections: vi.fn(),
-        },
-      } as never,
+      actionBundles,
       effectivePillar: "curate",
       effectiveScreen: "library",
       analyzerLabel: "Analyzer ready",

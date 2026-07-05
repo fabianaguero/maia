@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  buildAppMonitorActionGroups,
+  buildAppMonitorActionHookInputs,
   buildAppMonitorActionsResult,
   buildAppMonitorSessionHookInput,
 } from "../../src/hooks/appMonitorActionsHookRuntime";
@@ -99,5 +101,33 @@ describe("appMonitorActionsHookRuntime", () => {
       startLiveSession,
       openMonitoredRepo,
     });
+  });
+
+  it("builds grouped hook inputs and action groups", () => {
+    const input = createInput();
+    const armSessionMusicalBase = vi.fn();
+    const primeMonitorGuideTrack = vi.fn();
+    const hookInputs = buildAppMonitorActionHookInputs(input as never, {
+      armSessionMusicalBase,
+      primeMonitorGuideTrack,
+    });
+    const actionGroups = buildAppMonitorActionGroups({
+      guideActions: {
+        armTrackBase: vi.fn(),
+        armPlaylistBase: vi.fn(),
+        armSessionMusicalBase,
+        primeMonitorGuideTrack,
+      },
+      sessionActions: {
+        startReplaySession: vi.fn(),
+        startLiveSession: vi.fn(),
+        openMonitoredRepo: vi.fn(),
+      },
+    });
+
+    expect(hookInputs.guideInput).toBe(input);
+    expect(hookInputs.sessionInput.armSessionMusicalBase).toBe(armSessionMusicalBase);
+    expect(actionGroups.guideActions.armSessionMusicalBase).toBe(armSessionMusicalBase);
+    expect(actionGroups.sessionActions.openMonitoredRepo).toBeTypeOf("function");
   });
 });

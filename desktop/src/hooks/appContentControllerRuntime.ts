@@ -34,6 +34,37 @@ export function buildAppContentSessionEffectsInput(domainState: AppContentDomain
   };
 }
 
+export function buildAppContentControllerShellView(domainState: AppContentDomainState) {
+  const { shellState } = domainState;
+
+  return {
+    screen: shellState.screen,
+    pillar: shellState.pillar,
+    libraryTab: shellState.libraryTab,
+    analysisMode: shellState.analysisMode,
+    isDark: shellState.isDark,
+    lang: shellState.lang,
+    newlyImportedId: shellState.newlyImportedId,
+    setLang: shellState.setLang,
+    setIsDark: shellState.setIsDark,
+    setLibraryTab: shellState.setLibraryTab,
+    setAnalysisMode: shellState.setAnalysisMode,
+  };
+}
+
+export function buildAppContentControllerActionProjection(
+  actionBundles: AppContentControllerActionBundles,
+) {
+  return {
+    ...actionBundles.catalogActions,
+    ...actionBundles.selectionActions,
+    startReplaySession: actionBundles.monitorActions.startReplaySession,
+    startLiveSession: actionBundles.monitorActions.startLiveSession,
+    openMonitoredRepo: actionBundles.monitorActions.openMonitoredRepo,
+    ...actionBundles.navigationActions,
+  };
+}
+
 export function buildAppContentControllerValue(input: {
   domainState: AppContentDomainState;
   actionBundles: AppContentControllerActionBundles;
@@ -58,7 +89,8 @@ export function buildAppContentControllerValue(input: {
     isMutating,
     mutateLabel,
   } = input;
-  const { shellState } = domainState;
+  const shellView = buildAppContentControllerShellView(domainState);
+  const actionProjection = buildAppContentControllerActionProjection(actionBundles);
 
   return {
     t: domainState.t,
@@ -67,13 +99,7 @@ export function buildAppContentControllerValue(input: {
     manifest: domainState.manifest,
     health: domainState.health,
     booting: domainState.booting,
-    screen: shellState.screen,
-    pillar: shellState.pillar,
-    libraryTab: shellState.libraryTab,
-    analysisMode: shellState.analysisMode,
-    isDark: shellState.isDark,
-    lang: shellState.lang,
-    newlyImportedId: shellState.newlyImportedId,
+    ...shellView,
     library: domainState.library,
     repositories: domainState.repositories,
     baseAssets: domainState.baseAssets,
@@ -82,16 +108,7 @@ export function buildAppContentControllerValue(input: {
     sessions: domainState.sessions,
     effectivePillar,
     effectiveScreen,
-    ...actionBundles.catalogActions,
-    ...actionBundles.selectionActions,
-    startReplaySession: actionBundles.monitorActions.startReplaySession,
-    startLiveSession: actionBundles.monitorActions.startLiveSession,
-    openMonitoredRepo: actionBundles.monitorActions.openMonitoredRepo,
-    ...actionBundles.navigationActions,
-    setLang: shellState.setLang,
-    setIsDark: shellState.setIsDark,
-    setLibraryTab: shellState.setLibraryTab,
-    setAnalysisMode: shellState.setAnalysisMode,
+    ...actionProjection,
     analyzerLabel,
     detailDeckLabel,
     screenLabel,

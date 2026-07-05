@@ -21,6 +21,11 @@ export interface AppMonitorSessionActionBindings {
   openMonitoredRepo: () => void;
 }
 
+export interface AppMonitorActionHookInputs {
+  guideInput: UseAppMonitorActionsInput;
+  sessionInput: ReturnType<typeof buildAppMonitorSessionHookInput>;
+}
+
 export function buildAppMonitorSessionHookInput(
   input: UseAppMonitorActionsInput,
   guideActions: Pick<
@@ -32,6 +37,29 @@ export function buildAppMonitorSessionHookInput(
     ...input,
     armSessionMusicalBase: guideActions.armSessionMusicalBase,
     primeMonitorGuideTrack: guideActions.primeMonitorGuideTrack,
+  };
+}
+
+export function buildAppMonitorActionHookInputs(
+  input: UseAppMonitorActionsInput,
+  guideActions: Pick<
+    AppMonitorGuideActionBindings,
+    "armSessionMusicalBase" | "primeMonitorGuideTrack"
+  >,
+): AppMonitorActionHookInputs {
+  return {
+    guideInput: input,
+    sessionInput: buildAppMonitorSessionHookInput(input, guideActions),
+  };
+}
+
+export function buildAppMonitorActionGroups(input: {
+  guideActions: AppMonitorGuideActionBindings;
+  sessionActions: AppMonitorSessionActionBindings;
+}) {
+  return {
+    guideActions: input.guideActions,
+    sessionActions: input.sessionActions,
   };
 }
 
