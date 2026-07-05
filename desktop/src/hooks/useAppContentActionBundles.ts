@@ -4,24 +4,21 @@ import { useAppContentNavigationActions } from "../hooks/useAppContentNavigation
 import { useAppMonitorActions } from "../hooks/useAppMonitorActions";
 import { useAppSelectionActions } from "../hooks/useAppSelectionActions";
 import {
+  buildAppContentActionBundleInputs,
   buildAppContentActionBundlesResult,
-  buildAppContentCatalogActionsInput,
-  buildAppContentMonitorActionsInput,
-  buildAppContentNavigationActionsInput,
   buildAppContentSelectionActionsInput,
 } from "./appContentActionBundlesRuntime";
 import type { AppContentActionBundles, AppContentDomainState } from "./appContentControllerTypes";
 
 export function useAppContentActionBundles(input: AppContentDomainState): AppContentActionBundles {
   const { notify } = useNotify();
-  const monitorActions = useAppMonitorActions(buildAppContentMonitorActionsInput(input, notify));
-  const catalogActions = useAppCatalogActions(buildAppContentCatalogActionsInput(input, notify));
+  const actionBundleInputs = buildAppContentActionBundleInputs(input, notify);
+  const monitorActions = useAppMonitorActions(actionBundleInputs.monitorInput);
+  const catalogActions = useAppCatalogActions(actionBundleInputs.catalogInput);
   const selectionActions = useAppSelectionActions(
     buildAppContentSelectionActionsInput(input, monitorActions),
   );
-  const navigationActions = useAppContentNavigationActions(
-    buildAppContentNavigationActionsInput(input, notify),
-  );
+  const navigationActions = useAppContentNavigationActions(actionBundleInputs.navigationInput);
 
   return buildAppContentActionBundlesResult({
     notify,

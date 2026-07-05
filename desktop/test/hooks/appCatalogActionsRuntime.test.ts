@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { en } from "../../src/i18n/en";
 import {
+  buildAppCatalogActionsResult,
   buildRelinkMissingTracksNotice,
   buildRepositoryImportSuccessMessage,
   scheduleImportedHighlightReset,
@@ -108,5 +109,23 @@ describe("appCatalogActionsRuntime", () => {
     expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 3000);
     expect(setNewlyImportedId).toHaveBeenNthCalledWith(1, "track-default");
     expect(setNewlyImportedId).toHaveBeenNthCalledWith(2, null);
+  });
+
+  it("combines import and library action groups into a single catalog result", () => {
+    const importActions = { handleImportTrack: vi.fn(), handleImportRepository: vi.fn() } as never;
+    const libraryActions = {
+      handleReanalyzeTrack: vi.fn(),
+      handleDeleteTrack: vi.fn(),
+    } as never;
+
+    expect(
+      buildAppCatalogActionsResult({
+        importActions,
+        libraryActions,
+      }),
+    ).toEqual({
+      ...importActions,
+      ...libraryActions,
+    });
   });
 });

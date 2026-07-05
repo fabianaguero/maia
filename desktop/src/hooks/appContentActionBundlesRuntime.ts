@@ -7,7 +7,34 @@ import type { AppContentActionBundles, AppContentDomainState } from "./appConten
 
 type NotifyFn = ReturnType<typeof useNotify>["notify"];
 
+export interface AppContentShellActionSetters {
+  setNewlyImportedId: AppContentDomainState["shellState"]["setNewlyImportedId"];
+  setAnalysisMode: AppContentDomainState["shellState"]["setAnalysisMode"];
+  setScreen: AppContentDomainState["shellState"]["setScreen"];
+  setPillar: AppContentDomainState["shellState"]["setPillar"];
+  setLibraryTab: AppContentDomainState["shellState"]["setLibraryTab"];
+}
+
+export interface AppContentActionBundleInputs {
+  monitorInput: ReturnType<typeof buildAppContentMonitorActionsInput>;
+  catalogInput: ReturnType<typeof buildAppContentCatalogActionsInput>;
+  navigationInput: ReturnType<typeof buildAppContentNavigationActionsInput>;
+}
+
+export function buildAppContentShellActionSetters(
+  input: AppContentDomainState,
+): AppContentShellActionSetters {
+  return {
+    setNewlyImportedId: input.shellState.setNewlyImportedId,
+    setAnalysisMode: input.shellState.setAnalysisMode,
+    setScreen: input.shellState.setScreen,
+    setPillar: input.shellState.setPillar,
+    setLibraryTab: input.shellState.setLibraryTab,
+  };
+}
+
 export function buildAppContentMonitorActionsInput(input: AppContentDomainState, notify: NotifyFn) {
+  const shell = buildAppContentShellActionSetters(input);
   return {
     t: input.t,
     library: input.library,
@@ -15,19 +42,20 @@ export function buildAppContentMonitorActionsInput(input: AppContentDomainState,
     sessions: input.sessions,
     monitor: input.monitor,
     notify,
-    setAnalysisMode: input.shellState.setAnalysisMode,
-    setScreen: input.shellState.setScreen,
-    setPillar: input.shellState.setPillar,
+    setAnalysisMode: shell.setAnalysisMode,
+    setScreen: shell.setScreen,
+    setPillar: shell.setPillar,
   };
 }
 
 export function buildAppContentCatalogActionsInput(input: AppContentDomainState, notify: NotifyFn) {
+  const shell = buildAppContentShellActionSetters(input);
   return {
     t: input.t,
     notify,
-    setNewlyImportedId: input.shellState.setNewlyImportedId,
-    setAnalysisMode: input.shellState.setAnalysisMode,
-    setScreen: input.shellState.setScreen,
+    setNewlyImportedId: shell.setNewlyImportedId,
+    setAnalysisMode: shell.setAnalysisMode,
+    setScreen: shell.setScreen,
     library: input.library,
     repositories: input.repositories,
     baseAssets: input.baseAssets,
@@ -39,6 +67,7 @@ export function buildAppContentSelectionActionsInput(
   input: AppContentDomainState,
   monitorActions: Pick<ReturnType<typeof useAppMonitorActions>, "armPlaylistBase" | "armTrackBase">,
 ) {
+  const shell = buildAppContentShellActionSetters(input);
   return {
     armPlaylistBase: monitorActions.armPlaylistBase,
     armTrackBase: monitorActions.armTrackBase,
@@ -46,9 +75,9 @@ export function buildAppContentSelectionActionsInput(
     repositories: input.repositories,
     baseAssets: input.baseAssets,
     compositions: input.compositions,
-    setAnalysisMode: input.shellState.setAnalysisMode,
-    setPillar: input.shellState.setPillar,
-    setScreen: input.shellState.setScreen,
+    setAnalysisMode: shell.setAnalysisMode,
+    setPillar: shell.setPillar,
+    setScreen: shell.setScreen,
   };
 }
 
@@ -56,13 +85,25 @@ export function buildAppContentNavigationActionsInput(
   input: AppContentDomainState,
   notify: NotifyFn,
 ) {
+  const shell = buildAppContentShellActionSetters(input);
   return {
     userMode: input.userMode,
     notify,
     t: input.t,
-    setPillar: input.shellState.setPillar,
-    setScreen: input.shellState.setScreen,
-    setLibraryTab: input.shellState.setLibraryTab,
+    setPillar: shell.setPillar,
+    setScreen: shell.setScreen,
+    setLibraryTab: shell.setLibraryTab,
+  };
+}
+
+export function buildAppContentActionBundleInputs(
+  input: AppContentDomainState,
+  notify: NotifyFn,
+): AppContentActionBundleInputs {
+  return {
+    monitorInput: buildAppContentMonitorActionsInput(input, notify),
+    catalogInput: buildAppContentCatalogActionsInput(input, notify),
+    navigationInput: buildAppContentNavigationActionsInput(input, notify),
   };
 }
 

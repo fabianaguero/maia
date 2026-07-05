@@ -1,5 +1,7 @@
 import type { RelinkMissingTracksResult } from "../types/library";
 import type { AppTranslations } from "./appCatalogActionsTypes";
+import type { useAppCatalogImportActions } from "./useAppCatalogImportActions";
+import type { useAppCatalogLibraryActions } from "./useAppCatalogLibraryActions";
 
 export function scheduleImportedHighlightReset(input: {
   id: string;
@@ -57,5 +59,15 @@ export function buildRelinkMissingTracksNotice(input: {
     tone: "info",
     title: input.t.appShell.noMatchesFoundTitle,
     body: input.t.appShell.noMatchesFoundBody,
+  };
+}
+
+export function buildAppCatalogActionsResult(input: {
+  importActions: ReturnType<typeof useAppCatalogImportActions>;
+  libraryActions: ReturnType<typeof useAppCatalogLibraryActions>;
+}) {
+  return {
+    ...input.importActions,
+    ...input.libraryActions,
   };
 }
