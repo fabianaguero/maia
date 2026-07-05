@@ -5,12 +5,6 @@ import {
   applyMonitoredRepoNavigationState,
   applyReplayMonitorNavigation,
   applyReplayMonitorRepositorySelection,
-  buildLiveMonitorExecutionPlan,
-  buildLiveSessionGuideDraft,
-  buildLiveSessionPersistenceInput,
-  buildMonitoredRepoNavigation,
-  buildReplayMonitorExecutionPlan,
-  buildReplayPlaybackInput,
   openCurrentMonitoredRepo,
   persistLiveMonitorSessionSelection,
   startLiveMonitorSession,
@@ -19,25 +13,25 @@ import {
 
 const appRuntimeMock = vi.hoisted(() => ({
   resolveReplaySourceRepository: vi.fn(),
-  shouldReuseActiveReplaySession: vi.fn(),
 }));
 
 const appMonitorActionsRuntimeMock = vi.hoisted(() => ({
   resolveMonitoredRepository: vi.fn(),
   resolveReplayMonitorDraft: vi.fn(),
-  resolveSessionPersistenceAction: vi.fn(),
 }));
 
-const appContentRuntimeMock = vi.hoisted(() => ({
-  resolveSessionRepository: vi.fn(),
+const sessionExecutionRuntimeMock = vi.hoisted(() => ({
+  buildLiveMonitorExecutionPlan: vi.fn(),
+  buildMonitoredRepoNavigation: vi.fn(),
+  buildReplayMonitorExecutionPlan: vi.fn(),
 }));
 
 vi.mock("../../src/appRuntime", () => appRuntimeMock);
 vi.mock("../../src/appMonitorActionsRuntime", () => appMonitorActionsRuntimeMock);
-vi.mock("../../src/appContentRuntime", () => appContentRuntimeMock);
+vi.mock("../../src/hooks/appMonitorSessionExecutionRuntime", () => sessionExecutionRuntimeMock);
 
 describe("appMonitorSessionActionsRuntime", () => {
-  it("builds replay/live payloads and monitored repo navigation", () => {
+  it("applies guide draft state", () => {
     const armSessionMusicalBase = vi.fn();
     const primeMonitorGuideTrack = vi.fn();
     applyMonitorGuideDraft(
@@ -45,61 +39,6 @@ describe("appMonitorSessionActionsRuntime", () => {
       { trackId: "track-1", playlistId: "playlist-1" },
     );
 
-    expect(
-      buildReplayPlaybackInput({
-        session: {
-          id: "session-1",
-          label: null,
-          sourcePath: null,
-        } as never,
-        repoId: "repo-1",
-        unnamedSessionLabel: "Unnamed",
-      }),
-    ).toEqual({
-      sessionId: "session-1",
-      label: "Unnamed",
-      sourcePath: "",
-      repoId: "repo-1",
-    });
-
-    expect(
-      buildLiveSessionGuideDraft({
-        trackId: "track-1",
-        playlistId: "playlist-1",
-      }),
-    ).toEqual({
-      trackId: "track-1",
-      playlistId: "playlist-1",
-    });
-
-    expect(
-      buildLiveSessionPersistenceInput({
-        sessionId: "persisted-1",
-        startInput: {
-          adapterKind: "file",
-          label: "Live",
-        } as never,
-        draft: {
-          sourceId: "repo-1",
-          trackId: "track-1",
-          playlistId: "playlist-1",
-        },
-      }),
-    ).toEqual({
-      id: "persisted-1",
-      label: "Live",
-      sourceId: "repo-1",
-      trackId: "track-1",
-      playlistId: "playlist-1",
-      adapterKind: "file",
-      mode: "live",
-    });
-
-    expect(buildMonitoredRepoNavigation()).toEqual({
-      analysisMode: "repo",
-      screen: "inspect",
-      pillar: "curate",
-    });
     expect(armSessionMusicalBase).toHaveBeenCalledWith({
       trackId: "track-1",
       playlistId: "playlist-1",
@@ -109,70 +48,6 @@ describe("appMonitorSessionActionsRuntime", () => {
       playlistId: "playlist-1",
     });
 
-    appRuntimeMock.shouldReuseActiveReplaySession.mockReturnValue(true);
-    expect(
-      buildReplayMonitorExecutionPlan({
-        session: {
-          id: "session-1",
-          label: null,
-          sourceId: "repo-1",
-          sourcePath: null,
-        } as never,
-        sourceRepositoryId: "repo-1",
-        unnamedSessionLabel: "Unnamed",
-        currentPersistedSessionId: "session-1",
-        isPlayback: true,
-        replayWindowIndex: 4,
-      }),
-    ).toEqual({
-      playbackInput: {
-        sessionId: "session-1",
-        label: "Unnamed",
-        sourcePath: "",
-        repoId: "repo-1",
-      },
-      alreadyActiveReplay: true,
-      shouldSeekWindow: true,
-      replayWindowIndex: 4,
-    });
-
-    appContentRuntimeMock.resolveSessionRepository.mockReturnValue({ id: "repo-live" });
-    appMonitorActionsRuntimeMock.resolveSessionPersistenceAction.mockReturnValue("create");
-    expect(
-      buildLiveMonitorExecutionPlan({
-        startInput: {
-          adapterKind: "file",
-          sessionId: "runtime-1",
-          label: "Live session",
-          source: { kind: "file", path: "/tmp/service.log" },
-        } as never,
-        persistedSessionId: "persisted-1",
-        draft: {
-          sourceId: "repo-live",
-          trackId: "track-1",
-          playlistId: "playlist-1",
-        },
-        repositories: [{ id: "repo-live" }] as never,
-        unnamedSessionLabel: "Unnamed",
-        existingSessions: [],
-      }),
-    ).toEqual({
-      guideDraft: {
-        trackId: "track-1",
-        playlistId: "playlist-1",
-      },
-      repository: { id: "repo-live" },
-      persistenceAction: "create",
-      persistenceInput: {
-        id: "persisted-1",
-        label: "Live session",
-        sourceId: "repo-live",
-        trackId: "track-1",
-        playlistId: "playlist-1",
-        adapterKind: "file",
-        mode: "live",
-      },
-    });
   });
 
   it("runs replay/open/live monitor actions through pure runtime helpers", async () => {
@@ -213,7 +88,17 @@ describe("appMonitorSessionActionsRuntime", () => {
 
     appMonitorActionsRuntimeMock.resolveReplayMonitorDraft.mockReturnValue({ trackId: "track-1" });
     appRuntimeMock.resolveReplaySourceRepository.mockReturnValue({ id: "repo-1" });
-    appRuntimeMock.shouldReuseActiveReplaySession.mockReturnValue(false);
+    sessionExecutionRuntimeMock.buildReplayMonitorExecutionPlan.mockReturnValue({
+      playbackInput: {
+        sessionId: "session-1",
+        label: "Replay 1",
+        sourcePath: "/logs/source.log",
+        repoId: "repo-1",
+      },
+      alreadyActiveReplay: false,
+      shouldSeekWindow: true,
+      replayWindowIndex: 3,
+    });
 
     await expect(
       startReplayMonitorSession(
@@ -248,8 +133,15 @@ describe("appMonitorSessionActionsRuntime", () => {
       },
     } as never;
 
-    appContentRuntimeMock.resolveSessionRepository.mockReturnValue({ id: "repo-live" });
-    appMonitorActionsRuntimeMock.resolveSessionPersistenceAction.mockReturnValue("create");
+    sessionExecutionRuntimeMock.buildLiveMonitorExecutionPlan.mockReturnValue({
+      guideDraft: { sourceId: "repo-live", playlistId: "playlist-1" },
+      repository: { id: "repo-live" },
+      persistenceAction: "create",
+      persistenceInput: {
+        id: "persisted-1",
+        sourceId: "repo-live",
+      },
+    });
 
     await expect(
       startLiveMonitorSession(
@@ -289,6 +181,11 @@ describe("appMonitorSessionActionsRuntime", () => {
     } as never;
 
     appMonitorActionsRuntimeMock.resolveMonitoredRepository.mockReturnValue({ id: "repo-live" });
+    sessionExecutionRuntimeMock.buildMonitoredRepoNavigation.mockReturnValue({
+      analysisMode: "repo",
+      screen: "inspect",
+      pillar: "curate",
+    });
 
     openCurrentMonitoredRepo(openRepoInput);
 

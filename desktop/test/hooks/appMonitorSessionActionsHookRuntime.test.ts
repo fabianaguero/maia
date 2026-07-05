@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  buildAppMonitorSessionActionInputs,
   buildAppMonitorLiveActionInput,
   buildAppMonitorOpenRepoActionInput,
   buildAppMonitorReplayActionInput,
@@ -55,6 +56,7 @@ describe("appMonitorSessionActionsHookRuntime", () => {
     const replayInput = buildAppMonitorReplayActionInput(input);
     const liveInput = buildAppMonitorLiveActionInput(input);
     const openRepoInput = buildAppMonitorOpenRepoActionInput(input);
+    const sessionInputs = buildAppMonitorSessionActionInputs(input);
 
     expect(replayInput.t).toBe(input.t);
     expect(replayInput.notify).toBe(input.notify);
@@ -67,6 +69,12 @@ describe("appMonitorSessionActionsHookRuntime", () => {
     expect(openRepoInput.repositories).toBe(input.repositories);
     expect(openRepoInput.setAnalysisMode).toBe(input.setAnalysisMode);
     expect(openRepoInput.setPillar).toBe(input.setPillar);
+
+    expect(sessionInputs).toEqual({
+      replayInput,
+      liveInput,
+      openRepoInput,
+    });
   });
 
   it("normalizes replay repository ids and replay-window seeking guards", () => {
