@@ -1,10 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  buildAppV0MonitorOrchestrationDeps,
   buildAppV0MonitorOrchestratorInput,
   buildAppV0MonitorOrchestrator,
+  buildAppV0MonitorShellViewModelInput,
+  buildAppV0MonitorStateContext,
   buildAppV0MonitorStateModelInput,
   buildAppV0MonitorStateModel,
+  createAppV0MonitorSessionIdFactory,
   resolveAppV0Translations,
 } from "../../src/hooks/appV0MonitorScreenStateRuntime";
 import type { RepositoryAnalysis, LibraryTrack } from "../../src/types/library";
@@ -142,10 +146,14 @@ describe("appV0MonitorScreenStateRuntime", () => {
         totalAnomalies: 1,
       },
     });
+    const context = buildAppV0MonitorStateContext(modelInput);
+    const shellInput = buildAppV0MonitorShellViewModelInput(modelInput, context);
     const model = buildAppV0MonitorStateModel(modelInput);
 
     expect(resolveAppV0Translations("es").simpleMode.nav.monitor).toBeDefined();
     expect(modelInput.selectedRepositoryTitle).toBe("visits-service");
+    expect(context.isMonitoring).toBe(true);
+    expect(shellInput.selectedTrackTitle).toBe("Deck Track");
     expect(model.isMonitoring).toBe(true);
     expect(model.waveformBins).toEqual([0.1, 0.2]);
     expect(model.fallbackViewModel.message.length).toBeGreaterThan(0);
@@ -163,9 +171,14 @@ describe("appV0MonitorScreenStateRuntime", () => {
       playbackSession: vi.fn(async () => true),
       onLaunchSuccess: vi.fn(),
     });
+    const sessionIdFactory = createAppV0MonitorSessionIdFactory();
+    const orchestrationDeps = buildAppV0MonitorOrchestrationDeps(orchestratorInput);
     const orchestrator = buildAppV0MonitorOrchestrator(orchestratorInput);
 
     expect(orchestratorInput.repositories).toHaveLength(1);
+    expect(typeof sessionIdFactory()).toBe("string");
+    expect(orchestrationDeps.repositories).toHaveLength(1);
+    expect(typeof orchestrationDeps.createSessionId()).toBe("string");
     expect(typeof orchestrator.startLibraryMonitoring).toBe("function");
     expect(typeof orchestrator.startSourceMonitoring).toBe("function");
     expect(typeof orchestrator.replaySession).toBe("function");

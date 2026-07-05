@@ -21,6 +21,12 @@ export function resolveAppV0Translations(lang: AppV0Language) {
   return lang === "es" ? es : en;
 }
 
+export interface AppV0MonitorStateContext {
+  t: ReturnType<typeof resolveAppV0Translations>;
+  isMonitoring: boolean;
+  uptimeLabel: string;
+}
+
 export interface BuildAppV0MonitorStateModelInput {
   lang: AppV0Language;
   currentSection: AppSection;
@@ -54,21 +60,38 @@ export function buildAppV0MonitorStateModelInput(
   };
 }
 
-export function buildAppV0MonitorStateModel(input: BuildAppV0MonitorStateModelInput) {
-  const t = resolveAppV0Translations(input.lang);
-  const isMonitoring = Boolean(input.session);
-  const uptimeLabel = formatAppV0Uptime(input.session?.startedAt ?? null);
-  const fallbackViewModel = buildAppV0FallbackViewModel(t);
-  const shellViewModel = buildAppV0ShellViewModel({
+export function buildAppV0MonitorStateContext(
+  input: Pick<BuildAppV0MonitorStateModelInput, "lang" | "session">,
+): AppV0MonitorStateContext {
+  return {
+    t: resolveAppV0Translations(input.lang),
+    isMonitoring: Boolean(input.session),
+    uptimeLabel: formatAppV0Uptime(input.session?.startedAt ?? null),
+  };
+}
+
+export function buildAppV0MonitorShellViewModelInput(
+  input: BuildAppV0MonitorStateModelInput,
+  context: AppV0MonitorStateContext,
+): Parameters<typeof buildAppV0ShellViewModel>[0] {
+  return {
     currentSection: input.currentSection,
-    isMonitoring,
+    isMonitoring: context.isMonitoring,
     session: input.session,
     metrics: input.metrics,
-    uptimeLabel,
-    t,
+    uptimeLabel: context.uptimeLabel,
+    t: context.t,
     selectedRepositoryTitle: input.selectedRepositoryTitle ?? null,
     selectedTrackTitle: input.selectedTrack ? getTrackTitle(input.selectedTrack) : null,
-  });
+  };
+}
+
+export function buildAppV0MonitorStateModel(input: BuildAppV0MonitorStateModelInput) {
+  const context = buildAppV0MonitorStateContext(input);
+  const fallbackViewModel = buildAppV0FallbackViewModel(context.t);
+  const shellViewModel = buildAppV0ShellViewModel(
+    buildAppV0MonitorShellViewModelInput(input, context),
+  );
   const waveformBins = resolveAppV0MonitorWaveformBins({
     tracks: input.tracks,
     sessionTrackId: input.session?.trackId,
@@ -76,9 +99,7 @@ export function buildAppV0MonitorStateModel(input: BuildAppV0MonitorStateModelIn
   });
 
   return {
-    t,
-    isMonitoring,
-    uptimeLabel,
+    ...context,
     fallbackViewModel,
     shellViewModel,
     waveformBins,
@@ -135,15 +156,21 @@ export function buildAppV0MonitorOrchestratorInput(
   };
 }
 
-export function buildAppV0MonitorOrchestrator(input: BuildAppV0MonitorOrchestratorInput) {
-  return createAppV0MonitorOrchestrator({
+export function createAppV0MonitorSessionIdFactory(): () => string {
+  return () =>
+    createAppV0SessionId({
+      randomUUID: typeof crypto.randomUUID === "function" ? () => crypto.randomUUID() : undefined,
+    });
+}
+
+export function buildAppV0MonitorOrchestrationDeps(
+  input: BuildAppV0MonitorOrchestratorInput,
+): Parameters<typeof createAppV0MonitorOrchestrator>[0] {
+  return {
     repositories: input.repositories,
     tracks: input.tracks,
     selectedTrack: input.selectedTrack,
-    createSessionId: () =>
-      createAppV0SessionId({
-        randomUUID: typeof crypto.randomUUID === "function" ? () => crypto.randomUUID() : undefined,
-      }),
+    createSessionId: createAppV0MonitorSessionIdFactory(),
     setGuideTrack: input.setGuideTrack,
     resumeAudio: input.resumeAudio,
     startConnection: startLogSourceConnection,
@@ -151,5 +178,9 @@ export function buildAppV0MonitorOrchestrator(input: BuildAppV0MonitorOrchestrat
     startSession: input.startSession,
     playbackSession: input.playbackSession,
     onLaunchSuccess: input.onLaunchSuccess,
-  });
+  };
+}
+
+export function buildAppV0MonitorOrchestrator(input: BuildAppV0MonitorOrchestratorInput) {
+  return createAppV0MonitorOrchestrator(buildAppV0MonitorOrchestrationDeps(input));
 }

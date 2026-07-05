@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  applyMonitorGuideDraft,
+  applyMonitoredRepoNavigationState,
+  applyReplayMonitorNavigation,
+  applyReplayMonitorRepositorySelection,
   buildLiveMonitorExecutionPlan,
   buildLiveSessionGuideDraft,
   buildLiveSessionPersistenceInput,
@@ -8,6 +12,7 @@ import {
   buildReplayMonitorExecutionPlan,
   buildReplayPlaybackInput,
   openCurrentMonitoredRepo,
+  persistLiveMonitorSessionSelection,
   startLiveMonitorSession,
   startReplayMonitorSession,
 } from "../../src/hooks/appMonitorSessionActionsRuntime";
@@ -33,6 +38,13 @@ vi.mock("../../src/appContentRuntime", () => appContentRuntimeMock);
 
 describe("appMonitorSessionActionsRuntime", () => {
   it("builds replay/live payloads and monitored repo navigation", () => {
+    const armSessionMusicalBase = vi.fn();
+    const primeMonitorGuideTrack = vi.fn();
+    applyMonitorGuideDraft(
+      { armSessionMusicalBase, primeMonitorGuideTrack } as never,
+      { trackId: "track-1", playlistId: "playlist-1" },
+    );
+
     expect(
       buildReplayPlaybackInput({
         session: {
@@ -87,6 +99,14 @@ describe("appMonitorSessionActionsRuntime", () => {
       analysisMode: "repo",
       screen: "inspect",
       pillar: "curate",
+    });
+    expect(armSessionMusicalBase).toHaveBeenCalledWith({
+      trackId: "track-1",
+      playlistId: "playlist-1",
+    });
+    expect(primeMonitorGuideTrack).toHaveBeenCalledWith({
+      trackId: "track-1",
+      playlistId: "playlist-1",
     });
 
     appRuntimeMock.shouldReuseActiveReplaySession.mockReturnValue(true);
@@ -276,5 +296,44 @@ describe("appMonitorSessionActionsRuntime", () => {
     expect(openRepoInput.setAnalysisMode).toHaveBeenCalledWith("repo");
     expect(openRepoInput.setScreen).toHaveBeenCalledWith("inspect");
     expect(openRepoInput.setPillar).toHaveBeenCalledWith("curate");
+  });
+
+  it("applies replay selection, navigation and live persistence helpers", async () => {
+    const repositories = { setSelectedRepositoryId: vi.fn() };
+    const setAnalysisMode = vi.fn();
+    const setScreen = vi.fn();
+    const setPillar = vi.fn();
+    const createSession = vi.fn(async () => null);
+    const setSelectedSessionId = vi.fn();
+
+    applyReplayMonitorRepositorySelection(
+      { repositories, setAnalysisMode } as never,
+      "repo-1",
+    );
+    applyReplayMonitorNavigation({ setAnalysisMode, setScreen } as never);
+    applyMonitoredRepoNavigationState(
+      { repositories, setAnalysisMode, setScreen, setPillar } as never,
+      "repo-2",
+    );
+    await persistLiveMonitorSessionSelection({
+      persistenceAction: "create",
+      sessions: { createSession, setSelectedSessionId } as never,
+      persistenceInput: { id: "persisted-1" } as never,
+      persistedSessionId: "persisted-1",
+    });
+    await persistLiveMonitorSessionSelection({
+      persistenceAction: "select",
+      sessions: { createSession, setSelectedSessionId } as never,
+      persistenceInput: { id: "persisted-2" } as never,
+      persistedSessionId: "persisted-2",
+    });
+
+    expect(repositories.setSelectedRepositoryId).toHaveBeenCalledWith("repo-1");
+    expect(repositories.setSelectedRepositoryId).toHaveBeenCalledWith("repo-2");
+    expect(setAnalysisMode).toHaveBeenCalledWith("repo");
+    expect(setScreen).toHaveBeenCalledWith("inspect");
+    expect(setPillar).toHaveBeenCalledWith("curate");
+    expect(createSession).toHaveBeenCalledWith({ id: "persisted-1" });
+    expect(setSelectedSessionId).toHaveBeenCalledWith("persisted-2");
   });
 });

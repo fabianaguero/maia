@@ -61,6 +61,61 @@ export function buildMonitoredRepoNavigation() {
   };
 }
 
+export function applyMonitorGuideDraft(
+  input: Pick<AppMonitorReplayActionInput, "armSessionMusicalBase" | "primeMonitorGuideTrack">,
+  draft: SessionMonitorDraft,
+): void {
+  input.armSessionMusicalBase(draft);
+  input.primeMonitorGuideTrack(draft);
+}
+
+export function applyReplayMonitorRepositorySelection(
+  input: Pick<AppMonitorReplayActionInput, "setAnalysisMode"> & {
+    repositories: Pick<AppMonitorReplayActionInput["repositories"], "setSelectedRepositoryId">;
+  },
+  repoId: string,
+): void {
+  input.repositories.setSelectedRepositoryId(repoId);
+  input.setAnalysisMode("repo");
+}
+
+export function applyReplayMonitorNavigation(
+  input: Pick<AppMonitorReplayActionInput, "setAnalysisMode" | "setScreen">,
+): void {
+  input.setAnalysisMode("repo");
+  input.setScreen("inspect");
+}
+
+export function applyMonitoredRepoNavigationState(
+  input: Pick<AppMonitorOpenRepoActionInput, "setAnalysisMode" | "setScreen" | "setPillar"> & {
+    repositories: Pick<AppMonitorOpenRepoActionInput["repositories"], "setSelectedRepositoryId">;
+  },
+  repoId: string,
+  navigation = buildMonitoredRepoNavigation(),
+): void {
+  input.repositories.setSelectedRepositoryId(repoId);
+  input.setAnalysisMode(navigation.analysisMode);
+  input.setScreen(navigation.screen);
+  input.setPillar(navigation.pillar);
+}
+
+export async function persistLiveMonitorSessionSelection(input: {
+  persistenceAction: ReturnType<typeof resolveSessionPersistenceAction>;
+  sessions: Pick<
+    AppMonitorLiveActionInput["sessions"],
+    "createSession" | "setSelectedSessionId"
+  >;
+  persistenceInput: CreateSessionInput;
+  persistedSessionId: string;
+}): Promise<void> {
+  if (input.persistenceAction === "create") {
+    await input.sessions.createSession(input.persistenceInput);
+    return;
+  }
+
+  input.sessions.setSelectedSessionId(input.persistedSessionId);
+}
+
 export function shouldSeekReplayWindow(replayWindowIndex?: number): replayWindowIndex is number {
   return typeof replayWindowIndex === "number";
 }
@@ -136,8 +191,7 @@ export async function startReplayMonitorSession(
 ): Promise<boolean> {
   input.sessions.setSelectedSessionId(session.id);
   const draft = resolveReplayMonitorDraft(session);
-  input.armSessionMusicalBase(draft);
-  input.primeMonitorGuideTrack(draft);
+  applyMonitorGuideDraft(input, draft);
 
   const sourceRepository = resolveReplaySourceRepository(session, input.repositories.repositories);
 
@@ -159,8 +213,7 @@ export async function startReplayMonitorSession(
     replayWindowIndex,
   });
 
-  input.repositories.setSelectedRepositoryId(sourceRepository.id);
-  input.setAnalysisMode("repo");
+  applyReplayMonitorRepositorySelection(input, sourceRepository.id);
 
   const ok = replayPlan.alreadyActiveReplay
     ? true
@@ -175,8 +228,7 @@ export async function startReplayMonitorSession(
     input.monitor.seekPlaybackWindow(replayPlan.replayWindowIndex);
   }
 
-  input.setAnalysisMode("repo");
-  input.setScreen("inspect");
+  applyReplayMonitorNavigation(input);
   return true;
 }
 
@@ -195,8 +247,7 @@ export async function startLiveMonitorSession(
     unnamedSessionLabel: input.t.session.unnamedSession,
     existingSessions: input.sessions.sessions,
   });
-  input.armSessionMusicalBase(livePlan.guideDraft);
-  input.primeMonitorGuideTrack(livePlan.guideDraft);
+  applyMonitorGuideDraft(input, livePlan.guideDraft);
 
   const success = await input.monitor.startSession(
     livePlan.repository,
@@ -208,11 +259,12 @@ export async function startLiveMonitorSession(
     return false;
   }
 
-  if (livePlan.persistenceAction === "create") {
-    await input.sessions.createSession(livePlan.persistenceInput);
-  } else {
-    input.sessions.setSelectedSessionId(persistedSessionId);
-  }
+  await persistLiveMonitorSessionSelection({
+    persistenceAction: livePlan.persistenceAction,
+    sessions: input.sessions,
+    persistenceInput: livePlan.persistenceInput,
+    persistedSessionId,
+  });
 
   return true;
 }
@@ -223,9 +275,5 @@ export function openCurrentMonitoredRepo(input: AppMonitorOpenRepoActionInput): 
     return;
   }
 
-  const navigation = buildMonitoredRepoNavigation();
-  input.repositories.setSelectedRepositoryId(repo.id);
-  input.setAnalysisMode(navigation.analysisMode);
-  input.setScreen(navigation.screen);
-  input.setPillar(navigation.pillar);
+  applyMonitoredRepoNavigationState(input, repo.id);
 }
