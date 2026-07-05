@@ -1,6 +1,9 @@
-import { useCallback } from "react";
+import { useMemo } from "react";
 
 import type { UseAppSelectionActionsInput } from "./appSelectionActionsTypes";
+import {
+  buildAppSelectionMonitorActionRunners,
+} from "./appSelectionActionsRuntime";
 
 type MonitorActionsInput = Pick<
   UseAppSelectionActionsInput,
@@ -14,46 +17,15 @@ export function useAppSelectionMonitorActions({
   setPillar,
   setScreen,
 }: MonitorActionsInput) {
-  const goLibrary = useCallback(() => {
-    setScreen("library");
-  }, [setScreen]);
-
-  const goCompose = useCallback(() => {
-    setScreen("compose");
-  }, [setScreen]);
-
-  const startSimpleMonitoring = useCallback(
-    (repoId: string, trackId?: string | null) => {
-      const repositoryExists = repositories.repositories.some((entry) => entry.id === repoId);
-      if (!repositoryExists) {
-        return;
-      }
-
-      library.setSelectedTrackId(trackId ?? null);
-      setPillar("perform");
-      setScreen("session");
-    },
-    [library, repositories.repositories, setPillar, setScreen],
+  return useMemo(
+    () =>
+      buildAppSelectionMonitorActionRunners({
+        library,
+        repositories,
+        baseAssets,
+        setPillar,
+        setScreen,
+      }),
+    [baseAssets, library, repositories, setPillar, setScreen],
   );
-
-  const startSimpleWizardSession = useCallback(
-    (repoId: string, presetId: string) => {
-      const repositoryExists = repositories.repositories.some((entry) => entry.id === repoId);
-      const presetExists = baseAssets.baseAssets.some((entry) => entry.id === presetId);
-      if (!repositoryExists || !presetExists) {
-        return;
-      }
-
-      setPillar("perform");
-      setScreen("session");
-    },
-    [baseAssets.baseAssets, repositories.repositories, setPillar, setScreen],
-  );
-
-  return {
-    goLibrary,
-    goCompose,
-    startSimpleMonitoring,
-    startSimpleWizardSession,
-  };
 }
