@@ -14,6 +14,14 @@ export interface AppV0TrackSelection {
   guideTrackPath: string | null;
 }
 
+export interface AppV0ConnectionAttachInput {
+  repoId: string;
+  repoTitle: string;
+  session: StreamSessionRecord;
+  trackId?: string;
+  trackTitle?: string;
+}
+
 export type AppV0MonitorLaunchPlan =
   | {
       kind: "connection";
@@ -56,6 +64,80 @@ export function resolveAppV0TrackSelection(input: {
   };
 }
 
+export function buildAppV0RepositoryStartInput(input: {
+  sessionId: string;
+  repo: RepositoryAnalysis;
+  track: LibraryTrack;
+  trackTitle: string;
+}): StartSessionInput {
+  return {
+    sessionId: input.sessionId,
+    source: input.repo.sourcePath,
+    adapterKind: "file",
+    trackId: input.track.id,
+    trackTitle: input.trackTitle,
+    startFromBeginning: true,
+  };
+}
+
+export function buildAppV0ConnectionAttachInput(input: {
+  session: StreamSessionRecord;
+  repoId: string;
+  repoTitle: string;
+  track: LibraryTrack;
+  trackTitle: string;
+}): AppV0ConnectionAttachInput {
+  return {
+    session: input.session,
+    repoId: input.repoId,
+    repoTitle: input.repoTitle,
+    trackId: input.track.id,
+    trackTitle: input.trackTitle,
+  };
+}
+
+export function buildAppV0ConnectionLaunchPlan(input: {
+  source: MonitorLaunchSource;
+  track: LibraryTrack;
+  trackTitle: string;
+  guideTrackPath: string | null;
+  sessionId: string;
+}): Extract<AppV0MonitorLaunchPlan, { kind: "connection" }> {
+  return {
+    kind: "connection",
+    track: input.track,
+    trackTitle: input.trackTitle,
+    guideTrackPath: input.guideTrackPath,
+    sessionId: input.sessionId,
+    connectionId: input.source.connectionId ?? "",
+    repoId: input.source.id,
+    repoTitle: input.source.title,
+  };
+}
+
+export function buildAppV0RepositoryLaunchPlan(input: {
+  repo: RepositoryAnalysis;
+  track: LibraryTrack;
+  trackTitle: string;
+  guideTrackPath: string | null;
+  sessionId: string;
+}): Extract<AppV0MonitorLaunchPlan, { kind: "repository" }> {
+  return {
+    kind: "repository",
+    track: input.track,
+    trackTitle: input.trackTitle,
+    guideTrackPath: input.guideTrackPath,
+    sessionId: input.sessionId,
+    repo: input.repo,
+    startInput: buildAppV0RepositoryStartInput({
+      sessionId: input.sessionId,
+      repo: input.repo,
+      track: input.track,
+      trackTitle: input.trackTitle,
+    }),
+  };
+}
+
 export function buildAppV0MonitorLaunchPlan(input: {
   source: MonitorLaunchSource;
   tracks: LibraryTrack[];
@@ -73,16 +155,13 @@ export function buildAppV0MonitorLaunchPlan(input: {
   }
 
   if (input.source.origin === "connection" && input.source.connectionId) {
-    return {
-      kind: "connection",
+    return buildAppV0ConnectionLaunchPlan({
+      source: input.source,
       track: trackSelection.track,
       trackTitle: trackSelection.trackTitle,
       guideTrackPath: trackSelection.guideTrackPath,
       sessionId: input.sessionId,
-      connectionId: input.source.connectionId,
-      repoId: input.source.id,
-      repoTitle: input.source.title,
-    };
+    });
   }
 
   const repo = input.repositories.find((item) => item.id === input.source.id);
@@ -90,22 +169,13 @@ export function buildAppV0MonitorLaunchPlan(input: {
     return { kind: "invalid", reason: "missing-repository" };
   }
 
-  return {
-    kind: "repository",
+  return buildAppV0RepositoryLaunchPlan({
+    repo,
     track: trackSelection.track,
     trackTitle: trackSelection.trackTitle,
     guideTrackPath: trackSelection.guideTrackPath,
     sessionId: input.sessionId,
-    repo,
-    startInput: {
-      sessionId: input.sessionId,
-      source: repo.sourcePath,
-      adapterKind: "file",
-      trackId: trackSelection.track.id,
-      trackTitle: trackSelection.trackTitle,
-      startFromBeginning: true,
-    },
-  };
+  });
 }
 
 export function buildAppV0LibraryMonitorLaunchPlan(input: {
@@ -129,22 +199,13 @@ export function buildAppV0LibraryMonitorLaunchPlan(input: {
     return { kind: "invalid", reason: "missing-track" };
   }
 
-  return {
-    kind: "repository",
+  return buildAppV0RepositoryLaunchPlan({
+    repo,
     track: trackSelection.track,
     trackTitle: trackSelection.trackTitle,
     guideTrackPath: trackSelection.guideTrackPath,
     sessionId: input.sessionId,
-    repo,
-    startInput: {
-      sessionId: input.sessionId,
-      source: repo.sourcePath,
-      adapterKind: "file",
-      trackId: trackSelection.track.id,
-      trackTitle: trackSelection.trackTitle,
-      startFromBeginning: true,
-    },
-  };
+  });
 }
 
 export function resolveAppV0PlaybackLabel(
@@ -178,6 +239,50 @@ export type AppV0MonitorLaunchExecutionResult =
       reason: "missing-track" | "missing-repository" | "attach-failed" | "start-failed";
     };
 
+export async function executeAppV0ConnectionLaunchPlan(
+  plan: Extract<AppV0MonitorLaunchPlan, { kind: "connection" }>,
+  deps: AppV0MonitorLaunchExecutionDeps,
+): Promise<AppV0MonitorLaunchExecutionResult> {
+  const streamSession = await deps.startConnection({
+    connectionId: plan.connectionId,
+    sessionId: plan.sessionId,
+    startFromBeginning: false,
+  });
+  const success = await deps.attachSession(
+    buildAppV0ConnectionAttachInput({
+      session: streamSession,
+      repoId: plan.repoId,
+      repoTitle: plan.repoTitle,
+      track: plan.track,
+      trackTitle: plan.trackTitle,
+    }),
+  );
+  if (!success) {
+    return {
+      ok: false,
+      reason: "attach-failed",
+    };
+  }
+  deps.onLaunchSuccess?.();
+  return { ok: true };
+}
+
+export async function executeAppV0RepositoryLaunchPlan(
+  plan: Extract<AppV0MonitorLaunchPlan, { kind: "repository" }>,
+  deps: AppV0MonitorLaunchExecutionDeps,
+): Promise<AppV0MonitorLaunchExecutionResult> {
+  const success = await deps.startSession(plan.repo, plan.startInput);
+  if (!success) {
+    return {
+      ok: false,
+      reason: "start-failed",
+    };
+  }
+
+  deps.onLaunchSuccess?.();
+  return { ok: true };
+}
+
 export async function executeAppV0MonitorLaunchPlan(
   plan: AppV0MonitorLaunchPlan,
   deps: AppV0MonitorLaunchExecutionDeps,
@@ -196,36 +301,8 @@ export async function executeAppV0MonitorLaunchPlan(
   await deps.resumeAudio();
 
   if (plan.kind === "connection") {
-    const streamSession = await deps.startConnection({
-      connectionId: plan.connectionId,
-      sessionId: plan.sessionId,
-      startFromBeginning: false,
-    });
-    const success = await deps.attachSession({
-      session: streamSession,
-      repoId: plan.repoId,
-      repoTitle: plan.repoTitle,
-      trackId: plan.track.id,
-      trackTitle: plan.trackTitle,
-    });
-    if (!success) {
-      return {
-        ok: false,
-        reason: "attach-failed",
-      };
-    }
-    deps.onLaunchSuccess?.();
-    return { ok: true };
+    return executeAppV0ConnectionLaunchPlan(plan, deps);
   }
 
-  const success = await deps.startSession(plan.repo, plan.startInput);
-  if (!success) {
-    return {
-      ok: false,
-      reason: "start-failed",
-    };
-  }
-
-  deps.onLaunchSuccess?.();
-  return { ok: true };
+  return executeAppV0RepositoryLaunchPlan(plan, deps);
 }

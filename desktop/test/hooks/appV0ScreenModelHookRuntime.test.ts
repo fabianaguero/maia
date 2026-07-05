@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  buildAppV0ScreenCounts,
   buildAppV0ScreenModelArgs,
   buildAppV0ScreenModelHookResult,
+  buildAppV0ScreenShellState,
+  buildAppV0ScreenState,
 } from "../../src/hooks/appV0ScreenModelHookRuntime";
 
 function createScreenModelInput() {
@@ -44,6 +47,9 @@ function createScreenModelInput() {
 describe("appV0ScreenModelHookRuntime", () => {
   it("builds the screen-model composition args from hook input and section state", () => {
     const input = createScreenModelInput();
+    const shellState = buildAppV0ScreenShellState(input);
+    const counts = buildAppV0ScreenCounts(input);
+    const screenState = buildAppV0ScreenState(input);
     const state = {
       contentActions: {
         onSectionChange: vi.fn(),
@@ -65,6 +71,9 @@ describe("appV0ScreenModelHookRuntime", () => {
       },
     });
 
+    expect(shellState.currentSection).toBe("monitor");
+    expect(counts.trackCount).toBe(2);
+    expect(screenState.isMonitoring).toBe(true);
     expect(args.shell.currentSection).toBe("monitor");
     expect(args.shell.toggleConsoleExpanded).toBe(input.toggleConsoleExpanded);
     expect(args.trackCount).toBe(2);

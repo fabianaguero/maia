@@ -86,19 +86,37 @@ export interface AppV0SectionRenderModel {
   fallbackViewModel: AppV0SectionFallbackViewModel;
 }
 
-export function buildAppV0SectionRenderModel(
+export interface AppV0SectionPropsBundle {
+  simpleMonitorProps: AppV0SimpleMonitorSectionProps;
+  simpleLibraryProps: AppV0SimpleLibrarySectionProps;
+  proLibraryProps: AppV0ProLibrarySectionProps;
+  connectionsProps: AppV0ConnectionsSectionProps;
+  setupProps: AppV0SetupSectionProps;
+}
+
+export function buildAppV0SectionPropsBundle(
   input: AppV0SectionContentInput,
-): AppV0SectionRenderModel {
+): AppV0SectionPropsBundle {
   return {
-    kind: resolveAppV0SectionContentKind({
-      currentSection: input.currentSection,
-      userMode: input.userMode,
-    }),
     simpleMonitorProps: buildAppV0SimpleMonitorSectionProps(input),
     simpleLibraryProps: buildAppV0SimpleLibrarySectionProps(input),
     proLibraryProps: buildAppV0ProLibrarySectionProps(input),
     connectionsProps: buildAppV0ConnectionsSectionProps(input),
     setupProps: buildAppV0SetupSectionProps(input),
+  };
+}
+
+export function buildAppV0SectionRenderModel(
+  input: AppV0SectionContentInput,
+): AppV0SectionRenderModel {
+  const propsBundle = buildAppV0SectionPropsBundle(input);
+
+  return {
+    kind: resolveAppV0SectionContentKind({
+      currentSection: input.currentSection,
+      userMode: input.userMode,
+    }),
+    ...propsBundle,
     fallbackViewModel: input.fallbackViewModel,
   };
 }

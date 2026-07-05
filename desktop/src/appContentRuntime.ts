@@ -61,6 +61,12 @@ export interface AppContentStatusViewModel {
   selectedItemTitle: string | null;
 }
 
+export interface AppContentStatusState {
+  analyzerLabel: string;
+  detailDeckLabel: string;
+  screenLabel: string;
+}
+
 export function isAppHealthResponse(response: AnalyzerResponse | null): response is HealthResponse {
   return Boolean(response && response.status === "ok" && "analyzerVersion" in response.payload);
 }
@@ -118,17 +124,88 @@ export function resolveAppMutationState(
     input.baseAssetsMutating ||
     input.compositionsMutating;
 
-  const mutateLabel = input.libraryMutating
+  const mutateLabel = resolveAppMutationLabel(input, copy);
+
+  return {
+    isMutating,
+    mutateLabel,
+  };
+}
+
+export function resolveAppMutationLabel(
+  input: {
+    baseAssetsMutating: boolean;
+    compositionsMutating: boolean;
+    libraryMutating: boolean;
+    repositoriesMutating: boolean;
+  },
+  copy: AppContentCopy,
+): string {
+  return input.libraryMutating
     ? copy.appShell.scanningTrackDna
     : input.repositoriesMutating
       ? copy.appShell.mappingRepository
       : input.baseAssetsMutating
         ? copy.appShell.poolIngest
         : copy.appShell.renderingComposition;
+}
+
+export function resolveAppScreenLabel(screen: AppScreen, copy: AppContentCopy): string {
+  return screen === "library"
+    ? copy.nav.library.label
+    : screen === "session"
+      ? copy.nav.session.label
+      : screen === "inspect"
+        ? copy.nav.inspect.label
+        : copy.nav.compose.label;
+}
+
+export function resolveAppDetailDeckLabel(
+  analysisMode: AnalyzerViewMode,
+  copy: AppContentCopy,
+): string {
+  return analysisMode === "repo"
+    ? copy.appShell.sourceDeckArmed
+    : analysisMode === "base"
+      ? copy.appShell.basePoolArmed
+      : copy.appShell.trackDeckArmed;
+}
+
+export function resolveAppSelectedItemTitle(input: {
+  analysisMode: AnalyzerViewMode;
+  baseAsset: BaseAssetRecord | null;
+  composition: CompositionResultRecord | null;
+  playlistName: string | null;
+  repository: RepositoryAnalysis | null;
+  screen: AppScreen;
+  track: LibraryTrack | null;
+}): string | null {
+  return input.screen === "compose"
+    ? (input.composition?.title ?? null)
+    : input.screen === "inspect" && input.analysisMode === "repo"
+      ? (input.repository?.title ?? null)
+      : input.screen === "inspect" && input.analysisMode === "base"
+        ? (input.baseAsset?.title ?? null)
+        : (input.playlistName ?? input.track?.tags.title ?? null);
+}
+
+export function buildAppContentStatusState(
+  input: Pick<
+    Parameters<typeof buildAppContentStatusViewModel>[0],
+    "analysisMode" | "booting" | "health" | "screen"
+  >,
+  copy: AppContentCopy,
+): AppContentStatusState {
+  const analyzerLabel = isAppHealthResponse(input.health)
+    ? `${input.health.payload.analyzerVersion} on ${input.health.payload.runtime}`
+    : input.booting
+      ? copy.appShell.bootingAnalyzerBridge
+      : copy.appShell.analyzerUnavailable;
 
   return {
-    isMutating,
-    mutateLabel,
+    analyzerLabel,
+    detailDeckLabel: resolveAppDetailDeckLabel(input.analysisMode, copy),
+    screenLabel: resolveAppScreenLabel(input.screen, copy),
   };
 }
 
@@ -146,42 +223,11 @@ export function buildAppContentStatusViewModel(
   },
   copy: AppContentCopy,
 ): AppContentStatusViewModel {
-  const analyzerLabel = isAppHealthResponse(input.health)
-    ? `${input.health.payload.analyzerVersion} on ${input.health.payload.runtime}`
-    : input.booting
-      ? copy.appShell.bootingAnalyzerBridge
-      : copy.appShell.analyzerUnavailable;
-
-  const screenLabel =
-    input.screen === "library"
-      ? copy.nav.library.label
-      : input.screen === "session"
-        ? copy.nav.session.label
-        : input.screen === "inspect"
-          ? copy.nav.inspect.label
-          : copy.nav.compose.label;
-
-  const detailDeckLabel =
-    input.analysisMode === "repo"
-      ? copy.appShell.sourceDeckArmed
-      : input.analysisMode === "base"
-        ? copy.appShell.basePoolArmed
-        : copy.appShell.trackDeckArmed;
-
-  const selectedItemTitle =
-    input.screen === "compose"
-      ? (input.composition?.title ?? null)
-      : input.screen === "inspect" && input.analysisMode === "repo"
-        ? (input.repository?.title ?? null)
-        : input.screen === "inspect" && input.analysisMode === "base"
-          ? (input.baseAsset?.title ?? null)
-          : (input.playlistName ?? input.track?.tags.title ?? null);
+  const statusState = buildAppContentStatusState(input, copy);
 
   return {
-    analyzerLabel,
-    detailDeckLabel,
-    screenLabel,
-    selectedItemTitle,
+    ...statusState,
+    selectedItemTitle: resolveAppSelectedItemTitle(input),
   };
 }
 

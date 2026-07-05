@@ -3,9 +3,15 @@ import { describe, expect, it } from "vitest";
 import type { LibraryTrack, RepositoryAnalysis } from "../src/types/library";
 import type { MonitorLaunchSource } from "../src/types/monitorLaunch";
 import {
+  buildAppV0ConnectionAttachInput,
+  buildAppV0ConnectionLaunchPlan,
   buildAppV0LibraryMonitorLaunchPlan,
   buildAppV0MonitorLaunchPlan,
+  buildAppV0RepositoryLaunchPlan,
+  buildAppV0RepositoryStartInput,
+  executeAppV0ConnectionLaunchPlan,
   executeAppV0MonitorLaunchPlan,
+  executeAppV0RepositoryLaunchPlan,
   resolveAppV0PlaybackLabel,
   resolveAppV0TrackSelection,
 } from "../src/appV0MonitorRuntime";
@@ -133,6 +139,13 @@ describe("appV0MonitorRuntime", () => {
       origin: "connection",
       connectionId: "abc",
     };
+    const directPlan = buildAppV0ConnectionLaunchPlan({
+      source,
+      track,
+      trackTitle: "around-the-world.mp3",
+      guideTrackPath: "/music/around-the-world.mp3",
+      sessionId: "session-1",
+    });
 
     const plan = buildAppV0MonitorLaunchPlan({
       source,
@@ -142,6 +155,11 @@ describe("appV0MonitorRuntime", () => {
       sessionId: "session-1",
     });
 
+    expect(directPlan).toMatchObject({
+      kind: "connection",
+      connectionId: "abc",
+      repoTitle: "services",
+    });
     expect(plan).toMatchObject({
       kind: "connection",
       sessionId: "session-1",
@@ -162,6 +180,19 @@ describe("appV0MonitorRuntime", () => {
       startable: true,
       origin: "repository",
     };
+    const startInput = buildAppV0RepositoryStartInput({
+      sessionId: "session-2",
+      repo,
+      track,
+      trackTitle: "around-the-world.mp3",
+    });
+    const directPlan = buildAppV0RepositoryLaunchPlan({
+      repo,
+      track,
+      trackTitle: "around-the-world.mp3",
+      guideTrackPath: "/music/around-the-world.mp3",
+      sessionId: "session-2",
+    });
 
     const plan = buildAppV0MonitorLaunchPlan({
       source,
@@ -178,6 +209,15 @@ describe("appV0MonitorRuntime", () => {
       sessionId: "session-3",
     });
 
+    expect(startInput).toMatchObject({
+      sessionId: "session-2",
+      source: "/tmp/visits-service.log",
+      trackId: "track-1",
+    });
+    expect(directPlan).toMatchObject({
+      kind: "repository",
+      sessionId: "session-2",
+    });
     expect(plan).toMatchObject({
       kind: "repository",
       sessionId: "session-2",
@@ -283,6 +323,28 @@ describe("appV0MonitorRuntime", () => {
       },
       onLaunchSuccess,
     };
+    const attachInput = buildAppV0ConnectionAttachInput({
+      session: {
+        sessionId: "session-6",
+        adapterKind: "process",
+        source: "gcp-cloud-run://project/service",
+        label: "services",
+        createdAt: "2026-01-01T00:00:00Z",
+        lastPolledAt: null,
+        totalPolls: 0,
+        fileCursor: null,
+      },
+      repoId: "connection:abc",
+      repoTitle: "services",
+      track,
+      trackTitle: "around-the-world.mp3",
+    });
+
+    expect(attachInput).toMatchObject({
+      repoId: "connection:abc",
+      repoTitle: "services",
+      trackId: "track-1",
+    });
 
     expect(await executeAppV0MonitorLaunchPlan(connectionPlan, deps)).toEqual({ ok: true });
     expect(await executeAppV0MonitorLaunchPlan(repoPlan, deps)).toEqual({ ok: true });
@@ -356,5 +418,62 @@ describe("appV0MonitorRuntime", () => {
       ok: false,
       reason: "start-failed",
     });
+  });
+
+  it("executes connection and repository helpers directly", async () => {
+    const connectionPlan = buildAppV0ConnectionLaunchPlan({
+      source: {
+        id: "connection:abc",
+        title: "services",
+        sourcePath: "gcp-cloud-run://project/service",
+        sourceType: "cloud",
+        sourceTypeLabel: "Cloud",
+        startable: true,
+        origin: "connection",
+        connectionId: "abc",
+      },
+      track,
+      trackTitle: "around-the-world.mp3",
+      guideTrackPath: null,
+      sessionId: "session-10",
+    });
+    const repositoryPlan = buildAppV0RepositoryLaunchPlan({
+      repo,
+      track,
+      trackTitle: "around-the-world.mp3",
+      guideTrackPath: null,
+      sessionId: "session-11",
+    });
+    const calls: string[] = [];
+    const deps = {
+      setGuideTrack: (_path: string) => undefined,
+      resumeAudio: async () => undefined,
+      startConnection: async () => {
+        calls.push("connection");
+        return {
+          sessionId: "session-10",
+          adapterKind: "process" as const,
+          source: "gcp-cloud-run://project/service",
+          label: "services",
+          createdAt: "2026-01-01T00:00:00Z",
+          lastPolledAt: null,
+          totalPolls: 0,
+          fileCursor: null,
+        };
+      },
+      attachSession: async () => {
+        calls.push("attach");
+        return true;
+      },
+      startSession: async () => {
+        calls.push("start");
+        return true;
+      },
+      onLaunchSuccess: () => calls.push("success"),
+    };
+
+    expect(await executeAppV0ConnectionLaunchPlan(connectionPlan, deps)).toEqual({ ok: true });
+    expect(await executeAppV0RepositoryLaunchPlan(repositoryPlan, deps)).toEqual({ ok: true });
+    expect(calls).toEqual(["connection", "attach", "success", "start", "success"]);
   });
 });
