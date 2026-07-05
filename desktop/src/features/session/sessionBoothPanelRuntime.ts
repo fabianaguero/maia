@@ -9,6 +9,8 @@ import type {
   SessionBoothDetailLabels,
   SessionBoothHeaderInput,
   SessionBoothHeaderLabels,
+  SessionBoothPanelDerivedState,
+  SessionBoothPanelSections,
   SessionBoothProgressInput,
   SessionBoothRouteInput,
   SessionBoothRouteLabels,
@@ -68,6 +70,19 @@ export function buildSessionBoothDetailLabels(
     noCurrentBurst: t.session.noCurrentBurst,
     runBoothHint: t.session.runBoothHint,
     sourceActiveHint: t.session.sourceActiveHint,
+  };
+}
+
+export function buildSessionBoothPanelDerivedState(
+  input: SessionBoothPanelProps & { t: SessionBoothHeaderInput["t"] },
+): SessionBoothPanelDerivedState {
+  return {
+    labels: {
+      header: buildSessionBoothHeaderLabels(input.t),
+      route: buildSessionBoothRouteLabels(input.t),
+      detail: buildSessionBoothDetailLabels(input.t),
+    },
+    progressVisible: input.playbackActive || input.liveMonitorActive,
   };
 }
 
@@ -136,12 +151,26 @@ export function buildSessionBoothDetailProps(
 
 export function buildSessionBoothPanelSections(
   input: SessionBoothPanelProps & { t: SessionBoothHeaderInput["t"] },
-) {
+): SessionBoothPanelSections {
+  const derivedState = buildSessionBoothPanelDerivedState(input);
+
   return {
-    headerProps: buildSessionBoothHeaderProps(input),
-    progressProps: buildSessionBoothProgressProps(input),
-    routeProps: buildSessionBoothRouteProps(input),
-    detailProps: buildSessionBoothDetailProps(input),
+    headerProps: {
+      ...buildSessionBoothHeaderProps(input),
+      labels: derivedState.labels.header,
+    },
+    progressProps: {
+      ...buildSessionBoothProgressProps(input),
+      visible: derivedState.progressVisible,
+    },
+    routeProps: {
+      ...buildSessionBoothRouteProps(input),
+      labels: derivedState.labels.route,
+    },
+    detailProps: {
+      ...buildSessionBoothDetailProps(input),
+      labels: derivedState.labels.detail,
+    },
     stats: input.booth.stats,
   };
 }

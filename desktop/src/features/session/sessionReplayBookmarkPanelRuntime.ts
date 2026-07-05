@@ -9,7 +9,9 @@ import { formatBpmLabel, formatDominantLevelLabel } from "../../utils/monitorLab
 import type { ReplayFeedbackSummaryCard } from "../../components/ReplayFeedbackSummaryCard";
 import type { SessionReplayBookmarkCard } from "./SessionReplayBookmarkCard";
 import type {
+  SessionReplayBookmarkCardState,
   SessionReplayBookmarkContextState,
+  SessionReplayBookmarkPanelDerivedState,
   SessionReplayBookmarkMetaState,
   SessionReplayBookmarkPanelHeaderState,
   SessionReplayBookmarkPanelSections,
@@ -83,6 +85,24 @@ export function resolveSessionReplayBookmarkDisabled(input: {
   return input.mutating || input.selectedSession.totalPolls === 0;
 }
 
+export function buildSessionReplayBookmarkCardState(input: {
+  bookmark: SessionBookmark;
+  bookmarkContext: SessionBookmarkContext | null;
+  t: AppTranslations;
+}): SessionReplayBookmarkCardState {
+  return {
+    label: input.bookmark.label,
+    meta: buildSessionReplayBookmarkMeta({
+      bookmark: input.bookmark,
+      t: input.t,
+    }),
+    context: buildSessionReplayBookmarkContext({
+      context: input.bookmarkContext,
+      t: input.t,
+    }),
+  };
+}
+
 export function buildSessionReplayBookmarkCardProps(input: {
   bookmark: SessionBookmark;
   selectedSession: PersistedSession;
@@ -91,23 +111,20 @@ export function buildSessionReplayBookmarkCardProps(input: {
   t: AppTranslations;
   onReplayBookmark: (session: PersistedSession, replayWindowIndex: number) => void | Promise<void>;
 }): ComponentProps<typeof SessionReplayBookmarkCard> {
-  const meta = buildSessionReplayBookmarkMeta({
+  const cardState = buildSessionReplayBookmarkCardState({
     bookmark: input.bookmark,
-    t: input.t,
-  });
-  const context = buildSessionReplayBookmarkContext({
-    context: input.bookmarkContext,
+    bookmarkContext: input.bookmarkContext,
     t: input.t,
   });
 
   return {
-    label: input.bookmark.label,
-    windowLabel: meta.windowLabel,
-    note: meta.note,
-    tags: meta.tags,
+    label: cardState.label,
+    windowLabel: cardState.meta.windowLabel,
+    note: cardState.meta.note,
+    tags: cardState.meta.tags,
     replayLabel: input.t.session.replayHere,
     disabled: input.replayDisabled,
-    context,
+    context: cardState.context,
     onReplay: () => input.onReplayBookmark(input.selectedSession, input.bookmark.replayWindowIndex),
   };
 }
@@ -145,33 +162,82 @@ export function buildSessionReplayBookmarkCardPropsList(input: {
   );
 }
 
-export function buildSessionReplayBookmarkPanelSections(
-  input: SessionReplayBookmarkPanelProps & { t: AppTranslations },
-): SessionReplayBookmarkPanelSections {
-  const header = buildSessionReplayBookmarkPanelHeader({
-    selectedSession: input.selectedSession,
-    t: input.t,
+export function buildSessionReplayBookmarkCardPropsListFromState(input: {
+  selectedSession: PersistedSession;
+  selectedSessionBookmarks: SessionBookmark[];
+  bookmarkCardStates: SessionReplayBookmarkCardState[];
+  replayDisabled: boolean;
+  t: AppTranslations;
+  onReplayBookmark: (session: PersistedSession, replayWindowIndex: number) => void | Promise<void>;
+}): Array<ComponentProps<typeof SessionReplayBookmarkCard>> {
+  return input.selectedSessionBookmarks.map((bookmark, index) => {
+    const cardState =
+      input.bookmarkCardStates[index] ??
+      buildSessionReplayBookmarkCardState({
+        bookmark,
+        bookmarkContext: null,
+        t: input.t,
+      });
+
+    return {
+      label: cardState.label,
+      windowLabel: cardState.meta.windowLabel,
+      note: cardState.meta.note,
+      tags: cardState.meta.tags,
+      replayLabel: input.t.session.replayHere,
+      disabled: input.replayDisabled,
+      context: cardState.context,
+      onReplay: () => input.onReplayBookmark(input.selectedSession, bookmark.replayWindowIndex),
+    };
   });
+}
+
+export function buildSessionReplayBookmarkPanelDerivedState(
+  input: SessionReplayBookmarkPanelProps & { t: AppTranslations },
+): SessionReplayBookmarkPanelDerivedState {
   const replayDisabled = resolveSessionReplayBookmarkDisabled({
     mutating: input.mutating,
     selectedSession: input.selectedSession,
   });
 
   return {
-    header,
+    header: buildSessionReplayBookmarkPanelHeader({
+      selectedSession: input.selectedSession,
+      t: input.t,
+    }),
     replayDisabled,
     recommendationProps: buildSessionReplayBookmarkRecommendationProps({
       recommendation: input.selectedSessionReplayFeedbackRecommendation,
       t: input.t,
     }),
-    bookmarkCardPropsList: buildSessionReplayBookmarkCardPropsList({
+    bookmarkCardStates: input.selectedSessionBookmarks.map((bookmark) =>
+      buildSessionReplayBookmarkCardState({
+        bookmark,
+        bookmarkContext: input.bookmarkContexts[bookmark.id] ?? null,
+        t: input.t,
+      }),
+    ),
+    emptyLabel: input.t.session.noReplayNotesSavedYet,
+  };
+}
+
+export function buildSessionReplayBookmarkPanelSections(
+  input: SessionReplayBookmarkPanelProps & { t: AppTranslations },
+): SessionReplayBookmarkPanelSections {
+  const derivedState = buildSessionReplayBookmarkPanelDerivedState(input);
+
+  return {
+    header: derivedState.header,
+    replayDisabled: derivedState.replayDisabled,
+    recommendationProps: derivedState.recommendationProps,
+    bookmarkCardPropsList: buildSessionReplayBookmarkCardPropsListFromState({
       selectedSession: input.selectedSession,
       selectedSessionBookmarks: input.selectedSessionBookmarks,
-      bookmarkContexts: input.bookmarkContexts,
-      replayDisabled,
+      bookmarkCardStates: derivedState.bookmarkCardStates,
+      replayDisabled: derivedState.replayDisabled,
       t: input.t,
       onReplayBookmark: input.onReplayBookmark,
     }),
-    emptyLabel: input.t.session.noReplayNotesSavedYet,
+    emptyLabel: derivedState.emptyLabel,
   };
 }

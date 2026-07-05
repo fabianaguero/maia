@@ -10,9 +10,11 @@ import type { SessionSavedSessionCardMetrics } from "./SessionSavedSessionCardMe
 import { resolveSessionTemplateLabel } from "./sessionDisplay";
 import type {
   SessionSavedSessionCardActionsState,
+  SessionSavedSessionCardDerivedState,
   SessionSavedSessionCardMetaState,
   SessionSavedSessionCardMetricsState,
   SessionSavedSessionCardSections,
+  SessionSavedSessionCardStatusState,
 } from "./sessionSavedSessionCardContracts";
 import type { SessionSavedSessionCardProps } from "./sessionSavedSessionCardTypes";
 
@@ -24,6 +26,17 @@ export function resolveSessionSavedSessionCardStatusLabel(input: {
   return input.playbackActive
     ? input.t.session.replay
     : resolveSessionStatusLabel(input.session.status, input.t);
+}
+
+export function buildSessionSavedSessionCardStatusState(input: {
+  session: PersistedSession;
+  playbackActive: boolean;
+  t: AppTranslations;
+}): SessionSavedSessionCardStatusState {
+  return {
+    statusLabel: resolveSessionSavedSessionCardStatusLabel(input),
+    statusTone: `status-${input.session.status}${input.playbackActive ? " status-playback" : ""}`,
+  };
 }
 
 export function buildSessionSavedSessionCardMetrics(input: {
@@ -80,6 +93,37 @@ export function resolveSessionSavedSessionCardActions(input: {
     showPlaybackAction: !input.active && input.session.totalPolls > 0,
     showResumeAction: !input.active,
     deleteDisabled: input.mutating || input.active,
+  };
+}
+
+export function buildSessionSavedSessionCardDerivedState(
+  input: SessionSavedSessionCardProps & { t: AppTranslations },
+): SessionSavedSessionCardDerivedState {
+  return {
+    status: buildSessionSavedSessionCardStatusState({
+      session: input.session,
+      playbackActive: input.playbackActive,
+      t: input.t,
+    }),
+    metrics: buildSessionSavedSessionCardMetrics({
+      session: input.session,
+      active: input.active,
+      playbackActive: input.playbackActive,
+      liveWindowCount: input.liveWindowCount,
+      liveProcessedLines: input.liveProcessedLines,
+      liveTotalAnomalies: input.liveTotalAnomalies,
+      t: input.t,
+    }),
+    meta: resolveSessionSavedSessionCardMeta({
+      session: input.session,
+      bookmarks: input.bookmarks,
+      t: input.t,
+    }),
+    actions: resolveSessionSavedSessionCardActions({
+      active: input.active,
+      session: input.session,
+      mutating: input.mutating,
+    }),
   };
 }
 
@@ -150,53 +194,29 @@ export function buildSessionSavedSessionCardActionsProps(input: {
 export function buildSessionSavedSessionCardSections(
   input: SessionSavedSessionCardProps & { t: AppTranslations },
 ): SessionSavedSessionCardSections {
-  const statusLabel = resolveSessionSavedSessionCardStatusLabel({
-    session: input.session,
-    playbackActive: input.playbackActive,
-    t: input.t,
-  });
-  const metrics = buildSessionSavedSessionCardMetrics({
-    session: input.session,
-    active: input.active,
-    playbackActive: input.playbackActive,
-    liveWindowCount: input.liveWindowCount,
-    liveProcessedLines: input.liveProcessedLines,
-    liveTotalAnomalies: input.liveTotalAnomalies,
-    t: input.t,
-  });
-  const meta = resolveSessionSavedSessionCardMeta({
-    session: input.session,
-    bookmarks: input.bookmarks,
-    t: input.t,
-  });
-  const actions = resolveSessionSavedSessionCardActions({
-    active: input.active,
-    session: input.session,
-    mutating: input.mutating,
-  });
-  const statusTone = `status-${input.session.status}${input.playbackActive ? " status-playback" : ""}`;
+  const derivedState = buildSessionSavedSessionCardDerivedState(input);
 
   return {
-    statusTone,
-    updatedAtLabel: meta.updatedAtLabel,
+    statusTone: derivedState.status.statusTone,
+    updatedAtLabel: derivedState.meta.updatedAtLabel,
     headerProps: buildSessionSavedSessionCardHeaderProps({
       session: input.session,
       selected: input.selected,
       active: input.active,
-      statusLabel,
-      statusTone,
-      meta,
+      statusLabel: derivedState.status.statusLabel,
+      statusTone: derivedState.status.statusTone,
+      meta: derivedState.meta,
       t: input.t,
       onSelectSession: input.onSelectSession,
     }),
     metricsProps: buildSessionSavedSessionCardMetricsProps({
-      metrics,
+      metrics: derivedState.metrics,
       t: input.t,
     }),
     actionsProps: buildSessionSavedSessionCardActionsProps({
       session: input.session,
       mutating: input.mutating,
-      actions,
+      actions: derivedState.actions,
       t: input.t,
       onResumeSession: input.onResumeSession,
       onPlaybackSession: input.onPlaybackSession,

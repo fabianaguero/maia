@@ -4,7 +4,9 @@ import { DEFAULT_SOURCE_TEMPLATE_ID } from "../../../src/config/sourceTemplates"
 import { en } from "../../../src/i18n/en";
 import {
   buildSessionBoothInput,
+  buildSessionControllerDerivedCollections,
   buildSessionControllerDerivedInput,
+  buildSessionControllerDerivedSelectionInput,
   buildSessionScreenActionsInput,
   buildSessionScreenControllerState,
   resolveInitialSessionBaseMode,
@@ -138,7 +140,56 @@ describe("sessionScreenControllerRuntime", () => {
       templateGenre: null,
       templateLabel: null,
     });
+    const derivedCollections = buildSessionControllerDerivedCollections({
+      tracks: [] as never,
+      playlists: [] as never,
+      repositories: [] as never,
+      sessions: [] as never,
+      sessionBookmarksBySessionId: {},
+      selectedSessionId: null,
+      activeSessionId: null,
+      activeSessionMode: null,
+      activePlaybackProgress: null,
+      onStartSession: vi.fn(async () => true),
+      onResume: vi.fn(),
+      onPlayback: vi.fn(async () => true),
+      onReplayBookmark: vi.fn(async () => true),
+      onSelectSession: vi.fn(),
+    });
+    const derivedSelection = buildSessionControllerDerivedSelectionInput({
+      controllerInput: {
+        tracks: [] as never,
+        playlists: [] as never,
+        repositories: [] as never,
+        sessions: [] as never,
+        sessionBookmarksBySessionId: {},
+        selectedSessionId: null,
+        activeSessionId: null,
+        activeSessionMode: null,
+        activePlaybackProgress: null,
+        onStartSession: vi.fn(async () => true),
+        onResume: vi.fn(),
+        onPlayback: vi.fn(async () => true),
+        onReplayBookmark: vi.fn(async () => true),
+        onSelectSession: vi.fn(),
+      },
+      activePlaybackProgress: null,
+      activeSessionId: null,
+      activeSessionMode: null,
+      baseMode: "track",
+      mode: "log",
+      monitorHasSession: false,
+      selectedPlaylistId: null,
+      selectedSessionEvents: [],
+      selectedSourceId: null,
+      selectedTrackId: null,
+      sessionPlaceholderFallback: "Session",
+      templateGenre: null,
+      templateLabel: null,
+    });
     expect(derivedInput.mode).toBe("log");
+    expect(derivedCollections.selectedSessionId).toBeNull();
+    expect(derivedSelection.mode).toBe("log");
 
     const boothInput = buildSessionBoothInput({
       t: en,

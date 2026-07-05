@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   buildSessionScreenControllerSlicesLocalState,
+  buildSessionScreenControllerSlicesDerivedDepsState,
   buildSessionScreenControllerTemplateState,
+  buildSessionScreenControllerTemplateMetaState,
   buildSessionScreenControllerSlicesDerivedDeps,
   pickSessionScreenControllerSlicesActionLocalState,
   pickSessionScreenControllerSlicesBoothLocalState,
@@ -72,9 +74,27 @@ describe("sessionScreenControllerSlicesStateRuntime", () => {
       selectedTemplateGenre: meta.selectedTemplateGenre,
       selectedTemplateLabel: meta.selectedTemplateLabel,
     });
+    const depsState = buildSessionScreenControllerSlicesDerivedDepsState({
+      controllerInput: { id: "controller" } as never,
+      monitorSnapshot: { sessionId: "monitor-1" },
+      localState: {
+        baseMode: "track",
+        mode: "log",
+        selectedPlaylistId: null,
+        selectedSessionEvents: [],
+        selectedSourceId: "repo-1",
+        selectedTrackId: "track-1",
+      },
+      t: en,
+      selectedTemplateGenre: meta.selectedTemplateGenre,
+      selectedTemplateLabel: meta.selectedTemplateLabel,
+    });
+    const templateMetaState = buildSessionScreenControllerTemplateMetaState(meta);
 
     expect(meta.selectedTemplateGenre).toBe("Club House");
     expect(meta.selectedTemplateLabel).toBe("Club");
+    expect(templateMetaState.selectedTemplateLabel).toBe("Club");
+    expect(depsState.mode).toBe("log");
     expect(deps).toHaveLength(11);
     expect(deps[0]).toEqual({ id: "controller" });
 

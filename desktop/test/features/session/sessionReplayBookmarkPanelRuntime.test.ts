@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { en } from "../../../src/i18n/en";
 import {
+  buildSessionReplayBookmarkCardPropsListFromState,
   buildSessionReplayBookmarkCardPropsList,
   buildSessionReplayBookmarkCardProps,
+  buildSessionReplayBookmarkCardState,
+  buildSessionReplayBookmarkPanelDerivedState,
   buildSessionReplayBookmarkPanelSections,
   buildSessionReplayBookmarkContext,
   buildSessionReplayBookmarkMeta,
@@ -80,6 +83,16 @@ describe("sessionReplayBookmarkPanelRuntime", () => {
   });
 
   it("builds bookmark card props and panel sections", () => {
+    const cardState = buildSessionReplayBookmarkCardState({
+      bookmark,
+      bookmarkContext: {
+        bpm: 126,
+        dominantLevel: "warn",
+        anomalyCount: 2,
+        logExcerpt: "burst detected",
+      },
+      t: en,
+    });
     const cardProps = buildSessionReplayBookmarkCardProps({
       bookmark,
       selectedSession: session,
@@ -101,9 +114,33 @@ describe("sessionReplayBookmarkPanelRuntime", () => {
       t: en,
       onReplayBookmark: () => undefined,
     });
+    const cardPropsListFromState = buildSessionReplayBookmarkCardPropsListFromState({
+      selectedSession: session,
+      selectedSessionBookmarks: [bookmark],
+      bookmarkCardStates: [cardState],
+      replayDisabled: false,
+      t: en,
+      onReplayBookmark: () => undefined,
+    });
     const recommendationProps = buildSessionReplayBookmarkRecommendationProps({
       recommendation: { summary: "Keep this groove" } as never,
       t: en,
+    });
+    const derivedState = buildSessionReplayBookmarkPanelDerivedState({
+      t: en,
+      selectedSession: session,
+      selectedSessionBookmarks: [bookmark],
+      selectedSessionReplayFeedbackRecommendation: null,
+      bookmarkContexts: {
+        1: {
+          bpm: 126,
+          dominantLevel: "warn",
+          anomalyCount: 2,
+          logExcerpt: "burst detected",
+        },
+      },
+      mutating: false,
+      onReplayBookmark: () => undefined,
     });
     const sections = buildSessionReplayBookmarkPanelSections({
       t: en,
@@ -115,10 +152,14 @@ describe("sessionReplayBookmarkPanelRuntime", () => {
       onReplayBookmark: () => undefined,
     });
 
+    expect(cardState.meta.windowLabel).toContain("4");
     expect(cardProps.windowLabel).toContain("4");
     expect(cardProps.context?.excerpt).toBe("burst detected");
     expect(cardPropsList).toHaveLength(1);
+    expect(cardPropsListFromState[0]?.context?.excerpt).toBe("burst detected");
     expect(recommendationProps?.title).toBe(en.session.recommendedMix);
+    expect(derivedState.bookmarkCardStates).toHaveLength(1);
+    expect(derivedState.replayDisabled).toBe(false);
     expect(sections.bookmarkCardPropsList).toHaveLength(1);
     expect(sections.emptyLabel).toBe(en.session.noReplayNotesSavedYet);
   });

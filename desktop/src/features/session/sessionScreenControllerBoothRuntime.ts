@@ -4,8 +4,11 @@ import type { BuildSessionBoothViewModelInput } from "./sessionBoothViewModelTyp
 import type { PersistedSession } from "../../api/sessions";
 import type { QuickSessionMode } from "./sessionDisplay";
 import type {
+  SessionScreenControllerBoothBaseBindings,
   SessionScreenControllerBoothDerivedState,
   SessionScreenControllerBoothMonitorSnapshot,
+  SessionScreenControllerBoothSessionBindings,
+  SessionScreenControllerBoothSourceBindings,
   SessionScreenEffectsHookBindings,
 } from "./sessionScreenControllerBoothContracts";
 import type { SessionScreenControllerState } from "./sessionScreenControllerTypes";
@@ -65,24 +68,48 @@ export function buildSessionScreenControllerBoothDerivedBindings(
   derivedState: SessionScreenControllerBoothDerivedState,
 ) {
   return {
+    ...buildSessionScreenControllerBoothSessionBindings(derivedState),
+    ...buildSessionScreenControllerBoothSourceBindings(derivedState),
+    ...buildSessionScreenControllerBoothBaseBindings(derivedState),
+  };
+}
+
+export function buildSessionScreenControllerBoothSessionBindings(
+  derivedState: SessionScreenControllerBoothDerivedState,
+): SessionScreenControllerBoothSessionBindings {
+  return {
     playbackActive: derivedState.playbackActive,
     liveMonitorActive: derivedState.liveMonitorActive,
     readyToRun: derivedState.readyToRun,
     playbackPercent: derivedState.playbackPercent,
     activeSession: derivedState.activeSession,
+  };
+}
+
+export function buildSessionScreenControllerBoothSourceBindings(
+  derivedState: SessionScreenControllerBoothDerivedState,
+): SessionScreenControllerBoothSourceBindings {
+  return {
     selectedSourceTitle: derivedState.selectedSource?.title ?? null,
     selectedSourcePath: derivedState.selectedSource?.sourcePath ?? null,
     selectedSourceSuggestedBpm: derivedState.selectedSource?.suggestedBpm ?? null,
     selectedSessionSourceLabel: derivedState.selectedSessionSourceDetails.label,
     selectedSessionSourcePath: derivedState.selectedSessionSourceDetails.path,
+    activeSourceLabel: derivedState.activeSourceDetails.label,
+    activeSourcePath: derivedState.activeSourceDetails.path,
+  };
+}
+
+export function buildSessionScreenControllerBoothBaseBindings(
+  derivedState: SessionScreenControllerBoothDerivedState,
+): SessionScreenControllerBoothBaseBindings {
+  return {
     selectedBaseLabel: derivedState.selectedBaseDetails.label,
     selectedBaseDetail: derivedState.selectedBaseDetails.detail,
     selectedSessionBaseLabel: derivedState.selectedSessionBaseDetails.label,
     selectedSessionBaseDetail: derivedState.selectedSessionBaseDetails.detail,
     activeBaseLabel: derivedState.activeBaseDetails.label,
     activeBaseDetail: derivedState.activeBaseDetails.detail,
-    activeSourceLabel: derivedState.activeSourceDetails.label,
-    activeSourcePath: derivedState.activeSourceDetails.path,
   };
 }
 

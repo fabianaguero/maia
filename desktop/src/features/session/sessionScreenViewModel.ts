@@ -12,7 +12,7 @@ import type {
   SessionScreenViewModel,
 } from "./sessionScreenViewModelTypes";
 
-export function buildSessionScreenViewModel(
+export function buildSessionScreenViewModelSections(
   input: BuildSessionScreenViewModelInput,
 ): SessionScreenViewModel {
   return {
@@ -21,4 +21,10 @@ export function buildSessionScreenViewModel(
     boothProps: buildSessionScreenBoothProps(input),
     panelsProps: buildSessionScreenPanelsProps(input),
   };
+}
+
+export function buildSessionScreenViewModel(
+  input: BuildSessionScreenViewModelInput,
+): SessionScreenViewModel {
+  return buildSessionScreenViewModelSections(input);
 }

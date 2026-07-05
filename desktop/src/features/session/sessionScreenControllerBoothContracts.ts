@@ -20,6 +20,33 @@ export type SessionScreenControllerBoothDerivedState = Pick<
   | "selectedSessionSourceDetails"
 >;
 
+export interface SessionScreenControllerBoothSourceBindings {
+  selectedSourceTitle: string | null;
+  selectedSourcePath: string | null;
+  selectedSourceSuggestedBpm: number | null;
+  selectedSessionSourceLabel: string | null;
+  selectedSessionSourcePath: string | null;
+  activeSourceLabel: string | null;
+  activeSourcePath: string | null;
+}
+
+export interface SessionScreenControllerBoothBaseBindings {
+  selectedBaseLabel: string | null;
+  selectedBaseDetail: string | null;
+  selectedSessionBaseLabel: string | null;
+  selectedSessionBaseDetail: string | null;
+  activeBaseLabel: string | null;
+  activeBaseDetail: string | null;
+}
+
+export interface SessionScreenControllerBoothSessionBindings {
+  playbackActive: boolean;
+  liveMonitorActive: boolean;
+  readyToRun: boolean;
+  playbackPercent: number | null;
+  activeSession: SessionControllerDerivedState["activeSession"];
+}
+
 export interface SessionScreenControllerBoothMonitorSnapshot {
   monitorSession: ActiveMonitorSession | null;
   monitorMetrics: MonitorMetrics;

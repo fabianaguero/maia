@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { en } from "../../../src/i18n/en";
 import {
+  buildSessionSavedSessionCardDerivedState,
+  buildSessionSavedSessionCardStatusState,
   buildSessionSavedSessionCardActionsProps,
   buildSessionSavedSessionCardHeaderProps,
   buildSessionSavedSessionCardMetricsProps,
@@ -35,6 +37,11 @@ describe("sessionSavedSessionCardRuntime", () => {
       playbackActive: false,
       t: en,
     });
+    const statusState = buildSessionSavedSessionCardStatusState({
+      session,
+      playbackActive: false,
+      t: en,
+    });
     const metrics = buildSessionSavedSessionCardMetrics({
       session,
       active: false,
@@ -51,6 +58,8 @@ describe("sessionSavedSessionCardRuntime", () => {
     });
 
     expect(statusLabel).toBeTruthy();
+    expect(statusState.statusLabel).toBe(statusLabel);
+    expect(statusState.statusTone).toContain("status-paused");
     expect(metrics.pollsValue).toBe(3);
     expect(metrics.bpmLabel).toContain("126");
     expect(meta.title).toBe("Night watch");
@@ -112,6 +121,22 @@ describe("sessionSavedSessionCardRuntime", () => {
       onPlaybackSession: () => undefined,
       onDeleteSession: () => undefined,
     });
+    const derivedState = buildSessionSavedSessionCardDerivedState({
+      t: en,
+      session,
+      selected: true,
+      active: false,
+      playbackActive: false,
+      mutating: false,
+      bookmarks: [{ id: 1 }] as never,
+      liveWindowCount: 5,
+      liveProcessedLines: 50,
+      liveTotalAnomalies: 4,
+      onSelectSession: () => undefined,
+      onResumeSession: () => undefined,
+      onPlaybackSession: () => undefined,
+      onDeleteSession: () => undefined,
+    });
     const sections = buildSessionSavedSessionCardSections({
       t: en,
       session,
@@ -132,6 +157,8 @@ describe("sessionSavedSessionCardRuntime", () => {
     expect(headerProps.title).toBe("Night watch");
     expect(metricsProps.bpmLabel).toContain("126");
     expect(actionsProps.showPlaybackAction).toBe(true);
+    expect(derivedState.status.statusTone).toContain("status-paused");
+    expect(derivedState.meta.updatedAtLabel).toBeTruthy();
     expect(sections.headerProps.title).toBe("Night watch");
     expect(sections.metricsProps.anomaliesValue).toBe(2);
     expect(sections.actionsProps.showResumeAction).toBe(true);

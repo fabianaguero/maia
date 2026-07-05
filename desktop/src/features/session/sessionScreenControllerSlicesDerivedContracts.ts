@@ -46,3 +46,15 @@ export interface SessionScreenControllerSlicesDerivedMemoInput {
   selectedTemplatePresentationGenre: string | null;
   selectedTemplatePresentationLabel: string | null;
 }
+
+export interface SessionScreenControllerSlicesDerivedResolution<TStateInput, TState> {
+  args: SessionScreenControllerSlicesDerivedArgs;
+  stateInput: TStateInput;
+  derivedState: TState;
+}
+
+export interface SessionScreenControllerSlicesDerivedMemoResolution<TMemoInput, TDeps> {
+  args: SessionScreenControllerSlicesDerivedArgs;
+  memoInput: TMemoInput;
+  deps: TDeps;
+}

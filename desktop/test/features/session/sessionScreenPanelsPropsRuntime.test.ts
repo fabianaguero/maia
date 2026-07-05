@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { buildSessionScreenPanelsProps } from "../../../src/features/session/sessionScreenPanelsPropsRuntime";
+import {
+  buildSessionScreenPanelsProps,
+  buildSessionScreenPanelsVisualState,
+} from "../../../src/features/session/sessionScreenPanelsPropsRuntime";
 
 describe("sessionScreenPanelsPropsRuntime", () => {
   it("builds panel props and resets selected source when mode changes", () => {
@@ -43,7 +46,7 @@ describe("sessionScreenPanelsPropsRuntime", () => {
       handleReplayBookmark: vi.fn(async () => undefined),
     } as never;
 
-    const props = buildSessionScreenPanelsProps({
+    const input = {
       tracks: [{ id: "track-1" }] as never,
       playlists: [] as never,
       sessions: [] as never,
@@ -59,8 +62,12 @@ describe("sessionScreenPanelsPropsRuntime", () => {
       onDelete: vi.fn(async () => undefined),
       onSelectSession: vi.fn(),
       controller,
-    });
+    } as const;
+    const visualState = buildSessionScreenPanelsVisualState(input);
+    const props = buildSessionScreenPanelsProps(input);
 
+    expect(visualState.mode).toBe("log");
+    expect(visualState.liveTotalAnomalies).toBe(6);
     props.onModeChange("repo");
     expect(controller.setMode).toHaveBeenCalledWith("repo");
     expect(controller.setSelectedSourceId).toHaveBeenCalledWith(null);

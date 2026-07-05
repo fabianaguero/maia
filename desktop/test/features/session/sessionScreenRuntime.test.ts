@@ -8,12 +8,19 @@ import type {
   RepositoryAnalysis,
 } from "../../../src/types/library";
 import {
+  buildSessionControllerDerivedBookmarkBindings,
   buildSessionControllerDerivedBookmarkInput,
   buildSessionControllerDerivedBookmarkState,
+  buildSessionControllerDerivedDetailsBindings,
   buildSessionControllerDerivedDetailsInput,
+  buildSessionControllerDerivedSelectionArgs,
+  buildSessionControllerDerivedSelectionInput,
   buildSessionControllerDerivedDetailsState,
+  buildSessionControllerDerivedSectionInputs,
   buildSessionControllerDerivedSections,
+  buildSessionControllerDerivedSelectionBindings,
   buildSessionControllerDerivedSelectionState,
+  buildSessionControllerDerivedSessionBindings,
   buildSessionControllerDerivedState,
   buildSessionLabelPlaceholder,
   createDirectSessionStartPlan,
@@ -319,6 +326,8 @@ describe("sessionScreenRuntime", () => {
       tracks: [track],
     };
     const selectionState = resolveSessionControllerDerivedSelectionState(input);
+    const selectionInput = buildSessionControllerDerivedSelectionInput(input);
+    const selectionArgs = buildSessionControllerDerivedSelectionArgs(selectionInput);
     const rebuiltSelectionState = buildSessionControllerDerivedSelectionState({
       sourceOptions: [repository],
       entitySelection: {
@@ -352,23 +361,39 @@ describe("sessionScreenRuntime", () => {
       repositories: input.repositories,
       playlists: input.playlists,
     });
+    const sectionInputs = buildSessionControllerDerivedSectionInputs({
+      input,
+      selectionState,
+    });
     const detailsState = buildSessionControllerDerivedDetailsState(detailsInput);
     const sections = resolveSessionControllerDerivedSections(input);
     const builtSections = buildSessionControllerDerivedSections({
       input,
       selectionState,
     });
+    const selectionBindings = buildSessionControllerDerivedSelectionBindings(selectionState);
+    const sessionBindings = buildSessionControllerDerivedSessionBindings(selectionState);
+    const bookmarkBindings = buildSessionControllerDerivedBookmarkBindings(bookmarkState);
+    const detailsBindings = buildSessionControllerDerivedDetailsBindings(detailsState);
     const rebuiltState = buildSessionControllerDerivedState(sections);
     const derived = resolveSessionControllerDerivedState(input);
 
     expect(derived.sourceOptions).toEqual([repository]);
+    expect(selectionInput.mode).toBe("log");
+    expect(selectionArgs.sourceOptions).toEqual([repository]);
+    expect(sectionInputs.bookmarkInput.selectedSession?.id).toBe("session-1");
+    expect(sectionInputs.detailsInput.selectedSource?.id).toBe("repo-1");
     expect(rebuiltSelectionState.selectedSource?.id).toBe("repo-1");
     expect(selectionState.sourceOptions).toEqual([repository]);
+    expect(selectionBindings.selectedTrack?.id).toBe("track-1");
     expect(selectionState.sessionSelection.activeSession?.id).toBe("session-1");
+    expect(sessionBindings.selectedSessionIdForEvents).toBe("session-1");
     expect(bookmarkInput.selectedSession?.id).toBe("session-1");
     expect(bookmarkState.selectedSessionBookmarks).toHaveLength(1);
+    expect(bookmarkBindings.bookmarkContexts[7]?.dominantLevel).toBe("warn");
     expect(detailsInput.selectedSource?.id).toBe("repo-1");
     expect(detailsState.readyToRun).toBe(true);
+    expect(detailsBindings.sessionLabelPlaceholder).toBe("production.log · Base Pulse · House");
     expect(sections.bookmarkState.selectedSessionBookmarks).toHaveLength(1);
     expect(builtSections.detailsState.readyToRun).toBe(true);
     expect(rebuiltState.selectedSession?.id).toBe("session-1");

@@ -15,6 +15,8 @@ import type {
   SessionScreenControllerSlicesDerivedArgs,
   SessionScreenControllerSlicesDerivedArgsInput,
   SessionScreenControllerSlicesDerivedMemoInput,
+  SessionScreenControllerSlicesDerivedMemoResolution,
+  SessionScreenControllerSlicesDerivedResolution,
 } from "./sessionScreenControllerSlicesDerivedContracts";
 
 export function buildSessionScreenControllerSlicesDerivedArgs(
@@ -101,11 +103,28 @@ export function resolveSessionScreenControllerSlicesDerivedState(input: {
   selectedTemplateGenre: string | null;
   selectedTemplateLabel: string | null;
 }) {
-  const args = buildSessionScreenControllerSlicesDerivedArgs(input);
+  return buildSessionScreenControllerSlicesDerivedResolution(input).derivedState;
+}
 
-  return resolveSessionControllerDerivedState(
-    buildSessionScreenControllerSlicesDerivedStateInput(args),
-  );
+export function buildSessionScreenControllerSlicesDerivedResolution(input: {
+  t: AppTranslations;
+  controllerInput: SessionScreenControllerSlicesDerivedArgsInput["controllerInput"];
+  monitorSnapshot: SessionScreenControllerSlicesDerivedArgsInput["monitorSnapshot"];
+  localState: SessionScreenControllerSlicesDerivedArgsInput["localState"];
+  selectedTemplateGenre: string | null;
+  selectedTemplateLabel: string | null;
+}): SessionScreenControllerSlicesDerivedResolution<
+  ReturnType<typeof buildSessionScreenControllerSlicesDerivedStateInput>,
+  SessionControllerDerivedState
+> {
+  const args = buildSessionScreenControllerSlicesDerivedArgs(input);
+  const stateInput = buildSessionScreenControllerSlicesDerivedStateInput(args);
+
+  return {
+    args,
+    stateInput,
+    derivedState: resolveSessionControllerDerivedState(stateInput),
+  };
 }
 
 export function buildSessionScreenControllerSlicesDerivedMemoDeps(input: {
@@ -121,14 +140,36 @@ export function buildSessionScreenControllerSlicesDerivedMemoDeps(input: {
   selectedTemplatePresentationGenre: string | null;
   selectedTemplatePresentationLabel: string | null;
 }) {
-  const args = buildSessionScreenControllerSlicesDerivedArgs(input);
+  return buildSessionScreenControllerSlicesDerivedMemoResolution(input).deps;
+}
 
-  return buildSessionScreenControllerDerivedMemoDeps(
-    buildSessionScreenControllerSlicesDerivedMemoInput(args, {
-      selectedTemplatePresentationGenre: input.selectedTemplatePresentationGenre,
-      selectedTemplatePresentationLabel: input.selectedTemplatePresentationLabel,
-    }),
-  );
+export function buildSessionScreenControllerSlicesDerivedMemoResolution(input: {
+  t: AppTranslations;
+  controllerInput: SessionScreenControllerSlicesDerivedArgsInput["controllerInput"];
+  monitorSnapshot: Pick<
+    SessionScreenControllerSlicesDerivedArgsInput["monitorSnapshot"],
+    "monitorSession"
+  >;
+  localState: SessionScreenControllerSlicesDerivedArgsInput["localState"];
+  selectedTemplateGenre: string | null;
+  selectedTemplateLabel: string | null;
+  selectedTemplatePresentationGenre: string | null;
+  selectedTemplatePresentationLabel: string | null;
+}): SessionScreenControllerSlicesDerivedMemoResolution<
+  ReturnType<typeof buildSessionScreenControllerSlicesDerivedMemoInput>,
+  ReturnType<typeof buildSessionScreenControllerDerivedMemoDeps>
+> {
+  const args = buildSessionScreenControllerSlicesDerivedArgs(input);
+  const memoInput = buildSessionScreenControllerSlicesDerivedMemoInput(args, {
+    selectedTemplatePresentationGenre: input.selectedTemplatePresentationGenre,
+    selectedTemplatePresentationLabel: input.selectedTemplatePresentationLabel,
+  });
+
+  return {
+    args,
+    memoInput,
+    deps: buildSessionScreenControllerDerivedMemoDeps(memoInput),
+  };
 }
 
 export type { SessionControllerDerivedState };

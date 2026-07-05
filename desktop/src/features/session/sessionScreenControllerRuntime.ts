@@ -12,6 +12,29 @@ import type {
 import type { UseSessionScreenActionsInput } from "./sessionScreenActionsTypes";
 import type { BuildSessionBoothViewModelInput } from "./sessionBoothViewModelTypes";
 import type { SessionEvent } from "../../api/sessions";
+import type { SessionControllerDerivedInput } from "./sessionScreenRuntime";
+
+export interface SessionScreenTemplateSelectionState {
+  selectedTemplate: (typeof SOURCE_TEMPLATES)[number] | null;
+  selectedTemplatePresentation: ReturnType<typeof resolveSourceTemplatePresentation> | null;
+}
+
+export interface SessionScreenControllerDerivedInputArgs {
+  controllerInput: SessionScreenControllerInput;
+  activePlaybackProgress: number | null;
+  activeSessionId: string | null;
+  activeSessionMode: "live" | "playback" | null;
+  baseMode: SessionBaseMode;
+  mode: QuickSessionMode;
+  monitorHasSession: boolean;
+  selectedPlaylistId: string | null;
+  selectedSessionEvents: SessionEvent[];
+  selectedSourceId: string | null;
+  selectedTrackId: string | null;
+  sessionPlaceholderFallback: string;
+  templateGenre: string | null;
+  templateLabel: string | null;
+}
 
 export function resolveInitialSessionBaseMode(trackCount: number): SessionBaseMode {
   return trackCount > 0 ? "track" : "playlist";
@@ -20,7 +43,7 @@ export function resolveInitialSessionBaseMode(trackCount: number): SessionBaseMo
 export function resolveSessionScreenTemplateSelection(input: {
   selectedTemplateId: string;
   t: AppTranslations;
-}) {
+}): SessionScreenTemplateSelectionState {
   const selectedTemplate =
     SOURCE_TEMPLATES.find((template) => template.id === input.selectedTemplateId) ?? null;
   const selectedTemplatePresentation = selectedTemplate
@@ -73,22 +96,22 @@ export function buildSessionScreenActionsInput(input: {
   return input;
 }
 
-export function buildSessionControllerDerivedInput(input: {
-  controllerInput: SessionScreenControllerInput;
-  activePlaybackProgress: number | null;
-  activeSessionId: string | null;
-  activeSessionMode: "live" | "playback" | null;
-  baseMode: SessionBaseMode;
-  mode: QuickSessionMode;
-  monitorHasSession: boolean;
-  selectedPlaylistId: string | null;
-  selectedSessionEvents: SessionEvent[];
-  selectedSourceId: string | null;
-  selectedTrackId: string | null;
-  sessionPlaceholderFallback: string;
-  templateGenre: string | null;
-  templateLabel: string | null;
-}) {
+export function buildSessionControllerDerivedCollections(
+  controllerInput: SessionScreenControllerInput,
+) {
+  return {
+    playlists: controllerInput.playlists,
+    repositories: controllerInput.repositories,
+    selectedSessionId: controllerInput.selectedSessionId,
+    sessionBookmarksBySessionId: controllerInput.sessionBookmarksBySessionId,
+    sessions: controllerInput.sessions,
+    tracks: controllerInput.tracks,
+  };
+}
+
+export function buildSessionControllerDerivedSelectionInput(
+  input: SessionScreenControllerDerivedInputArgs,
+) {
   return {
     activePlaybackProgress: input.activePlaybackProgress,
     activeSessionId: input.activeSessionId,
@@ -96,19 +119,30 @@ export function buildSessionControllerDerivedInput(input: {
     baseMode: input.baseMode,
     mode: input.mode,
     monitorHasSession: input.monitorHasSession,
-    playlists: input.controllerInput.playlists,
-    repositories: input.controllerInput.repositories,
     selectedPlaylistId: input.selectedPlaylistId,
     selectedSessionEvents: input.selectedSessionEvents,
-    selectedSessionId: input.controllerInput.selectedSessionId,
     selectedSourceId: input.selectedSourceId,
     selectedTrackId: input.selectedTrackId,
-    sessionBookmarksBySessionId: input.controllerInput.sessionBookmarksBySessionId,
     sessionPlaceholderFallback: input.sessionPlaceholderFallback,
     templateGenre: input.templateGenre,
     templateLabel: input.templateLabel,
-    sessions: input.controllerInput.sessions,
-    tracks: input.controllerInput.tracks,
+  };
+}
+
+export function buildSessionControllerDerivedInput(
+  input: SessionScreenControllerDerivedInputArgs,
+): SessionControllerDerivedInput {
+  const collections = buildSessionControllerDerivedCollections(input.controllerInput);
+  const selection = buildSessionControllerDerivedSelectionInput(input);
+
+  return {
+    ...selection,
+    playlists: collections.playlists,
+    repositories: collections.repositories,
+    selectedSessionId: collections.selectedSessionId,
+    sessionBookmarksBySessionId: collections.sessionBookmarksBySessionId,
+    sessions: collections.sessions,
+    tracks: collections.tracks,
   };
 }
 

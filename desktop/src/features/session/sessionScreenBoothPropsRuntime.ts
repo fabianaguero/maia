@@ -1,11 +1,11 @@
 import type { BuildSessionScreenViewModelInput } from "./sessionScreenViewModelTypes";
 import { buildSessionScreenBoothInteractions } from "./sessionScreenInteractionRuntime";
+import type { SessionScreenBoothVisualState } from "./sessionScreenBoothPropsContracts";
 
-export function buildSessionScreenBoothProps(
-  input: Pick<BuildSessionScreenViewModelInput, "mutating" | "onStopSession" | "controller">,
-) {
+export function buildSessionScreenBoothVisualState(
+  input: Pick<BuildSessionScreenViewModelInput, "mutating" | "controller">,
+): SessionScreenBoothVisualState {
   const { controller } = input;
-  const interactions = buildSessionScreenBoothInteractions(input);
 
   return {
     booth: controller.booth,
@@ -15,12 +15,23 @@ export function buildSessionScreenBoothProps(
     readyToRun: controller.readyToRun,
     mode: controller.mode,
     latestUpdate: controller.latestUpdate,
-    monitorSessionId: interactions.monitorSessionId,
     isPlaybackPaused: controller.monitor.isPlaybackPaused,
     directPath: controller.directPath,
     isDirectLoading: controller.isDirectLoading,
     selectedSession: controller.selectedSession,
     creating: controller.creating,
+  };
+}
+
+export function buildSessionScreenBoothProps(
+  input: Pick<BuildSessionScreenViewModelInput, "mutating" | "onStopSession" | "controller">,
+) {
+  const visualState = buildSessionScreenBoothVisualState(input);
+  const interactions = buildSessionScreenBoothInteractions(input);
+
+  return {
+    ...visualState,
+    monitorSessionId: interactions.monitorSessionId,
     onDirectPathChange: interactions.onDirectPathChange,
     onDirectLaunch: interactions.onDirectLaunch,
     onResumeSelected: interactions.onResumeSelected,

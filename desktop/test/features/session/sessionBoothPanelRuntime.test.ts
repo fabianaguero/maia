@@ -6,6 +6,7 @@ import {
   buildSessionBoothDetailProps,
   buildSessionBoothHeaderLabels,
   buildSessionBoothHeaderProps,
+  buildSessionBoothPanelDerivedState,
   buildSessionBoothPanelSections,
   buildSessionBoothProgressProps,
   buildSessionBoothRouteLabels,
@@ -88,7 +89,7 @@ describe("sessionBoothPanelRuntime", () => {
   });
 
   it("builds all booth sections from one panel contract", () => {
-    const sections = buildSessionBoothPanelSections({
+    const panelInput = {
       t: en,
       booth,
       playbackActive: false,
@@ -111,8 +112,12 @@ describe("sessionBoothPanelRuntime", () => {
       onStepPlaybackWindow: vi.fn(),
       onToggleReplayPlayback: vi.fn(),
       onStopSession: vi.fn(),
-    });
+    } as const;
+    const derivedState = buildSessionBoothPanelDerivedState(panelInput);
+    const sections = buildSessionBoothPanelSections(panelInput);
 
+    expect(derivedState.labels.header.startSession).toBe(en.session.startSession);
+    expect(derivedState.progressVisible).toBe(true);
     expect(sections.headerProps.headline).toBe("Session live");
     expect(sections.progressProps.visible).toBe(true);
     expect(sections.routeProps.monitorSessionId).toBe("monitor-1");

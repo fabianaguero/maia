@@ -26,6 +26,18 @@ export interface SessionSavedSessionCardActionsState {
   deleteDisabled: boolean;
 }
 
+export interface SessionSavedSessionCardStatusState {
+  statusLabel: string;
+  statusTone: string;
+}
+
+export interface SessionSavedSessionCardDerivedState {
+  status: SessionSavedSessionCardStatusState;
+  metrics: SessionSavedSessionCardMetricsState;
+  meta: SessionSavedSessionCardMetaState;
+  actions: SessionSavedSessionCardActionsState;
+}
+
 export interface SessionSavedSessionCardSections {
   statusTone: string;
   updatedAtLabel: string;

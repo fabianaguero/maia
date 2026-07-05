@@ -1,9 +1,11 @@
 import type { BuildSessionScreenViewModelInput } from "./sessionScreenViewModelTypes";
 import { buildSessionScreenPanelsInteractions } from "./sessionScreenInteractionRuntime";
+import type { SessionScreenPanelsVisualState } from "./sessionScreenPanelsPropsContracts";
 
-export function buildSessionScreenPanelsProps(input: BuildSessionScreenViewModelInput) {
+export function buildSessionScreenPanelsVisualState(
+  input: BuildSessionScreenViewModelInput,
+): SessionScreenPanelsVisualState {
   const { controller } = input;
-  const interactions = buildSessionScreenPanelsInteractions(input);
 
   return {
     tracks: input.tracks,
@@ -38,6 +40,15 @@ export function buildSessionScreenPanelsProps(input: BuildSessionScreenViewModel
     liveWindowCount: controller.monitor.metrics.windowCount,
     liveProcessedLines: controller.monitor.metrics.processedLines,
     liveTotalAnomalies: controller.monitor.metrics.totalAnomalies,
+  };
+}
+
+export function buildSessionScreenPanelsProps(input: BuildSessionScreenViewModelInput) {
+  const visualState = buildSessionScreenPanelsVisualState(input);
+  const interactions = buildSessionScreenPanelsInteractions(input);
+
+  return {
+    ...visualState,
     ...interactions,
   };
 }

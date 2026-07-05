@@ -57,6 +57,25 @@ export interface SessionScreenControllerTemplateState {
   selectedTemplateLabel: string | null;
 }
 
+export interface SessionScreenControllerTemplateMetaState {
+  selectedTemplateGenre: string | null;
+  selectedTemplateLabel: string | null;
+}
+
+export interface SessionScreenControllerSlicesDerivedDepsState {
+  controllerInput: SessionScreenControllerInput;
+  monitorSnapshot: unknown;
+  baseMode: SessionScreenControllerSlicesDerivedLocalState["baseMode"];
+  mode: SessionScreenControllerSlicesDerivedLocalState["mode"];
+  selectedPlaylistId: string | null;
+  selectedSessionEvents: SessionScreenControllerSlicesDerivedLocalState["selectedSessionEvents"];
+  selectedSourceId: string | null;
+  selectedTrackId: string | null;
+  t: AppTranslations;
+  selectedTemplateGenre: string | null;
+  selectedTemplateLabel: string | null;
+}
+
 export interface SessionScreenControllerSlicesDerivedDepsInput {
   controllerInput: SessionScreenControllerInput;
   monitorSnapshot: unknown;

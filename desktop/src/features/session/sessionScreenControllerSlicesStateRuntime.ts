@@ -3,9 +3,11 @@ import type {
   SessionScreenControllerSlicesActionLocalState,
   SessionScreenControllerSlicesBoothLocalState,
   SessionScreenControllerSlicesDerivedDepsInput,
+  SessionScreenControllerSlicesDerivedDepsState,
   SessionScreenControllerSlicesDerivedLocalState,
   SessionScreenControllerSlicesEffectsLocalState,
   SessionScreenControllerSlicesLocalStateGroups,
+  SessionScreenControllerTemplateMetaState,
   SessionScreenControllerTemplateState,
 } from "./sessionScreenControllerSlicesStateContracts";
 import type { useSessionScreenLocalState } from "./useSessionScreenLocalState";
@@ -80,7 +82,7 @@ export function buildSessionScreenControllerSlicesLocalState(
 export function resolveSessionScreenControllerTemplateMeta(input: {
   selectedTemplate: { genre?: string | null; label?: string | null } | null;
   selectedTemplatePresentation: { genre?: string | null; label?: string | null } | null;
-}) {
+}): SessionScreenControllerTemplateMetaState {
   return {
     selectedTemplateGenre:
       input.selectedTemplatePresentation?.genre ?? input.selectedTemplate?.genre ?? null,
@@ -110,25 +112,56 @@ export function buildSessionScreenControllerTemplateState(input: {
   return {
     selectedTemplate,
     selectedTemplatePresentation,
-    selectedTemplateGenre,
-    selectedTemplateLabel,
+    ...buildSessionScreenControllerTemplateMetaState({
+      selectedTemplateGenre,
+      selectedTemplateLabel,
+    }),
+  };
+}
+
+export function buildSessionScreenControllerTemplateMetaState(
+  input: SessionScreenControllerTemplateMetaState,
+): SessionScreenControllerTemplateMetaState {
+  return {
+    selectedTemplateGenre: input.selectedTemplateGenre,
+    selectedTemplateLabel: input.selectedTemplateLabel,
+  };
+}
+
+export function buildSessionScreenControllerSlicesDerivedDepsState(
+  input: SessionScreenControllerSlicesDerivedDepsInput,
+): SessionScreenControllerSlicesDerivedDepsState {
+  return {
+    controllerInput: input.controllerInput,
+    monitorSnapshot: input.monitorSnapshot,
+    baseMode: input.localState.baseMode,
+    mode: input.localState.mode,
+    selectedPlaylistId: input.localState.selectedPlaylistId,
+    selectedSessionEvents: input.localState.selectedSessionEvents,
+    selectedSourceId: input.localState.selectedSourceId,
+    selectedTrackId: input.localState.selectedTrackId,
+    t: input.t,
+    selectedTemplateGenre: input.selectedTemplateGenre,
+    selectedTemplateLabel: input.selectedTemplateLabel,
   };
 }
 
 export function buildSessionScreenControllerSlicesDerivedDeps(
   input: SessionScreenControllerSlicesDerivedDepsInput,
 ) {
+  const state = buildSessionScreenControllerSlicesDerivedDepsState(input);
+
   return [
-    input.controllerInput,
-    input.monitorSnapshot,
-    input.localState.baseMode,
-    input.localState.mode,
-    input.localState.selectedPlaylistId,
-    input.localState.selectedSessionEvents,
-    input.localState.selectedSourceId,
-    input.localState.selectedTrackId,
-    input.t,
-    input.selectedTemplateGenre,
-    input.selectedTemplateLabel,
+    state.controllerInput,
+    state.monitorSnapshot,
+    state.baseMode,
+    state.mode,
+    state.selectedPlaylistId,
+    state.selectedSessionEvents,
+    state.selectedSourceId,
+    state.selectedTrackId,
+    state.t,
+    state.selectedTemplateGenre,
+    state.selectedTemplateLabel,
   ] as const;
 }

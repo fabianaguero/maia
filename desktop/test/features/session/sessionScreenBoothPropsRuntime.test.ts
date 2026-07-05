@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { buildSessionScreenBoothProps } from "../../../src/features/session/sessionScreenBoothPropsRuntime";
+import {
+  buildSessionScreenBoothProps,
+  buildSessionScreenBoothVisualState,
+} from "../../../src/features/session/sessionScreenBoothPropsRuntime";
 
 describe("sessionScreenBoothPropsRuntime", () => {
   it("builds booth props and guards replay/resume actions when no selection exists", async () => {
@@ -35,7 +38,13 @@ describe("sessionScreenBoothPropsRuntime", () => {
       onStopSession,
       controller,
     });
+    const visualState = buildSessionScreenBoothVisualState({
+      mutating: false,
+      controller,
+    });
 
+    expect(visualState.mode).toBe("log");
+    expect(visualState.isPlaybackPaused).toBe(false);
     await expect(props.onReplaySelected()).resolves.toBeUndefined();
     props.onResumeSelected();
     props.onStopSession();

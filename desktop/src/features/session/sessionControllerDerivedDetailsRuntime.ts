@@ -32,7 +32,7 @@ export interface SessionControllerDerivedDetailsState {
   selectedSessionSourceDetails: SessionSourceSummary;
 }
 
-export function resolveSessionControllerDerivedDetails(input: {
+export interface SessionControllerDerivedDetailsInput {
   baseMode: "track" | "playlist";
   selectedTrack: LibraryTrack | null;
   selectedPlaylist: BaseTrackPlaylist | null;
@@ -49,23 +49,49 @@ export function resolveSessionControllerDerivedDetails(input: {
   selectedSession: PersistedSession | null;
   repositories: RepositoryAnalysis[];
   playlists: BaseTrackPlaylist[];
-}): SessionControllerDerivedDetailsState {
-  const selectedBaseDetails = resolveSelectedBaseDetails(
+}
+
+export function buildSessionControllerSelectedBaseDetails(
+  input: Pick<
+    SessionControllerDerivedDetailsInput,
+    "baseMode" | "selectedTrack" | "selectedPlaylist" | "tracks"
+  >,
+): SessionDetailSummary {
+  return resolveSelectedBaseDetails(
     input.baseMode,
     input.selectedTrack,
     input.selectedPlaylist,
     input.tracks,
   );
+}
 
+export function buildSessionControllerLabelPlaceholder(input: {
+  selectedBaseDetails: SessionDetailSummary;
+  selectedSource: RepositoryAnalysis | null;
+  templateGenre: string | null;
+  templateLabel: string | null;
+  sessionPlaceholderFallback: string;
+}): string {
+  return buildSessionLabelPlaceholder({
+    selectedBaseLabel: input.selectedBaseDetails.label,
+    selectedSourceTitle: input.selectedSource?.title ?? null,
+    templateGenre: input.templateGenre,
+    templateLabel: input.templateLabel,
+    fallbackLabel: input.sessionPlaceholderFallback,
+  });
+}
+
+export function buildSessionControllerLaunchState(
+  input: Pick<
+    SessionControllerDerivedDetailsInput,
+    | "activePlaybackProgress"
+    | "baseMode"
+    | "selectedPlaylistId"
+    | "selectedSourceId"
+    | "selectedTrackId"
+  >,
+) {
   return {
-    selectedBaseDetails,
-    sessionLabelPlaceholder: buildSessionLabelPlaceholder({
-      selectedBaseLabel: selectedBaseDetails.label,
-      selectedSourceTitle: input.selectedSource?.title ?? null,
-      templateGenre: input.templateGenre,
-      templateLabel: input.templateLabel,
-      fallbackLabel: input.sessionPlaceholderFallback,
-    }),
     playbackPercent: resolvePlaybackPercent(input.activePlaybackProgress),
     readyToRun: resolveReadyToRun({
       baseMode: input.baseMode,
@@ -73,13 +99,59 @@ export function resolveSessionControllerDerivedDetails(input: {
       selectedSourceId: input.selectedSourceId,
       selectedTrackId: input.selectedTrackId,
     }),
+  };
+}
+
+export function buildSessionControllerSessionDetails(
+  input: Pick<
+    SessionControllerDerivedDetailsInput,
+    "activeSession" | "selectedSession" | "tracks" | "playlists"
+  >,
+) {
+  return {
     activeBaseDetails: resolveBaseDetails(input.activeSession, input.tracks, input.playlists),
     selectedSessionBaseDetails: resolveBaseDetails(
       input.selectedSession,
       input.tracks,
       input.playlists,
     ),
+  };
+}
+
+export function buildSessionControllerSourceDetails(
+  input: Pick<
+    SessionControllerDerivedDetailsInput,
+    "activeSession" | "selectedSession" | "repositories"
+  >,
+) {
+  return {
     activeSourceDetails: resolveSourceDetails(input.activeSession, input.repositories),
     selectedSessionSourceDetails: resolveSourceDetails(input.selectedSession, input.repositories),
+  };
+}
+
+export function resolveSessionControllerDerivedDetails(
+  input: SessionControllerDerivedDetailsInput,
+): SessionControllerDerivedDetailsState {
+  const selectedBaseDetails = buildSessionControllerSelectedBaseDetails(input);
+  const launchState = buildSessionControllerLaunchState(input);
+  const sessionDetails = buildSessionControllerSessionDetails(input);
+  const sourceDetails = buildSessionControllerSourceDetails(input);
+
+  return {
+    selectedBaseDetails,
+    sessionLabelPlaceholder: buildSessionControllerLabelPlaceholder({
+      selectedBaseDetails,
+      selectedSource: input.selectedSource,
+      templateGenre: input.templateGenre,
+      templateLabel: input.templateLabel,
+      sessionPlaceholderFallback: input.sessionPlaceholderFallback,
+    }),
+    playbackPercent: launchState.playbackPercent,
+    readyToRun: launchState.readyToRun,
+    activeBaseDetails: sessionDetails.activeBaseDetails,
+    selectedSessionBaseDetails: sessionDetails.selectedSessionBaseDetails,
+    activeSourceDetails: sourceDetails.activeSourceDetails,
+    selectedSessionSourceDetails: sourceDetails.selectedSessionSourceDetails,
   };
 }

@@ -1,8 +1,10 @@
 export { buildSessionScreenControllerSlicesActionsInput } from "./sessionScreenControllerSlicesActionsRuntime";
 export {
   buildSessionScreenControllerSlicesDerivedArgs,
+  buildSessionScreenControllerSlicesDerivedMemoResolution,
   buildSessionScreenControllerSlicesDerivedMemoInput,
   buildSessionScreenControllerSlicesDerivedMemoDeps,
+  buildSessionScreenControllerSlicesDerivedResolution,
   buildSessionScreenControllerSlicesDerivedStateInput,
   resolveSessionScreenControllerSlicesDerivedState,
   resolveSessionScreenControllerSlicesTemplateSelection,

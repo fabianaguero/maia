@@ -1,8 +1,6 @@
-import type { PersistedSession, SessionBookmark, SessionEvent } from "../../api/sessions";
-import type { BaseTrackPlaylist, LibraryTrack, RepositoryAnalysis } from "../../types/library";
-import type { QuickSessionMode, SessionBaseMode } from "./sessionDisplay";
 import {
   resolveSessionControllerDerivedDetails,
+  type SessionControllerDerivedDetailsInput as SessionControllerDerivedDetailsResolverInput,
   type SessionControllerDerivedDetailsState,
   type SessionDetailSummary,
   type SessionSourceSummary,
@@ -17,10 +15,20 @@ import {
 } from "./sessionControllerDerivedSelectionRuntime";
 import type {
   SessionControllerDerivedBookmarkState,
+  SessionControllerDerivedBookmarkBindings,
+  SessionControllerDerivedBookmarkInput,
+  SessionControllerDerivedDetailsBindings,
+  SessionControllerDerivedDetailsInput,
+  SessionControllerDerivedSectionInputs,
   SessionControllerDerivedSections,
+  SessionControllerDerivedSectionsInput,
   SessionControllerDerivedSelectionArgs,
+  SessionControllerDerivedSelectionBindings,
+  SessionControllerDerivedSelectionInput,
   SessionControllerDerivedSelectionState,
+  SessionControllerDerivedSessionBindings,
   SessionControllerDerivedState,
+  SessionControllerDerivedInput,
 } from "./sessionControllerDerivedContracts";
 
 export {
@@ -32,34 +40,17 @@ export {
 export type { SessionEntitySelection, SessionResolvedSelection };
 export type { SessionDetailSummary, SessionSourceSummary };
 export type {
+  SessionControllerDerivedBookmarkBindings,
   SessionControllerDerivedBookmarkState,
+  SessionControllerDerivedDetailsBindings,
+  SessionControllerDerivedInput,
   SessionControllerDerivedSections,
   SessionControllerDerivedSelectionArgs,
+  SessionControllerDerivedSelectionBindings,
   SessionControllerDerivedSelectionState,
+  SessionControllerDerivedSessionBindings,
   SessionControllerDerivedState,
 };
-
-export interface SessionControllerDerivedInput {
-  activePlaybackProgress: number | null;
-  activeSessionId: string | null;
-  activeSessionMode: "live" | "playback" | null;
-  baseMode: SessionBaseMode;
-  mode: QuickSessionMode;
-  monitorHasSession: boolean;
-  playlists: BaseTrackPlaylist[];
-  repositories: RepositoryAnalysis[];
-  selectedPlaylistId: string | null;
-  selectedSessionEvents: SessionEvent[];
-  selectedSessionId: string | null;
-  selectedSourceId: string | null;
-  selectedTrackId: string | null;
-  sessionBookmarksBySessionId: Record<string, SessionBookmark[]>;
-  sessionPlaceholderFallback: string;
-  sessions: PersistedSession[];
-  templateGenre: string | null;
-  templateLabel: string | null;
-  tracks: LibraryTrack[];
-}
 
 export function buildSessionControllerDerivedSelectionState(
   input: SessionControllerDerivedSelectionArgs,
@@ -73,68 +64,53 @@ export function buildSessionControllerDerivedSelectionState(
   };
 }
 
-export function buildSessionControllerDerivedBookmarkInput(input: {
-  selectedSession: PersistedSession | null;
-  sessionBookmarksBySessionId: Record<string, SessionBookmark[]>;
-  selectedSessionEvents: SessionEvent[];
-}) {
+export function buildSessionControllerDerivedBookmarkInput(
+  input: SessionControllerDerivedBookmarkInput,
+) {
   return input;
 }
 
-export function buildSessionControllerDerivedBookmarkState(input: {
-  selectedSession: PersistedSession | null;
-  sessionBookmarksBySessionId: Record<string, SessionBookmark[]>;
-  selectedSessionEvents: SessionEvent[];
-}): SessionControllerDerivedBookmarkState {
+export function buildSessionControllerDerivedBookmarkState(
+  input: SessionControllerDerivedBookmarkInput,
+): SessionControllerDerivedBookmarkState {
   return resolveSessionBookmarkState(input);
 }
 
-export function buildSessionControllerDerivedDetailsInput(input: {
-  baseMode: SessionBaseMode;
-  selectedTrack: LibraryTrack | null;
-  selectedPlaylist: BaseTrackPlaylist | null;
-  tracks: LibraryTrack[];
-  selectedPlaylistId: string | null;
-  selectedSourceId: string | null;
-  selectedTrackId: string | null;
-  selectedSource: RepositoryAnalysis | null;
-  templateGenre: string | null;
-  templateLabel: string | null;
-  sessionPlaceholderFallback: string;
-  activePlaybackProgress: number | null;
-  activeSession: PersistedSession | null;
-  selectedSession: PersistedSession | null;
-  repositories: RepositoryAnalysis[];
-  playlists: BaseTrackPlaylist[];
-}) {
+export function buildSessionControllerDerivedDetailsInput(
+  input: SessionControllerDerivedDetailsInput,
+) {
   return input;
 }
 
-export function buildSessionControllerDerivedDetailsState(input: {
-  baseMode: SessionBaseMode;
-  selectedTrack: LibraryTrack | null;
-  selectedPlaylist: BaseTrackPlaylist | null;
-  tracks: LibraryTrack[];
-  selectedPlaylistId: string | null;
-  selectedSourceId: string | null;
-  selectedTrackId: string | null;
-  selectedSource: RepositoryAnalysis | null;
-  templateGenre: string | null;
-  templateLabel: string | null;
-  sessionPlaceholderFallback: string;
-  activePlaybackProgress: number | null;
-  activeSession: PersistedSession | null;
-  selectedSession: PersistedSession | null;
-  repositories: RepositoryAnalysis[];
-  playlists: BaseTrackPlaylist[];
-}): SessionControllerDerivedDetailsState {
+export function buildSessionControllerDerivedDetailsState(
+  input: SessionControllerDerivedDetailsResolverInput,
+): SessionControllerDerivedDetailsState {
   return resolveSessionControllerDerivedDetails(input);
 }
 
-export function resolveSessionControllerDerivedSelectionState(
+export function buildSessionControllerDerivedSelectionInput(
   input: SessionControllerDerivedInput,
-): SessionControllerDerivedSelectionState {
-  return buildSessionControllerDerivedSelectionState({
+): SessionControllerDerivedSelectionInput {
+  return {
+    mode: input.mode,
+    repositories: input.repositories,
+    playlists: input.playlists,
+    selectedPlaylistId: input.selectedPlaylistId,
+    selectedSourceId: input.selectedSourceId,
+    selectedTrackId: input.selectedTrackId,
+    tracks: input.tracks,
+    sessions: input.sessions,
+    activeSessionId: input.activeSessionId,
+    selectedSessionId: input.selectedSessionId,
+    activeSessionMode: input.activeSessionMode,
+    monitorHasSession: input.monitorHasSession,
+  };
+}
+
+export function buildSessionControllerDerivedSelectionArgs(
+  input: SessionControllerDerivedSelectionInput,
+): SessionControllerDerivedSelectionArgs {
+  return {
     sourceOptions: resolveSourceOptions(input.mode, input.repositories),
     entitySelection: resolveSelectedEntities({
       playlists: input.playlists,
@@ -153,7 +129,15 @@ export function resolveSessionControllerDerivedSelectionState(
       tracks: input.tracks,
       playlists: input.playlists,
     }),
-  });
+  };
+}
+
+export function resolveSessionControllerDerivedSelectionState(
+  input: SessionControllerDerivedInput,
+): SessionControllerDerivedSelectionState {
+  return buildSessionControllerDerivedSelectionState(
+    buildSessionControllerDerivedSelectionArgs(buildSessionControllerDerivedSelectionInput(input)),
+  );
 }
 
 export function resolveSessionControllerDerivedSections(input: SessionControllerDerivedInput) {
@@ -165,19 +149,16 @@ export function resolveSessionControllerDerivedSections(input: SessionController
   });
 }
 
-export function buildSessionControllerDerivedSections(input: {
-  input: SessionControllerDerivedInput;
-  selectionState: SessionControllerDerivedSelectionState;
-}): SessionControllerDerivedSections {
-  const bookmarkState = buildSessionControllerDerivedBookmarkState(
-    buildSessionControllerDerivedBookmarkInput({
+export function buildSessionControllerDerivedSectionInputs(
+  input: SessionControllerDerivedSectionsInput,
+): SessionControllerDerivedSectionInputs {
+  return {
+    bookmarkInput: buildSessionControllerDerivedBookmarkInput({
       selectedSession: input.selectionState.sessionSelection.selectedSession,
       sessionBookmarksBySessionId: input.input.sessionBookmarksBySessionId,
       selectedSessionEvents: input.input.selectedSessionEvents,
     }),
-  );
-  const detailsState = buildSessionControllerDerivedDetailsState(
-    buildSessionControllerDerivedDetailsInput({
+    detailsInput: buildSessionControllerDerivedDetailsInput({
       baseMode: input.input.baseMode,
       selectedTrack: input.selectionState.selectedTrack,
       selectedPlaylist: input.selectionState.selectedPlaylist,
@@ -195,7 +176,15 @@ export function buildSessionControllerDerivedSections(input: {
       repositories: input.input.repositories,
       playlists: input.input.playlists,
     }),
-  );
+  };
+}
+
+export function buildSessionControllerDerivedSections(
+  input: SessionControllerDerivedSectionsInput,
+): SessionControllerDerivedSections {
+  const sectionInputs = buildSessionControllerDerivedSectionInputs(input);
+  const bookmarkState = buildSessionControllerDerivedBookmarkState(sectionInputs.bookmarkInput);
+  const detailsState = buildSessionControllerDerivedDetailsState(sectionInputs.detailsInput);
 
   return {
     selectionState: input.selectionState,
@@ -204,30 +193,62 @@ export function buildSessionControllerDerivedSections(input: {
   };
 }
 
+export function buildSessionControllerDerivedSelectionBindings(
+  input: SessionControllerDerivedSelectionState,
+): SessionControllerDerivedSelectionBindings {
+  return {
+    sourceOptions: input.sourceOptions,
+    selectedSource: input.selectedSource,
+    selectedTrack: input.selectedTrack,
+    selectedPlaylist: input.selectedPlaylist,
+  };
+}
+
+export function buildSessionControllerDerivedSessionBindings(
+  input: SessionControllerDerivedSelectionState,
+): SessionControllerDerivedSessionBindings {
+  return {
+    activeSession: input.sessionSelection.activeSession,
+    selectedSession: input.sessionSelection.selectedSession,
+    selectedSessionIdForEvents: input.sessionSelection.selectedSessionIdForEvents,
+    playbackActive: input.sessionSelection.playbackActive,
+    liveMonitorActive: input.sessionSelection.liveMonitorActive,
+    activeBedUrl: input.sessionSelection.activeBedUrl,
+  };
+}
+
+export function buildSessionControllerDerivedBookmarkBindings(
+  input: SessionControllerDerivedBookmarkState,
+): SessionControllerDerivedBookmarkBindings {
+  return {
+    selectedSessionBookmarks: input.selectedSessionBookmarks,
+    bookmarkContexts: input.bookmarkContexts,
+  };
+}
+
+export function buildSessionControllerDerivedDetailsBindings(
+  input: SessionControllerDerivedDetailsState,
+): SessionControllerDerivedDetailsBindings {
+  return {
+    selectedBaseDetails: input.selectedBaseDetails,
+    sessionLabelPlaceholder: input.sessionLabelPlaceholder,
+    playbackPercent: input.playbackPercent,
+    readyToRun: input.readyToRun,
+    activeBaseDetails: input.activeBaseDetails,
+    selectedSessionBaseDetails: input.selectedSessionBaseDetails,
+    activeSourceDetails: input.activeSourceDetails,
+    selectedSessionSourceDetails: input.selectedSessionSourceDetails,
+  };
+}
+
 export function buildSessionControllerDerivedState(
   input: SessionControllerDerivedSections,
 ): SessionControllerDerivedState {
   return {
-    sourceOptions: input.selectionState.sourceOptions,
-    selectedSource: input.selectionState.selectedSource,
-    selectedTrack: input.selectionState.selectedTrack,
-    selectedPlaylist: input.selectionState.selectedPlaylist,
-    selectedBaseDetails: input.detailsState.selectedBaseDetails,
-    activeSession: input.selectionState.sessionSelection.activeSession,
-    selectedSession: input.selectionState.sessionSelection.selectedSession,
-    selectedSessionIdForEvents: input.selectionState.sessionSelection.selectedSessionIdForEvents,
-    playbackActive: input.selectionState.sessionSelection.playbackActive,
-    liveMonitorActive: input.selectionState.sessionSelection.liveMonitorActive,
-    activeBedUrl: input.selectionState.sessionSelection.activeBedUrl,
-    selectedSessionBookmarks: input.bookmarkState.selectedSessionBookmarks,
-    bookmarkContexts: input.bookmarkState.bookmarkContexts,
-    sessionLabelPlaceholder: input.detailsState.sessionLabelPlaceholder,
-    playbackPercent: input.detailsState.playbackPercent,
-    readyToRun: input.detailsState.readyToRun,
-    activeBaseDetails: input.detailsState.activeBaseDetails,
-    selectedSessionBaseDetails: input.detailsState.selectedSessionBaseDetails,
-    activeSourceDetails: input.detailsState.activeSourceDetails,
-    selectedSessionSourceDetails: input.detailsState.selectedSessionSourceDetails,
+    ...buildSessionControllerDerivedSelectionBindings(input.selectionState),
+    ...buildSessionControllerDerivedSessionBindings(input.selectionState),
+    ...buildSessionControllerDerivedBookmarkBindings(input.bookmarkState),
+    ...buildSessionControllerDerivedDetailsBindings(input.detailsState),
   };
 }
 

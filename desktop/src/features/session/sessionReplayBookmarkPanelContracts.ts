@@ -21,6 +21,20 @@ export interface SessionReplayBookmarkContextState {
   excerpt: string;
 }
 
+export interface SessionReplayBookmarkCardState {
+  label: string;
+  meta: SessionReplayBookmarkMetaState;
+  context: SessionReplayBookmarkContextState | null;
+}
+
+export interface SessionReplayBookmarkPanelDerivedState {
+  header: SessionReplayBookmarkPanelHeaderState;
+  replayDisabled: boolean;
+  recommendationProps: ComponentProps<typeof ReplayFeedbackSummaryCard> | null;
+  bookmarkCardStates: SessionReplayBookmarkCardState[];
+  emptyLabel: string;
+}
+
 export interface SessionReplayBookmarkPanelSections {
   header: SessionReplayBookmarkPanelHeaderState;
   replayDisabled: boolean;
