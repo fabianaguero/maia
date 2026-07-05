@@ -1,9 +1,7 @@
 import { useMemo } from "react";
 
 import type { UseAppSelectionActionsInput } from "./appSelectionActionsTypes";
-import {
-  buildAppSelectionMonitorActionRunners,
-} from "./appSelectionActionsRuntime";
+import { buildAppSelectionMonitorActionRunners } from "./appSelectionActionsRuntime";
 
 type MonitorActionsInput = Pick<
   UseAppSelectionActionsInput,

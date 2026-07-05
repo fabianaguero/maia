@@ -1,8 +1,6 @@
 import { useMemo } from "react";
 
-import {
-  buildCatalogImportActionRunners,
-} from "./appCatalogImportActionsRuntime";
+import { buildCatalogImportActionRunners } from "./appCatalogImportActionsRuntime";
 import type { UseAppCatalogActionsInput } from "./appCatalogActionsTypes";
 
 type CatalogImportActionsInput = Pick<

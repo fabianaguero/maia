@@ -46,8 +46,5 @@ export function useAppMonitorSessionActions({
     ],
   );
 
-  return useMemo(
-    () => buildAppMonitorSessionActionRunners(actionInputs),
-    [actionInputs],
-  );
+  return useMemo(() => buildAppMonitorSessionActionRunners(actionInputs), [actionInputs]);
 }

@@ -11,7 +11,11 @@ import {
 } from "./appCatalogImportSuccessRuntime";
 import type { CatalogNotify } from "./appCatalogActionExecutionRuntime";
 import type { AppTranslations, UseAppCatalogActionsInput } from "./appCatalogActionsTypes";
-import type { ImportBaseAssetInput, ImportCompositionInput, ImportTrackInput } from "../types/library";
+import type {
+  ImportBaseAssetInput,
+  ImportCompositionInput,
+  ImportTrackInput,
+} from "../types/library";
 
 export {
   applyCatalogImportSuccess,

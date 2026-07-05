@@ -34,10 +34,10 @@ describe("appMonitorSessionActionsRuntime", () => {
   it("applies guide draft state", () => {
     const armSessionMusicalBase = vi.fn();
     const primeMonitorGuideTrack = vi.fn();
-    applyMonitorGuideDraft(
-      { armSessionMusicalBase, primeMonitorGuideTrack } as never,
-      { trackId: "track-1", playlistId: "playlist-1" },
-    );
+    applyMonitorGuideDraft({ armSessionMusicalBase, primeMonitorGuideTrack } as never, {
+      trackId: "track-1",
+      playlistId: "playlist-1",
+    });
 
     expect(armSessionMusicalBase).toHaveBeenCalledWith({
       trackId: "track-1",
@@ -47,7 +47,6 @@ describe("appMonitorSessionActionsRuntime", () => {
       trackId: "track-1",
       playlistId: "playlist-1",
     });
-
   });
 
   it("runs replay/open/live monitor actions through pure runtime helpers", async () => {
@@ -203,10 +202,7 @@ describe("appMonitorSessionActionsRuntime", () => {
     const createSession = vi.fn(async () => null);
     const setSelectedSessionId = vi.fn();
 
-    applyReplayMonitorRepositorySelection(
-      { repositories, setAnalysisMode } as never,
-      "repo-1",
-    );
+    applyReplayMonitorRepositorySelection({ repositories, setAnalysisMode } as never, "repo-1");
     applyReplayMonitorNavigation({ setAnalysisMode, setScreen } as never);
     applyMonitoredRepoNavigationState(
       { repositories, setAnalysisMode, setScreen, setPillar } as never,

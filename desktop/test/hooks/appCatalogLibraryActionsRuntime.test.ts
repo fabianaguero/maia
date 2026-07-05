@@ -335,10 +335,12 @@ describe("appCatalogLibraryActionsRuntime", () => {
       true,
     );
     await expect(runners.handleDeletePlaylist("playlist-1")).resolves.toBe(true);
-    await expect(runners.handleUpdateTrackPerformance("track-4", { rating: 5 } as never)).resolves
-      .toBeUndefined();
-    await expect(runners.handleUpdateTrackAnalysis("track-5", { bpm: 126 } as never)).resolves
-      .toBeUndefined();
+    await expect(
+      runners.handleUpdateTrackPerformance("track-4", { rating: 5 } as never),
+    ).resolves.toBeUndefined();
+    await expect(
+      runners.handleUpdateTrackAnalysis("track-5", { bpm: 126 } as never),
+    ).resolves.toBeUndefined();
 
     expect(library.reanalyzeTrack).toHaveBeenCalledWith("track-1");
     expect(repositories.reanalyzeRepository).toHaveBeenCalledWith("repo-1");

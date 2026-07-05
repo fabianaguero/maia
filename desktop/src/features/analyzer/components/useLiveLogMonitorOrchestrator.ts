@@ -6,9 +6,7 @@ import {
   type SetStateAction,
 } from "react";
 import type { LiveLogStreamUpdate, LiveLogMarker, LibraryTrack } from "../../../types/library";
-import {
-  type SyncTailRow,
-} from "./liveLogMonitorSyncRuntime";
+import { type SyncTailRow } from "./liveLogMonitorSyncRuntime";
 import { type BeatClock } from "./liveLogMonitorBeatRuntime";
 import type { BackgroundDeckState } from "./liveLogMonitorBackgroundDeckRuntime";
 import type {
@@ -132,7 +130,9 @@ export function useLiveLogMonitorOrchestrator(input: LiveLogMonitorOrchestratorI
         return;
       }
 
-      const syncTailRowsUpdater = buildLiveLogMonitorSyncTailRowsUpdater(derivedUpdate.nextTailRows);
+      const syncTailRowsUpdater = buildLiveLogMonitorSyncTailRowsUpdater(
+        derivedUpdate.nextTailRows,
+      );
       if (syncTailRowsUpdater) {
         input.setSyncTailRows(syncTailRowsUpdater);
       }
@@ -167,10 +167,7 @@ export function useLiveLogMonitorOrchestrator(input: LiveLogMonitorOrchestratorI
         input.setSelectedExplanationId(selectedExplanationUpdater);
       }
       input.setRecentVoices(
-        buildLiveLogMonitorRecentVoices(
-          routedCues,
-          input.scene.mutationProfile.arrangementDepth,
-        ),
+        buildLiveLogMonitorRecentVoices(routedCues, input.scene.mutationProfile.arrangementDepth),
       );
     });
 

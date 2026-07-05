@@ -58,10 +58,7 @@ export function applyMonitoredRepoNavigationState(
 
 export async function persistLiveMonitorSessionSelection(input: {
   persistenceAction: ReturnType<typeof resolveSessionPersistenceAction>;
-  sessions: Pick<
-    AppMonitorLiveActionInput["sessions"],
-    "createSession" | "setSelectedSessionId"
-  >;
+  sessions: Pick<AppMonitorLiveActionInput["sessions"], "createSession" | "setSelectedSessionId">;
   persistenceInput: CreateSessionInput;
   persistedSessionId: string;
 }): Promise<void> {

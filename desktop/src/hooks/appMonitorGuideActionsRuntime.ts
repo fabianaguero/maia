@@ -117,9 +117,10 @@ export function buildAppMonitorGuideActionRunners(input: {
     armPlaylistBase: (playlistId: string | null | undefined) => void,
     armTrackBase: (trackId: string | null | undefined) => void,
   ) => AppMonitorSessionArmInput;
-  buildSessionGuideInput: (
-    draft?: { playlistId?: string; trackId?: string },
-  ) => AppMonitorSessionGuideInput;
+  buildSessionGuideInput: (draft?: {
+    playlistId?: string;
+    trackId?: string;
+  }) => AppMonitorSessionGuideInput;
 }): AppMonitorGuideActionRunners {
   const armTrackBase = (trackId: string | null | undefined) => {
     performTrackArm(input.buildTrackArmInput(trackId));

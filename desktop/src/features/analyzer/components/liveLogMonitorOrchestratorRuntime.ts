@@ -148,7 +148,10 @@ export function resolveLiveLogMonitorCurrentTrackSecond(input: {
   audioContextRef: MutableRefObject<AudioContext | null>;
   backgroundDeckRef: MutableRefObject<BackgroundDeckState | null>;
 }): number | null {
-  return resolveBackgroundTrackSecond(input.audioContextRef.current, input.backgroundDeckRef.current);
+  return resolveBackgroundTrackSecond(
+    input.audioContextRef.current,
+    input.backgroundDeckRef.current,
+  );
 }
 
 export function buildLiveLogMonitorBeatClockPlan(input: {

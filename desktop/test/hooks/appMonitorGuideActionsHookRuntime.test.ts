@@ -49,7 +49,9 @@ describe("appMonitorGuideActionsHookRuntime", () => {
     });
 
     expect(guideInputs.trackArmInput.tracks).toBe(input.library.tracks);
-    expect(guideInputs.libraryGuideEffectInput.selectedPlaylist).toBe(input.library.selectedPlaylist);
+    expect(guideInputs.libraryGuideEffectInput.selectedPlaylist).toBe(
+      input.library.selectedPlaylist,
+    );
     expect(libraryGuideInput.selectedTrack).toBe(input.library.selectedTrack);
     expect(libraryGuideInput.setGuideTrack).toBe(input.monitor.setGuideTrack);
     expect(sessionGuideInput.draft?.playlistId).toBe("playlist-1");

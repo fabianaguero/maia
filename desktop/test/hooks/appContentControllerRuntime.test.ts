@@ -82,7 +82,9 @@ describe("appContentControllerRuntime", () => {
     });
     expect(shellView.screen).toBe("library");
     expect(shellView.setAnalysisMode).toBe(domainState.shellState.setAnalysisMode);
-    expect(actionProjection.startReplaySession).toBe(actionBundles.monitorActions.startReplaySession);
+    expect(actionProjection.startReplaySession).toBe(
+      actionBundles.monitorActions.startReplaySession,
+    );
     expect(actionProjection.handleOpenConnections).toBe(
       actionBundles.navigationActions.handleOpenConnections,
     );

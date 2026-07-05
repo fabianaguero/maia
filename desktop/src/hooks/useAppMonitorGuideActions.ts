@@ -22,7 +22,8 @@ export function useAppMonitorGuideActions({ library, monitor }: GuideActionsInpu
   const guideActions = useMemo(
     () =>
       buildAppMonitorGuideActionRunners({
-        buildTrackArmInput: (trackId) => buildAppMonitorTrackArmInput({ library, monitor }, trackId),
+        buildTrackArmInput: (trackId) =>
+          buildAppMonitorTrackArmInput({ library, monitor }, trackId),
         buildPlaylistArmInput: (playlistId) =>
           buildAppMonitorPlaylistArmInput({ library, monitor }, playlistId),
         buildSessionArmInput: (draft, armPlaylistBase, armTrackBase) =>

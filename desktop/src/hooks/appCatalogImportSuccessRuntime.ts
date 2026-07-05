@@ -36,10 +36,7 @@ export function buildTrackImportNotice(t: AppTranslations, title: string): Catal
   };
 }
 
-export function buildBaseAssetImportNotice(
-  t: AppTranslations,
-  title: string,
-): CatalogImportNotice {
+export function buildBaseAssetImportNotice(t: AppTranslations, title: string): CatalogImportNotice {
   return {
     tone: "success",
     title: t.appShell.assetImportedTitle,

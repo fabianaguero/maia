@@ -1,9 +1,7 @@
 import { useMemo } from "react";
 
 import type { UseAppSelectionActionsInput } from "./appSelectionActionsTypes";
-import {
-  buildAppSelectionEntityActionRunners,
-} from "./appSelectionActionsRuntime";
+import { buildAppSelectionEntityActionRunners } from "./appSelectionActionsRuntime";
 
 type EntityActionsInput = Pick<
   UseAppSelectionActionsInput,
