@@ -1,10 +1,15 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { ActiveMonitorSession } from "../monitor/MonitorContext";
 import type { BeatGridPoint, LibraryTrack } from "../../types/library";
 import { getTrackTitle as getLibraryTrackTitle } from "../../utils/track";
 import { getStreamAdapterCode } from "../../utils/monitorLabels";
-import type { MonitorLaunchSource } from "./monitorSourceOptions";
+import type { MonitorLaunchSource } from "../../types/monitorLaunch";
 import type { MonitorAlertShape } from "./monitorDeckControls";
+import {
+  resolveSimpleMonitorDeckRemainingSeconds,
+  resolveSimpleMonitorSourceBinding,
+  resolveSimpleMonitorTrackLabel,
+} from "./simpleMonitorScreenViewModelRuntime";
 
 export interface SimpleMonitorScreenViewModel {
   monitorSourceTitle: string;
@@ -136,34 +141,32 @@ export function buildSimpleMonitorScreenViewModel(input: {
   trackElapsedSeconds: number;
   deckDurationSeconds: number | null;
 }): SimpleMonitorScreenViewModel {
-  const selectedTrack = input.tracks.find((track) => track.id === input.selectedSoundId) ?? null;
-  const monitorSourceTitle =
-    input.session?.repoTitle ??
-    input.launchingSource?.title ??
-    input.t.simpleMode.setup.bootingMonitor;
-  const monitorSourcePath =
-    input.session?.sourcePath ??
-    input.launchingSource?.sourcePath ??
-    input.t.simpleMode.setup.awaitingSourceBinding;
-  const monitorTrackTitle =
-    input.trackName ||
-    input.session?.trackName ||
-    (selectedTrack ? getLibraryTrackTitle(selectedTrack) : null) ||
-    input.t.simpleMode.monitor.noTrackSelected;
+  const { monitorSourceTitle, monitorSourcePath } = resolveSimpleMonitorSourceBinding({
+    session: input.session,
+    launchingSource: input.launchingSource,
+    t: input.t,
+  });
+  const monitorTrackTitle = resolveSimpleMonitorTrackLabel({
+    trackName: input.trackName,
+    session: input.session,
+    selectedSoundId: input.selectedSoundId,
+    tracks: input.tracks,
+    t: input.t,
+  });
   const isConnectingMonitor = input.isLaunchingMonitor && !input.session;
   const uptimeSeconds = input.session
     ? Math.floor((input.nowMs - input.session.startedAt) / 1000)
     : 0;
-  const deckRemainingSeconds =
-    typeof input.deckDurationSeconds === "number"
-      ? Math.max(0, input.deckDurationSeconds - input.trackElapsedSeconds)
-      : null;
+
   return {
     monitorSourceTitle,
     monitorSourcePath,
     monitorTrackTitle,
     isConnectingMonitor,
     uptimeLabel: formatSimpleMonitorUptimeLabel(uptimeSeconds),
-    deckRemainingSeconds,
+    deckRemainingSeconds: resolveSimpleMonitorDeckRemainingSeconds({
+      deckDurationSeconds: input.deckDurationSeconds,
+      trackElapsedSeconds: input.trackElapsedSeconds,
+    }),
   };
 }

@@ -7,7 +7,7 @@ import {
   setMonitorGuideTrackPlaylistState,
   setMonitorGuideTrackState,
 } from "../../../src/features/monitor/monitorProviderGuideTrackRuntime";
-import type { GuideTrackPCM } from "../../../src/features/monitor/monitorContextRuntime";
+import type { GuideTrackPCM } from "../../../src/features/monitor/monitorAudioRuntimeTypes";
 
 function createTemplate(id: string, bpm: number): SourceTemplate {
   return {
@@ -97,6 +97,23 @@ describe("monitorProviderGuideTrackRuntime", () => {
     expect(loadGuideTrackPath).toHaveBeenCalledWith("/tracks/one.wav");
   });
 
+  it("clears the queue when setting a null guide track", () => {
+    const guideTrackQueueRef = { current: ["a", "b"] };
+    const guideTrackQueueIndexRef = { current: 3 };
+    const loadGuideTrackPath = vi.fn();
+
+    setMonitorGuideTrackState({
+      path: null,
+      guideTrackQueueRef,
+      guideTrackQueueIndexRef,
+      loadGuideTrackPath,
+    });
+
+    expect(guideTrackQueueRef.current).toEqual([]);
+    expect(guideTrackQueueIndexRef.current).toBe(0);
+    expect(loadGuideTrackPath).toHaveBeenCalledWith(null);
+  });
+
   it("builds playlist queues and loads the first track", () => {
     const guideTrackQueueRef = { current: [] as string[] };
     const guideTrackQueueIndexRef = { current: 1 };
@@ -114,5 +131,24 @@ describe("monitorProviderGuideTrackRuntime", () => {
     expect(guideTrackQueueRef.current).toEqual(queue);
     expect(guideTrackQueueIndexRef.current).toBe(0);
     expect(loadGuideTrackPath).toHaveBeenCalledWith("/music/a.wav");
+  });
+
+  it("loads null when the built playlist queue is empty", () => {
+    const guideTrackQueueRef = { current: ["stale.wav"] };
+    const guideTrackQueueIndexRef = { current: 2 };
+    const loadGuideTrackPath = vi.fn();
+
+    const queue = setMonitorGuideTrackPlaylistState({
+      paths: ["stale.wav"],
+      buildGuideTrackQueue: () => [],
+      guideTrackQueueRef,
+      guideTrackQueueIndexRef,
+      loadGuideTrackPath,
+    });
+
+    expect(queue).toEqual([]);
+    expect(guideTrackQueueRef.current).toEqual([]);
+    expect(guideTrackQueueIndexRef.current).toBe(0);
+    expect(loadGuideTrackPath).toHaveBeenCalledWith(null);
   });
 });

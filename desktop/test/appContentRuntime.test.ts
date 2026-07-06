@@ -9,12 +9,17 @@ import type {
   RepositoryAnalysis,
 } from "../src/types/library";
 import {
+  buildAppContentStatusState,
   buildAppContentStatusViewModel,
   buildFallbackSessionRepository,
+  resolveAppDetailDeckLabel,
   resolveAppContentRouteState,
   resolveAppMutationState,
+  resolveAppMutationLabel,
   resolveAppOpenConnectionsState,
   resolveAppPillarNavigationState,
+  resolveAppScreenLabel,
+  resolveAppSelectedItemTitle,
   resolveSessionRepository,
 } from "../src/appContentRuntime";
 
@@ -84,6 +89,15 @@ describe("appContentRuntime", () => {
   });
 
   it("builds analyzer and deck labels from screen context", () => {
+    const statusState = buildAppContentStatusState(
+      {
+        analysisMode: "repo",
+        booting: false,
+        health: healthResponse,
+        screen: "inspect",
+      },
+      en,
+    );
     const viewModel = buildAppContentStatusViewModel(
       {
         analysisMode: "repo",
@@ -99,6 +113,11 @@ describe("appContentRuntime", () => {
       en,
     );
 
+    expect(statusState).toEqual({
+      analyzerLabel: "1.2.3 on python3.12",
+      screenLabel: en.nav.inspect.label,
+      detailDeckLabel: en.appShell.sourceDeckArmed,
+    });
     expect(viewModel.analyzerLabel).toBe("1.2.3 on python3.12");
     expect(viewModel.screenLabel).toBe(en.nav.inspect.label);
     expect(viewModel.detailDeckLabel).toBe(en.appShell.sourceDeckArmed);
@@ -160,6 +179,18 @@ describe("appContentRuntime", () => {
 
   it("derives mutation state with deterministic priority", () => {
     expect(
+      resolveAppMutationLabel(
+        {
+          baseAssetsMutating: true,
+          compositionsMutating: false,
+          libraryMutating: false,
+          repositoriesMutating: false,
+        },
+        en,
+      ),
+    ).toBe(en.appShell.poolIngest);
+
+    expect(
       resolveAppMutationState(
         {
           baseAssetsMutating: false,
@@ -188,6 +219,23 @@ describe("appContentRuntime", () => {
       isMutating: true,
       mutateLabel: en.appShell.scanningTrackDna,
     });
+  });
+
+  it("resolves screen, deck and selected item labels independently", () => {
+    expect(resolveAppScreenLabel("compose", en)).toBe(en.nav.compose.label);
+    expect(resolveAppDetailDeckLabel("base", en)).toBe(en.appShell.basePoolArmed);
+
+    expect(
+      resolveAppSelectedItemTitle({
+        analysisMode: "track",
+        baseAsset: null,
+        composition: null,
+        playlistName: null,
+        repository: null,
+        screen: "library",
+        track,
+      }),
+    ).toBe("Daft Punk - Around The World");
   });
 
   it("builds a typed fallback repository for ad-hoc sessions", () => {

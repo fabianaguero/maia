@@ -1,6 +1,6 @@
 import type { ActiveMonitorSession, MonitorMetrics } from "./features/monitor/monitorContextTypes";
 import type { AppSection } from "./features/simple/appSections";
-import type { AppTranslations } from "./i18n/en";
+import type { AppTranslations } from "./i18n/types";
 
 export interface AppV0ShellViewModel {
   monitoringStatus: {

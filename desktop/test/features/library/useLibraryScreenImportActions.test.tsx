@@ -42,6 +42,41 @@ describe("useLibraryScreenImportActions", () => {
     expect(input.setShowForm).toHaveBeenCalledWith(false);
   });
 
+  it("does not close the form or refresh connections when imports fail or use non-file sources", async () => {
+    const input = createInput();
+    input.onImportTrack.mockResolvedValueOnce(false);
+    input.onImportBaseAsset.mockResolvedValueOnce(false);
+    input.onImportRepository.mockResolvedValueOnce(true);
+    const { result } = renderHook(() => useLibraryScreenImportActions(input));
+
+    await act(async () => {
+      await result.current.handleImportTrack({ title: "broken track" } as never);
+      await result.current.handleImportBaseAsset({ title: "broken asset" } as never);
+      await result.current.handleImportRepository({
+        sourceKind: "directory",
+        sourcePath: "/tmp/logs",
+        title: "folder source",
+      } as never);
+    });
+
+    expect(input.setShowForm).toHaveBeenCalledTimes(1);
+    expect(input.refreshLogConnections).not.toHaveBeenCalled();
+  });
+
+  it("refreshes connections after deleting a log source connection", async () => {
+    const input = createInput();
+    deleteLogSourceConnection.mockResolvedValueOnce(undefined);
+    const { result } = renderHook(() => useLibraryScreenImportActions(input));
+
+    await act(async () => {
+      await result.current.handleDeleteLogConnection("conn-1");
+    });
+
+    expect(deleteLogSourceConnection).toHaveBeenCalledWith("conn-1");
+    expect(input.refreshLogConnections).toHaveBeenCalled();
+    expect(input.setLogConnectionError).not.toHaveBeenCalled();
+  });
+
   it("surfaces log connection deletion failures through the provided setter", async () => {
     const input = createInput();
     deleteLogSourceConnection.mockRejectedValueOnce(new Error("delete failed"));

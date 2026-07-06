@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { SessionEvent } from "../../../src/api/sessions";
 import type { MonitorMetrics } from "../../../src/features/monitor/monitorContextTypes";
-import type { GuideTrackPCM } from "../../../src/features/monitor/monitorContextRuntime";
+import type { GuideTrackPCM } from "../../../src/features/monitor/monitorAudioRuntimeTypes";
 import type { LiveLogCue, LiveLogStreamUpdate } from "../../../src/types/monitor";
 import {
   buildReplayUpdateFromEvent,

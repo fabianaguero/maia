@@ -61,6 +61,20 @@ describe("monitorStartupRuntime", () => {
     expect(guideTrackPathRef.current).toBeNull();
     expect(loadGuideTrackPath).toHaveBeenCalledWith("/audio/b.wav");
     expect(logger.info).toHaveBeenCalled();
+
+    expect(
+      reloadPendingGuideTrackForMonitorState({
+        guideTrackQueueRef,
+        guideTrackQueueIndexRef,
+        guideTrackRef: {
+          current: { samples: new Float32Array([0.1]), sampleRate: 44100, durationSec: 1 },
+        },
+        guideTrackPathRef,
+        loadGuideTrackPath,
+        logger,
+        reason: "attach-session",
+      }),
+    ).toBe("/audio/b.wav");
   });
 
   it("manages guide track lifecycle state transitions", () => {
@@ -205,6 +219,24 @@ describe("monitorStartupRuntime", () => {
     ).toBe(true);
     expect(guideTrackQueueIndexRef.current).toBe(1);
     expect(loadGuideTrackPath).toHaveBeenCalledWith("/audio/b.wav");
+
+    const singleQueueIndexRef = { current: 0 };
+    expect(
+      advanceGuideTrackQueueState({
+        guideTrackQueueRef: { current: ["/audio/solo.wav"] },
+        guideTrackQueueIndexRef: singleQueueIndexRef,
+        loadGuideTrackPath,
+      }),
+    ).toBe(true);
+    expect(singleQueueIndexRef.current).toBe(0);
+
+    expect(
+      advanceGuideTrackQueueState({
+        guideTrackQueueRef: { current: [] },
+        guideTrackQueueIndexRef: { current: 0 },
+        loadGuideTrackPath,
+      }),
+    ).toBe(false);
   });
 
   it("loads, clears, and guards guide track decode state transitions", async () => {
@@ -252,6 +284,93 @@ describe("monitorStartupRuntime", () => {
     expect(setGuideTrackDurationSec).toHaveBeenCalledWith(3);
     expect(setGuideTrackReady).toHaveBeenCalledWith(true);
     expect(logger.info).toHaveBeenCalled();
+
+    loadGuideTrackPathState({
+      path: "/audio/a.wav",
+      currentPath: null,
+      hasGuideTrack: false,
+      hasPendingLoad: false,
+      audioContextRef,
+      currentSegmentRef,
+      guideTrackPathRef,
+      guideTrackRef,
+      guideTrackCursorRef,
+      guideTrackFinishedRef,
+      guideTrackLoadPromiseRef,
+      setGuideTrackReady,
+      setGuideTrackPathState,
+      setGuideTrackDurationSec,
+      decodeGuideTrack: async () => {
+        guideTrackPathRef.current = "/audio/other.wav";
+        return pcm;
+      },
+      logger,
+    });
+
+    await guideTrackLoadPromiseRef.current;
+    expect(logger.info).toHaveBeenCalledWith(
+      "guide track load superseded (wanted=%s, current=%s) — ignoring",
+      "/audio/a.wav",
+      "/audio/other.wav",
+    );
+
+    loadGuideTrackPathState({
+      path: "/audio/a.wav",
+      currentPath: null,
+      hasGuideTrack: false,
+      hasPendingLoad: false,
+      audioContextRef,
+      currentSegmentRef,
+      guideTrackPathRef,
+      guideTrackRef,
+      guideTrackCursorRef,
+      guideTrackFinishedRef,
+      guideTrackLoadPromiseRef,
+      setGuideTrackReady,
+      setGuideTrackPathState,
+      setGuideTrackDurationSec,
+      decodeGuideTrack: async () => {
+        guideTrackPathRef.current = "/audio/other.wav";
+        throw new Error("decode boom");
+      },
+      logger,
+    });
+
+    await guideTrackLoadPromiseRef.current;
+    expect(logger.error).not.toHaveBeenCalledWith(
+      "failed to decode guide track: %s",
+      "decode boom",
+    );
+
+    guideTrackPathRef.current = null;
+    guideTrackRef.current = null;
+
+    loadGuideTrackPathState({
+      path: "/audio/a.wav",
+      currentPath: null,
+      hasGuideTrack: false,
+      hasPendingLoad: false,
+      audioContextRef,
+      currentSegmentRef,
+      guideTrackPathRef,
+      guideTrackRef,
+      guideTrackCursorRef,
+      guideTrackFinishedRef,
+      guideTrackLoadPromiseRef,
+      setGuideTrackReady,
+      setGuideTrackPathState,
+      setGuideTrackDurationSec,
+      decodeGuideTrack: async () => {
+        throw new Error("decode hard fail");
+      },
+      logger,
+    });
+
+    await guideTrackLoadPromiseRef.current;
+    expect(logger.error).toHaveBeenCalledWith(
+      "failed to decode guide track: %s",
+      "decode hard fail",
+    );
 
     loadGuideTrackPathState({
       path: "/audio/a.wav",
@@ -304,6 +423,15 @@ describe("monitorStartupRuntime", () => {
         guideTrackLoadPromiseRef: { current: Promise.resolve() },
       }),
     ).toBe(true);
+
+    expect(
+      shouldAwaitGuideTrackForPlayback({
+        guideTrackPathRef: { current: null },
+        guideTrackQueueRef: { current: ["/audio/a.wav"] },
+        guideTrackRef: { current: null },
+        guideTrackLoadPromiseRef: { current: null },
+      }),
+    ).toBe(false);
 
     expect(
       shouldAwaitGuideTrackForPlayback({

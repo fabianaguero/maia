@@ -1,10 +1,8 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { PersistedSession } from "../../api/sessions";
 import type { LibraryTrack, RepositoryAnalysis } from "../../types/library";
 import type { ActiveMonitorSession, MonitorMetrics } from "../monitor/monitorContextTypes";
 import { getTrackTitle as getLibraryTrackTitle } from "../../utils/track";
-import type { useSimpleMonitorDeckRuntime } from "./useSimpleMonitorDeckRuntime";
-import type { useSimpleMonitorLaunchState } from "./useSimpleMonitorLaunchState";
 import { coerceSimpleMonitorCollection } from "./simpleMonitorViewModel";
 import type { BuildSimpleMonitorScreenHookStateArgs } from "./simpleMonitorScreenRuntime";
 import {
@@ -12,9 +10,10 @@ import {
   buildSimpleMonitorIdleHookArgs,
   buildSimpleMonitorScreenMeta,
 } from "./simpleMonitorScreenHookArgsRuntime";
-
-type LaunchStateSlice = ReturnType<typeof useSimpleMonitorLaunchState>;
-type DeckRuntimeSlice = ReturnType<typeof useSimpleMonitorDeckRuntime>;
+import type {
+  SimpleMonitorDeckRuntimeSlice,
+  SimpleMonitorLaunchStateSlice,
+} from "./simpleMonitorScreenSlicesRuntime";
 
 export interface SimpleMonitorCollectionsState {
   safePastSessions: PersistedSession[];
@@ -54,8 +53,8 @@ export function buildSimpleMonitorScreenHookStateArgs(input: {
   isAnomalyFilterActive: boolean;
   onToggleAnomalyFilter: () => void;
   onClearAnomalyFilter: () => void;
-  launchState: LaunchStateSlice;
-  deckRuntime: DeckRuntimeSlice;
+  launchState: SimpleMonitorLaunchStateSlice;
+  deckRuntime: SimpleMonitorDeckRuntimeSlice;
   collections: SimpleMonitorCollectionsState;
   audioStatus: AudioContextState;
 }): BuildSimpleMonitorScreenHookStateArgs {

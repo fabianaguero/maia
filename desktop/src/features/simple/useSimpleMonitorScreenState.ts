@@ -2,10 +2,15 @@ import type { ActiveMonitorSession, MonitorMetrics } from "../monitor/monitorCon
 import type { PersistedSession } from "../../api/sessions";
 import type { LibraryTrack, RepositoryAnalysis } from "../../types/library";
 import type { LiveLogStreamUpdate } from "../../types/monitor";
-import type { MonitorLaunchSource } from "./monitorSourceOptions";
+import type { MonitorLaunchSource } from "../../types/monitorLaunch";
 import type { MonitorSetupPreferences } from "./monitorSetupPreferences";
 import type { AppSkin } from "./appSkin";
 import { buildSimpleMonitorScreenHookState } from "./simpleMonitorScreenRuntime";
+import {
+  buildSimpleMonitorScreenControllerInput,
+  buildSimpleMonitorScreenStateHookResultInput,
+  buildSimpleMonitorScreenStateRuntimeInput,
+} from "./simpleMonitorScreenStateHookRuntime";
 import { useSimpleMonitorScreenController } from "./useSimpleMonitorScreenController";
 
 export interface SimpleMonitorScreenStateInput {
@@ -29,46 +34,13 @@ export interface SimpleMonitorScreenStateInput {
   liveSettings: MonitorSetupPreferences;
 }
 
-export function useSimpleMonitorScreenState({
-  skin = "nightfall",
-  session,
-  metrics,
-  pastSessions,
-  repositories,
-  tracks,
-  onStop,
-  onResumeAudio,
-  audioStatus,
-  audioContext,
-  onStartMonitoring,
-  onReplaySession,
-  subscribe,
-  trackName,
-  waveformBins,
-  isConsoleExpanded = false,
-  onToggleConsole,
-  liveSettings,
-}: SimpleMonitorScreenStateInput) {
-  const { hookStateArgs } = useSimpleMonitorScreenController({
-    skin,
-    session,
-    metrics,
-    pastSessions,
-    repositories,
-    tracks,
-    onStop,
-    onResumeAudio,
-    audioStatus,
-    audioContext,
-    onStartMonitoring,
-    onReplaySession,
-    subscribe,
-    trackName,
-    waveformBins,
-    isConsoleExpanded,
-    onToggleConsole,
-    liveSettings,
-  });
+export function useSimpleMonitorScreenState({ ...input }: SimpleMonitorScreenStateInput) {
+  const runtimeInput = buildSimpleMonitorScreenStateRuntimeInput(input);
+  const { hookStateArgs } = useSimpleMonitorScreenController(
+    buildSimpleMonitorScreenControllerInput(runtimeInput),
+  );
 
-  return buildSimpleMonitorScreenHookState(hookStateArgs);
+  return buildSimpleMonitorScreenHookState(
+    buildSimpleMonitorScreenStateHookResultInput(hookStateArgs),
+  );
 }

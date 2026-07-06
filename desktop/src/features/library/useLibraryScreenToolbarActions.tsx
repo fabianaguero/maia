@@ -2,7 +2,7 @@ import { useMemo, type Dispatch, type SetStateAction } from "react";
 
 import { FolderOpen, ListMusic, Music, PackagePlus, Plus, Trash2, X } from "lucide-react";
 
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { LibraryTrack, RepositoryAnalysis } from "../../types/library";
 import type { LibraryScreenViewModel } from "./libraryScreenViewModel";
 import type { LibraryToolbarAction } from "./libraryScreenControllerTypes";

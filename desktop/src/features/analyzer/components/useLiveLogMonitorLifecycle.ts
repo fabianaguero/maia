@@ -15,17 +15,16 @@ import type {
   LiveLogStreamUpdate,
   RepositoryAnalysis,
 } from "../../../types/library";
-import { loadMonitorPrefs } from "../../../utils/monitorPrefs";
+import type { buildRepoResetMonitorState } from "./liveLogMonitorPreferencesRuntime";
+import { type ManagedBlobAudioElement } from "./liveLogMonitorAudioRuntime";
 import {
-  buildRepoResetMonitorState,
-  resolveGuideTrackSeedPlaylist,
-  resolveNextSceneBaseAssetId,
-  resolveNextSceneCompositionId,
-} from "./liveLogMonitorPreferencesRuntime";
-import {
-  stopManagedBlobAudioState,
-  type ManagedBlobAudioElement,
-} from "./liveLogMonitorAudioRuntime";
+  closeOwnedLiveLogMonitorAudioContext,
+  resolveLiveLogMonitorRepositoryResetState,
+  resolveLiveLogMonitorSeedPlaylist,
+  resolveNextLiveLogMonitorSceneBaseAssetId,
+  resolveNextLiveLogMonitorSceneCompositionId,
+  stopLiveLogMonitorBlobAudio,
+} from "./liveLogMonitorLifecycleRuntime";
 
 interface LiveLogMonitorLifecycleInput {
   repository: RepositoryAnalysis;
@@ -71,40 +70,46 @@ export function useLiveLogMonitorLifecycle(input: LiveLogMonitorLifecycleInput):
   } = input;
 
   const closeOwnedAudioContext = useEffectEvent(() => {
-    if (audioContextRef.current && !usingSharedAudioContextRef.current) {
-      void audioContextRef.current.close();
-    }
+    closeOwnedLiveLogMonitorAudioContext({
+      audioContextRef,
+      usingSharedAudioContextRef,
+    });
   });
+  const onStreamUpdateRef = useRef(onStreamUpdate);
+
+  useEffect(() => {
+    onStreamUpdateRef.current = onStreamUpdate;
+  }, [onStreamUpdate]);
 
   useEffect(() => {
     setSceneBaseAssetId((current) =>
-      resolveNextSceneBaseAssetId({
+      resolveNextLiveLogMonitorSceneBaseAssetId({
         currentSceneBaseAssetId: current,
         availableBaseAssets,
-        preferredBaseAssetIdProp: preferredBaseAssetId,
+        preferredBaseAssetId,
       }),
     );
   }, [availableBaseAssets, preferredBaseAssetId, setSceneBaseAssetId]);
 
   useEffect(() => {
     setSceneCompositionId((current) =>
-      resolveNextSceneCompositionId({
+      resolveNextLiveLogMonitorSceneCompositionId({
         currentSceneCompositionId: current,
         availableCompositions,
-        preferredCompositionIdProp: preferredCompositionId,
+        preferredCompositionId,
       }),
     );
   }, [availableCompositions, preferredCompositionId, setSceneCompositionId]);
 
   useEffect(() => {
     return () => {
-      stopManagedBlobAudioState(activeBlobAudioElements);
+      stopLiveLogMonitorBlobAudio(activeBlobAudioElements);
       closeOwnedAudioContext();
     };
   }, [activeBlobAudioElements, closeOwnedAudioContext]);
 
   useEffect(() => {
-    const seededPlaylist = resolveGuideTrackSeedPlaylist({
+    const seededPlaylist = resolveLiveLogMonitorSeedPlaylist({
       currentTrackCount: basePlaylist?.trackIds.length ?? 0,
       guideTrackPath,
       availableTracks,
@@ -124,18 +129,17 @@ export function useLiveLogMonitorLifecycle(input: LiveLogMonitorLifecycleInput):
 
   useEffect(() => {
     if (replayActive) {
-      stopManagedBlobAudioState(activeBlobAudioElements);
+      stopLiveLogMonitorBlobAudio(activeBlobAudioElements);
     }
   }, [activeBlobAudioElements, replayActive]);
 
   useEffect(() => {
-    const nextPrefs = loadMonitorPrefs(repository.id);
-    const resetState = buildRepoResetMonitorState({
+    const resetState = resolveLiveLogMonitorRepositoryResetState({
+      repositoryId: repository.id,
       availableBaseAssets,
       availableCompositions,
-      preferredBaseAssetIdProp: preferredBaseAssetId,
-      preferredCompositionIdProp: preferredCompositionId,
-      prefs: nextPrefs,
+      preferredBaseAssetId,
+      preferredCompositionId,
     });
     applyRepositoryReset(resetState);
   }, [
@@ -147,10 +151,7 @@ export function useLiveLogMonitorLifecycle(input: LiveLogMonitorLifecycleInput):
     repository.id,
   ]);
 
-  const subscribeRef = useRef(subscribe);
-  subscribeRef.current = subscribe;
   useEffect(() => {
-    return subscribeRef.current(onStreamUpdate);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return subscribe((update) => onStreamUpdateRef.current(update));
+  }, [subscribe]);
 }

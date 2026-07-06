@@ -1,23 +1,15 @@
-import { useEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import type {
   LibraryTrack,
   UpdateTrackAnalysisInput,
   UpdateTrackPerformanceInput,
 } from "../../types/library";
-import type { BeatGridPhraseRange } from "../../utils/beatGrid";
-import {
-  getTrackWaveformCues,
-  getTrackWaveformRegions,
-  hasUsableBeatGrid,
-  type TrackCompareAuditionPoint,
-} from "../../utils/track";
 import { useT } from "../../i18n/I18nContext";
 import { useMonitor } from "../monitor/MonitorContext";
 import { BeatGridEditorPanel } from "../analyzer/components/BeatGridEditorPanel";
 import { BpmCurvePanel } from "../analyzer/components/BpmCurvePanel";
 import { BpmPanel } from "../analyzer/components/BpmPanel";
-import type { ManagedAudioCueRequest } from "../analyzer/components/ManagedAudioPlayer";
 import { RepoStatusPanel } from "../analyzer/components/RepoStatusPanel";
 import { SongMetadataPanel } from "../analyzer/components/SongMetadataPanel";
 import { TrackOriginalComparePanel } from "../analyzer/components/TrackOriginalComparePanel";
@@ -27,17 +19,8 @@ import { WaveformPlaceholder } from "../analyzer/components/WaveformPlaceholder"
 import { InspectTrackHeader } from "./InspectTrackHeader";
 import { InspectTrackMetadataPanel } from "./InspectTrackMetadataPanel";
 import { InspectTrackSidebarTabs } from "./InspectTrackSidebarTabs";
-import {
-  buildInspectTrackAnchoredBeatGridAnalysisPatch,
-  buildInspectTrackMetadataDetails,
-  buildInspectTrackMovedCuePerformancePatch,
-  buildInspectTrackMoveLoopBoundaryPerformancePatch,
-  buildInspectTrackMoveLoopPerformancePatch,
-  buildInspectTrackSummaryPills,
-  buildInspectTrackTabViewModel,
-  buildInspectTrackWaveformModel,
-  type InspectTrackTabId,
-} from "./inspectTrackViewRuntime";
+import { buildInspectTrackViewModel } from "./inspectTrackViewModelRuntime";
+import { useInspectTrackViewController } from "./useInspectTrackViewController";
 
 interface InspectTrackViewProps {
   track: LibraryTrack;
@@ -60,64 +43,33 @@ export function InspectTrackView({
 }: InspectTrackViewProps) {
   const t = useT();
   const monitor = useMonitor();
-  const [currentTime, setCurrentTime] = useState(0);
-  const [selectedPhraseRange, setSelectedPhraseRange] = useState<BeatGridPhraseRange | null>(null);
-  const [compareCueRequest, setCompareCueRequest] = useState<ManagedAudioCueRequest | null>(null);
-  const [activeCompareAuditionId, setActiveCompareAuditionId] = useState<
-    TrackCompareAuditionPoint["id"] | null
-  >(null);
-  const [activeCompareAuditionLabel, setActiveCompareAuditionLabel] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<InspectTrackTabId>("overview");
-  const activeTrackId = track.id;
-  const activeBeatGridLength = track.analysis.beatGrid.length;
-  const activeFirstBeatSecond = track.analysis.beatGrid[0]?.second ?? null;
-  const activeTrackDurationSeconds = track.analysis.durationSeconds ?? null;
-  const tabs = buildInspectTrackTabViewModel(t);
-  const summaryPills = buildInspectTrackSummaryPills(track, t);
-  const metadataDetails = buildInspectTrackMetadataDetails(track, t);
-  const waveformModel = buildInspectTrackWaveformModel({
+  const viewModel = buildInspectTrackViewModel({
     track,
     trackMutating,
+    t,
   });
-
-  useEffect(() => {
-    setSelectedPhraseRange(null);
-    setCompareCueRequest(null);
-    setActiveCompareAuditionId(null);
-    setActiveCompareAuditionLabel(null);
-  }, [activeBeatGridLength, activeFirstBeatSecond, activeTrackDurationSeconds, activeTrackId]);
-
-  const handleMoveWaveformCue = (
-    cue: {
-      id: string;
-      second: number;
-      label: string;
-      kind: "main" | "hot" | "memory";
-    },
-    second: number,
-  ) => {
-    return void onUpdateTrackPerformance(
-      track.id,
-      buildInspectTrackMovedCuePerformancePatch({
-        track,
-        cue,
-        second,
-        quantizeWaveformEdits: waveformModel.quantizeWaveformEdits,
-      }),
-    );
-  };
-
-  const handleCompareAudition = (point: TrackCompareAuditionPoint) => {
-    setCurrentTime(point.second);
-    monitor.seekGuideTrack(point.second);
-    setActiveCompareAuditionId(point.id);
-    setActiveCompareAuditionLabel(point.label);
-    setCompareCueRequest((previous) => ({
-      id: (previous?.id ?? 0) + 1,
-      second: point.second,
-      autoplay: true,
-    }));
-  };
+  const {
+    currentTime,
+    setCurrentTime,
+    selectedPhraseRange,
+    setSelectedPhraseRange,
+    compareCueRequest,
+    activeCompareAuditionId,
+    activeCompareAuditionLabel,
+    activeTab,
+    setActiveTab,
+    handleMoveWaveformCue,
+    handleCompareAudition,
+    handleSetDownbeatAtSecond,
+    handleMoveLoopBoundary,
+    handleMoveLoop,
+  } = useInspectTrackViewController({
+    track,
+    viewModel,
+    onSeekGuideTrack: monitor.seekGuideTrack,
+    onUpdateTrackPerformance,
+    onUpdateTrackAnalysis,
+  });
 
   return (
     <section className="screen">
@@ -125,7 +77,7 @@ export function InspectTrackView({
         eyebrow={t.inspect.title}
         title={track.tags.title}
         description={t.inspect.copy}
-        summaryPills={summaryPills}
+        summaryPills={viewModel.summaryPills}
         contextBar={contextBar}
       />
 
@@ -134,59 +86,24 @@ export function InspectTrackView({
           bins={track.analysis.waveformBins}
           beatGrid={track.analysis.beatGrid}
           durationSeconds={track.analysis.durationSeconds}
-          hotCues={getTrackWaveformCues(track)}
-          regions={getTrackWaveformRegions(track)}
-          editableCues={waveformModel.editableCues}
+          hotCues={viewModel.waveformCues}
+          regions={viewModel.waveformRegions}
+          editableCues={viewModel.waveformModel.editableCues}
           editableLoops={track.performance.savedLoops}
           currentTime={currentTime}
           hero
           onSeek={monitor.seekGuideTrack}
           analysisProgress={monitor.playbackProgress}
-          canEditBeatGrid={waveformModel.canEditBeatGrid}
-          onSetDownbeatAtSecond={
-            waveformModel.editableTrackBpm !== null
-              ? (second) => {
-                  const patch = buildInspectTrackAnchoredBeatGridAnalysisPatch({
-                    track,
-                    second,
-                    editableTrackBpm: waveformModel.editableTrackBpm,
-                  });
-                  if (patch) {
-                    void onUpdateTrackAnalysis(track.id, patch);
-                  }
-                }
-              : undefined
-          }
-          canSelectPhrase={hasUsableBeatGrid(track.analysis.beatGrid)}
+          canEditBeatGrid={viewModel.waveformModel.canEditBeatGrid}
+          onSetDownbeatAtSecond={handleSetDownbeatAtSecond}
+          canSelectPhrase={viewModel.canSelectPhrase}
           selectedPhraseRange={selectedPhraseRange}
           onSelectPhraseRange={setSelectedPhraseRange}
           canEditPerformance={!trackMutating}
           onMoveCue={handleMoveWaveformCue}
           onNudgeCue={handleMoveWaveformCue}
-          onMoveLoopBoundary={(loopId, boundary, second) =>
-            void onUpdateTrackPerformance(
-              track.id,
-              buildInspectTrackMoveLoopBoundaryPerformancePatch({
-                track,
-                loopId,
-                boundary,
-                second,
-                editableTrackBpm: waveformModel.editableTrackBpm,
-                quantizeWaveformEdits: waveformModel.quantizeWaveformEdits,
-              }),
-            )
-          }
-          onMoveLoop={(loopId, second) =>
-            void onUpdateTrackPerformance(
-              track.id,
-              buildInspectTrackMoveLoopPerformancePatch({
-                track,
-                loopId,
-                second,
-                quantizeWaveformEdits: waveformModel.quantizeWaveformEdits,
-              }),
-            )
-          }
+          onMoveLoopBoundary={handleMoveLoopBoundary}
+          onMoveLoop={handleMoveLoop}
         />
         <TrackOriginalComparePanel
           track={track}
@@ -212,7 +129,7 @@ export function InspectTrackView({
           />
         </div>
         <InspectTrackSidebarTabs
-          tabs={tabs}
+          tabs={viewModel.tabs}
           activeTab={activeTab}
           onChangeTab={setActiveTab}
           overviewPanel={
@@ -244,7 +161,7 @@ export function InspectTrackView({
               <InspectTrackMetadataPanel
                 notesSummaryLabel={t.inspect.notesAnalysis}
                 noteItems={track.analysis.notes}
-                details={metadataDetails}
+                details={viewModel.metadataDetails}
               />
             </>
           }

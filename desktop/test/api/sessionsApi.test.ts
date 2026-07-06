@@ -272,4 +272,54 @@ describe("sessions api", () => {
     await expect(listSessionBookmarks("session-1")).resolves.toEqual([]);
     await expect(deleteSessionBookmark(1)).resolves.toBe(false);
   });
+
+  it("rethrows non-bridge failures instead of masking them as local fallbacks", async () => {
+    const failures = [
+      () =>
+        createPersistedSession({
+          id: "session-1",
+          adapterKind: "file",
+          mode: "live",
+        }),
+      () => listPersistedSessions(),
+      () => getPersistedSession("session-1"),
+      () => updatePersistedSessionStatus("session-1", "paused"),
+      () => updatePersistedSessionCursor("session-1", 10, 1, 0, 120),
+      () => deletePersistedSession("session-1"),
+      () =>
+        insertSessionEvent({
+          sessionId: "session-1",
+          pollIndex: 1,
+          fromOffset: 0,
+          toOffset: 1,
+          summary: "noop",
+          suggestedBpm: null,
+          confidence: 0,
+          dominantLevel: "info",
+          lineCount: 0,
+          anomalyCount: 0,
+          levelCountsJson: "{}",
+          anomalyMarkersJson: "[]",
+          topComponentsJson: "[]",
+          sonificationCuesJson: "[]",
+          parsedLinesJson: "[]",
+          warningsJson: "[]",
+        }),
+      () => listSessionEvents("session-1"),
+      () =>
+        upsertSessionBookmark({
+          sessionId: "session-1",
+          replayWindowIndex: 0,
+          label: "bookmark",
+          note: "note",
+        }),
+      () => listSessionBookmarks("session-1"),
+      () => deleteSessionBookmark(1),
+    ];
+
+    for (const fail of failures) {
+      invokeMock.mockRejectedValueOnce(new Error("Permission denied"));
+      await expect(fail()).rejects.toThrow("Permission denied");
+    }
+  });
 });

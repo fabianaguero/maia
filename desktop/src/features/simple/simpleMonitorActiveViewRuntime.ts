@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import { buildActiveMonitorDeckViewModel } from "./activeMonitorDeckViewModel";
 import { buildMonitorFooterViewModel } from "./monitorFooterViewModel";
 import type { LiveTailPanelProps } from "./LiveTailPanel";

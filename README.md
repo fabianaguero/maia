@@ -33,6 +33,7 @@ If you are preparing a public release, also review:
 - [docs/frontend-architecture.md](docs/frontend-architecture.md)
 - [docs/open-source-maintainer-guide.md](docs/open-source-maintainer-guide.md)
 - [docs/testing-and-quality.md](docs/testing-and-quality.md)
+- [docs/pre-release-manual-test-plan.md](docs/pre-release-manual-test-plan.md)
 
 ## Documentation Map
 
@@ -41,6 +42,7 @@ If you are preparing a public release, also review:
 - `docs/sdd.md`: lightweight functional spec and shipped/future scope
 - `docs/open-source-maintainer-guide.md`: codebase tour, runtime boundaries, and architecture analysis for contributors
 - `docs/testing-and-quality.md`: quality gates, coverage commands, and testing priorities for contributors
+- `docs/pre-release-manual-test-plan.md`: manual QA flow to validate Maia as a desktop product before publishing or tagging a release
 - `docs/ai-roadmap.md`: staged plan for ML and AI adoption across analyzer, prep workflows, and hybrid mixing
 - `docs/github-publish-checklist.md`: pre-publication checklist before making the repository public
 - `docs/demo-assets-and-fixtures.md`: explanation of demo audio, curated fixtures, and non-runtime helper artifacts
@@ -58,6 +60,7 @@ Current maintainer note:
 
 - `desktop/src/main.tsx` currently mounts `desktop/src/App-v0.tsx`
 - `desktop/src/App.tsx` exists as an alternate shell under development, but it is not the mounted entrypoint today
+- desktop locales are now composed from `desktop/src/i18n/locales/*` domain slices rather than one monolithic translation file per language
 
 Publication note:
 
@@ -130,6 +133,26 @@ Core entity: `musical_asset`
 - Python 3.11+
 - System audio libs: `sudo apt install libasound2-dev libssl-dev`
 
+### First 10 Minutes
+
+If you want to understand Maia quickly without reading the whole codebase first:
+
+1. Install dependencies.
+2. Start the desktop app with `cd desktop && npm run tauri dev`.
+3. Use a real track from your machine or one already present in your local library.
+4. Use one of the bundled log fixtures under `desktop/test/logs/`.
+5. Start passive monitoring and verify the tail, deck, anomalies, and audio bed together.
+
+The highest-value local fixtures for a first run are:
+
+- `desktop/test/logs/maia_spring_logs/customers-service.log`
+- `desktop/test/logs/maia_spring_logs/vets-service.log`
+- `desktop/test/logs/maia-log-sources-loghub-jvm/Zookeeper_2k.log`
+
+If you want a release-style manual pass instead of a quick demo, use:
+
+- `docs/pre-release-manual-test-plan.md`
+
 ## Project Layout
 
 - `desktop/`: active Tauri + React + TypeScript desktop app
@@ -161,6 +184,25 @@ python3 -m pip install -e ./analyzer
 cd desktop
 npm run tauri dev
 ```
+
+### First Contributor Map
+
+If you are new to the repository, start from the layer you actually want to change:
+
+- `desktop/src/`: active desktop UX, monitoring flows, Web Audio, React state
+- `desktop/src-tauri/src/main.rs`: native commands, filesystem, SQLite, transient stream sessions
+- `analyzer/src/maia_analyzer/`: deterministic analysis logic
+- `contracts/`: JSON boundary between desktop and analyzer
+
+For the active frontend shell, the mounted path is:
+
+```text
+desktop/src/main.tsx
+  -> MonitorProvider
+  -> desktop/src/App-v0.tsx
+```
+
+That is the first path to inspect before changing monitor UX or startup behavior.
 
 ### Analyzer CLI (optional)
 
@@ -209,6 +251,44 @@ python3 -m pytest analyzer/tests -v --cov=maia_analyzer --cov-report=term-missin
 cd desktop
 npm run coverage
 ```
+
+## Contributor Quick Loop
+
+For the active desktop product path, the fastest safe local loop is:
+
+```bash
+cd desktop
+npm run typecheck
+npm run lint
+npm run test:run
+```
+
+Before proposing a release or a broader refactor pass:
+
+```bash
+cd desktop
+npm run coverage
+```
+
+Before publishing publicly or tagging a release candidate, also run the manual flow in:
+
+- `docs/pre-release-manual-test-plan.md`
+
+Repository hooks are tracked in `.githooks/`. After cloning, install them with:
+
+```bash
+make hooks-install
+```
+
+## UI Copy and Localization
+
+- Active desktop translations live in `desktop/src/i18n/`
+- `desktop/src/i18n/types.ts` is the stable translation contract import for the app
+- `desktop/src/i18n/locales/` contains the per-domain locale slices used to compose `en` and `es`
+- `desktop/src/i18n/en.ts` and `desktop/src/i18n/es.ts` must stay structurally aligned
+- `desktop/test/i18n/translationsShape.test.ts` guards that alignment automatically
+
+If you add or rename UI copy, update both locales in the same change.
 
 ## Support
 

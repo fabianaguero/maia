@@ -1,11 +1,9 @@
-import type { LiveLogMarker } from "../../types/monitor";
+import type { LiveLogMarker, LiveLogStreamUpdate } from "../../types/monitor";
 
-export interface MonitorTrackMutationInput {
-  lineCount?: number;
-  anomalyCount?: number;
-  levelCounts?: Record<string, number>;
-  anomalyMarkers?: LiveLogMarker[];
-}
+export type MonitorTrackMutationInput = Pick<
+  LiveLogStreamUpdate,
+  "lineCount" | "anomalyCount" | "levelCounts" | "anomalyMarkers"
+>;
 
 export interface MonitorTrackMutationPlan {
   mode: "neutral" | "alert";

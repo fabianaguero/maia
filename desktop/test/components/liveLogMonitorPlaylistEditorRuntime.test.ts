@@ -116,6 +116,8 @@ describe("liveLogMonitorPlaylistEditorRuntime", () => {
 
   it("adds tracks without duplicating them", () => {
     const playlist = createPlaylist(["a"]);
+    expect(addTrackToLiveMonitorBasePlaylist(null, "")).toBeNull();
+    expect(addTrackToLiveMonitorBasePlaylist(null, "a")?.trackIds).toEqual(["a"]);
     expect(addTrackToLiveMonitorBasePlaylist(playlist, "a")).toBe(playlist);
     expect(addTrackToLiveMonitorBasePlaylist(playlist, "b")?.trackIds).toEqual(["a", "b"]);
   });
@@ -129,6 +131,10 @@ describe("liveLogMonitorPlaylistEditorRuntime", () => {
 
   it("moves tracks up and down within the playlist", () => {
     const playlist = createPlaylist(["a", "b", "c"]);
+    expect(moveTrackWithinLiveMonitorBasePlaylist(null, "b", "up")).toBeNull();
+    expect(moveTrackWithinLiveMonitorBasePlaylist(playlist, "a", "up")).toBe(playlist);
+    expect(moveTrackWithinLiveMonitorBasePlaylist(playlist, "c", "down")).toBe(playlist);
+    expect(moveTrackWithinLiveMonitorBasePlaylist(playlist, "missing", "down")).toBe(playlist);
     expect(moveTrackWithinLiveMonitorBasePlaylist(playlist, "b", "up")?.trackIds).toEqual([
       "b",
       "a",
@@ -143,6 +149,7 @@ describe("liveLogMonitorPlaylistEditorRuntime", () => {
 
   it("removes tracks from the playlist", () => {
     const playlist = createPlaylist(["a", "b", "c"]);
+    expect(removeTrackFromLiveMonitorBasePlaylist(null, "b")).toBeNull();
     expect(removeTrackFromLiveMonitorBasePlaylist(playlist, "b")?.trackIds).toEqual(["a", "c"]);
   });
 });

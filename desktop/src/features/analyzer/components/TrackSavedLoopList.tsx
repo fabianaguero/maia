@@ -16,6 +16,7 @@ interface TrackSavedLoopListProps {
   loopWord: string;
   lockedLabel: string;
   editableLabel: string;
+  pendingLabel: string;
   setStartText: string;
   setEndText: string;
   unlockLoopText: string;
@@ -33,6 +34,7 @@ interface TrackSavedLoopListProps {
     loopWord: string,
     lockedLabel: string,
     editableLabel: string,
+    pendingLabel?: string,
   ) => string;
   colorOptions: TrackColorOption[];
 }
@@ -48,6 +50,7 @@ export function TrackSavedLoopList({
   loopWord,
   lockedLabel,
   editableLabel,
+  pendingLabel,
   setStartText,
   setEndText,
   unlockLoopText,
@@ -68,7 +71,14 @@ export function TrackSavedLoopList({
             <li key={loop.id}>
               <div className="pill-strip">
                 <span>
-                  {renderLoopLabel(loop, slotTemplate, loopWord, lockedLabel, editableLabel)}
+                  {renderLoopLabel(
+                    loop,
+                    slotTemplate,
+                    loopWord,
+                    lockedLabel,
+                    editableLabel,
+                    pendingLabel,
+                  )}
                 </span>
                 <span>
                   <button

@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useLiveLogMonitorLifecycle } from "../../src/features/analyzer/components/useLiveLogMonitorLifecycle";
@@ -82,7 +82,13 @@ describe("useLiveLogMonitorLifecycle", () => {
       }),
     );
     expect(input.setBasePlaylist).toHaveBeenCalledWith(expect.any(Function));
-    expect(input.subscribe).toHaveBeenCalledWith(input.onStreamUpdate);
+    expect(input.subscribe).toHaveBeenCalledWith(expect.any(Function));
+
+    const setBasePlaylistUpdater = input.setBasePlaylist.mock.calls[0]?.[0] as (
+      current: { trackIds: string[] } | null,
+    ) => { name: string; trackIds: string[] } | null;
+    expect(setBasePlaylistUpdater(null)).toEqual({ name: "seed", trackIds: ["track-1"] });
+    expect(setBasePlaylistUpdater({ trackIds: ["existing"] })).toEqual({ trackIds: ["existing"] });
 
     unmount();
     expect(unsubscribe).toHaveBeenCalled();
@@ -110,5 +116,71 @@ describe("useLiveLogMonitorLifecycle", () => {
     unmount();
 
     expect(close).toHaveBeenCalled();
+  });
+
+  it("does not seed playlists when no guide-track seed is available and keeps shared audio contexts open", () => {
+    resolveGuideTrackSeedPlaylist.mockReturnValueOnce(null);
+    const close = vi.fn(async () => undefined);
+    const input = createInput({
+      basePlaylist: { name: "existing", trackIds: ["track-1"] } as never,
+      audioContextRef: { current: { close } as never },
+      usingSharedAudioContextRef: { current: true },
+    });
+
+    const { unmount } = renderHook(() => useLiveLogMonitorLifecycle(input));
+
+    expect(input.setBasePlaylist).not.toHaveBeenCalled();
+
+    const baseAssetUpdater = input.setSceneBaseAssetId.mock.calls[0]?.[0] as (
+      current: string,
+    ) => string;
+    const compositionUpdater = input.setSceneCompositionId.mock.calls[0]?.[0] as (
+      current: string,
+    ) => string;
+    expect(baseAssetUpdater("base-current")).toBe("base-current");
+    expect(compositionUpdater("comp-current")).toBe("comp-current");
+
+    unmount();
+
+    expect(close).not.toHaveBeenCalled();
+  });
+
+  it("keeps the stream listener subscribed while dispatching the latest update handler", () => {
+    const firstHandler = vi.fn();
+    const secondHandler = vi.fn();
+    const unsubscribe = vi.fn();
+    const subscribe = vi.fn(() => unsubscribe);
+    const input = createInput({
+      onStreamUpdate: firstHandler,
+      subscribe,
+    });
+
+    const { rerender, unmount } = renderHook(
+      ({ currentInput }) => useLiveLogMonitorLifecycle(currentInput),
+      {
+        initialProps: { currentInput: input },
+      },
+    );
+
+    const listener = subscribe.mock.calls[0]?.[0] as ((update: unknown) => void) | undefined;
+    expect(listener).toBeDefined();
+
+    rerender({
+      currentInput: {
+        ...input,
+        onStreamUpdate: secondHandler,
+      },
+    });
+
+    act(() => {
+      listener?.({ type: "pulse" });
+    });
+
+    expect(firstHandler).not.toHaveBeenCalled();
+    expect(secondHandler).toHaveBeenCalledWith({ type: "pulse" });
+    expect(subscribe).toHaveBeenCalledTimes(1);
+
+    unmount();
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
 });

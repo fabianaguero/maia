@@ -71,16 +71,3 @@ export interface BuildMonitorDeckScrubHookInputArgs {
   onToggleConsole?: () => void;
   onSelectAnomalyForFocus: (anomalyId: string) => void;
 }
-
-export function buildMonitorDeckScrubHookInput(input: BuildMonitorDeckScrubHookInputArgs) {
-  return {
-    backgroundAudioRef: input.backgroundAudioRef,
-    waveformAnomalies: input.waveformAnomalies,
-    trackWaveProgress: input.trackWaveProgress,
-    setTrackWaveProgress: input.setTrackWaveProgress,
-    setTrackElapsedSeconds: input.setTrackElapsedSeconds,
-    isConsoleExpanded: input.isConsoleExpanded,
-    onToggleConsole: input.onToggleConsole,
-    onSelectAnomalyForFocus: input.onSelectAnomalyForFocus,
-  };
-}

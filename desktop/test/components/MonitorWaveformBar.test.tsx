@@ -267,6 +267,7 @@ describe("MonitorWaveformBar", () => {
     expect(chip).not.toBeNull();
     expect(chip).toHaveTextContent("House · 126 BPM");
     expect(chip).toHaveTextContent("138 live");
+    expect(document.querySelector(".monitor-waveform-tail-line.is-anomaly")).not.toBeNull();
   });
 
   it("renders an idle shell without session-specific controls", () => {
@@ -282,6 +283,69 @@ describe("MonitorWaveformBar", () => {
     expect(screen.queryByText(en.simpleMode.monitor.liveSignalEngine)).not.toBeInTheDocument();
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     expect(document.querySelector(".monitor-waveform-bar--active")).toBeNull();
+  });
+
+  it("shows playback labels, synth fallback chip and allows clearing the listening bed", () => {
+    const monitor = createMonitorValue({
+      isPlayback: true,
+      activeTemplate: null,
+      guideTrackPath: null,
+      subscribe: vi.fn((listener) => {
+        subscribeListener = listener;
+        return () => {
+          subscribeListener = null;
+        };
+      }),
+    });
+    useMonitorMock.mockReturnValue(monitor);
+
+    renderBar();
+
+    expect(screen.getByText(en.simpleMode.monitor.sessionReplay)).toBeInTheDocument();
+    expect(screen.getByText(en.simpleMode.monitor.synthDefault)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "" },
+    });
+
+    expect(monitor.setGuideTrack).toHaveBeenCalledWith(null);
+  });
+
+  it("resumes suspended audio when telemetry arrives and ignores non-playable tracks in the selector", () => {
+    const track = createTrack();
+    const missingTrack: LibraryTrack = {
+      ...track,
+      id: "missing-track",
+      title: "Missing",
+      sourcePath: "",
+      file: {
+        ...track.file,
+        sourcePath: "",
+        availabilityState: "missing",
+      },
+    };
+    const monitor = createMonitorValue({
+      audioContext: { state: "suspended" } as AudioContext,
+      subscribe: vi.fn((listener) => {
+        subscribeListener = listener;
+        return () => {
+          subscribeListener = null;
+        };
+      }),
+    });
+    useMonitorMock.mockReturnValue(monitor);
+
+    renderBar([track, missingTrack]);
+
+    const options = screen.getAllByRole("option");
+    expect(options).toHaveLength(2);
+    expect(options[1]).toHaveTextContent("Deck Track");
+
+    act(() => {
+      subscribeListener?.(createUpdate({ hasData: true, suggestedBpm: null }));
+    });
+
+    expect(monitor.resumeAudio).toHaveBeenCalledTimes(1);
   });
 
   it("does not duplicate HUD lines when the stream offset does not advance and unsubscribes on teardown", () => {
@@ -308,5 +372,40 @@ describe("MonitorWaveformBar", () => {
     unmount();
 
     expect(unsubscribeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores null updates and keeps the template chip stable for near-matching BPM", () => {
+    const monitor = createMonitorValue({
+      subscribe: vi.fn((listener) => {
+        subscribeListener = listener;
+        return () => {
+          subscribeListener = null;
+        };
+      }),
+    });
+    useMonitorMock.mockReturnValue(monitor);
+
+    renderBar();
+
+    act(() => {
+      subscribeListener?.(null as unknown as LiveLogStreamUpdate);
+      subscribeListener?.(
+        createUpdate({
+          suggestedBpm: 129,
+          anomalyMarkers: [],
+          parsedLines: [],
+          lineCount: 4,
+          toOffset: 256,
+        }),
+      );
+    });
+
+    const chip = document.querySelector(".template-chip--active");
+    expect(chip).not.toBeNull();
+    expect(chip).toHaveTextContent("House · 126 BPM");
+    expect(chip).not.toHaveTextContent("129 live");
+
+    const hudLine = screen.getByText(">> Ingesting telemetry burst: 4 lines").closest("div");
+    expect(hudLine?.className).not.toContain("is-anomaly");
   });
 });

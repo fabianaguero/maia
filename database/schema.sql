@@ -202,7 +202,7 @@ CREATE INDEX IF NOT EXISTS idx_musical_assets_type_created
 CREATE INDEX IF NOT EXISTS idx_analysis_jobs_status_created
   ON analysis_jobs (status, created_at DESC);
 
-CREATE TABLE provider_sources (
+CREATE TABLE IF NOT EXISTS provider_sources (
   id TEXT PRIMARY KEY,
   source_type TEXT NOT NULL CHECK(source_type IN ('spotify', 'soundcloud', 'local_directory')),
   display_name TEXT NOT NULL,
@@ -214,7 +214,7 @@ CREATE TABLE provider_sources (
   updated_at TEXT NOT NULL
 );
 
-CREATE TABLE provider_playlists (
+CREATE TABLE IF NOT EXISTS provider_playlists (
   id TEXT PRIMARY KEY,
   provider_source_id TEXT NOT NULL,
   source_type TEXT NOT NULL CHECK(source_type IN ('spotify', 'soundcloud', 'local_directory')),
@@ -228,9 +228,9 @@ CREATE TABLE provider_playlists (
   FOREIGN KEY (provider_source_id) REFERENCES provider_sources(id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_provider_playlists_source ON provider_playlists(provider_source_id);
+CREATE INDEX IF NOT EXISTS idx_provider_playlists_source ON provider_playlists(provider_source_id);
 
-CREATE TABLE provider_tracks (
+CREATE TABLE IF NOT EXISTS provider_tracks (
   id TEXT PRIMARY KEY,
   provider_playlist_id TEXT NOT NULL,
   source_type TEXT NOT NULL CHECK(source_type IN ('spotify', 'soundcloud', 'local_directory')),
@@ -243,4 +243,4 @@ CREATE TABLE provider_tracks (
   FOREIGN KEY (provider_playlist_id) REFERENCES provider_playlists(id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_provider_tracks_playlist ON provider_tracks(provider_playlist_id);
+CREATE INDEX IF NOT EXISTS idx_provider_tracks_playlist ON provider_tracks(provider_playlist_id);

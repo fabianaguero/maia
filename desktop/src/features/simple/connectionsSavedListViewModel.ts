@@ -1,10 +1,10 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { LogSourceConnection } from "../../types/monitor";
+import { type ConnectionKind, type ConnectionTestStatus } from "./connectionsViewModel";
 import {
-  deriveCloudBackfillLabel,
-  type ConnectionKind,
-  type ConnectionTestStatus,
-} from "./connectionsViewModel";
+  buildConnectionsSavedListRow,
+  sortConnectionsForSavedList,
+} from "./connectionsSavedListViewModelRuntime";
 
 export interface ConnectionsSavedListRowViewModel {
   id: string;
@@ -47,37 +47,6 @@ export interface ConnectionsSavedListViewModel {
   rows: ConnectionsSavedListRowViewModel[];
 }
 
-function resolveTestStateLabel(
-  t: AppTranslations,
-  status: ConnectionTestStatus | undefined,
-): { label: string | null; tone: "success" | "error" | "testing" | null } {
-  if (!status || status === "idle") {
-    return { label: null, tone: null };
-  }
-
-  if (status === "testing") {
-    return { label: t.simpleMode.connections.testing, tone: "testing" };
-  }
-  if (status === "success") {
-    return { label: t.simpleMode.connections.connectionOk, tone: "success" };
-  }
-  return { label: t.simpleMode.connections.testFailed, tone: "error" };
-}
-
-function resolveAdapterKindLabel(
-  t: AppTranslations,
-  adapterKind: LogSourceConnection["adapterKind"],
-): string {
-  switch (adapterKind) {
-    case "file":
-      return t.simpleMode.connections.adapterFile;
-    case "process":
-      return t.simpleMode.connections.adapterProcess;
-    default:
-      return t.simpleMode.common.unknown;
-  }
-}
-
 export function buildConnectionsSavedListViewModel(input: {
   t: AppTranslations;
   connections: LogSourceConnection[];
@@ -90,31 +59,10 @@ export function buildConnectionsSavedListViewModel(input: {
   testMessageById: Record<string, string>;
   tailStatus: string | null;
 }): ConnectionsSavedListViewModel {
-  const sortedConnections = [...input.connections].sort((left, right) => {
-    const leftActive = input.activeConnectionId === left.id ? 1 : 0;
-    const rightActive = input.activeConnectionId === right.id ? 1 : 0;
-    if (leftActive !== rightActive) {
-      return rightActive - leftActive;
-    }
-
-    const leftEnabled = left.enabled ? 1 : 0;
-    const rightEnabled = right.enabled ? 1 : 0;
-    if (leftEnabled !== rightEnabled) {
-      return rightEnabled - leftEnabled;
-    }
-
-    const leftUpdated = Date.parse(left.updatedAt);
-    const rightUpdated = Date.parse(right.updatedAt);
-    if (
-      Number.isFinite(leftUpdated) &&
-      Number.isFinite(rightUpdated) &&
-      leftUpdated !== rightUpdated
-    ) {
-      return rightUpdated - leftUpdated;
-    }
-
-    return left.label.localeCompare(right.label);
-  });
+  const sortedConnections = sortConnectionsForSavedList(
+    input.connections,
+    input.activeConnectionId,
+  );
 
   return {
     title: input.t.simpleMode.connections.savedConnections,
@@ -125,60 +73,18 @@ export function buildConnectionsSavedListViewModel(input: {
     tailTitle: input.t.simpleMode.connections.liveTail,
     tailStatusLabel: input.tailStatus ?? input.t.simpleMode.connections.connected,
     refreshTitle: input.t.simpleMode.connections.refreshConnections,
-    rows: sortedConnections.map((connection) => {
-      const testState = resolveTestStateLabel(input.t, input.testStatusById[connection.id]);
-      const backfillValue = deriveCloudBackfillLabel(connection);
-      const metaChips: ConnectionsSavedListRowViewModel["metaChips"] = [
-        {
-          key: `${connection.id}-adapter`,
-          label: resolveAdapterKindLabel(input.t, connection.adapterKind),
-          tone: "neutral",
-        },
-      ];
-
-      if (backfillValue) {
-        metaChips.push({
-          key: `${connection.id}-backfill`,
-          label: `${input.t.simpleMode.connections.streamLookback}: ${backfillValue}`,
-          tone: "neutral",
-        });
-      }
-
-      if (input.activeConnectionId === connection.id) {
-        metaChips.push({
-          key: `${connection.id}-active`,
-          label: input.t.simpleMode.connections.tailingNow,
-          tone: "live",
-        });
-      }
-
-      return {
-        id: connection.id,
+    rows: sortedConnections.map((connection) =>
+      buildConnectionsSavedListRow({
+        t: input.t,
         connection,
-        label: connection.label,
-        kindLabel: input.connectionKindLabel[connection.kind as ConnectionKind] ?? connection.kind,
-        enabledLabel: connection.enabled
-          ? input.t.simpleMode.connections.enabled
-          : input.t.simpleMode.connections.disabled,
-        enabledTone: connection.enabled ? "enabled" : "disabled",
-        isSelected: input.editingConnectionId === connection.id,
-        isActive: input.activeConnectionId === connection.id,
-        disableStartAction: input.activeSessionId !== null,
-        disableEditAction: input.saving,
-        disableTestAction:
-          input.activeSessionId !== null || input.testStatusById[connection.id] === "testing",
-        metaChips,
-        testLabel: testState.label,
-        testTone: testState.tone,
-        testMessage: input.testMessageById[connection.id] ?? null,
-        sourceUri: connection.sourceUri,
-        rowActionTitle: `${input.t.simpleMode.connections.editConnectionAction}: ${connection.label}`,
-        startActionTitle: input.t.simpleMode.connections.startLiveTail,
-        stopActionTitle: input.t.simpleMode.connections.stopLiveTail,
-        editActionTitle: input.t.simpleMode.connections.editConnectionAction,
-        testActionTitle: input.t.simpleMode.connections.testPersistentConnection,
-        deleteActionTitle: input.t.simpleMode.connections.deleteConnection,
-      };
-    }),
+        connectionKindLabel: input.connectionKindLabel,
+        activeConnectionId: input.activeConnectionId,
+        activeSessionId: input.activeSessionId,
+        editingConnectionId: input.editingConnectionId,
+        saving: input.saving,
+        testStatusById: input.testStatusById,
+        testMessageById: input.testMessageById,
+      }),
+    ),
   };
 }

@@ -30,7 +30,7 @@ export function MonitorActiveHeader({
   return (
     <div className="now-listening-header">
       <div className="brand-header-mini">
-        <span className="brand-header-glyph" aria-label="MAIA">
+        <span className="brand-header-glyph" aria-label={t.workspace}>
           <BrandIcon className="brand-header-glyph__icon" />
         </span>
         <div className="status-indicator">
@@ -83,7 +83,13 @@ export function MonitorActiveHeader({
             ),
           )}
         </div>
-        <button className="btn-stop-hd" onClick={onStop}>
+        <button
+          type="button"
+          className="btn-stop-hd"
+          onClick={onStop}
+          title={t.simpleMode.common.endSession}
+          aria-label={t.simpleMode.common.endSession}
+        >
           {t.simpleMode.common.stop}
         </button>
       </div>

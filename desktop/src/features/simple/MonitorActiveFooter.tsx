@@ -8,6 +8,8 @@ export interface MonitorActiveFooterProps {
 }
 
 export function MonitorActiveFooter(props: MonitorActiveFooterProps) {
+  const showAudioAction = Boolean(props.audioActionLabel);
+
   return (
     <div className="monitor-footer">
       <div className="monitor-footer__rack">
@@ -24,12 +26,17 @@ export function MonitorActiveFooter(props: MonitorActiveFooterProps) {
         </div>
       </div>
       <div className="monitor-footer__actions">
-        <button
-          className={`monitor-footer__action monitor-footer__action--audio${props.audioStatus === "running" ? " is-live" : ""}`}
-          onClick={() => void props.onResumeAudio()}
-        >
-          {props.audioActionLabel}
-        </button>
+        {showAudioAction ? (
+          <button
+            type="button"
+            className={`monitor-footer__action monitor-footer__action--audio${props.audioStatus === "running" ? " is-live" : ""}`}
+            onClick={() => void props.onResumeAudio()}
+            title={props.audioActionLabel}
+            aria-label={props.audioActionLabel}
+          >
+            {props.audioActionLabel}
+          </button>
+        ) : null}
       </div>
     </div>
   );

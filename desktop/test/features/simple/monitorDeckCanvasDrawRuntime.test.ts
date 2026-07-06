@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import * as drawMetricsRuntime from "../../../src/features/simple/monitorDeckCanvasDrawMetricsRuntime";
+import * as canvasRuntime from "../../../src/features/simple/monitorDeckCanvasRuntime";
 
 import {
   drawAnomalyWash,
@@ -145,6 +147,36 @@ describe("monitorDeckCanvasDrawRuntime", () => {
     ).toBeGreaterThan(3);
   });
 
+  it("skips quantized log blocks when block metrics produce invalid geometry", () => {
+    const context = createContext();
+    const palette = createPalette();
+    const metricsSpy = vi
+      .spyOn(drawMetricsRuntime, "buildMonitorDeckQuantizedLogBlockMetrics")
+      .mockReturnValue({
+        height: Number.NaN,
+        fillStyle: "#fff",
+        hasHotOverlay: false,
+      });
+
+    drawQuantizedLogBlocks(context, [{ level: 0.7, heat: 0.9 }], 320, 120, 40, palette, 1);
+
+    expect(context.fillRect).not.toHaveBeenCalled();
+    metricsSpy.mockRestore();
+  });
+
+  it("skips quantized log blocks when a bucket yields no drawable metrics", () => {
+    const context = createContext();
+    const palette = createPalette();
+    const metricsSpy = vi
+      .spyOn(drawMetricsRuntime, "buildMonitorDeckQuantizedLogBlockMetrics")
+      .mockReturnValue(null);
+
+    drawQuantizedLogBlocks(context, [{ level: 0.7, heat: 0.9 }], 320, 120, 40, palette, 1);
+
+    expect(context.fillRect).not.toHaveBeenCalled();
+    metricsSpy.mockRestore();
+  });
+
   it("draws visible anomaly washes and selected marker beams while skipping hidden markers", () => {
     const context = createContext();
     const palette = createPalette();
@@ -206,6 +238,34 @@ describe("monitorDeckCanvasDrawRuntime", () => {
 
     expect(context.createLinearGradient).toHaveBeenCalled();
     expect(context.fillRect).toHaveBeenCalled();
+  });
+
+  it("skips selected marker beams when the marker falls outside the visible strip", () => {
+    const context = createContext();
+    const palette = createPalette();
+    const relativeSpy = vi
+      .spyOn(canvasRuntime, "resolveMonitorDeckRelativePosition")
+      .mockReturnValue(-0.2);
+
+    drawSelectedMarkerBeam(
+      context,
+      {
+        id: "marker-hidden",
+        severity: 0.5,
+        progress: 0.9,
+        timestamp: "2026-06-29T12:00:03.000Z",
+        message: "hidden",
+      },
+      0.5,
+      400,
+      10,
+      180,
+      palette,
+    );
+
+    expect(context.createLinearGradient).not.toHaveBeenCalled();
+    expect(context.fillRect).not.toHaveBeenCalled();
+    relativeSpy.mockRestore();
   });
 
   it("draws visible burst regions for warning and error severities only when on screen", () => {

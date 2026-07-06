@@ -88,6 +88,22 @@ describe("useSessionScreenActions", () => {
     expect(input.setCreating).toHaveBeenLastCalledWith(false);
   });
 
+  it("keeps the current selections when create session does not start successfully", async () => {
+    const input = createInput({
+      onStartSession: vi.fn(async () => false),
+    });
+    const { result } = renderHook(() => useSessionScreenActions(input));
+
+    await act(async () => {
+      await result.current.handleCreateSession();
+    });
+
+    expect(input.setSessionLabel).not.toHaveBeenCalled();
+    expect(input.setSelectedSourceId).not.toHaveBeenCalled();
+    expect(input.setSelectedTrackId).not.toHaveBeenCalled();
+    expect(input.setSelectedPlaylistId).not.toHaveBeenCalled();
+  });
+
   it("plays back a stored session and selects it when the replay is valid", async () => {
     const input = createInput();
     const { result } = renderHook(() => useSessionScreenActions(input));
@@ -134,6 +150,33 @@ describe("useSessionScreenActions", () => {
     expect(input.setIsDirectLoading).toHaveBeenLastCalledWith(false);
   });
 
+  it("surfaces direct launch failures and preserves the path when start returns false", async () => {
+    const failedInput = createInput({
+      onStartSession: vi.fn(async () => false),
+    });
+    const { result: failedResult } = renderHook(() => useSessionScreenActions(failedInput));
+
+    await act(async () => {
+      await failedResult.current.handleDirectLaunch();
+    });
+
+    expect(failedInput.setDirectPath).not.toHaveBeenCalled();
+
+    const throwingInput = createInput({
+      onStartSession: vi.fn(async () => {
+        throw new Error("direct boom");
+      }),
+    });
+    const { result: throwingResult } = renderHook(() => useSessionScreenActions(throwingInput));
+
+    await act(async () => {
+      await throwingResult.current.handleDirectLaunch();
+    });
+
+    expect(throwingInput.setCreateError).toHaveBeenLastCalledWith("direct boom");
+    expect(throwingInput.setIsDirectLoading).toHaveBeenLastCalledWith(false);
+  });
+
   it("skips direct launch when the path is blank", async () => {
     const input = createInput({ directPath: "   " });
     const { result } = renderHook(() => useSessionScreenActions(input));
@@ -165,6 +208,31 @@ describe("useSessionScreenActions", () => {
     expect(input.onSelectSession).toHaveBeenCalledWith("session-1");
   });
 
+  it("surfaces resume plan errors and thrown resume failures", async () => {
+    const invalidInput = createInput();
+    const { result: invalidResult } = renderHook(() => useSessionScreenActions(invalidInput));
+
+    await act(async () => {
+      await invalidResult.current.handleResumeSession("missing-session");
+    });
+
+    expect(invalidInput.onStartSession).not.toHaveBeenCalled();
+    expect(invalidInput.setCreateError).toHaveBeenLastCalledWith(null);
+
+    const throwingInput = createInput({
+      onStartSession: vi.fn(async () => {
+        throw new Error("resume boom");
+      }),
+    });
+    const { result: throwingResult } = renderHook(() => useSessionScreenActions(throwingInput));
+
+    await act(async () => {
+      await throwingResult.current.handleResumeSession("session-1");
+    });
+
+    expect(throwingInput.setCreateError).toHaveBeenLastCalledWith("resume boom");
+  });
+
   it("shows an error when replay playback is not available", async () => {
     const input = createInput();
     const invalidSession = {
@@ -179,6 +247,20 @@ describe("useSessionScreenActions", () => {
 
     expect(input.onPlayback).not.toHaveBeenCalled();
     expect(input.setCreateError).toHaveBeenLastCalledWith(en.session.noStoredSourceReplay);
+  });
+
+  it("shows an error when replay playback returns false", async () => {
+    const input = createInput({
+      onPlayback: vi.fn(async () => false),
+    });
+    const { result } = renderHook(() => useSessionScreenActions(input));
+
+    await act(async () => {
+      await result.current.handlePlaybackSession(input.sessions[0] as never);
+    });
+
+    expect(input.setCreateError).toHaveBeenLastCalledWith(en.session.failedReplay);
+    expect(input.onSelectSession).not.toHaveBeenCalled();
   });
 
   it("shows an error when replay bookmark playback fails", async () => {
@@ -206,5 +288,21 @@ describe("useSessionScreenActions", () => {
 
     expect(input.onReplayBookmark).toHaveBeenCalledWith(input.sessions[0], 3);
     expect(input.onSelectSession).toHaveBeenCalledWith("session-1");
+  });
+
+  it("surfaces thrown create-session failures", async () => {
+    const input = createInput({
+      onStartSession: vi.fn(async () => {
+        throw new Error("create boom");
+      }),
+    });
+    const { result } = renderHook(() => useSessionScreenActions(input));
+
+    await act(async () => {
+      await result.current.handleCreateSession();
+    });
+
+    expect(input.setCreateError).toHaveBeenLastCalledWith("create boom");
+    expect(input.setCreating).toHaveBeenLastCalledWith(false);
   });
 });

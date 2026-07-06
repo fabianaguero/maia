@@ -130,5 +130,11 @@ describe("useSessions", () => {
     });
 
     expect(result.current.error).toBe("create failed");
+
+    act(() => {
+      result.current.clearError();
+    });
+
+    expect(result.current.error).toBeNull();
   });
 });

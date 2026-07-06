@@ -2,6 +2,13 @@ import { useT } from "../../i18n/I18nContext";
 import type { LibraryScreenControllerInput } from "./libraryScreenControllerTypes";
 import { buildLibraryScreenViewModel } from "./libraryScreenViewModel";
 import { countMissingLibraryTracks } from "./libraryScreenToolbarRuntime";
+import {
+  buildLibraryScreenControllerHookResult,
+  buildLibraryScreenImportActionsHookInput,
+  buildLibraryScreenStateHookInput,
+  buildLibraryScreenToolbarActionsHookInput,
+  buildLibraryScreenViewModelInput,
+} from "./libraryScreenControllerHookRuntime";
 import { useLibraryScreenState } from "./useLibraryScreenState";
 import { useLibraryScreenImportActions } from "./useLibraryScreenImportActions";
 import { useLibraryScreenToolbarActions } from "./useLibraryScreenToolbarActions";
@@ -63,72 +70,74 @@ export function useLibraryScreenController({
     togglePlaylistTrack,
     handleSavePlaylist,
     refreshLogConnections,
-  } = useLibraryScreenState({
-    activeTab,
-    onSavePlaylist,
-    onSelectPlaylist,
-    onTabChange,
-    playlists,
-    selectedPlaylistId,
-  });
+  } = useLibraryScreenState(
+    buildLibraryScreenStateHookInput({
+      activeTab,
+      onSavePlaylist,
+      onSelectPlaylist,
+      onTabChange,
+      playlists,
+      selectedPlaylistId,
+    }),
+  );
 
   const {
     handleImportTrack,
     handleImportRepository,
     handleImportBaseAsset,
     handleDeleteLogConnection,
-  } = useLibraryScreenImportActions({
-    onImportTrack,
-    onImportRepository,
-    onImportBaseAsset,
-    refreshLogConnections,
-    setShowForm,
-    setLogConnectionError,
-  });
+  } = useLibraryScreenImportActions(
+    buildLibraryScreenImportActionsHookInput({
+      onImportTrack,
+      onImportRepository,
+      onImportBaseAsset,
+      refreshLogConnections,
+      setShowForm,
+      setLogConnectionError,
+    }),
+  );
 
   const missingTrackCount = countMissingLibraryTracks(tracks);
 
-  const viewModel = buildLibraryScreenViewModel({
-    activeTab: tab,
-    showForm,
-    counts: {
-      tracks: tracks.length,
-      repositories: repositories.length,
-      logConnections: logConnections.length,
-      baseAssets: baseAssets.length,
-      missingTracks: missingTrackCount,
-    },
-    loadingState: {
+  const viewModel = buildLibraryScreenViewModel(
+    buildLibraryScreenViewModelInput({
+      activeTab: tab,
+      showForm,
+      tracksCount: tracks.length,
+      repositoriesCount: repositories.length,
+      logConnectionsCount: logConnections.length,
+      baseAssetsCount: baseAssets.length,
+      missingTrackCount,
       trackLoading,
       repositoryLoading,
       baseAssetLoading,
-    },
-    errorState: {
       trackError,
       repositoryError,
       logConnectionError,
       baseAssetError,
-    },
-    t,
-  });
+      t,
+    }),
+  );
 
-  const toolbarActions = useLibraryScreenToolbarActions({
-    t,
-    tab,
-    showForm,
-    setShowForm,
-    viewModel,
-    missingTrackCount,
-    tracks,
-    repositories,
-    openPlaylistEditor,
-    onSeedDemo,
-    onRelinkMissingTracks,
-    onDeleteTrack,
-    onDeleteRepository,
-  });
+  const toolbarActions = useLibraryScreenToolbarActions(
+    buildLibraryScreenToolbarActionsHookInput({
+      t,
+      tab,
+      showForm,
+      setShowForm,
+      viewModel,
+      missingTrackCount,
+      tracks,
+      repositories,
+      openPlaylistEditor,
+      onSeedDemo,
+      onRelinkMissingTracks,
+      onDeleteTrack,
+      onDeleteRepository,
+    }),
+  );
 
-  return {
+  return buildLibraryScreenControllerHookResult({
     t,
     tab,
     viewModel,
@@ -173,5 +182,5 @@ export function useLibraryScreenController({
     onSelectBaseAsset,
     onDeletePlaylist,
     onSelectPlaylist,
-  };
+  });
 }

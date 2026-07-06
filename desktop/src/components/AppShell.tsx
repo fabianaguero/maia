@@ -73,8 +73,18 @@ export function AppShell({
               <BrandLockup className="sidebar-brand-lockup" wordmarkClassName="sidebar-wordmark" />
             )}
           </div>
-          <button className="btn-collapse" onClick={onToggleCollapse}>
-            {isCollapsed ? "→" : "←"}
+          <button
+            type="button"
+            className="btn-collapse"
+            onClick={onToggleCollapse}
+            title={
+              isCollapsed ? t.simpleMode.shell.expandSidebar : t.simpleMode.shell.collapseSidebar
+            }
+            aria-label={
+              isCollapsed ? t.simpleMode.shell.expandSidebar : t.simpleMode.shell.collapseSidebar
+            }
+          >
+            <span aria-hidden="true">{isCollapsed ? "→" : "←"}</span>
           </button>
           {!isCollapsed && (
             <p className="sidebar-tagline">
@@ -88,17 +98,21 @@ export function AppShell({
         {/* Mode Toggle */}
         <div className="mode-toggle">
           <button
+            type="button"
             className={`mode-toggle-btn ${userMode === "simple" ? "active" : ""}`}
             onClick={() => setUserMode("simple")}
             title={t.simpleMode.shell.basicMode}
+            aria-pressed={userMode === "simple"}
           >
             <Users size={16} />
             {!isCollapsed && t.simpleMode.shell.basicShort}
           </button>
           <button
+            type="button"
             className={`mode-toggle-btn ${userMode === "expert" ? "active" : ""}`}
             onClick={() => setUserMode("expert")}
             title={t.simpleMode.shell.proMode}
+            aria-pressed={userMode === "expert"}
           >
             <Sliders size={16} />
             {!isCollapsed && t.simpleMode.shell.proShort}
@@ -117,6 +131,7 @@ export function AppShell({
                   type="button"
                   className={`nav-item ${isActive ? "active" : ""}`}
                   onClick={() => onSectionChange?.(item.id)}
+                  aria-current={isActive ? "page" : undefined}
                 >
                   <Icon size={18} className="nav-icon" />
                   {!isCollapsed && (

@@ -58,6 +58,14 @@ describe("tauri api bridge helpers", () => {
     expect(tauriInvokeMock).toHaveBeenCalledWith("list_tracks", { page: 1 });
   });
 
+  it("accepts the legacy __TAURI__ bridge shape too", async () => {
+    (window as Window & { __TAURI__?: unknown }).__TAURI__ = {};
+    tauriInvokeMock.mockResolvedValueOnce(["legacy-ok"]);
+
+    await expect(invoke("list_tracks")).resolves.toEqual(["legacy-ok"]);
+    expect(tauriInvokeMock).toHaveBeenCalledWith("list_tracks", undefined);
+  });
+
   it("falls back immediately in browser mode when the bridge is unavailable", async () => {
     vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0");
 
@@ -85,6 +93,20 @@ describe("tauri api bridge helpers", () => {
     await expect(pending).resolves.toEqual({ status: "ok" });
     expect(tauriInvokeMock).toHaveBeenCalledTimes(1);
     expect(tauriInvokeMock).toHaveBeenCalledWith("bootstrap", { input: 1 });
+  });
+
+  it("falls back after waiting in Tauri mode when the bridge never appears", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 Tauri");
+
+    const fallback = vi.fn(async () => "late-fallback");
+
+    const pending = invokeOrFallback("bootstrap", { input: 1 }, fallback);
+    await vi.advanceTimersByTimeAsync(1600);
+
+    await expect(pending).resolves.toBe("late-fallback");
+    expect(fallback).toHaveBeenCalledTimes(1);
+    expect(tauriInvokeMock).not.toHaveBeenCalled();
   });
 
   it("rethrows unrelated errors instead of falling back", async () => {
@@ -120,5 +142,17 @@ describe("tauri api bridge helpers", () => {
     await expect(invokeWithBridgeRetry("resume_audio")).rejects.toThrow(
       "Tauri native bridge not available",
     );
+  });
+
+  it("rethrows the original bridge error after timing out in Tauri mode", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 Tauri");
+
+    const pending = expect(invokeWithBridgeRetry("resume_audio")).rejects.toThrow(
+      "Tauri native bridge not available",
+    );
+    await vi.advanceTimersByTimeAsync(1600);
+    await pending;
+    expect(tauriInvokeMock).not.toHaveBeenCalled();
   });
 });

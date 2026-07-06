@@ -28,17 +28,53 @@ describe("useAppSelectionActions", () => {
     };
   }
 
+  it("routes simple and expert selection handlers to the expected stores", () => {
+    const input = buildInput();
+    const { result } = renderHook(() => useAppSelectionActions(input));
+
+    act(() => {
+      result.current.selectSimpleTrack("track-2");
+      result.current.selectSimpleRepository("repo-1");
+      result.current.selectTrack("track-7");
+      result.current.selectPlaylist("playlist-2");
+      result.current.selectRepository("repo-1");
+      result.current.selectBaseAsset("preset-1");
+      result.current.selectComposition("composition-4");
+    });
+
+    expect(input.library.setSelectedTrackId).toHaveBeenCalledWith("track-2");
+    expect(input.repositories.setSelectedRepositoryId).toHaveBeenCalledWith("repo-1");
+    expect(input.armTrackBase).toHaveBeenCalledWith("track-7");
+    expect(input.armPlaylistBase).toHaveBeenCalledWith("playlist-2");
+    expect(input.baseAssets.setSelectedBaseAssetId).toHaveBeenCalledWith("preset-1");
+    expect(input.compositions.setSelectedCompositionId).toHaveBeenCalledWith("composition-4");
+    expect(input.setAnalysisMode).toHaveBeenNthCalledWith(1, "track");
+    expect(input.setAnalysisMode).toHaveBeenNthCalledWith(2, "repo");
+    expect(input.setAnalysisMode).toHaveBeenNthCalledWith(3, "base");
+  });
+
   it("arms and routes track inspection to inspect mode", () => {
     const input = buildInput();
     const { result } = renderHook(() => useAppSelectionActions(input));
 
     act(() => {
       result.current.inspectTrack("track-1");
+      result.current.inspectRepository("repo-1");
+      result.current.inspectBaseAsset("preset-1");
+      result.current.inspectComposition("composition-9");
     });
 
     expect(input.armTrackBase).toHaveBeenCalledWith("track-1");
-    expect(input.setAnalysisMode).toHaveBeenCalledWith("track");
-    expect(input.setScreen).toHaveBeenCalledWith("inspect");
+    expect(input.repositories.setSelectedRepositoryId).toHaveBeenCalledWith("repo-1");
+    expect(input.baseAssets.setSelectedBaseAssetId).toHaveBeenCalledWith("preset-1");
+    expect(input.compositions.setSelectedCompositionId).toHaveBeenCalledWith("composition-9");
+    expect(input.setAnalysisMode).toHaveBeenNthCalledWith(1, "track");
+    expect(input.setAnalysisMode).toHaveBeenNthCalledWith(2, "repo");
+    expect(input.setAnalysisMode).toHaveBeenNthCalledWith(3, "base");
+    expect(input.setScreen).toHaveBeenNthCalledWith(1, "inspect");
+    expect(input.setScreen).toHaveBeenNthCalledWith(2, "inspect");
+    expect(input.setScreen).toHaveBeenNthCalledWith(3, "inspect");
+    expect(input.setScreen).toHaveBeenNthCalledWith(4, "compose");
   });
 
   it("opens simple monitoring only when the repository exists", () => {
@@ -60,6 +96,32 @@ describe("useAppSelectionActions", () => {
     });
 
     expect(input.library.setSelectedTrackId).not.toHaveBeenCalled();
+    expect(input.setPillar).not.toHaveBeenCalled();
+    expect(input.setScreen).not.toHaveBeenCalled();
+  });
+
+  it("opens navigation targets and wizard sessions only for valid repo/preset pairs", () => {
+    const input = buildInput();
+    const { result } = renderHook(() => useAppSelectionActions(input));
+
+    act(() => {
+      result.current.goLibrary();
+      result.current.goCompose();
+      result.current.startSimpleWizardSession("repo-1", "preset-1");
+    });
+
+    expect(input.setScreen).toHaveBeenNthCalledWith(1, "library");
+    expect(input.setScreen).toHaveBeenNthCalledWith(2, "compose");
+    expect(input.setPillar).toHaveBeenCalledWith("perform");
+    expect(input.setScreen).toHaveBeenNthCalledWith(3, "session");
+
+    vi.clearAllMocks();
+
+    act(() => {
+      result.current.startSimpleWizardSession("missing", "preset-1");
+      result.current.startSimpleWizardSession("repo-1", "missing");
+    });
+
     expect(input.setPillar).not.toHaveBeenCalled();
     expect(input.setScreen).not.toHaveBeenCalled();
   });

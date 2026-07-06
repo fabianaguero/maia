@@ -1,16 +1,12 @@
-import type { AppTranslations } from "../../../i18n/en";
+import type { AppTranslations } from "../../../i18n/types";
 import type { RepositoryAnalysis } from "../../../types/library";
 import type { MonitorContextValue } from "../../monitor/MonitorContext";
-import { buildLiveLogMonitorPanelRenderState } from "./liveLogMonitorPanelRenderState";
+import type { buildLiveLogMonitorPanelRenderState } from "./liveLogMonitorPanelRenderState";
 import {
-  buildLiveLogMonitorDeckModelInput,
-  buildLiveLogMonitorOperatorActionsInput,
-  buildLiveLogMonitorPanelRenderStateInput,
-  buildLiveLogMonitorSessionActionsInput,
-} from "./liveLogMonitorPanelDeckRuntimeBridge";
-import { useLiveLogMonitorDeckModel } from "./useLiveLogMonitorDeckModel";
-import { useLiveLogMonitorOperatorActions } from "./useLiveLogMonitorOperatorActions";
-import { useLiveLogMonitorSessionActions } from "./useLiveLogMonitorSessionActions";
+  buildLiveLogMonitorPanelDeckRuntimeState,
+  useLiveLogMonitorPanelDeckHookState,
+} from "./liveLogMonitorPanelDeckRuntime";
+import type { useLiveLogMonitorDeckModel } from "./useLiveLogMonitorDeckModel";
 import type { useLiveLogMonitorSurfaceState } from "./useLiveLogMonitorSurfaceState";
 import { type ManagedBlobAudioElement } from "./liveLogMonitorAudioRuntime";
 import type { LiveMonitorStartResetState } from "./liveLogMonitorSessionRuntime";
@@ -102,17 +98,8 @@ export interface UseLiveLogMonitorPanelDeckRuntimeInput {
 }
 
 export function useLiveLogMonitorPanelDeckRuntime(input: UseLiveLogMonitorPanelDeckRuntimeInput) {
-  const sessionActions = useLiveLogMonitorSessionActions(
-    buildLiveLogMonitorSessionActionsInput(input),
-  );
-  const operatorActions = useLiveLogMonitorOperatorActions(
-    buildLiveLogMonitorOperatorActionsInput(input),
-  );
-  const liveDeckProps = useLiveLogMonitorDeckModel(
-    buildLiveLogMonitorDeckModelInput(input, operatorActions),
-  );
-
-  return buildLiveLogMonitorPanelRenderState(
-    buildLiveLogMonitorPanelRenderStateInput(input, liveDeckProps, sessionActions),
+  return buildLiveLogMonitorPanelDeckRuntimeState(
+    input,
+    useLiveLogMonitorPanelDeckHookState(input),
   );
 }

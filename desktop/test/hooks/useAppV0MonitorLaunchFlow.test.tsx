@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { MonitorLaunchSource } from "../../src/features/simple/monitorSourceOptions";
+import type { MonitorLaunchSource } from "../../src/types/monitorLaunch";
 import { useAppV0MonitorScreenState } from "../../src/hooks/useAppV0MonitorScreenState";
 import type { LibraryTrack, RepositoryAnalysis } from "../../src/types/library";
 
@@ -201,6 +201,92 @@ describe("useAppV0MonitorScreenState launch flow", () => {
       }),
     );
     expect(setCurrentSection).toHaveBeenCalledWith("monitor");
+    expect(startSession).not.toHaveBeenCalled();
+  });
+
+  it("does not switch to the active monitor section when a connection launch cannot attach", async () => {
+    const setCurrentSection = vi.fn();
+    const setGuideTrack = vi.fn();
+    const resumeAudio = vi.fn(async () => undefined);
+    const attachSession = vi.fn(async () => false);
+    const startSession = vi.fn(async () => true);
+    const playbackSession = vi.fn(async () => true);
+    const track = createTrack();
+
+    repositoriesApiMock.startLogSourceConnection.mockResolvedValue({
+      sessionId: "session-cloud-2",
+      adapterKind: "process",
+      source: "gcp-cloud-run://project/services",
+      label: "services",
+      createdAt: "2026-01-01T00:00:00Z",
+      lastPolledAt: null,
+      totalPolls: 0,
+      fileCursor: null,
+    });
+
+    const { result } = renderHook(() =>
+      useAppV0MonitorScreenState({
+        lang: "en",
+        currentSection: "connections",
+        setCurrentSection,
+        repositories: [createRepository()],
+        selectedRepositoryTitle: "visits-service",
+        tracks: [track],
+        selectedTrack: track,
+        session: null,
+        metrics: {
+          windowCount: 0,
+          processedLines: 0,
+          totalAnomalies: 0,
+        },
+        setGuideTrack,
+        resumeAudio,
+        attachSession,
+        startSession,
+        playbackSession,
+      }),
+    );
+
+    const source: MonitorLaunchSource = {
+      id: "connection:cloud-2",
+      title: "services",
+      sourcePath: "gcp-cloud-run://project/services",
+      sourceType: "cloud",
+      sourceTypeLabel: "Cloud",
+      startable: true,
+      origin: "connection",
+      connectionId: "cloud-2",
+    };
+
+    let launchResult:
+      | Awaited<ReturnType<typeof result.current.monitorOrchestrator.startSourceMonitoring>>
+      | undefined;
+
+    await act(async () => {
+      launchResult = await result.current.monitorOrchestrator.startSourceMonitoring(
+        source,
+        "track-1",
+      );
+    });
+
+    expect(launchResult).toEqual({ ok: false, reason: "attach-failed" });
+    expect(setGuideTrack).toHaveBeenCalledWith("/music/around-the-world.mp3");
+    expect(resumeAudio).toHaveBeenCalledTimes(1);
+    expect(repositoriesApiMock.startLogSourceConnection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        connectionId: "cloud-2",
+        startFromBeginning: false,
+      }),
+    );
+    expect(attachSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repoId: "connection:cloud-2",
+        repoTitle: "services",
+        trackId: "track-1",
+        trackTitle: "around-the-world.mp3",
+      }),
+    );
+    expect(setCurrentSection).not.toHaveBeenCalledWith("monitor");
     expect(startSession).not.toHaveBeenCalled();
   });
 

@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 
-import type { AppTranslations } from "../../../i18n/en";
+import type { AppTranslations } from "../../../i18n/types";
 import type { LiveLogMonitorHeader } from "./LiveLogMonitorHeader";
 import type { LiveLogMonitorLiveDeck } from "./LiveLogMonitorLiveDeck";
 import type { LiveLogMonitorSetupSection } from "./LiveLogMonitorSetupSection";

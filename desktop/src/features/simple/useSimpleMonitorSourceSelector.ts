@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { listLogSourceConnections } from "../../api/repositories";
 import type { RepositoryAnalysis } from "../../types/library";
-import type { LogSourceConnection } from "../../types/monitor";
 import {
   buildMonitorSourceSelectionModel,
   shouldResetSelectedSource,
   type MonitorSourceCopy,
   type MonitorSourceFilter,
 } from "./monitorSourceOptions";
+import { usePersistentLogSourceConnections } from "./usePersistentLogSourceConnections";
 
 export interface UseSimpleMonitorSourceSelectorInput {
   repositories: RepositoryAnalysis[];
@@ -23,29 +22,10 @@ export function useSimpleMonitorSourceSelector({
   isListening,
   copy,
 }: UseSimpleMonitorSourceSelectorInput) {
-  const [persistentConnections, setPersistentConnections] = useState<LogSourceConnection[]>([]);
+  const persistentConnections = usePersistentLogSourceConnections();
   const [selectedSourceId, setSelectedSourceId] = useState("");
   const [sourceFilter, setSourceFilter] = useState<MonitorSourceFilter>("all");
   const [isLaunchingMonitor, setIsLaunchingMonitor] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const nextConnections = await listLogSourceConnections();
-        if (!cancelled) {
-          setPersistentConnections(Array.isArray(nextConnections) ? nextConnections : []);
-        }
-      } catch {
-        if (!cancelled) {
-          setPersistentConnections([]);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     if (isListening) {

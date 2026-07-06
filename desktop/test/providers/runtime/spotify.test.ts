@@ -236,6 +236,52 @@ describe("spotifyRuntime", () => {
         retryAfterSeconds: 120,
       });
     });
+
+    it("throws unknown on non-auth failures and tolerates missing items arrays", async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        headers: new Map(),
+      });
+
+      await expect(
+        listSpotifyPlaylists({
+          auth: {
+            sourceType: "spotify",
+            id: "spotify-user-123",
+            displayName: "Test",
+            isConnected: true,
+            lastSyncedAt: null,
+            oauthToken: "token",
+            createdAt: "2026-01-01T00:00:00Z",
+            updatedAt: "2026-01-01T00:00:00Z",
+          },
+        }),
+      ).rejects.toMatchObject({
+        kind: "unknown",
+        message: "Spotify API error: 500",
+      });
+
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({}),
+      });
+
+      await expect(
+        listSpotifyPlaylists({
+          auth: {
+            sourceType: "spotify",
+            id: "spotify-user-123",
+            displayName: "Test",
+            isConnected: true,
+            lastSyncedAt: null,
+            oauthToken: "token",
+            createdAt: "2026-01-01T00:00:00Z",
+            updatedAt: "2026-01-01T00:00:00Z",
+          },
+        }),
+      ).resolves.toEqual([]);
+    });
   });
 
   describe("listTracksInSpotifyPlaylist", () => {
@@ -300,6 +346,73 @@ describe("spotifyRuntime", () => {
         kind: "not_found",
         resourceId: "missing-playlist",
       });
+    });
+
+    it("throws auth_expired when playlist-track requests have no token", async () => {
+      await expect(
+        listTracksInSpotifyPlaylist({
+          auth: {
+            sourceType: "spotify",
+            id: "spotify-user-123",
+            displayName: "Test",
+            isConnected: true,
+            lastSyncedAt: null,
+            createdAt: "2026-01-01T00:00:00Z",
+            updatedAt: "2026-01-01T00:00:00Z",
+          },
+          playlistId: "playlist-1",
+        }),
+      ).rejects.toMatchObject({
+        kind: "auth_expired",
+        sourceType: "spotify",
+      });
+    });
+
+    it("throws unknown on non-404 track failures and tolerates missing items arrays", async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+      });
+
+      await expect(
+        listTracksInSpotifyPlaylist({
+          auth: {
+            sourceType: "spotify",
+            id: "spotify-user-123",
+            displayName: "Test",
+            isConnected: true,
+            lastSyncedAt: null,
+            oauthToken: "token",
+            createdAt: "2026-01-01T00:00:00Z",
+            updatedAt: "2026-01-01T00:00:00Z",
+          },
+          playlistId: "playlist-1",
+        }),
+      ).rejects.toMatchObject({
+        kind: "unknown",
+        message: "Spotify API error: 503",
+      });
+
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({}),
+      });
+
+      await expect(
+        listTracksInSpotifyPlaylist({
+          auth: {
+            sourceType: "spotify",
+            id: "spotify-user-123",
+            displayName: "Test",
+            isConnected: true,
+            lastSyncedAt: null,
+            oauthToken: "token",
+            createdAt: "2026-01-01T00:00:00Z",
+            updatedAt: "2026-01-01T00:00:00Z",
+          },
+          playlistId: "playlist-1",
+        }),
+      ).resolves.toEqual([]);
     });
 
     it("filters out null tracks", async () => {

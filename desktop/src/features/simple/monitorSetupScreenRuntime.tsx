@@ -1,7 +1,7 @@
 import { Activity, AlertTriangle, RadioTower, SlidersHorizontal, Waves } from "lucide-react";
 import type { ReactNode } from "react";
 
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type {
   MonitorSetupCardViewModel,
   MonitorSetupOptionViewModel,

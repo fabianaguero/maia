@@ -14,7 +14,7 @@ import {
   setTrackCuePointSecond,
   setTrackSavedLoopBoundary,
 } from "../../utils/track";
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { WaveformEditableCuePoint } from "../analyzer/components/waveformPlaceholderRuntime";
 
 export type InspectTrackTabId = "overview" | "grid" | "performance" | "metadata";

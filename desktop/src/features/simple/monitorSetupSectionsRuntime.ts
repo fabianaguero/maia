@@ -1,10 +1,12 @@
 import {
   sanitizeMonitorSetupPreferenceValue,
-  type MonitorSetupPreferenceFieldViewModel,
-  type MonitorSetupPreferenceGroupViewModel,
   type MonitorSetupPreferenceKey,
   type MonitorSetupPreferences,
 } from "./monitorSetupPreferences";
+import type {
+  MonitorSetupPreferenceFieldViewModel,
+  MonitorSetupPreferenceGroupViewModel,
+} from "./monitorSetupPreferenceViewModelRuntime";
 
 export function resolveMonitorSetupRuntimeDefaultGroups(input: {
   runtimeDefaultFields: MonitorSetupPreferenceFieldViewModel[];

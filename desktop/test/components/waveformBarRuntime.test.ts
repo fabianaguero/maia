@@ -37,4 +37,36 @@ describe("waveformBarRuntime", () => {
       filter: "brightness(1.3)",
     });
   });
+
+  it("normalizes whitespace, negative anomalies, and implicit active state", () => {
+    const viewModel = buildWaveformBarViewModel({
+      t: en,
+      source: "   ",
+      uptime: "   ",
+      anomalies: -3,
+      random: () => 0.25,
+    });
+
+    expect(viewModel).toMatchObject({
+      sourceLabel: en.simpleMode.common.unknown,
+      anomaliesValue: 0,
+      uptimeLabel: "0s",
+    });
+  });
+
+  it("accepts a null anomaly count and preserves explicit source and uptime", () => {
+    const viewModel = buildWaveformBarViewModel({
+      t: en,
+      source: "services.log",
+      uptime: "12s",
+      anomalies: null,
+      random: () => 0.1,
+    });
+
+    expect(viewModel).toMatchObject({
+      sourceLabel: "services.log",
+      anomaliesValue: 0,
+      uptimeLabel: "12s",
+    });
+  });
 });

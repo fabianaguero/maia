@@ -117,4 +117,45 @@ describe("monitorProviderLiveRuntime", () => {
     expect(runMonitorPollCycle).toHaveBeenCalledTimes(1);
     expect(schedulePoll).toHaveBeenCalledWith(doPoll);
   });
+
+  it("does not resume audio when there is no suspended audio context", () => {
+    const listenersRef = { current: new Set([vi.fn()]) };
+    const sessionRef = { current: { persistedSessionId: null } };
+    const pollIndexRef = { current: 0 };
+    const runningResume = vi.fn();
+    const setMetrics = vi.fn();
+    const updatePersistedCursor = vi.fn();
+    const insertPersistedEvent = vi.fn<[InsertSessionEventInput], void>();
+
+    emitMonitorProviderUpdateState({
+      update: createUpdate(),
+      listenersRef,
+      sessionRef: sessionRef as never,
+      pollIndexRef,
+      audioContextRef: {
+        current: {
+          state: "running",
+          resume: runningResume,
+        } as unknown as AudioContext,
+      },
+      setMetrics,
+      updatePersistedCursor,
+      insertPersistedEvent,
+      logger: { info: vi.fn(), debug: vi.fn(), trace: vi.fn() },
+    });
+
+    emitMonitorProviderUpdateState({
+      update: createUpdate(),
+      listenersRef,
+      sessionRef: sessionRef as never,
+      pollIndexRef,
+      audioContextRef: { current: null },
+      setMetrics,
+      updatePersistedCursor,
+      insertPersistedEvent,
+      logger: { info: vi.fn(), debug: vi.fn(), trace: vi.fn() },
+    });
+
+    expect(runningResume).not.toHaveBeenCalled();
+  });
 });

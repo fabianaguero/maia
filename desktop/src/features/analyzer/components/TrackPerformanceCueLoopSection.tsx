@@ -1,14 +1,24 @@
+import type { AppTranslations } from "../../../i18n/types";
 import type { LibraryTrack } from "../../../types/library";
 import type { BeatGridPhraseRange } from "../../../utils/beatGrid";
-import { formatTrackTime } from "../../../utils/track";
+import { TrackPerformancePhraseActions } from "./TrackPerformancePhraseActions";
+import { TrackPerformancePrimaryActions } from "./TrackPerformancePrimaryActions";
+import { TrackPerformanceStatusStack } from "./TrackPerformanceStatusStack";
 import { TrackCueList } from "./TrackCueList";
 import { TrackSavedLoopList } from "./TrackSavedLoopList";
 import {
-  LOOP_BEAT_PRESETS,
   renderCueLabel,
   renderLoopLabel,
   type TrackColorOption,
 } from "./trackPerformancePanelRuntime";
+import {
+  buildTrackPerformanceCueLoopBeatLoopHint,
+  buildTrackPerformanceCueLoopPhraseViewModel,
+  buildTrackPerformanceCueLoopPlayheadHint,
+  buildTrackPerformanceCueLoopPresetActions,
+  buildTrackPerformanceCueLoopPrimaryActions,
+  buildTrackPerformanceCueLoopStatusRows,
+} from "./trackPerformanceCueLoopSectionRuntime";
 
 interface TrackPerformanceCueLoopSectionProps {
   performance: LibraryTrack["performance"];
@@ -43,9 +53,7 @@ interface TrackPerformanceCueLoopSectionProps {
   onSetSavedLoopBoundary: (loopId: string, boundary: "start" | "end") => void | Promise<void>;
   onAddPhraseMemoryCue: () => void | Promise<void>;
   canCreateBeatLoopAtPlacement: (beatCount: number) => boolean;
-  t: {
-    inspect: Record<string, string>;
-  };
+  t: AppTranslations;
 }
 
 export function TrackPerformanceCueLoopSection({
@@ -75,158 +83,71 @@ export function TrackPerformanceCueLoopSection({
   canCreateBeatLoopAtPlacement,
   t,
 }: TrackPerformanceCueLoopSectionProps) {
+  const statusRows = buildTrackPerformanceCueLoopStatusRows({
+    performanceColor: performance.color,
+    quantizeEnabled,
+    quantizeAvailable,
+    t,
+  });
+  const playheadHint = buildTrackPerformanceCueLoopPlayheadHint({
+    currentTime,
+    quantizedPlacementHint,
+    t,
+  });
+  const primaryActions = buildTrackPerformanceCueLoopPrimaryActions({
+    canEditPerformance,
+    canAddHot,
+    hasMainCue: performance.mainCueSecond !== null,
+    quantizeEnabled,
+    quantizeAvailable,
+    t,
+  });
+  const beatLoopHint = buildTrackPerformanceCueLoopBeatLoopHint({
+    bpm,
+    t,
+  });
+  const beatLoopActions = buildTrackPerformanceCueLoopPresetActions({
+    canEditPerformance,
+    canAddLoop,
+    canCreateBeatLoopAtPlacement,
+    t,
+  });
+  const phraseView = buildTrackPerformanceCueLoopPhraseViewModel({
+    selectedPhraseRange,
+    canEditPerformance,
+    canAddLoop,
+    t,
+  });
+
   return (
     <details className="panel-collapsible top-spaced">
       <summary className="panel-collapsible-summary">{t.inspect.cuesLoops}</summary>
       <div className="panel-collapsible-body">
-        <div className="status-stack">
-          <div className="status-row">
-            <span>{t.inspect.colorTag}</span>
-            <strong>{performance.color ?? t.inspect.none}</strong>
-          </div>
-          <div className="status-row">
-            <span>{t.inspect.quantize}</span>
-            <strong>{quantizeEnabled && quantizeAvailable ? t.inspect.on : t.inspect.off}</strong>
-          </div>
-        </div>
+        <TrackPerformanceStatusStack rows={statusRows} />
 
-        <p className="support-copy top-spaced">
-          {t.inspect.playheadCueToolsAt.replace("{time}", formatTrackTime(currentTime))}
-          {quantizedPlacementHint}
-        </p>
-        <div className="pill-strip top-spaced">
-          <span>
-            <button
-              type="button"
-              className="compact-action"
-              aria-pressed={quantizeEnabled && quantizeAvailable}
-              disabled={!quantizeAvailable}
-              onClick={() => onSetQuantizeEnabled((value) => !value)}
-            >
-              {quantizeEnabled && quantizeAvailable ? t.inspect.quantizeOn : t.inspect.quantizeOff}
-            </button>
-          </span>
-          <span>
-            <button
-              type="button"
-              className="compact-action"
-              disabled={!canEditPerformance}
-              onClick={() =>
-                void onUpdatePerformance({
-                  mainCueSecond: placementSecond,
-                })
-              }
-            >
-              {t.inspect.setMainCue}
-            </button>
-          </span>
-          <span>
-            <button
-              type="button"
-              className="compact-action"
-              disabled={!canEditPerformance || performance.mainCueSecond === null}
-              onClick={() =>
-                void onUpdatePerformance({
-                  mainCueSecond: null,
-                })
-              }
-            >
-              {t.inspect.clearMainCue}
-            </button>
-          </span>
-          <span>
-            <button
-              type="button"
-              className="compact-action"
-              disabled={!canEditPerformance || !canAddHot}
-              onClick={() => void onAddCue("hot")}
-            >
-              {t.inspect.addHotCue}
-            </button>
-          </span>
-          <span>
-            <button
-              type="button"
-              className="compact-action"
-              disabled={!canEditPerformance}
-              onClick={() => void onAddCue("memory")}
-            >
-              {t.inspect.addMemoryCue}
-            </button>
-          </span>
-        </div>
+        <TrackPerformancePrimaryActions
+          playheadHint={playheadHint}
+          quantizeEnabled={quantizeEnabled}
+          quantizeAvailable={quantizeAvailable}
+          quantizeToggleLabel={primaryActions.quantizeToggleLabel}
+          actions={primaryActions.actions}
+          placementSecond={placementSecond}
+          beatLoopHint={beatLoopHint}
+          beatLoopActions={beatLoopActions}
+          onSetQuantizeEnabled={onSetQuantizeEnabled}
+          onUpdatePerformance={onUpdatePerformance}
+          onAddCue={onAddCue}
+          onAddSavedLoop={onAddSavedLoop}
+        />
 
-        <p className="support-copy top-spaced">
-          {t.inspect.beatLoopsFromDetectedBpm.replace(
-            "{bpm}",
-            typeof bpm === "number" ? bpm.toFixed(1) : t.inspect.pending,
-          )}
-        </p>
-        <div className="pill-strip top-spaced">
-          {LOOP_BEAT_PRESETS.map((beatCount) => (
-            <span key={beatCount}>
-              <button
-                type="button"
-                className="compact-action"
-                disabled={
-                  !canEditPerformance || !canAddLoop || !canCreateBeatLoopAtPlacement(beatCount)
-                }
-                onClick={() => void onAddSavedLoop(beatCount)}
-              >
-                {t.inspect.saveBeatLoop.replace("{count}", String(beatCount))}
-              </button>
-            </span>
-          ))}
-        </div>
-
-        {selectedPhraseRange ? (
-          <>
-            <p className="support-copy top-spaced">
-              {t.inspect.phraseSelected
-                .replace("{label}", selectedPhraseRange.label)
-                .replace("{start}", formatTrackTime(selectedPhraseRange.startSecond))
-                .replace("{end}", formatTrackTime(selectedPhraseRange.endSecond))}
-            </p>
-            <div className="pill-strip top-spaced">
-              <span>
-                <button
-                  type="button"
-                  className="compact-action"
-                  disabled={!canEditPerformance}
-                  onClick={() =>
-                    void onUpdatePerformance({
-                      mainCueSecond: selectedPhraseRange.startSecond,
-                    })
-                  }
-                >
-                  {t.inspect.setCuePhraseStart}
-                </button>
-              </span>
-              <span>
-                <button
-                  type="button"
-                  className="compact-action"
-                  disabled={!canEditPerformance}
-                  onClick={() => void onAddPhraseMemoryCue()}
-                >
-                  {t.inspect.addPhraseMemoryCue}
-                </button>
-              </span>
-              <span>
-                <button
-                  type="button"
-                  className="compact-action"
-                  disabled={!canEditPerformance || !canAddLoop}
-                  onClick={() => void onAddSelectedPhraseLoop()}
-                >
-                  {t.inspect.savePhraseLoop}
-                </button>
-              </span>
-            </div>
-          </>
-        ) : (
-          <p className="support-copy top-spaced">{t.inspect.armPhraseSelect}</p>
-        )}
+        <TrackPerformancePhraseActions
+          selectedPhraseRange={selectedPhraseRange}
+          phraseView={phraseView}
+          onUpdatePerformance={onUpdatePerformance}
+          onAddPhraseMemoryCue={onAddPhraseMemoryCue}
+          onAddSelectedPhraseLoop={onAddSelectedPhraseLoop}
+          t={t}
+        />
 
         <TrackCueList
           cues={performance.hotCues}
@@ -238,6 +159,7 @@ export function TrackPerformanceCueLoopSection({
           colorText={t.inspect.color}
           removeText={(name) => t.inspect.removeNamed.replace("{name}", name)}
           slotTemplate={t.inspect.slot}
+          pendingLabel={t.inspect.pending}
           onPatchCue={(kind, cueId, patch) => void onPatchCue(kind, cueId, patch)}
           onRemoveCue={(kind, cueId) => void onRemoveCue(kind, cueId)}
           renderCueLabel={renderCueLabel}
@@ -254,6 +176,7 @@ export function TrackPerformanceCueLoopSection({
           colorText={t.inspect.color}
           removeText={(name) => t.inspect.removeNamed.replace("{name}", name)}
           slotTemplate={t.inspect.slot}
+          pendingLabel={t.inspect.pending}
           onPatchCue={(kind, cueId, patch) => void onPatchCue(kind, cueId, patch)}
           onRemoveCue={(kind, cueId) => void onRemoveCue(kind, cueId)}
           renderCueLabel={renderCueLabel}
@@ -271,6 +194,7 @@ export function TrackPerformanceCueLoopSection({
           loopWord={t.inspect.loopWord}
           lockedLabel={t.inspect.locked}
           editableLabel={t.inspect.editable}
+          pendingLabel={t.inspect.pending}
           setStartText={t.inspect.setStart}
           setEndText={t.inspect.setEnd}
           unlockLoopText={t.inspect.unlockLoop}

@@ -5,7 +5,7 @@ import type {
   LibraryTrack,
   RepositoryAnalysis,
 } from "../../../types/library";
-import type { AppTranslations } from "../../../i18n/en";
+import type { AppTranslations } from "../../../i18n/types";
 import type { MonitorContextValue } from "../../monitor/MonitorContext";
 import { useLiveLogMonitorLifecycle } from "./useLiveLogMonitorLifecycle";
 import { useLiveLogMonitorOrchestrator } from "./useLiveLogMonitorOrchestrator";

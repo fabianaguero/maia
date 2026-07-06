@@ -1,16 +1,7 @@
-import { useMonitorDeckControls } from "./useMonitorDeckControls";
-import { useSimpleMonitorPlaybackState } from "./useSimpleMonitorPlaybackState";
-import { useSimpleMonitorDeckPresentationState } from "./useSimpleMonitorDeckPresentationState";
-import { useSimpleMonitorDeckLiveController } from "./useSimpleMonitorDeckLiveController";
-import {
-  buildSimpleMonitorDeckHookState,
-  buildMonitorDeckPresentationHookInput,
-  buildSimpleMonitorDeckRuntimeState,
-} from "./simpleMonitorDeckRuntime";
-import type { WaveformAnomalyMarker } from "./monitorDeckViewModel";
+import { buildSimpleMonitorDeckControllerHookResultArgs } from "./simpleMonitorDeckControllerHookRuntime";
+import { buildSimpleMonitorDeckControllerHookState } from "./simpleMonitorDeckControllerRuntime";
 import type { UseSimpleMonitorDeckRuntimeInput } from "./simpleMonitorDeckRuntimeTypes";
-
-const SAFE_MONITOR_RUNTIME = false;
+import { useSimpleMonitorDeckControllerSlices } from "./useSimpleMonitorDeckControllerSlices";
 
 export function useSimpleMonitorDeckController({
   skin,
@@ -27,158 +18,62 @@ export function useSimpleMonitorDeckController({
   liveSettings,
   t,
 }: UseSimpleMonitorDeckRuntimeInput) {
-  const { deckControls, activePreset } = useMonitorDeckControls({ skin });
-  const {
-    trackWaveProgress,
-    setTrackWaveProgress,
-    trackElapsedSeconds,
-    setTrackElapsedSeconds,
-    trackDurationSeconds,
-    setTrackDurationSeconds,
-    trackWaveProgressRef,
-  } = useSimpleMonitorPlaybackState({
-    isListening,
-  });
-  const baseDeckState = buildSimpleMonitorDeckRuntimeState({
-    session,
-    isListening,
-    isLaunchingMonitor,
-    tracks: safeTracks,
-    trackName,
-    trackDurationSeconds,
-    activePreset,
-    alertShape: deckControls.alertShape,
-    liveSuggestedBpm: null,
-    t,
-  });
-  const {
-    activeTrack,
-    deckDurationSeconds,
-    activeBeatGrid,
-    streamAdapterLabel,
-    isMonitorActive,
-    deckPresetLabel,
-    deckVisualPreset,
-  } = baseDeckState;
-  const {
-    backgroundAudioRef,
-    previewTrackId,
-    toggleTrackPreview,
-    liveLines,
-    logSignalBuffer,
-    liveSuggestedBpm,
-    waveformAnomalies,
-    selectedAnomalyId,
-    setSelectedAnomalyId,
-    simulateLog,
-  } = useSimpleMonitorDeckLiveController({
-    audioContext,
-    isListening,
-    deckControls,
-    activeTrack,
-    deckDurationSeconds,
-    session,
-    streamAdapterLabel,
-    subscribe,
-    trackWaveProgressRef,
-    setTrackWaveProgress,
-    setTrackElapsedSeconds,
-    setTrackDurationSeconds,
-    liveSettings,
-  });
-  const { deckBpm } = buildSimpleMonitorDeckRuntimeState({
-    session,
-    isListening,
-    isLaunchingMonitor,
-    tracks: safeTracks,
-    trackName,
-    trackDurationSeconds,
-    activePreset,
-    alertShape: deckControls.alertShape,
-    liveSuggestedBpm,
-    t,
-  });
-  const {
-    terminalLinesRef,
-    onTerminalScroll,
-    registerLineRef,
-    focusAnomaly,
-    overviewCanvasRef,
-    waveformCanvasRef,
-    waveformStageRef,
-    handleOverviewPointerDown,
-    handleOverviewClick,
-    handleOverviewAnomalyClick,
-    handleOverviewAnomalyPointerDown,
-    handleStagePointerDown,
-    handleStageClick,
-    anomalyBurstRegions,
-    overviewWindowWidthPercent,
-    overviewWindowLeftPercent,
-    overviewPlayheadLeftPercent,
-    overviewAnomalyMarkers,
-    selectedDeckMarker,
-    selectedBurstRegion,
-    deckTimelineMarkers,
-    deckBeatMarkers,
-  } = useSimpleMonitorDeckPresentationState(
-    buildMonitorDeckPresentationHookInput({
-      backgroundAudioRef,
+  const { deckControls, playbackState, controllerModel, liveState, deckBpm, presentationState } =
+    useSimpleMonitorDeckControllerSlices({
+      skin,
+      session,
+      isListening,
+      isLaunchingMonitor,
+      safeTracks,
+      trackName,
+      audioContext,
+      subscribe,
       waveformBins,
-      waveformAnomalies: waveformAnomalies as WaveformAnomalyMarker[],
-      trackWaveProgress,
-      setTrackWaveProgress,
-      setTrackElapsedSeconds,
-      deckDurationSeconds,
-      deckBpm,
-      activeBeatGrid,
-      logSignalBuffer,
-      selectedAnomalyId,
-      setSelectedAnomalyId,
-      liveLines,
       isConsoleExpanded,
       onToggleConsole,
-      deckVisualPreset,
+      liveSettings,
+      t,
+    });
+
+  return buildSimpleMonitorDeckControllerHookState(
+    buildSimpleMonitorDeckControllerHookResultArgs({
+      controllerModel,
+      playback: {
+        trackElapsedSeconds: playbackState.trackElapsedSeconds,
+      },
+      liveState: {
+        previewTrackId: liveState.previewTrackId,
+        toggleTrackPreview: liveState.toggleTrackPreview,
+        liveLines: liveState.liveLines,
+        selectedAnomalyId: liveState.selectedAnomalyId,
+        simulateLog: liveState.simulateLog,
+      },
+      presentationState: {
+        terminalLinesRef: presentationState.terminalLinesRef,
+        onTerminalScroll: presentationState.onTerminalScroll,
+        registerLineRef: presentationState.registerLineRef,
+        focusAnomaly: presentationState.focusAnomaly,
+        overviewCanvasRef: presentationState.overviewCanvasRef,
+        waveformCanvasRef: presentationState.waveformCanvasRef,
+        waveformStageRef: presentationState.waveformStageRef,
+        handleOverviewPointerDown: presentationState.handleOverviewPointerDown,
+        handleOverviewClick: presentationState.handleOverviewClick,
+        handleOverviewAnomalyClick: presentationState.handleOverviewAnomalyClick,
+        handleOverviewAnomalyPointerDown: presentationState.handleOverviewAnomalyPointerDown,
+        handleStagePointerDown: presentationState.handleStagePointerDown,
+        handleStageClick: presentationState.handleStageClick,
+        anomalyBurstRegions: presentationState.anomalyBurstRegions,
+        overviewWindowWidthPercent: presentationState.overviewWindowWidthPercent,
+        overviewWindowLeftPercent: presentationState.overviewWindowLeftPercent,
+        overviewPlayheadLeftPercent: presentationState.overviewPlayheadLeftPercent,
+        overviewAnomalyMarkers: presentationState.overviewAnomalyMarkers,
+        selectedDeckMarker: presentationState.selectedDeckMarker,
+        selectedBurstRegion: presentationState.selectedBurstRegion,
+        deckTimelineMarkers: presentationState.deckTimelineMarkers,
+        deckBeatMarkers: presentationState.deckBeatMarkers,
+      },
+      deckBpm,
       waveformScale: deckControls.waveformScale,
-      safeRuntime: SAFE_MONITOR_RUNTIME,
     }),
   );
-
-  return buildSimpleMonitorDeckHookState({
-    activeTrack,
-    previewTrackId,
-    toggleTrackPreview,
-    deckPresetLabel,
-    streamAdapterLabel,
-    isMonitorActive,
-    liveLines,
-    selectedAnomalyId,
-    simulateLog,
-    terminalLinesRef,
-    onTerminalScroll,
-    registerLineRef,
-    focusAnomaly,
-    deckBpm,
-    trackElapsedSeconds,
-    deckDurationSeconds,
-    overviewCanvasRef,
-    waveformCanvasRef,
-    waveformStageRef,
-    anomalyBurstRegions,
-    selectedBurstRegion,
-    overviewAnomalyMarkers,
-    overviewWindowLeftPercent,
-    overviewWindowWidthPercent,
-    overviewPlayheadLeftPercent,
-    handleOverviewPointerDown,
-    handleOverviewClick,
-    handleOverviewAnomalyClick,
-    handleOverviewAnomalyPointerDown,
-    selectedDeckMarker,
-    deckTimelineMarkers,
-    deckBeatMarkers,
-    handleStagePointerDown,
-    handleStageClick,
-    waveformScale: deckControls.waveformScale,
-  });
 }

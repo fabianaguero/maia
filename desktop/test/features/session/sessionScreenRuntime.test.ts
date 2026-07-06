@@ -8,18 +8,36 @@ import type {
   RepositoryAnalysis,
 } from "../../../src/types/library";
 import {
+  buildSessionControllerDerivedBookmarkBindings,
+  buildSessionControllerDerivedBookmarkInput,
+  buildSessionControllerDerivedBookmarkState,
+  buildSessionControllerDerivedDetailsBindings,
+  buildSessionControllerDerivedDetailsInput,
+  buildSessionControllerDerivedSelectionArgs,
+  buildSessionControllerDerivedSelectionInput,
+  buildSessionControllerDerivedDetailsState,
+  buildSessionControllerDerivedSectionInputs,
+  buildSessionControllerDerivedSections,
+  buildSessionControllerDerivedSelectionBindings,
+  buildSessionControllerDerivedSelectionState,
+  buildSessionControllerDerivedSessionBindings,
+  buildSessionControllerDerivedState,
   buildSessionLabelPlaceholder,
   createDirectSessionStartPlan,
   createResumeSessionPlan,
   createSessionStartPlan,
   createSessionTimestampId,
   resolveBookmarkContext,
+  resolveSessionBookmarkState,
   resolvePlaybackPercent,
   resolveReadyToRun,
   resolveReplayBookmarkError,
   resolveReplaySessionError,
   resolveReplaySessionFailure,
+  resolveSessionControllerDerivedSections,
+  resolveSessionControllerDerivedSelectionState,
   resolveSessionControllerDerivedState,
+  resolveSessionSelection,
   resolveSourceOptions,
 } from "../../../src/features/session/sessionScreenRuntime";
 
@@ -277,7 +295,7 @@ describe("sessionScreenRuntime", () => {
   });
 
   it("derives controller state for the active session booth", () => {
-    const derived = resolveSessionControllerDerivedState({
+    const input = {
       activePlaybackProgress: 0.42,
       activeSessionId: "session-1",
       activeSessionMode: "live",
@@ -306,9 +324,80 @@ describe("sessionScreenRuntime", () => {
       templateGenre: "House",
       templateLabel: "Night monitor",
       tracks: [track],
+    };
+    const selectionState = resolveSessionControllerDerivedSelectionState(input);
+    const selectionInput = buildSessionControllerDerivedSelectionInput(input);
+    const selectionArgs = buildSessionControllerDerivedSelectionArgs(selectionInput);
+    const rebuiltSelectionState = buildSessionControllerDerivedSelectionState({
+      sourceOptions: [repository],
+      entitySelection: {
+        selectedSource: repository,
+        selectedTrack: track,
+        selectedPlaylist: null,
+      },
+      sessionSelection: selectionState.sessionSelection,
     });
+    const bookmarkInput = buildSessionControllerDerivedBookmarkInput({
+      selectedSession: selectionState.sessionSelection.selectedSession,
+      sessionBookmarksBySessionId: input.sessionBookmarksBySessionId,
+      selectedSessionEvents: input.selectedSessionEvents,
+    });
+    const bookmarkState = buildSessionControllerDerivedBookmarkState(bookmarkInput);
+    const detailsInput = buildSessionControllerDerivedDetailsInput({
+      baseMode: input.baseMode,
+      selectedTrack: selectionState.selectedTrack,
+      selectedPlaylist: selectionState.selectedPlaylist,
+      tracks: input.tracks,
+      selectedPlaylistId: input.selectedPlaylistId,
+      selectedSourceId: input.selectedSourceId,
+      selectedTrackId: input.selectedTrackId,
+      selectedSource: selectionState.selectedSource,
+      templateGenre: input.templateGenre,
+      templateLabel: input.templateLabel,
+      sessionPlaceholderFallback: input.sessionPlaceholderFallback,
+      activePlaybackProgress: input.activePlaybackProgress,
+      activeSession: selectionState.sessionSelection.activeSession,
+      selectedSession: selectionState.sessionSelection.selectedSession,
+      repositories: input.repositories,
+      playlists: input.playlists,
+    });
+    const sectionInputs = buildSessionControllerDerivedSectionInputs({
+      input,
+      selectionState,
+    });
+    const detailsState = buildSessionControllerDerivedDetailsState(detailsInput);
+    const sections = resolveSessionControllerDerivedSections(input);
+    const builtSections = buildSessionControllerDerivedSections({
+      input,
+      selectionState,
+    });
+    const selectionBindings = buildSessionControllerDerivedSelectionBindings(selectionState);
+    const sessionBindings = buildSessionControllerDerivedSessionBindings(selectionState);
+    const bookmarkBindings = buildSessionControllerDerivedBookmarkBindings(bookmarkState);
+    const detailsBindings = buildSessionControllerDerivedDetailsBindings(detailsState);
+    const rebuiltState = buildSessionControllerDerivedState(sections);
+    const derived = resolveSessionControllerDerivedState(input);
 
     expect(derived.sourceOptions).toEqual([repository]);
+    expect(selectionInput.mode).toBe("log");
+    expect(selectionArgs.sourceOptions).toEqual([repository]);
+    expect(sectionInputs.bookmarkInput.selectedSession?.id).toBe("session-1");
+    expect(sectionInputs.detailsInput.selectedSource?.id).toBe("repo-1");
+    expect(rebuiltSelectionState.selectedSource?.id).toBe("repo-1");
+    expect(selectionState.sourceOptions).toEqual([repository]);
+    expect(selectionBindings.selectedTrack?.id).toBe("track-1");
+    expect(selectionState.sessionSelection.activeSession?.id).toBe("session-1");
+    expect(sessionBindings.selectedSessionIdForEvents).toBe("session-1");
+    expect(bookmarkInput.selectedSession?.id).toBe("session-1");
+    expect(bookmarkState.selectedSessionBookmarks).toHaveLength(1);
+    expect(bookmarkBindings.bookmarkContexts[7]?.dominantLevel).toBe("warn");
+    expect(detailsInput.selectedSource?.id).toBe("repo-1");
+    expect(detailsState.readyToRun).toBe(true);
+    expect(detailsBindings.sessionLabelPlaceholder).toBe("production.log · Base Pulse · House");
+    expect(sections.bookmarkState.selectedSessionBookmarks).toHaveLength(1);
+    expect(builtSections.detailsState.readyToRun).toBe(true);
+    expect(rebuiltState.selectedSession?.id).toBe("session-1");
+    expect(sections.detailsState.readyToRun).toBe(true);
     expect(derived.selectedSource?.id).toBe("repo-1");
     expect(derived.selectedTrack?.id).toBe("track-1");
     expect(derived.selectedBaseDetails).toEqual({
@@ -337,6 +426,61 @@ describe("sessionScreenRuntime", () => {
     expect(derived.selectedSessionSourceDetails).toEqual({
       label: "production.log",
       path: "/logs/production.log",
+    });
+  });
+
+  it("resolves active/selected session state and bookmark contexts independently", () => {
+    const sessionTwo = {
+      ...session,
+      id: "session-2",
+      label: "Fallback session",
+      sourceId: null,
+      sourceTitle: null,
+      sourcePath: null,
+      trackId: null,
+      trackTitle: null,
+      playlistId: "playlist-1",
+      playlistName: "Night drive",
+    };
+
+    const selection = resolveSessionSelection({
+      sessions: [session, sessionTwo],
+      activeSessionId: "session-1",
+      selectedSessionId: "missing",
+      activeSessionMode: "playback",
+      monitorHasSession: true,
+      tracks: [track],
+      playlists: [playlist],
+    });
+
+    expect(selection.activeSession?.id).toBe("session-1");
+    expect(selection.selectedSession?.id).toBe("session-1");
+    expect(selection.selectedSessionIdForEvents).toBe("session-1");
+    expect(selection.playbackActive).toBe(true);
+    expect(selection.liveMonitorActive).toBe(false);
+    expect(selection.activeBedUrl).toBeNull();
+
+    const bookmarkState = resolveSessionBookmarkState({
+      selectedSession: selection.selectedSession,
+      sessionBookmarksBySessionId: {
+        "session-1": [{ id: 9, eventIndex: 0 } as SessionBookmark],
+      },
+      selectedSessionEvents: [
+        {
+          suggestedBpm: 122,
+          dominantLevel: "info",
+          anomalyCount: 1,
+          parsedLinesJson: JSON.stringify(["session resumed"]),
+        },
+      ] as SessionEvent[],
+    });
+
+    expect(bookmarkState.selectedSessionBookmarks).toHaveLength(1);
+    expect(bookmarkState.bookmarkContexts[9]).toEqual({
+      bpm: 122,
+      dominantLevel: "info",
+      anomalyCount: 1,
+      logExcerpt: "session resumed",
     });
   });
 });

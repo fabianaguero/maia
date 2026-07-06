@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import type { SessionBookmark } from "../../src/api/sessions";
 import {
+  buildReplayBookmarkDeleteErrorMessage,
+  buildReplayBookmarkLoadErrorMessage,
+  buildReplayBookmarkNativeRuntimeError,
+  buildReplayBookmarkSaveErrorMessage,
+  buildReplayBookmarkUpsertInput,
   buildReplayBookmarkDraftState,
+  canSaveReplayBookmark,
+  resolveReplayBookmarkSaveContext,
   removeReplayBookmark,
   resolveActiveReplayBookmark,
   sortReplayBookmarks,
@@ -83,8 +90,59 @@ describe("replayBookmarksRuntime", () => {
 
     expect(upsertSortedReplayBookmark(current, saved).map((entry) => entry.id)).toEqual([1, 3]);
     expect(removeReplayBookmark(current, 1).map((entry) => entry.id)).toEqual([2]);
+    expect(canSaveReplayBookmark("session-1", 2)).toBe(true);
+    expect(canSaveReplayBookmark(null, 2)).toBe(false);
+    expect(canSaveReplayBookmark("session-1", null)).toBe(false);
+    expect(resolveReplayBookmarkSaveContext("session-1", 2)).toEqual({
+      replaySessionId: "session-1",
+      replayWindowIndex: 2,
+    });
+    expect(resolveReplayBookmarkSaveContext(null, 2)).toBeNull();
+    expect(buildReplayBookmarkNativeRuntimeError()).toBe(
+      "Replay bookmarks require the native desktop runtime.",
+    );
+    expect(buildReplayBookmarkLoadErrorMessage(new Error("load boom"))).toContain("load boom");
+    expect(buildReplayBookmarkSaveErrorMessage(new Error("save boom"))).toContain("save boom");
+    expect(buildReplayBookmarkDeleteErrorMessage(new Error("delete boom"))).toContain(
+      "delete boom",
+    );
     expect(toReplayBookmarkErrorMessage(new Error("boom"))).toBe("boom");
     expect(toReplayBookmarkErrorMessage("failed")).toBe("failed");
     expect(toReplayBookmarkErrorMessage({})).toBe("Unexpected replay bookmark failure.");
+  });
+
+  it("builds the bookmark upsert payload from replay and fallback context", () => {
+    expect(
+      buildReplayBookmarkUpsertInput({
+        replaySessionId: "session-9",
+        replayWindowIndex: 4,
+        bookmarkLabelDraft: "  ",
+        bookmarkNoteDraft: "  note  ",
+        bookmarkTagDraft: "alert",
+        bookmarkStyleProfileIdDraft: "style-z",
+        bookmarkMutationProfileIdDraft: "mutation-z",
+        currentReplayExplanation: {
+          eventIndex: 6,
+          trackId: "track-live",
+          trackTitle: "Live Track",
+          trackSecond: 64,
+        },
+        fallbackTrackId: "track-fallback",
+        fallbackTrackTitle: "Fallback",
+        fallbackTrackSecond: 21,
+      }),
+    ).toEqual({
+      sessionId: "session-9",
+      replayWindowIndex: 4,
+      eventIndex: 6,
+      label: "Window 4",
+      note: "note",
+      bookmarkTag: "alert",
+      suggestedStyleProfileId: "style-z",
+      suggestedMutationProfileId: "mutation-z",
+      trackId: "track-live",
+      trackTitle: "Live Track",
+      trackSecond: 64,
+    });
   });
 });

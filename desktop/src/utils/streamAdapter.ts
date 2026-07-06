@@ -1,33 +1,28 @@
 import type { StreamAdapterKind } from "../types/monitor";
 
+const STREAM_ADAPTER_LABELS: Record<StreamAdapterKind, string> = {
+  file: "File tail",
+  process: "Process stdout",
+  websocket: "WebSocket",
+  "http-poll": "HTTP poll",
+  journald: "journald",
+};
+
+const DISABLED_ADAPTER_DESCRIPTION =
+  "Disabled in the Week 1 MVP reduction. Use an imported log file instead.";
+
+const STREAM_ADAPTER_DESCRIPTIONS: Record<StreamAdapterKind, string> = {
+  file: "Tail the imported log file directly from disk through Maia's single supported live-analysis pipeline.",
+  process: DISABLED_ADAPTER_DESCRIPTION,
+  websocket: DISABLED_ADAPTER_DESCRIPTION,
+  "http-poll": DISABLED_ADAPTER_DESCRIPTION,
+  journald: DISABLED_ADAPTER_DESCRIPTION,
+};
+
 export function getStreamAdapterLabel(adapterKind: StreamAdapterKind): string {
-  switch (adapterKind) {
-    case "process":
-      return "Process stdout";
-    case "websocket":
-      return "WebSocket";
-    case "http-poll":
-      return "HTTP poll";
-    case "journald":
-      return "journald";
-    case "file":
-    default:
-      return "File tail";
-  }
+  return STREAM_ADAPTER_LABELS[adapterKind];
 }
 
 export function getStreamAdapterDescription(adapterKind: StreamAdapterKind): string {
-  switch (adapterKind) {
-    case "process":
-      return "Disabled in the Week 1 MVP reduction. Use an imported log file instead.";
-    case "websocket":
-      return "Disabled in the Week 1 MVP reduction. Use an imported log file instead.";
-    case "http-poll":
-      return "Disabled in the Week 1 MVP reduction. Use an imported log file instead.";
-    case "journald":
-      return "Disabled in the Week 1 MVP reduction. Use an imported log file instead.";
-    case "file":
-    default:
-      return "Tail the imported log file directly from disk through Maia's single supported live-analysis pipeline.";
-  }
+  return STREAM_ADAPTER_DESCRIPTIONS[adapterKind];
 }

@@ -11,6 +11,7 @@ Use this before switching the repository to public visibility on GitHub.
 - Review `SUPPORT.md` and `MAINTAINERS.md`.
 - Confirm that `docs/open-source-maintainer-guide.md` reflects the active runtime.
 - Confirm that `docs/frontend-architecture.md` reflects the mounted desktop shell.
+- Confirm that `docs/pre-release-manual-test-plan.md` still matches the active monitor flow.
 - Review `docs/demo-assets-and-fixtures.md` and decide which demo artifacts should stay public.
 
 ## Architecture Sanity Check
@@ -55,6 +56,19 @@ Use this before switching the repository to public visibility on GitHub.
 Based on a quick pre-publication pass, these items deserve explicit review:
 
 - sample production log fixtures under `analyzer/fixtures/logs/`
+- zipped desktop log fixtures under `desktop/test/logs/`
+- fixture lines that still contain local-looking machine paths such as `/home/curi/...` inside log samples
 - generated helper scripts and demo artifacts such as `scripts/demo/tropical_log_gen.py`, `scripts/verification/`, and `demo/audio/`
 - tracked non-runtime demo assets under `demo/`
 - deployment references for the landing site under `site/` and `README.md`
+- planning docs under `docs/superpowers/` that still mention maintainer-local absolute paths like `/home/faguero/...`
+
+## Practical Release Sequence
+
+For a pragmatic first public release, use this order:
+
+1. Run `make quality` and confirm CI is green.
+2. Run the desktop manual flow in `docs/pre-release-manual-test-plan.md`.
+3. Review demo assets and fixtures for redistribution intent and anonymization.
+4. Review README and contributor docs from the perspective of a first-time outsider.
+5. Only then switch the repository visibility or cut a public tag.

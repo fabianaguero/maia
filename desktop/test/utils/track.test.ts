@@ -24,6 +24,7 @@ import {
   nudgeTrackSecond,
   removeTrackCuePoint,
   removeTrackSavedLoop,
+  resolveTrackBeatDurationSeconds,
   resolveTrackPlacementSecond,
   resolvePlayableTrackPath,
   setTrackCuePointSecond,
@@ -157,10 +158,95 @@ describe("track utils", () => {
     expect(resolvePlayableTrackPath(browserFallbackTrack)).toBe("/music/source.wav");
   });
 
+  it("covers legacy/original, source-file and unavailable playback variants", () => {
+    const track = createTrack();
+
+    const originalOnlyTrack: LibraryTrack = {
+      ...track,
+      file: {
+        ...track.file,
+        storagePath: null,
+        playbackSource: "source_file",
+      },
+    };
+
+    expect(describeTrackStorage(originalOnlyTrack)).toBe("Original/demo path");
+    expect(describeTrackPlaybackSource(originalOnlyTrack)).toBe("Original file");
+    expect(resolvePlayableTrackPath(originalOnlyTrack)).toBe("/music/source.wav");
+
+    const legacyTrack: LibraryTrack = {
+      ...track,
+      file: {
+        ...track.file,
+        storagePath: "/music/source.wav",
+      },
+    };
+
+    expect(describeTrackStorage(legacyTrack)).toBe("Legacy/original path");
+
+    const unavailableTrack: LibraryTrack = {
+      ...track,
+      sourcePath: "",
+      file: {
+        ...track.file,
+        sourcePath: "",
+        storagePath: null,
+        playbackSource: "source_file",
+        availabilityState: "missing",
+      },
+    };
+
+    expect(describeTrackPlaybackSource(unavailableTrack)).toBe("Unavailable");
+    expect(resolvePlayableTrackPath(unavailableTrack)).toBeNull();
+    expect(getTrackAvailabilityLabel(unavailableTrack)).toBe("Missing");
+
+    const unexpectedPlaybackTrack: LibraryTrack = {
+      ...track,
+      file: {
+        ...track.file,
+        playbackSource: "unknown-runtime" as never,
+      },
+    };
+
+    expect(describeTrackPlaybackSource(unexpectedPlaybackTrack)).toBe("Unavailable");
+  });
+
+  it("falls back to basename or untitled title when metadata is missing", () => {
+    const track = createTrack();
+    const basenameTrack: LibraryTrack = {
+      ...track,
+      tags: {
+        ...track.tags,
+        title: "   ",
+      },
+      file: {
+        ...track.file,
+        sourcePath: "/music/folder/derived-name.aiff",
+      },
+      sourcePath: "/music/folder/legacy-name.mp3",
+    };
+
+    expect(getTrackTitle(basenameTrack)).toBe("derived-name.aiff");
+
+    const untitledTrack: LibraryTrack = {
+      ...basenameTrack,
+      file: {
+        ...basenameTrack.file,
+        sourcePath: "   ",
+      },
+      sourcePath: "   ",
+    };
+
+    expect(getTrackTitle(untitledTrack)).toBe("Untitled Track");
+  });
+
   it("formats track time and derives waveform cues from performance metadata", () => {
     const track = createTrack();
 
     expect(formatTrackTime(24.25)).toBe("0:24.25");
+    expect(formatTrackTime(null)).toBe("Pending");
+    expect(formatTrackTime(-1)).toBe("Pending");
+    expect(formatTrackTime(null, "Pendiente")).toBe("Pendiente");
 
     const cues = getTrackWaveformCues(track);
     expect(cues).toHaveLength(2);
@@ -261,6 +347,124 @@ describe("track utils", () => {
     ]);
   });
 
+  it("handles waveform fallbacks for null slots, empty visualization, and loop compare markers", () => {
+    const track = createTrack();
+    const performanceCueTrack: LibraryTrack = {
+      ...track,
+      performance: {
+        ...track.performance,
+        mainCueSecond: 24.25,
+        hotCues: [
+          {
+            id: "hot-main",
+            slot: null,
+            second: 24.25,
+            label: "Main hit",
+            kind: "hot",
+            color: null,
+          },
+        ],
+        memoryCues: [
+          {
+            id: "memory-free",
+            slot: null,
+            second: 36.5,
+            label: "Drift",
+            kind: "memory",
+            color: null,
+          },
+        ],
+        savedLoops: [
+          {
+            id: "loop-free",
+            slot: null,
+            startSecond: 40,
+            endSecond: 48,
+            label: "Open loop",
+            color: null,
+            locked: false,
+          },
+        ],
+      },
+      visualization: undefined,
+    };
+
+    expect(getTrackWaveformCues(performanceCueTrack)).toEqual([
+      {
+        second: 24.25,
+        label: "Main hit",
+        type: "hot",
+        excerpt: undefined,
+      },
+      {
+        second: 36.5,
+        label: "Drift",
+        type: "memory",
+        excerpt: undefined,
+      },
+    ]);
+    expect(getTrackWaveformRegions(performanceCueTrack)).toEqual([
+      {
+        id: "loop-free",
+        startSecond: 40,
+        endSecond: 48,
+        label: "Open loop",
+        type: "loop",
+        color: null,
+        excerpt: "Loop · Editable",
+      },
+    ]);
+    expect(getTrackCompareAuditionPoints(performanceCueTrack)).toEqual([
+      {
+        id: "original",
+        label: "Base cue",
+        detail: "Track start",
+        second: 0,
+      },
+      {
+        id: "altered",
+        label: "Mutation cue",
+        detail: "Main cue",
+        second: 24.25,
+      },
+      {
+        id: "loop",
+        label: "Loop window",
+        detail: "Open loop",
+        second: 40,
+      },
+    ]);
+
+    const emptyTrack: LibraryTrack = {
+      ...track,
+      performance: {
+        ...track.performance,
+        mainCueSecond: null,
+        hotCues: [],
+        memoryCues: [],
+        savedLoops: [],
+      },
+      visualization: undefined,
+    };
+
+    expect(getTrackWaveformCues(emptyTrack)).toEqual([]);
+    expect(getTrackOriginalWaveformCues(emptyTrack)).toEqual([]);
+    expect(getTrackCompareAuditionPoints(emptyTrack)).toEqual([
+      {
+        id: "original",
+        label: "Base cue",
+        detail: "Track start",
+        second: 0,
+      },
+      {
+        id: "altered",
+        label: "Mutation cue",
+        detail: "Track start",
+        second: 0,
+      },
+    ]);
+  });
+
   it("creates snapped hot cues with stable slot assignment", () => {
     const track = createTrack();
     const cue = createTrackCuePoint(
@@ -280,6 +484,48 @@ describe("track utils", () => {
       kind: "hot",
       color: "#22d3ee",
     });
+  });
+
+  it("creates memory and main cues, wraps hot colors, and falls back for beat duration", () => {
+    const hotCues = Array.from({ length: 4 }, (_, index) => ({
+      id: `hot-${index + 1}`,
+      slot: index + 1,
+      second: 16 + index,
+      label: `Hot ${index + 1}`,
+      kind: "hot" as const,
+      color: null,
+    }));
+
+    expect(createTrackCuePoint("memory", 18.4, hotCues, 240)).toMatchObject({
+      id: "memory-1-18400",
+      slot: null,
+      label: "Memory 1",
+      color: null,
+    });
+    expect(createTrackCuePoint("main", 4.2, hotCues, 240)).toMatchObject({
+      id: "main-1-4200",
+      slot: null,
+      label: "Main",
+      color: null,
+    });
+    expect(createTrackCuePoint("hot", 20.1, hotCues, 240)).toMatchObject({
+      slot: 5,
+      label: "Hot 5",
+      color: "#f59e0b",
+    });
+
+    expect(resolveTrackBeatDurationSeconds([{ index: 0, second: 0.5 }], 120)).toBe(0.5);
+    expect(
+      resolveTrackBeatDurationSeconds(
+        [
+          { index: 0, second: 4 },
+          { index: 1, second: 4 },
+        ],
+        100,
+      ),
+    ).toBe(0.6);
+    expect(resolveTrackBeatDurationSeconds([{ index: 0, second: 4 }], null)).toBeNull();
+    expect(canCreateBeatLoop(128, 32, 0, 240)).toBe(false);
   });
 
   it("removes cues by id and blocks hot cues after slot capacity", () => {
@@ -534,6 +780,9 @@ describe("track utils", () => {
     expect(() =>
       createTrackSavedLoop(32, 8, track.analysis.bpm, filledLoops, track.analysis.durationSeconds),
     ).toThrow("No saved loop slots available");
+    expect(() => createTrackSavedLoop(240, 8, track.analysis.bpm, [], 240)).toThrow(
+      "Loop end must be after loop start",
+    );
   });
 
   it("updates cue and loop metadata without disturbing ordering", () => {
@@ -599,6 +848,125 @@ describe("track utils", () => {
         label: "Outro loop",
         color: "#22d3ee",
         locked: true,
+      },
+    ]);
+  });
+
+  it("preserves labels on blank patches and keeps unmatched cue and loop updates unchanged", () => {
+    const cues = [
+      {
+        id: "hot-2",
+        slot: 2,
+        second: 32,
+        label: "Peak",
+        kind: "hot" as const,
+        color: "#22d3ee",
+      },
+      {
+        id: "hot-1",
+        slot: 1,
+        second: 16,
+        label: "Intro",
+        kind: "hot" as const,
+        color: "#f59e0b",
+      },
+    ];
+    const loops = [
+      {
+        id: "loop-2",
+        slot: 2,
+        startSecond: 48,
+        endSecond: 52,
+        label: "Loop B",
+        color: "#22d3ee",
+        locked: false,
+      },
+      {
+        id: "loop-1",
+        slot: 1,
+        startSecond: 32,
+        endSecond: 40,
+        label: "Loop A",
+        color: null,
+        locked: false,
+      },
+    ];
+
+    expect(updateTrackCuePoint(cues, "hot-1", { label: "   ", color: "#ef4444" })).toEqual([
+      {
+        id: "hot-1",
+        slot: 1,
+        second: 16,
+        label: "Intro",
+        kind: "hot",
+        color: "#ef4444",
+      },
+      {
+        id: "hot-2",
+        slot: 2,
+        second: 32,
+        label: "Peak",
+        kind: "hot",
+        color: "#22d3ee",
+      },
+    ]);
+    expect(updateTrackCuePoint(cues, "missing", { label: "Moved" })).toEqual([
+      {
+        id: "hot-1",
+        slot: 1,
+        second: 16,
+        label: "Intro",
+        kind: "hot",
+        color: "#f59e0b",
+      },
+      {
+        id: "hot-2",
+        slot: 2,
+        second: 32,
+        label: "Peak",
+        kind: "hot",
+        color: "#22d3ee",
+      },
+    ]);
+
+    expect(updateTrackSavedLoop(loops, "loop-1", { label: "   ", locked: true })).toEqual([
+      {
+        id: "loop-1",
+        slot: 1,
+        startSecond: 32,
+        endSecond: 40,
+        label: "Loop A",
+        color: null,
+        locked: true,
+      },
+      {
+        id: "loop-2",
+        slot: 2,
+        startSecond: 48,
+        endSecond: 52,
+        label: "Loop B",
+        color: "#22d3ee",
+        locked: false,
+      },
+    ]);
+    expect(updateTrackSavedLoop(loops, "missing", { color: "#ef4444" })).toEqual([
+      {
+        id: "loop-1",
+        slot: 1,
+        startSecond: 32,
+        endSecond: 40,
+        label: "Loop A",
+        color: null,
+        locked: false,
+      },
+      {
+        id: "loop-2",
+        slot: 2,
+        startSecond: 48,
+        endSecond: 52,
+        label: "Loop B",
+        color: "#22d3ee",
+        locked: false,
       },
     ]);
   });
@@ -675,5 +1043,106 @@ describe("track utils", () => {
         locked: false,
       },
     ]);
+  });
+
+  it("handles loop ranges, loop movement, and nudges without a usable beatgrid", () => {
+    const loops = [
+      {
+        id: "loop-1",
+        slot: 1,
+        startSecond: 64,
+        endSecond: 72,
+        label: "Loop A",
+        color: null,
+        locked: false,
+      },
+    ];
+
+    expect(createTrackSavedLoopFromRange(40, 32, [], 240, "   ")).toEqual({
+      id: "loop-1-32000-40000",
+      slot: 1,
+      startSecond: 32,
+      endSecond: 40,
+      label: "Loop A",
+      color: null,
+      locked: false,
+    });
+    expect(() => createTrackSavedLoopFromRange(32, 32, [], 240)).toThrow(
+      "Loop end must be after loop start",
+    );
+    expect(() =>
+      createTrackSavedLoopFromRange(
+        32,
+        40,
+        Array.from({ length: 8 }, (_, index) => ({
+          id: `loop-${index + 1}`,
+          slot: index + 1,
+          startSecond: index * 8,
+          endSecond: index * 8 + 4,
+          label: `Loop ${String.fromCharCode(65 + index)}`,
+          color: null,
+          locked: false,
+        })),
+        240,
+      ),
+    ).toThrow("No saved loop slots available");
+
+    expect(
+      setTrackSavedLoopBoundary(loops, "missing", "end", 80, {
+        bpm: null,
+        durationSeconds: null,
+        beatGrid: [],
+        quantizeEnabled: false,
+      }),
+    ).toEqual(loops);
+    expect(
+      setTrackSavedLoopBoundary(loops, "loop-1", "end", 64.01, {
+        bpm: null,
+        durationSeconds: null,
+        beatGrid: [],
+        quantizeEnabled: false,
+      }),
+    ).toEqual([
+      {
+        id: "loop-1",
+        slot: 1,
+        startSecond: 64,
+        endSecond: 64.05,
+        label: "Loop A",
+        color: null,
+        locked: false,
+      },
+    ]);
+
+    expect(
+      moveTrackSavedLoop(loops, "missing", 90, {
+        durationSeconds: null,
+        beatGrid: [],
+        quantizeEnabled: false,
+      }),
+    ).toEqual(loops);
+    expect(
+      moveTrackSavedLoop(loops, "loop-1", 90, {
+        durationSeconds: null,
+        beatGrid: [],
+        quantizeEnabled: false,
+      }),
+    ).toEqual([
+      {
+        id: "loop-1",
+        slot: 1,
+        startSecond: 90,
+        endSecond: 98,
+        label: "Loop A",
+        color: null,
+        locked: false,
+      },
+    ]);
+
+    expect(nudgeTrackSecond(24, 1, { durationSeconds: 240, beatGrid: [], bpm: 120 })).toBe(24.5);
+    expect(nudgeTrackSecond(24, 1, { durationSeconds: 240, beatGrid: [], coarse: true })).toBe(
+      24.25,
+    );
+    expect(nudgeTrackSecond(24, -1, { durationSeconds: 240, beatGrid: [] })).toBe(23.95);
   });
 });

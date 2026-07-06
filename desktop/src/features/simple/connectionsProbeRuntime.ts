@@ -1,4 +1,4 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { LogSourceConnectionKind, StreamSessionPollResult } from "../../types/monitor";
 import {
   filterObservableConnectionLines,

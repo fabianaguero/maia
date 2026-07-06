@@ -190,6 +190,7 @@ describe("useAppCatalogImportActions", () => {
 
   it("returns false and reports import errors or null results", async () => {
     const input = createInput();
+    input.library.importLibraryTrack.mockRejectedValueOnce(new Error("track boom"));
     input.library.importLibraryTrack.mockResolvedValueOnce(null);
     input.baseAssets.importLibraryBaseAsset.mockRejectedValueOnce(new Error("base import boom"));
     input.compositions.importLibraryComposition.mockRejectedValueOnce(
@@ -200,6 +201,13 @@ describe("useAppCatalogImportActions", () => {
     const { result } = renderHook(() => useAppCatalogImportActions(input));
 
     await act(async () => {
+      await expect(
+        result.current.handleImportTrack({
+          sourcePath: "/music/broken.wav",
+          label: "Broken Track",
+          musicStyleId: "house",
+        }),
+      ).resolves.toBe(false);
       await expect(
         result.current.handleImportTrack({
           sourcePath: "/music/missing.wav",
@@ -229,6 +237,11 @@ describe("useAppCatalogImportActions", () => {
       ).resolves.toBe(false);
     });
 
+    expect(input.notify).toHaveBeenCalledWith(
+      "error",
+      en.appShell.importFailedTitle,
+      expect.stringContaining("track boom"),
+    );
     expect(input.notify).toHaveBeenCalledWith(
       "error",
       en.appShell.connectionFailedTitle,

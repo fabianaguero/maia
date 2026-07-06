@@ -216,6 +216,89 @@ describe("InspectScreen", () => {
     expect(screen.getByTestId("inspect-context-bar")).toHaveTextContent("track");
   });
 
+  it("routes to the active track view and renders missing repo/base placeholders", () => {
+    const { rerender } = render(
+      <I18nContext.Provider value={en}>
+        <InspectScreen
+          track={track}
+          repository={null}
+          baseAsset={null}
+          availableTracks={[track]}
+          availablePlaylists={playlists}
+          availableRepositories={[repository]}
+          availableBaseAssets={[baseAsset]}
+          mode="track"
+          analyzerLabel="Maia Analyzer"
+          onChangeMode={vi.fn()}
+          onSelectTrack={vi.fn()}
+          onSelectRepository={vi.fn()}
+          onSelectBaseAsset={vi.fn()}
+          onGoLibrary={vi.fn()}
+          onGoCompose={vi.fn()}
+          onUpdateTrackPerformance={vi.fn(async () => undefined)}
+          onUpdateTrackAnalysis={vi.fn(async () => undefined)}
+          trackMutating={false}
+        />
+      </I18nContext.Provider>,
+    );
+
+    expect(screen.getByTestId("inspect-track-view")).toHaveTextContent("track-1");
+
+    rerender(
+      <I18nContext.Provider value={en}>
+        <InspectScreen
+          track={null}
+          repository={null}
+          baseAsset={null}
+          availableTracks={[track]}
+          availablePlaylists={playlists}
+          availableRepositories={[repository]}
+          availableBaseAssets={[baseAsset]}
+          mode="repo"
+          analyzerLabel="Maia Analyzer"
+          onChangeMode={vi.fn()}
+          onSelectTrack={vi.fn()}
+          onSelectRepository={vi.fn()}
+          onSelectBaseAsset={vi.fn()}
+          onGoLibrary={vi.fn()}
+          onGoCompose={vi.fn()}
+          onUpdateTrackPerformance={vi.fn(async () => undefined)}
+          onUpdateTrackAnalysis={vi.fn(async () => undefined)}
+          trackMutating={false}
+        />
+      </I18nContext.Provider>,
+    );
+
+    expect(screen.getByText(en.inspect.noRepoSelected)).toBeInTheDocument();
+
+    rerender(
+      <I18nContext.Provider value={en}>
+        <InspectScreen
+          track={null}
+          repository={null}
+          baseAsset={null}
+          availableTracks={[track]}
+          availablePlaylists={playlists}
+          availableRepositories={[repository]}
+          availableBaseAssets={[baseAsset]}
+          mode="base"
+          analyzerLabel="Maia Analyzer"
+          onChangeMode={vi.fn()}
+          onSelectTrack={vi.fn()}
+          onSelectRepository={vi.fn()}
+          onSelectBaseAsset={vi.fn()}
+          onGoLibrary={vi.fn()}
+          onGoCompose={vi.fn()}
+          onUpdateTrackPerformance={vi.fn(async () => undefined)}
+          onUpdateTrackAnalysis={vi.fn(async () => undefined)}
+          trackMutating={false}
+        />
+      </I18nContext.Provider>,
+    );
+
+    expect(screen.getByText(en.inspect.noBaseAssetSelected)).toBeInTheDocument();
+  });
+
   it("routes to repository and base-asset detail views for active selections", () => {
     const { rerender } = render(
       <I18nContext.Provider value={en}>

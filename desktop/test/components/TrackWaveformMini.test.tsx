@@ -17,6 +17,10 @@ describe("TrackWaveformMini", () => {
 
   it("normalizes sampled bins to the expected range", () => {
     expect(sampleTrackWaveformMiniBins([0, 2, 4, 8], 4)).toEqual([0.04, 0.25, 0.5, 1]);
+    expect(sampleTrackWaveformMiniBins([], 4)).toHaveLength(4);
+    expect(sampleTrackWaveformMiniBins([1, undefined, 4] as unknown as number[], 3)).toEqual([
+      0.25, 0.04, 1,
+    ]);
   });
 
   it("renders mini bars and active state", () => {
@@ -29,5 +33,13 @@ describe("TrackWaveformMini", () => {
     expect(root?.getAttribute("aria-hidden")).toBe("true");
     expect(bars).toHaveLength(56);
     expect(bars[0]?.getAttribute("style")).toContain("height");
+  });
+
+  it("renders inactive bars without the active class", () => {
+    const { container } = render(<TrackWaveformMini bins={[0, 0, 0]} active={false} />);
+    const root = container.querySelector(".track-waveform-mini");
+
+    expect(root?.className).not.toContain("active");
+    expect(container.querySelectorAll(".track-waveform-mini__bar")).toHaveLength(56);
   });
 });

@@ -1,6 +1,6 @@
 import type { MutableRefObject } from "react";
 
-import type { GuideTrackPCM } from "./monitorContextRuntime";
+import type { GuideTrackPCM } from "./monitorAudioRuntimeTypes";
 import type { SourceTemplate } from "../../config/sourceTemplates";
 
 export interface MonitorProviderGuideTrackLogger {

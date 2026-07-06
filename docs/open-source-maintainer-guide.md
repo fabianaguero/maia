@@ -32,6 +32,24 @@ Non-product path:
 
 - `site/`: landing page only, not part of the desktop runtime
 
+## First-time contributor path
+
+If this is your first time inside Maia, do not start by browsing the whole repository at random.
+Use this order instead:
+
+1. `README.md`
+2. `docs/frontend-architecture.md`
+3. `desktop/src/main.tsx`
+4. `desktop/src/App-v0.tsx`
+5. the specific feature surface you want to change
+
+Practical routing rule:
+
+- if the change is about monitor UX, start in `desktop/src/features/simple/` and `desktop/src/features/analyzer/components/`
+- if the change is about native filesystem, SQLite, or stream sessions, start in `desktop/src-tauri/src/main.rs`
+- if the change is about deterministic analysis or anomaly derivation, start in `analyzer/src/maia_analyzer/`
+- if the change crosses runtimes, read `contracts/` before editing implementation code
+
 ## Codebase map
 
 ### Frontend (`desktop/src`)

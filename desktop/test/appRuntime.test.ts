@@ -118,10 +118,23 @@ describe("appRuntime", () => {
       selectedPlaylistId: "playlist-a",
       selectedTrackId: "track-b",
     });
+
+    expect(resolveTrackArmState("missing", tracks)).toEqual({
+      selectedPlaylistId: null,
+      selectedTrackId: null,
+    });
+    expect(resolvePlaylistArmState("missing", playlists, tracks)).toEqual({
+      selectedPlaylistId: null,
+      selectedTrackId: null,
+    });
   });
 
   it("builds monitor guide state from selected library items and session drafts", () => {
-    const tracks = [createTrack("track-a"), createTrack("track-b")];
+    const tracks = [
+      createTrack("track-a"),
+      createTrack("track-b"),
+      createTrack("track-missing", ""),
+    ];
     const playlist = createPlaylist("playlist-a", ["track-a", "track-b"]);
 
     expect(
@@ -137,6 +150,29 @@ describe("appRuntime", () => {
 
     expect(resolveSessionMonitorGuideState({ trackId: "track-b" }, [playlist], tracks)).toEqual({
       trackPath: "/music/track-b.wav",
+      playlistPaths: null,
+    });
+
+    expect(
+      resolveSessionMonitorGuideState({ playlistId: "playlist-a" }, [playlist], tracks),
+    ).toEqual({
+      trackPath: null,
+      playlistPaths: ["/music/track-a.wav", "/music/track-b.wav"],
+    });
+
+    expect(
+      resolveLibraryMonitorGuideState({
+        selectedPlaylist: null,
+        selectedTrack: tracks[2],
+        tracks,
+      }),
+    ).toEqual({
+      trackPath: null,
+      playlistPaths: null,
+    });
+
+    expect(resolveSessionMonitorGuideState(undefined, [playlist], tracks)).toEqual({
+      trackPath: null,
       playlistPaths: null,
     });
   });
@@ -175,15 +211,45 @@ describe("appRuntime", () => {
 
     expect(resolveReplaySourceRepository(session, repositories)).toBe(repositories[0]);
     expect(
+      resolveReplaySourceRepository(
+        {
+          ...session,
+          sourceId: "repo-1",
+          sourcePath: "/logs/other.log",
+        },
+        repositories,
+      ),
+    ).toBe(repositories[0]);
+    expect(
+      resolveReplaySourceRepository(
+        {
+          ...session,
+          sourceId: "missing",
+          sourcePath: "/logs/missing.log",
+        },
+        repositories,
+      ),
+    ).toBeNull();
+    expect(
       shouldReuseActiveReplaySession({
         currentPersistedSessionId: "session-1",
         isPlayback: true,
         replaySessionId: "session-1",
       }),
     ).toBe(true);
+    expect(
+      shouldReuseActiveReplaySession({
+        currentPersistedSessionId: "session-1",
+        isPlayback: false,
+        replaySessionId: "session-1",
+      }),
+    ).toBe(false);
     expect(buildDiscoveredLogImportInputs(["/logs/api.log", "/logs/worker.log"])).toEqual([
       { sourceKind: "file", sourcePath: "/logs/api.log", label: "api.log" },
       { sourceKind: "file", sourcePath: "/logs/worker.log", label: "worker.log" },
+    ]);
+    expect(buildDiscoveredLogImportInputs(["single.log"])).toEqual([
+      { sourceKind: "file", sourcePath: "single.log", label: "single.log" },
     ]);
   });
 });

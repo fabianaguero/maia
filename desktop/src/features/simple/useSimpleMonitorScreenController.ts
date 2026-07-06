@@ -1,18 +1,14 @@
+import { useMemo } from "react";
 import { useT } from "../../i18n/I18nContext";
-import { buildSimpleMonitorCollectionsState } from "./simpleMonitorScreenStateRuntime";
+import { buildSimpleMonitorScreenControllerHookArgsInput } from "./simpleMonitorScreenControllerHookRuntime";
+import { buildSimpleMonitorScreenHookArgsInput } from "./simpleMonitorScreenOrchestrationRuntime";
 import {
-  buildSimpleMonitorDeckRuntimeInput,
-  buildSimpleMonitorLaunchStateInput,
-  buildSimpleMonitorScreenHookArgsInput,
-} from "./simpleMonitorScreenOrchestrationRuntime";
-import {
-  buildSimpleMonitorDeckRuntimeSlice,
-  buildSimpleMonitorLaunchStateSlice,
-} from "./simpleMonitorScreenSlicesRuntime";
-import { useSimpleMonitorAnomalyFilterState } from "./useSimpleMonitorAnomalyFilterState";
-import { useSimpleMonitorDeckRuntime } from "./useSimpleMonitorDeckRuntime";
-import { useSimpleMonitorLaunchState } from "./useSimpleMonitorLaunchState";
+  buildSimpleMonitorScreenControllerCollections,
+  buildSimpleMonitorScreenControllerSlicesInput,
+  buildSimpleMonitorScreenControllerState,
+} from "./simpleMonitorScreenControllerStateRuntime";
 import type { SimpleMonitorScreenStateInput } from "./useSimpleMonitorScreenState";
+import { useSimpleMonitorScreenControllerSlices } from "./useSimpleMonitorScreenControllerSlices";
 
 export function useSimpleMonitorScreenController({
   skin,
@@ -35,67 +31,80 @@ export function useSimpleMonitorScreenController({
   liveSettings,
 }: SimpleMonitorScreenStateInput) {
   const t = useT();
-  const isListening = !!session;
-  const collections = buildSimpleMonitorCollectionsState({
-    pastSessions,
-    repositories,
-    tracks,
-  });
-
-  const launchState = useSimpleMonitorLaunchState(
-    buildSimpleMonitorLaunchStateInput({
-      repositories: collections.safeRepositories,
-      isListening,
-      t,
-      onResumeAudio,
-      onStartMonitoring,
-    }),
-  );
-
-  const deckRuntime = useSimpleMonitorDeckRuntime(
-    buildSimpleMonitorDeckRuntimeInput({
+  const controllerState = useMemo(
+    () =>
+      buildSimpleMonitorScreenControllerState({
+        skin,
+        session,
+        metrics,
+        pastSessions,
+        repositories,
+        tracks,
+        onStop,
+        onResumeAudio,
+        audioStatus,
+        audioContext,
+        onStartMonitoring,
+        onReplaySession,
+        subscribe,
+        trackName,
+        waveformBins,
+        isConsoleExpanded,
+        onToggleConsole,
+        liveSettings,
+      }),
+    [
       skin,
       session,
-      isListening,
-      isLaunchingMonitor: launchState.isLaunchingMonitor,
-      safeTracks: collections.safeTracks,
-      trackName,
+      metrics,
+      pastSessions,
+      repositories,
+      tracks,
+      onStop,
+      onResumeAudio,
+      audioStatus,
       audioContext,
+      onStartMonitoring,
+      onReplaySession,
       subscribe,
+      trackName,
       waveformBins,
       isConsoleExpanded,
       onToggleConsole,
       liveSettings,
+    ],
+  );
+  const isListening = !!controllerState.session;
+  const collections = useMemo(
+    () => buildSimpleMonitorScreenControllerCollections({ pastSessions, repositories, tracks }),
+    [pastSessions, repositories, tracks],
+  );
+
+  const { launchState, deckRuntime, anomalyFilter } = useSimpleMonitorScreenControllerSlices(
+    buildSimpleMonitorScreenControllerSlicesInput({
+      state: controllerState,
+      collections,
+      isListening,
       t,
     }),
   );
 
-  const anomalyFilter = useSimpleMonitorAnomalyFilterState({
-    isConsoleExpanded,
-    onToggleConsole,
-  });
-
-  const hookStateArgs = buildSimpleMonitorScreenHookArgsInput({
-    session,
-    metrics,
-    t,
-    nowMs: Date.now(),
-    trackName,
-    isConsoleExpanded,
-    onToggleConsole,
-    onStop,
-    onRefresh: () => window.location.reload(),
-    onSimulateLog: deckRuntime.simulateLog,
-    onResumeAudio,
-    onReplaySession,
-    isAnomalyFilterActive: anomalyFilter.isAnomalyFilterActive,
-    onToggleAnomalyFilter: anomalyFilter.handleToggleAnomalyFilter,
-    onClearAnomalyFilter: anomalyFilter.handleClearAnomalyFilter,
-    launchState: buildSimpleMonitorLaunchStateSlice(launchState),
-    deckRuntime: buildSimpleMonitorDeckRuntimeSlice(deckRuntime),
-    collections,
-    audioStatus,
-  });
+  const hookStateArgs = useMemo(
+    () =>
+      buildSimpleMonitorScreenHookArgsInput(
+        buildSimpleMonitorScreenControllerHookArgsInput({
+          state: controllerState,
+          t,
+          nowMs: Date.now(),
+          onRefresh: () => window.location.reload(),
+          launchState,
+          deckRuntime,
+          anomalyFilter,
+          collections,
+        }),
+      ),
+    [anomalyFilter, collections, controllerState, deckRuntime, launchState, t],
+  );
 
   return {
     hookStateArgs,

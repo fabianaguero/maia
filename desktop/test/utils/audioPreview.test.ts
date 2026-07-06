@@ -69,6 +69,25 @@ describe("audioPreview", () => {
     expect(createObjectURLMock).toHaveBeenCalled();
   });
 
+  it("maps preview extensions to the expected blob MIME type when HEAD returns a non-ok response", async () => {
+    isTauriMock.mockReturnValue(true);
+    fetchMock.mockResolvedValue({ ok: false });
+    readAudioBytesMock.mockResolvedValue("UklGRg==");
+    createObjectURLMock.mockImplementation((blob: Blob) => `${blob.type}:preview`);
+
+    convertFileSrcMock.mockReturnValue("asset://preview.ogg");
+    await expect(resolvePreviewAudioUrl("/music/preview.ogg")).resolves.toBe("audio/ogg:preview");
+
+    convertFileSrcMock.mockReturnValue("asset://preview.m4a");
+    await expect(resolvePreviewAudioUrl("/music/preview.m4a")).resolves.toBe("audio/mp4:preview");
+
+    convertFileSrcMock.mockReturnValue("asset://preview.aac");
+    await expect(resolvePreviewAudioUrl("/music/preview.aac")).resolves.toBe("audio/aac:preview");
+
+    convertFileSrcMock.mockReturnValue("asset://preview.mp3");
+    await expect(resolvePreviewAudioUrl("/music/preview.mp3")).resolves.toBe("audio/mpeg:preview");
+  });
+
   it("revokes only blob preview URLs", () => {
     revokePreviewAudioUrl("blob:preview");
     revokePreviewAudioUrl("https://cdn.example.com/preview.wav");

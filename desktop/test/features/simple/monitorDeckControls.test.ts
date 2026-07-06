@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  areMonitorDeckControlsEqual,
   DEFAULT_MONITOR_DECK_CONTROLS,
-  loadMonitorDeckControls,
   MONITOR_DECK_PRESETS,
+} from "../../../src/features/simple/monitorDeckControls";
+import {
+  areMonitorDeckControlsEqual,
+  loadMonitorDeckControls,
   resolveActiveMonitorDeckPreset,
   sanitizeMonitorDeckControls,
-} from "../../../src/features/simple/monitorDeckControls";
+} from "../../../src/features/simple/monitorDeckControlsContractRuntime";
 
 describe("monitorDeckControls", () => {
   it("sanitizes deck control values into safe ranges", () => {

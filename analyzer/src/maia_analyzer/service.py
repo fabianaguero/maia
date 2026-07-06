@@ -18,6 +18,26 @@ from .stream import (
 )
 
 
+def analyze_base_asset(
+    source_path: str,
+    category: str | None = None,
+    reusable: bool = True,
+) -> tuple[dict[str, Any], list[str]]:
+    from .future.assets import analyze_base_asset as analyze_base_asset_impl
+
+    return analyze_base_asset_impl(source_path, category=category, reusable=reusable)
+
+
+def analyze_composition(
+    source_kind: str,
+    source_path: str,
+    **kwargs: Any,
+) -> tuple[dict[str, Any], list[str]]:
+    from .future.composition import analyze_composition as analyze_composition_impl
+
+    return analyze_composition_impl(source_kind, source_path, **kwargs)
+
+
 def handle_request(raw: Any) -> dict[str, Any]:
     fallback_request_id = raw.get("requestId", "unknown") if isinstance(raw, dict) else "unknown"
 
@@ -80,11 +100,25 @@ def handle_request(raw: Any) -> dict[str, Any]:
                 payload["source"]["path"],
                 waveform_bins=int(options.get("waveformBins", 24)),
             )
-        elif payload["assetType"] in ("base_asset", "composition_result"):
-            return error_response(
-                request_id,
-                "unsupported_asset_type",
-                f"{payload['assetType']} is disabled in this MVP.",
+        elif payload["assetType"] == "base_asset":
+            asset, warnings = analyze_base_asset(
+                payload["source"]["path"],
+                category=options.get("baseAssetCategory"),
+                reusable=bool(options.get("baseAssetReusable", True)),
+            )
+        elif payload["assetType"] == "composition_result":
+            asset, warnings = analyze_composition(
+                payload["source"]["kind"],
+                payload["source"]["path"],
+                base_asset_category=options.get("baseAssetCategory"),
+                reusable=bool(options.get("baseAssetReusable", True)),
+                entry_count=options.get("compositionBaseAssetEntryCount"),
+                reference_type=options.get("compositionReferenceType"),
+                reference_label=options.get("compositionReferenceLabel"),
+                reference_bpm=options.get("compositionReferenceBpm"),
+                reference_path=options.get("compositionReferencePath"),
+                preview_output_path=options.get("compositionPreviewOutputPath"),
+                options=options,
             )
         else:
             return error_response(

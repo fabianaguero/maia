@@ -3,10 +3,21 @@ import type { PersistedSession } from "./api/sessions";
 import type { ActiveMonitorSession, MonitorMetrics } from "./features/monitor/monitorContextTypes";
 import type { AppSection } from "./features/simple/appSections";
 import type { AppSkin } from "./features/simple/appSkin";
-import type { MonitorLaunchSource } from "./features/simple/monitorSourceOptions";
 import type { MonitorSetupPreferences } from "./features/simple/monitorSetupPreferences";
 import type { UserMode } from "./features/simple/UserModeContext";
 import type { AppV0Language } from "./appV0Preferences";
+import {
+  buildAppV0ConnectionsSectionProps,
+  buildAppV0ProLibrarySectionProps,
+  buildAppV0SetupSectionProps,
+  buildAppV0SimpleLibrarySectionProps,
+  buildAppV0SimpleMonitorSectionProps,
+  type AppV0ConnectionsSectionProps,
+  type AppV0ProLibrarySectionProps,
+  type AppV0SetupSectionProps,
+  type AppV0SimpleLibrarySectionProps,
+  type AppV0SimpleMonitorSectionProps,
+} from "./appV0SectionPropsRuntime";
 import {
   resolveAppV0SectionContentKind,
   type AppV0SectionContentKind,
@@ -19,6 +30,7 @@ import type {
   RepositoryAnalysis,
 } from "./types/library";
 import type { LiveLogStreamUpdate } from "./types/monitor";
+import type { MonitorLaunchSource } from "./types/monitorLaunch";
 
 export interface AppV0SectionFallbackViewModel {
   message: string;
@@ -64,124 +76,47 @@ export interface AppV0SectionContentInput {
   onToggleConsole?: () => void;
 }
 
-export interface AppV0SimpleMonitorSectionProps {
-  skin: AppSkin;
-  session: ActiveMonitorSession | null;
-  metrics: MonitorMetrics;
-  pastSessions: PersistedSession[];
-  repositories: RepositoryAnalysis[];
-  tracks: LibraryTrack[];
-  onStop: () => void;
-  onResumeAudio: () => Promise<void> | void;
-  audioStatus: AudioContextState;
-  audioContext: AudioContext | null;
-  trackName?: string;
-  waveformBins?: number[];
-  onStartMonitoring: (source: MonitorLaunchSource, trackId?: string) => void | Promise<void>;
-  onReplaySession: (sessionId: string, sourcePath: string, repoTitle: string) => void;
-  subscribe: (listener: (update: LiveLogStreamUpdate) => void) => () => void;
-  liveSettings: MonitorSetupPreferences;
-  isConsoleExpanded: boolean;
-  onToggleConsole?: () => void;
-}
-
-export interface AppV0SimpleLibrarySectionProps {
-  tracks: LibraryTrack[];
-  repositories: RepositoryAnalysis[];
-  baseAssets: BaseAssetRecord[];
-  selectedRepositoryId: string | null;
-  onSelectRepository: (id: string | null) => void;
-  onImportRepository: (input: ImportRepositoryInput) => Promise<boolean>;
-  onImportBaseAsset: (input: ImportBaseAssetInput) => Promise<boolean>;
-  selectedTrackId: string | null;
-  onSelectTrack: (id: string | null) => void;
-  onStartMonitoring: (repoId: string) => Promise<void>;
-}
-
-export interface AppV0SetupSectionProps {
-  lang: AppV0Language;
-  onChangeLanguage: (lang: AppV0Language) => void;
-  skin: AppSkin;
-  onChangeSkin: (skin: AppSkin) => void;
-  setupPreferences: MonitorSetupPreferences;
-  onUpdateSetupPreference: <K extends keyof MonitorSetupPreferences>(
-    key: K,
-    value: MonitorSetupPreferences[K],
-  ) => void;
-}
-
 export interface AppV0SectionRenderModel {
   kind: AppV0SectionContentKind;
   simpleMonitorProps: AppV0SimpleMonitorSectionProps;
   simpleLibraryProps: AppV0SimpleLibrarySectionProps;
-  proLibraryProps: {
-    tracks: LibraryTrack[];
-    repositories: RepositoryAnalysis[];
-    baseAssets: BaseAssetRecord[];
-  };
-  connectionsProps: {
-    defaultCloudLookback: string;
-  };
+  proLibraryProps: AppV0ProLibrarySectionProps;
+  connectionsProps: AppV0ConnectionsSectionProps;
   setupProps: AppV0SetupSectionProps;
   fallbackViewModel: AppV0SectionFallbackViewModel;
+}
+
+export interface AppV0SectionPropsBundle {
+  simpleMonitorProps: AppV0SimpleMonitorSectionProps;
+  simpleLibraryProps: AppV0SimpleLibrarySectionProps;
+  proLibraryProps: AppV0ProLibrarySectionProps;
+  connectionsProps: AppV0ConnectionsSectionProps;
+  setupProps: AppV0SetupSectionProps;
+}
+
+export function buildAppV0SectionPropsBundle(
+  input: AppV0SectionContentInput,
+): AppV0SectionPropsBundle {
+  return {
+    simpleMonitorProps: buildAppV0SimpleMonitorSectionProps(input),
+    simpleLibraryProps: buildAppV0SimpleLibrarySectionProps(input),
+    proLibraryProps: buildAppV0ProLibrarySectionProps(input),
+    connectionsProps: buildAppV0ConnectionsSectionProps(input),
+    setupProps: buildAppV0SetupSectionProps(input),
+  };
 }
 
 export function buildAppV0SectionRenderModel(
   input: AppV0SectionContentInput,
 ): AppV0SectionRenderModel {
+  const propsBundle = buildAppV0SectionPropsBundle(input);
+
   return {
     kind: resolveAppV0SectionContentKind({
       currentSection: input.currentSection,
       userMode: input.userMode,
     }),
-    simpleMonitorProps: {
-      skin: input.skin,
-      session: input.monitorSession,
-      metrics: input.monitorMetrics,
-      pastSessions: input.pastSessions,
-      repositories: input.repositories,
-      tracks: input.tracks,
-      onStop: input.onStopMonitor,
-      onResumeAudio: input.onResumeAudio,
-      audioStatus: input.audioStatus,
-      audioContext: input.audioContext,
-      trackName: input.monitorTrackName,
-      waveformBins: input.waveformBins,
-      onStartMonitoring: input.onStartMonitoring,
-      onReplaySession: input.onReplaySession,
-      subscribe: input.subscribe,
-      liveSettings: input.setupPreferences,
-      isConsoleExpanded: input.isConsoleExpanded,
-      onToggleConsole: input.onToggleConsole,
-    },
-    simpleLibraryProps: {
-      tracks: input.tracks,
-      repositories: input.repositories,
-      baseAssets: input.baseAssets,
-      selectedRepositoryId: input.selectedRepositoryId,
-      onSelectRepository: input.onSelectRepository,
-      onImportRepository: input.onImportRepository,
-      onImportBaseAsset: input.onImportBaseAsset,
-      selectedTrackId: input.selectedTrackId,
-      onSelectTrack: input.onSelectTrack,
-      onStartMonitoring: input.onStartLibraryMonitoring,
-    },
-    proLibraryProps: {
-      tracks: input.tracks,
-      repositories: input.repositories,
-      baseAssets: input.baseAssets,
-    },
-    connectionsProps: {
-      defaultCloudLookback: input.setupPreferences.defaultCloudLookback,
-    },
-    setupProps: {
-      lang: input.lang,
-      onChangeLanguage: input.onChangeLanguage,
-      skin: input.skin,
-      onChangeSkin: input.onChangeSkin,
-      setupPreferences: input.setupPreferences,
-      onUpdateSetupPreference: input.onUpdateSetupPreference,
-    },
+    ...propsBundle,
     fallbackViewModel: input.fallbackViewModel,
   };
 }

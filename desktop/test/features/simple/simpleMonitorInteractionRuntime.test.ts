@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { MonitorLogLine } from "../../../src/features/simple/monitorLogParsing";
-import type { MonitorLaunchSource } from "../../../src/features/simple/monitorSourceOptions";
+import type { MonitorLaunchSource } from "../../../src/types/monitorLaunch";
 import {
   buildMonitorTailSyncPlan,
   canStartSimpleMonitorRequest,
@@ -41,6 +41,7 @@ const liveLines: MonitorLogLine[] = [
 describe("simpleMonitorInteractionRuntime", () => {
   it("recognizes when the live tail should stay pinned", () => {
     expect(shouldPinMonitorTail(4)).toBe(true);
+    expect(shouldPinMonitorTail(8)).toBe(true);
     expect(shouldPinMonitorTail(14)).toBe(false);
   });
 
@@ -77,6 +78,17 @@ describe("simpleMonitorInteractionRuntime", () => {
     ).toEqual({ type: "pin" });
   });
 
+  it("returns none when there is no focus request and the tail is no longer pinned", () => {
+    expect(
+      buildMonitorTailSyncPlan({
+        liveLines,
+        selectedAnomalyId: null,
+        shouldFocusSelectedLog: false,
+        isTailPinned: false,
+      }),
+    ).toEqual({ type: "none" });
+  });
+
   it("validates whether a simple monitor request can start", () => {
     expect(
       canStartSimpleMonitorRequest({
@@ -89,6 +101,13 @@ describe("simpleMonitorInteractionRuntime", () => {
       canStartSimpleMonitorRequest({
         selectedSourceOption: null,
         selectedSoundId: "track-1",
+        canStartSelectedSource: true,
+      }),
+    ).toBe(false);
+    expect(
+      canStartSimpleMonitorRequest({
+        selectedSourceOption: cloudSource,
+        selectedSoundId: "",
         canStartSelectedSource: true,
       }),
     ).toBe(false);
@@ -141,5 +160,31 @@ describe("simpleMonitorInteractionRuntime", () => {
     expect(didStart).toBe(false);
     expect(setLaunchingImmediate).toHaveBeenCalledTimes(1);
     expect(resetLaunchingOnFailure).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns early without side effects when the start request is not valid", async () => {
+    const setLaunchingImmediate = vi.fn();
+    const waitForNextFrame = vi.fn(async () => undefined);
+    const resumeAudio = vi.fn(async () => undefined);
+    const startMonitoring = vi.fn(async () => undefined);
+    const resetLaunchingOnFailure = vi.fn();
+
+    const didStart = await executeSimpleMonitorStartRequest({
+      selectedSourceOption: null,
+      selectedSoundId: "track-1",
+      canStartSelectedSource: true,
+      setLaunchingImmediate,
+      waitForNextFrame,
+      resumeAudio,
+      startMonitoring,
+      resetLaunchingOnFailure,
+    });
+
+    expect(didStart).toBe(false);
+    expect(setLaunchingImmediate).not.toHaveBeenCalled();
+    expect(waitForNextFrame).not.toHaveBeenCalled();
+    expect(resumeAudio).not.toHaveBeenCalled();
+    expect(startMonitoring).not.toHaveBeenCalled();
+    expect(resetLaunchingOnFailure).not.toHaveBeenCalled();
   });
 });

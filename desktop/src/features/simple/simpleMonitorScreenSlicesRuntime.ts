@@ -1,12 +1,66 @@
-import type { useSimpleMonitorDeckRuntime } from "./useSimpleMonitorDeckRuntime";
-import type { useSimpleMonitorLaunchState } from "./useSimpleMonitorLaunchState";
+import type { Dispatch, SetStateAction, UIEvent as ReactUIEvent } from "react";
+import type { MonitorLaunchSource } from "../../types/monitorLaunch";
+import type { MonitorSourceFilter } from "./monitorSourceOptions";
+import type { MonitorLogLine } from "./monitorLogParsing";
+import type { BuildSimpleMonitorDeckHookStateArgs } from "./simpleMonitorDeckHookStateRuntime";
 
-type LaunchStateSlice = ReturnType<typeof useSimpleMonitorLaunchState>;
-type DeckRuntimeSlice = ReturnType<typeof useSimpleMonitorDeckRuntime>;
+export interface SimpleMonitorLaunchStateSlice {
+  selectedSoundId: string;
+  setSelectedSoundId: Dispatch<SetStateAction<string>>;
+  filteredMonitorSourceOptions: MonitorLaunchSource[];
+  selectedSourceOption: MonitorLaunchSource | null;
+  canStartSelectedSource: boolean;
+  sourceEmptyMessage: string;
+  startHint: string;
+  selectedSourceId: string;
+  setSelectedSourceId: Dispatch<SetStateAction<string>>;
+  sourceFilter: MonitorSourceFilter;
+  setSourceFilter: Dispatch<SetStateAction<MonitorSourceFilter>>;
+  isLaunchingMonitor: boolean;
+  handleStartMonitoringRequest: () => Promise<void>;
+}
+
+export interface SimpleMonitorDeckRuntimeSlice {
+  activeTrack: BuildSimpleMonitorDeckHookStateArgs["activeTrack"];
+  previewTrackId: string | null;
+  toggleTrackPreview: BuildSimpleMonitorDeckHookStateArgs["toggleTrackPreview"];
+  deckPresetLabel: string;
+  streamAdapterLabel: string;
+  isMonitorActive: boolean;
+  liveLines: MonitorLogLine[];
+  selectedAnomalyId: string | null;
+  simulateLog: () => void;
+  terminalLinesRef: BuildSimpleMonitorDeckHookStateArgs["terminalLinesRef"];
+  onTerminalScroll: (event: ReactUIEvent<HTMLDivElement>) => void;
+  registerLineRef: BuildSimpleMonitorDeckHookStateArgs["registerLineRef"];
+  focusAnomaly: BuildSimpleMonitorDeckHookStateArgs["focusAnomaly"];
+  deckBpm: number | null;
+  trackElapsedSeconds: number;
+  deckDurationSeconds: number | null;
+  overviewCanvasRef: BuildSimpleMonitorDeckHookStateArgs["overviewCanvasRef"];
+  waveformCanvasRef: BuildSimpleMonitorDeckHookStateArgs["waveformCanvasRef"];
+  waveformStageRef: BuildSimpleMonitorDeckHookStateArgs["waveformStageRef"];
+  anomalyBurstRegions: BuildSimpleMonitorDeckHookStateArgs["anomalyBurstRegions"];
+  selectedBurstRegion: BuildSimpleMonitorDeckHookStateArgs["selectedBurstRegion"];
+  overviewAnomalyMarkers: BuildSimpleMonitorDeckHookStateArgs["overviewAnomalyMarkers"];
+  overviewWindowLeftPercent: number;
+  overviewWindowWidthPercent: number;
+  overviewPlayheadLeftPercent: number;
+  handleOverviewPointerDown: BuildSimpleMonitorDeckHookStateArgs["handleOverviewPointerDown"];
+  handleOverviewClick: BuildSimpleMonitorDeckHookStateArgs["handleOverviewClick"];
+  handleOverviewAnomalyClick: BuildSimpleMonitorDeckHookStateArgs["handleOverviewAnomalyClick"];
+  handleOverviewAnomalyPointerDown: BuildSimpleMonitorDeckHookStateArgs["handleOverviewAnomalyPointerDown"];
+  selectedDeckMarker: BuildSimpleMonitorDeckHookStateArgs["selectedDeckMarker"];
+  deckTimelineMarkers: BuildSimpleMonitorDeckHookStateArgs["deckTimelineMarkers"];
+  deckBeatMarkers: BuildSimpleMonitorDeckHookStateArgs["deckBeatMarkers"];
+  handleStagePointerDown: BuildSimpleMonitorDeckHookStateArgs["handleStagePointerDown"];
+  handleStageClick: BuildSimpleMonitorDeckHookStateArgs["handleStageClick"];
+  waveformScale: number;
+}
 
 export function buildSimpleMonitorLaunchStateSlice(
-  launchState: LaunchStateSlice,
-): LaunchStateSlice {
+  launchState: SimpleMonitorLaunchStateSlice,
+): SimpleMonitorLaunchStateSlice {
   return {
     selectedSoundId: launchState.selectedSoundId,
     setSelectedSoundId: launchState.setSelectedSoundId,
@@ -25,8 +79,8 @@ export function buildSimpleMonitorLaunchStateSlice(
 }
 
 export function buildSimpleMonitorDeckRuntimeSlice(
-  deckRuntime: DeckRuntimeSlice,
-): DeckRuntimeSlice {
+  deckRuntime: SimpleMonitorDeckRuntimeSlice,
+): SimpleMonitorDeckRuntimeSlice {
   return {
     activeTrack: deckRuntime.activeTrack,
     previewTrackId: deckRuntime.previewTrackId,

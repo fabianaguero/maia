@@ -2,12 +2,15 @@ import type { CSSProperties } from "react";
 
 import { useT } from "../../../i18n/I18nContext";
 import type { BeatGridPoint } from "../../../types/library";
-import { nudgeTrackSecond } from "../../../utils/track";
 import type {
   DragTarget,
   RenderedCueMarker,
   WaveformEditableCuePoint,
 } from "./waveformPlaceholderRuntime";
+import {
+  buildWaveformCueOverlayMarkers,
+  resolveWaveformCueOverlayNudgeSecond,
+} from "./waveformCueOverlayRuntime";
 
 interface WaveformCueOverlayProps {
   renderedCueMarkers: RenderedCueMarker[];
@@ -37,24 +40,26 @@ export function WaveformCueOverlay({
   consumeDraggedClick,
 }: WaveformCueOverlayProps) {
   const t = useT();
+  const markers = buildWaveformCueOverlayMarkers({
+    renderedCueMarkers,
+    dragTarget,
+    durationSeconds,
+    onSeek,
+    t,
+  });
 
   return (
     <div className="hot-cue-overlay" aria-label={t.inspect.anomalyMarkersAria}>
-      {renderedCueMarkers.map((cue) => {
-        const position =
-          durationSeconds && durationSeconds > 0
-            ? Math.min(100, (cue.second / durationSeconds) * 100)
-            : 0;
-
+      {markers.map((cue) => {
         return (
           <button
             key={cue.key}
             type="button"
-            className={`hot-cue-marker ${cue.type.toLowerCase()}${dragTarget?.type === "cue" && dragTarget.cue.id === cue.key ? " is-dragging" : ""}`}
-            style={{ "--cue-position": `${position}%` } as CSSProperties}
-            title={cue.excerpt ? `${cue.label}: ${cue.excerpt}` : cue.label}
-            aria-label={t.inspect.seekToCue.replace("{label}", cue.label)}
-            disabled={!onSeek}
+            className={`hot-cue-marker ${cue.typeClassName}${cue.dragging ? " is-dragging" : ""}`}
+            style={{ "--cue-position": `${cue.position}%` } as CSSProperties}
+            title={cue.title}
+            aria-label={cue.ariaLabel}
+            disabled={cue.disabled}
             onMouseDown={(event) => {
               if (!canEditPerformance || !cue.interactiveCue) {
                 return;
@@ -87,7 +92,9 @@ export function WaveformCueOverlay({
               event.stopPropagation();
 
               const direction = event.key === "ArrowLeft" ? -1 : 1;
-              const nextSecond = nudgeTrackSecond(cue.second, direction, {
+              const nextSecond = resolveWaveformCueOverlayNudgeSecond({
+                cueSecond: cue.second,
+                direction,
                 durationSeconds,
                 beatGrid,
                 coarse: event.shiftKey,

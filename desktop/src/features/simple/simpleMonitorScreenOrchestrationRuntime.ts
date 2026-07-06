@@ -1,20 +1,19 @@
-import type { AppTranslations } from "../../i18n/en";
+import type { AppTranslations } from "../../i18n/types";
 import type { ActiveMonitorSession, MonitorMetrics } from "../monitor/monitorContextTypes";
 import type { LibraryTrack, RepositoryAnalysis } from "../../types/library";
 import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { AppSkin } from "./appSkin";
 import type { MonitorSetupPreferences } from "./monitorSetupPreferences";
-import type { MonitorLaunchSource } from "./monitorSourceOptions";
-import type { useSimpleMonitorDeckRuntime } from "./useSimpleMonitorDeckRuntime";
-import type { useSimpleMonitorLaunchState } from "./useSimpleMonitorLaunchState";
+import type { MonitorLaunchSource } from "../../types/monitorLaunch";
 import type { UseSimpleMonitorDeckRuntimeInput } from "./simpleMonitorDeckRuntimeTypes";
 import type { UseSimpleMonitorLaunchStateInput } from "./useSimpleMonitorLaunchState";
 import type { SimpleMonitorCollectionsState } from "./simpleMonitorScreenStateRuntime";
 import type { BuildSimpleMonitorScreenHookStateArgs } from "./simpleMonitorScreenRuntime";
 import { buildSimpleMonitorScreenHookStateArgs } from "./simpleMonitorScreenStateRuntime";
-
-type LaunchStateSlice = ReturnType<typeof useSimpleMonitorLaunchState>;
-type DeckRuntimeSlice = ReturnType<typeof useSimpleMonitorDeckRuntime>;
+import type {
+  SimpleMonitorDeckRuntimeSlice,
+  SimpleMonitorLaunchStateSlice,
+} from "./simpleMonitorScreenSlicesRuntime";
 
 export function buildSimpleMonitorLaunchStateInput(input: {
   repositories: RepositoryAnalysis[];
@@ -80,8 +79,8 @@ export function buildSimpleMonitorScreenHookArgsInput(input: {
   isAnomalyFilterActive: boolean;
   onToggleAnomalyFilter: () => void;
   onClearAnomalyFilter: () => void;
-  launchState: LaunchStateSlice;
-  deckRuntime: DeckRuntimeSlice;
+  launchState: SimpleMonitorLaunchStateSlice;
+  deckRuntime: SimpleMonitorDeckRuntimeSlice;
   collections: SimpleMonitorCollectionsState;
   audioStatus: AudioContextState;
 }): BuildSimpleMonitorScreenHookStateArgs {

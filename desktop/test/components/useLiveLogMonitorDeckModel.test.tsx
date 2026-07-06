@@ -3,49 +3,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useLiveLogMonitorDeckModel } from "../../src/features/analyzer/components/useLiveLogMonitorDeckModel";
 
-const buildLiveLogMonitorPanelViewModel = vi.fn();
-const buildLiveLogMonitorDeckSectionContent = vi.fn(() => "active-deck");
-const buildLiveLogMonitorScenePanel = vi.fn(() => "scene-panel");
-const buildLiveLogMonitorRoutingPanel = vi.fn(() => "routing-panel");
-const buildLiveLogMonitorLiveDeckProps = vi.fn(() => ({ panel: "deck-props" }));
-
-vi.mock("../../src/features/analyzer/components/liveLogMonitorPanelViewModel", () => ({
-  buildLiveLogMonitorPanelViewModel: (...args: unknown[]) =>
-    buildLiveLogMonitorPanelViewModel(...args),
+const buildLiveLogMonitorDeckModelState = vi.fn(() => ({
+  deckStatusLabel: "status",
+  ctaMetaLabel: "cta-meta",
+  basePlaylistEditorItems: ["editor"],
+  liveDeckProps: { panel: "deck-props" },
 }));
+const applyLiveLogMonitorComponentOverride = vi.fn();
 
-vi.mock("../../src/features/analyzer/components/liveLogMonitorDeckPropsViewModel", () => ({
-  buildLiveLogMonitorDeckSectionContent: (...args: unknown[]) =>
-    buildLiveLogMonitorDeckSectionContent(...args),
-  buildLiveLogMonitorScenePanel: (...args: unknown[]) => buildLiveLogMonitorScenePanel(...args),
-  buildLiveLogMonitorRoutingPanel: (...args: unknown[]) => buildLiveLogMonitorRoutingPanel(...args),
-  buildLiveLogMonitorLiveDeckProps: (...args: unknown[]) =>
-    buildLiveLogMonitorLiveDeckProps(...args),
+vi.mock("../../src/features/analyzer/components/liveLogMonitorDeckModelRuntime", () => ({
+  buildLiveLogMonitorDeckModelState: (...args: unknown[]) =>
+    buildLiveLogMonitorDeckModelState(...args),
+  applyLiveLogMonitorComponentOverride: (...args: unknown[]) =>
+    applyLiveLogMonitorComponentOverride(...args),
 }));
 
 describe("useLiveLogMonitorDeckModel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    buildLiveLogMonitorPanelViewModel.mockReturnValue({
-      anomalySourceRows: ["row-a"],
-      waveAnomalyMarkers: ["marker-a"],
-      liveSourceLabel: "source-label",
-      recentSyncTailRows: ["tail-a"],
-      deckStatusLabel: "status",
-      audioBadgeLabel: "audio",
-      audioBadgeTone: "ok",
-      bounceAction: "bounce",
-      sessionCardDisplay: { title: "session" },
-      metricGridItems: ["metric"],
-      playlistSummaryItems: ["playlist"],
-      basePlaylistEditorItems: ["editor"],
-      basePlaylistTrackOptions: ["track-option"],
-      savedPlaylistOptions: ["saved-option"],
-      nowPlayingSummary: "now",
-      upNextSummary: "next",
-      windowMetricGridItems: ["window-metric"],
-      ctaMetaLabel: "cta-meta",
-    });
   });
 
   it("assembles deck view state and forwards derived content into live deck props", () => {
@@ -156,20 +131,15 @@ describe("useLiveLogMonitorDeckModel", () => {
       }),
     );
 
-    expect(buildLiveLogMonitorPanelViewModel).toHaveBeenCalledWith(
+    expect(buildLiveLogMonitorDeckModelState).toHaveBeenCalledWith(
       expect.objectContaining({
-        bounceWindowCount: 7,
-        repositorySourcePath: "/logs/app.log",
-      }),
-    );
-    expect(buildLiveLogMonitorDeckSectionContent).toHaveBeenCalled();
-    expect(buildLiveLogMonitorScenePanel).toHaveBeenCalled();
-    expect(buildLiveLogMonitorRoutingPanel).toHaveBeenCalled();
-    expect(buildLiveLogMonitorLiveDeckProps).toHaveBeenCalledWith(
-      expect.objectContaining({
-        activeDeckContent: "active-deck",
-        scenePanel: "scene-panel",
-        routingPanel: "routing-panel",
+        deckInput: expect.objectContaining({
+          bounceWindowCount: 7,
+          repository: expect.objectContaining({
+            sourcePath: "/logs/app.log",
+          }),
+        }),
+        onOverrideChange: expect.any(Function),
       }),
     );
     expect(result.current.deckStatusLabel).toBe("status");

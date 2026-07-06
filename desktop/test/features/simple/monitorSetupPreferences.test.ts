@@ -1,15 +1,17 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  buildMonitorSetupPreferenceFieldViewModels,
-  buildMonitorSetupPreferenceGroups,
   DEFAULT_MONITOR_SETUP_PREFERENCES,
-  formatMonitorSetupIdleHold,
-  formatMonitorSetupTailRows,
   loadMonitorSetupPreferences,
   sanitizeMonitorSetupPreferenceValue,
   sanitizeMonitorSetupPreferences,
 } from "../../../src/features/simple/monitorSetupPreferences";
+import {
+  buildMonitorSetupPreferenceFieldViewModels,
+  buildMonitorSetupPreferenceGroups,
+  formatMonitorSetupIdleHold,
+  formatMonitorSetupTailRows,
+} from "../../../src/features/simple/monitorSetupPreferenceViewModelRuntime";
 import { en } from "../../../src/i18n/en";
 
 describe("monitorSetupPreferences", () => {

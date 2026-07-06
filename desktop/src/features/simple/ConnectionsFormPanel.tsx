@@ -1,6 +1,8 @@
-import { Cable, FolderOpen, Globe, ScrollText, X } from "lucide-react";
-
 import { useT } from "../../i18n/I18nContext";
+import { ConnectionsCloudFields } from "./ConnectionsCloudFields";
+import { ConnectionsFileFields } from "./ConnectionsFileFields";
+import { ConnectionsFormActions } from "./ConnectionsFormActions";
+import { ConnectionsKindSelector } from "./ConnectionsKindSelector";
 import {
   buildConnectionsFormViewModel,
   type ConnectionDraft,
@@ -49,90 +51,24 @@ export function ConnectionsFormPanel({
         <p className="support-copy">{viewModel.help}</p>
       </div>
 
-      <div
-        className="source-card-grid"
-        role="tablist"
-        aria-label={t.simpleMode.connections.connectionKindAria}
-      >
-        {viewModel.kindOptions.map((option) => (
-          <button
-            key={option.id}
-            type="button"
-            className={`source-card ${option.isActive ? "active" : ""}`}
-            onClick={() => onKindChange(option.id)}
-          >
-            <div className="source-card-icon">
-              {option.id === "file_log" ? <ScrollText size={24} /> : <Globe size={24} />}
-            </div>
-            <div className="source-card-content">
-              <strong>{option.label}</strong>
-              <p>{option.description}</p>
-            </div>
-          </button>
-        ))}
-      </div>
+      <ConnectionsKindSelector
+        ariaLabel={t.simpleMode.connections.connectionKindAria}
+        options={viewModel.kindOptions}
+        onKindChange={onKindChange}
+      />
 
       <div className="form-fields-section">
         {viewModel.isFileLog ? (
-          <label className="field maia-field">
-            <span className="field-label">{t.simpleMode.connections.logFilePath}</span>
-            <div className="field-input-wrapper">
-              <input
-                value={draft.sourcePath}
-                className="maia-input"
-                onChange={(event) => onDraftChange({ sourcePath: event.target.value })}
-                placeholder={t.simpleMode.connections.filePathPlaceholder}
-              />
-              <button
-                type="button"
-                className="input-inline-action"
-                disabled={saving || pickerBusy}
-                onClick={() => void onBrowseFile()}
-              >
-                {pickerBusy ? t.simpleMode.connections.loading : <FolderOpen size={16} />}
-              </button>
-            </div>
-          </label>
+          <ConnectionsFileFields
+            draft={draft}
+            saving={saving}
+            pickerBusy={pickerBusy}
+            t={t}
+            onDraftChange={onDraftChange}
+            onBrowseFile={onBrowseFile}
+          />
         ) : (
-          <>
-            <label className="field maia-field">
-              <span className="field-label">{t.simpleMode.connections.gcpProjectId}</span>
-              <input
-                value={draft.gcpProjectId}
-                className="maia-input"
-                onChange={(event) => onDraftChange({ gcpProjectId: event.target.value })}
-                placeholder={t.simpleMode.connections.projectPlaceholder}
-              />
-            </label>
-            <label className="field maia-field">
-              <span className="field-label">{t.simpleMode.connections.cloudRunService}</span>
-              <input
-                value={draft.gcpServiceName}
-                className="maia-input"
-                onChange={(event) => onDraftChange({ gcpServiceName: event.target.value })}
-                placeholder={t.simpleMode.connections.servicePlaceholder}
-              />
-            </label>
-            <label className="field maia-field">
-              <span className="field-label">{t.simpleMode.connections.regionOptional}</span>
-              <input
-                value={draft.gcpRegion}
-                className="maia-input"
-                onChange={(event) => onDraftChange({ gcpRegion: event.target.value })}
-                placeholder={t.simpleMode.connections.regionPlaceholder}
-              />
-            </label>
-            <label className="field maia-field">
-              <span className="field-label">{t.simpleMode.connections.streamLookback}</span>
-              <input
-                value={draft.gcpBackfillFreshness}
-                className="maia-input"
-                onChange={(event) => onDraftChange({ gcpBackfillFreshness: event.target.value })}
-                placeholder={t.simpleMode.connections.lookbackPlaceholder}
-              />
-              <span className="support-copy">{t.simpleMode.connections.streamLookbackHelp}</span>
-            </label>
-          </>
+          <ConnectionsCloudFields draft={draft} t={t} onDraftChange={onDraftChange} />
         )}
 
         <label className="field maia-field">
@@ -152,28 +88,15 @@ export function ConnectionsFormPanel({
         </div>
       ) : null}
 
-      <div className="form-actions-footer">
-        <button
-          type="button"
-          className="action primary-launch-btn"
-          disabled={saving || loading}
-          onClick={() => void onSaveConnection()}
-        >
-          <Cable size={16} />
-          {` ${viewModel.primaryActionLabel}`}
-        </button>
-        {editingConnectionId ? (
-          <button
-            type="button"
-            className="card-action-btn"
-            disabled={saving}
-            onClick={onCancelEdit}
-          >
-            <X size={14} />
-            {t.simpleMode.connections.cancel}
-          </button>
-        ) : null}
-      </div>
+      <ConnectionsFormActions
+        primaryActionLabel={viewModel.primaryActionLabel}
+        cancelLabel={t.simpleMode.connections.cancel}
+        canCancel={editingConnectionId !== null}
+        saving={saving}
+        loading={loading}
+        onSaveConnection={onSaveConnection}
+        onCancelEdit={onCancelEdit}
+      />
     </section>
   );
 }

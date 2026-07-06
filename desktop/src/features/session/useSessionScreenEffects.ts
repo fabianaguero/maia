@@ -2,6 +2,12 @@ import { useEffect, type MutableRefObject } from "react";
 
 import { listSessionEvents, type SessionEvent } from "../../api/sessions";
 import type { LiveLogStreamUpdate } from "../../types/monitor";
+import {
+  cleanupSessionBedAudio,
+  ensureSessionBedAudio,
+  loadSessionScreenEvents,
+  syncSessionBedAudio,
+} from "./sessionScreenEffectsRuntime";
 
 interface UseSessionScreenEffectsInput {
   monitorSessionId: string | null;
@@ -33,18 +39,9 @@ export function useSessionScreenEffects({
   }, [setLatestUpdate, subscribeToMonitor]);
 
   useEffect(() => {
-    if (!selectedSessionIdForEvents) {
-      setSelectedSessionEvents([]);
-      return;
-    }
-
     const loadEvents = async () => {
-      try {
-        const events = await listSessionEvents(selectedSessionIdForEvents);
-        setSelectedSessionEvents(events);
-      } catch {
-        setSelectedSessionEvents([]);
-      }
+      const events = await loadSessionScreenEvents(selectedSessionIdForEvents, listSessionEvents);
+      setSelectedSessionEvents(events);
     };
 
     void loadEvents();
@@ -52,12 +49,7 @@ export function useSessionScreenEffects({
 
   useEffect(() => {
     return () => {
-      const audio = boothBedAudioRef.current;
-      if (!audio) {
-        return;
-      }
-      audio.pause();
-      audio.src = "";
+      cleanupSessionBedAudio(boothBedAudioRef);
     };
   }, [boothBedAudioRef]);
 
@@ -66,28 +58,7 @@ export function useSessionScreenEffects({
       return;
     }
 
-    let audio = boothBedAudioRef.current;
-    if (!audio) {
-      audio = new Audio();
-      audio.loop = true;
-      audio.preload = "auto";
-      audio.volume = 0.2;
-      boothBedAudioRef.current = audio;
-    }
-
-    if (!activeBedUrl) {
-      audio.pause();
-      audio.currentTime = 0;
-      audio.src = "";
-      return;
-    }
-
-    if (audio.src !== activeBedUrl) {
-      audio.pause();
-      audio.src = activeBedUrl;
-      audio.currentTime = 0;
-    }
-
-    void audio.play().catch(() => {});
+    const audio = ensureSessionBedAudio(boothBedAudioRef, () => new Audio());
+    void syncSessionBedAudio(audio, activeBedUrl);
   }, [activeBedUrl, boothBedAudioRef]);
 }

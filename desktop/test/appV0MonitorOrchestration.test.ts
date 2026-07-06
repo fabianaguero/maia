@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { LibraryTrack, RepositoryAnalysis } from "../src/types/library";
-import type { MonitorLaunchSource } from "../src/features/simple/monitorSourceOptions";
+import type { MonitorLaunchSource } from "../src/types/monitorLaunch";
 import { createAppV0MonitorOrchestrator } from "../src/appV0MonitorOrchestration";
 
 const track: LibraryTrack = {
@@ -220,5 +220,90 @@ describe("appV0MonitorOrchestration", () => {
     expect(result).toEqual({ ok: false, reason: "missing-repository" });
     expect(setGuideTrack).not.toHaveBeenCalled();
     expect(resumeAudio).not.toHaveBeenCalled();
+  });
+
+  it("surfaces missing-track launches without executing runtime deps", async () => {
+    const setGuideTrack = vi.fn();
+    const resumeAudio = vi.fn();
+    const orchestrator = createAppV0MonitorOrchestrator({
+      repositories: [repo],
+      tracks: [],
+      selectedTrack: null,
+      createSessionId: () => "session-no-track",
+      setGuideTrack,
+      resumeAudio,
+      startConnection: vi.fn(),
+      attachSession: vi.fn(),
+      startSession: vi.fn(),
+      playbackSession: vi.fn(),
+    });
+
+    const result = await orchestrator.startLibraryMonitoring("repo-1");
+
+    expect(result).toEqual({ ok: false, reason: "missing-track" });
+    expect(setGuideTrack).not.toHaveBeenCalled();
+    expect(resumeAudio).not.toHaveBeenCalled();
+  });
+
+  it("surfaces attach failures for connection launches", async () => {
+    const orchestrator = createAppV0MonitorOrchestrator({
+      repositories: [repo],
+      tracks: [track],
+      selectedTrack: track,
+      createSessionId: () => "session-attach-fail",
+      setGuideTrack: vi.fn(),
+      resumeAudio: vi.fn(async () => undefined),
+      startConnection: vi.fn(async ({ sessionId }) => ({
+        sessionId,
+        adapterKind: "process",
+        source: "gcp-cloud-run://project/service",
+        label: "services",
+        createdAt: "2026-01-01T00:00:00Z",
+        lastPolledAt: null,
+        totalPolls: 0,
+        fileCursor: null,
+      })),
+      attachSession: vi.fn(async () => false),
+      startSession: vi.fn(async () => true),
+      playbackSession: vi.fn(),
+      onLaunchSuccess: vi.fn(),
+    });
+
+    const source: MonitorLaunchSource = {
+      id: "connection:cloud-2",
+      title: "services",
+      sourcePath: "gcp-cloud-run://project/service",
+      sourceType: "cloud",
+      sourceTypeLabel: "Cloud",
+      startable: true,
+      origin: "connection",
+      connectionId: "cloud-2",
+    };
+
+    const result = await orchestrator.startSourceMonitoring(source, "track-1");
+
+    expect(result).toEqual({ ok: false, reason: "attach-failed" });
+  });
+
+  it("surfaces start failures for repository launches", async () => {
+    const onLaunchSuccess = vi.fn();
+    const orchestrator = createAppV0MonitorOrchestrator({
+      repositories: [repo],
+      tracks: [track],
+      selectedTrack: track,
+      createSessionId: () => "session-start-fail",
+      setGuideTrack: vi.fn(),
+      resumeAudio: vi.fn(async () => undefined),
+      startConnection: vi.fn(),
+      attachSession: vi.fn(async () => true),
+      startSession: vi.fn(async () => false),
+      playbackSession: vi.fn(),
+      onLaunchSuccess,
+    });
+
+    const result = await orchestrator.startLibraryMonitoring("repo-1");
+
+    expect(result).toEqual({ ok: false, reason: "start-failed" });
+    expect(onLaunchSuccess).not.toHaveBeenCalled();
   });
 });

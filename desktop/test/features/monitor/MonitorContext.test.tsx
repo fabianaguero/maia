@@ -401,4 +401,105 @@ describe("MonitorProvider", () => {
     expect(latestMonitor!.isPlayback).toBe(false);
     expect(latestMonitor!.session).toBeNull();
   });
+
+  it("supports the full provider monitor flow across live, attached and replay sessions", async () => {
+    renderProvider();
+    const listener = vi.fn();
+    latestMonitor!.subscribe(listener);
+
+    await act(async () => {
+      const ok = await latestMonitor!.startSession(
+        createRepository(),
+        {
+          sessionId: "flow-live-1",
+          adapterKind: "file",
+          source: "/logs/flow-live.log",
+          trackId: "track-1",
+          trackTitle: "Flow Pulse",
+          sourceTemplateId: "house-file-tail",
+        },
+        "persisted-flow-live",
+      );
+      expect(ok).toBe(true);
+    });
+
+    expect(latestMonitor!.session?.sessionId).toBe("flow-live-1");
+    expect(latestMonitor!.session?.repoTitle).toBe("visits-service");
+    expect(latestMonitor!.metrics.totalAnomalies).toBe(1);
+    expect(sessionsMock.updatePersistedSessionStatus).toHaveBeenCalledWith(
+      "persisted-flow-live",
+      "active",
+    );
+
+    await act(async () => {
+      await latestMonitor!.stopSession();
+    });
+
+    expect(latestMonitor!.session).toBeNull();
+    expect(sessionsMock.updatePersistedSessionStatus).toHaveBeenCalledWith(
+      "persisted-flow-live",
+      "paused",
+    );
+
+    await act(async () => {
+      const ok = await latestMonitor!.attachSession({
+        session: createSessionRecord({
+          sessionId: "attached-flow-1",
+          source: "/logs/attached-flow.log",
+        }),
+        repoId: "repo-attached",
+        repoTitle: "attached-flow-service",
+        trackId: "track-2",
+        trackTitle: "Attached Flow",
+        persistedSessionId: "persisted-flow-attach",
+      });
+      expect(ok).toBe(true);
+    });
+
+    expect(latestMonitor!.session?.sessionId).toBe("attached-flow-1");
+    expect(latestMonitor!.session?.repoTitle).toBe("attached-flow-service");
+    expect(latestMonitor!.session?.trackName).toBe("Attached Flow");
+    expect(sessionsMock.updatePersistedSessionStatus).toHaveBeenCalledWith(
+      "persisted-flow-attach",
+      "active",
+    );
+
+    await act(async () => {
+      await latestMonitor!.stopSession();
+    });
+
+    expect(latestMonitor!.session).toBeNull();
+    expect(sessionsMock.updatePersistedSessionStatus).toHaveBeenCalledWith(
+      "persisted-flow-attach",
+      "paused",
+    );
+
+    await act(async () => {
+      const ok = await latestMonitor!.playbackSession({
+        sessionId: "persisted-flow-replay",
+        label: "Replay Flow",
+        sourcePath: "/logs/replay-flow.log",
+        repoId: "repo-replay",
+      });
+      expect(ok).toBe(true);
+    });
+
+    expect(latestMonitor!.isPlayback).toBe(true);
+    expect(latestMonitor!.session?.sessionId).toBe("playback_persisted-flow-replay");
+    expect(latestMonitor!.playbackEventCount).toBe(2);
+    expect(sessionsMock.listSessionEvents).toHaveBeenCalledWith("persisted-flow-replay");
+
+    await act(async () => {
+      await latestMonitor!.stopSession();
+    });
+
+    expect(latestMonitor!.isPlayback).toBe(false);
+    expect(latestMonitor!.session).toBeNull();
+    expect(listener).toHaveBeenCalled();
+    expect(repositoriesMock.stopStreamSession).toHaveBeenCalledWith("flow-live-1");
+    expect(repositoriesMock.stopStreamSession).toHaveBeenCalledWith("attached-flow-1");
+    expect(repositoriesMock.stopStreamSession).not.toHaveBeenCalledWith(
+      "playback_persisted-flow-replay",
+    );
+  });
 });

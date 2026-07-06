@@ -1,4 +1,4 @@
-import type { en } from "../i18n/en";
+import type { AppTranslations } from "../i18n/types";
 import type {
   BaseTrackPlaylist,
   ImportBaseAssetInput,
@@ -13,7 +13,7 @@ import type {
   UpdateTrackPerformanceInput,
 } from "../types/library";
 
-export type AppTranslations = typeof en;
+export type { AppTranslations };
 
 export interface UseAppCatalogActionsInput {
   t: AppTranslations;

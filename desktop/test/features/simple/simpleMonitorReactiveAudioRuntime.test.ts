@@ -114,6 +114,43 @@ describe("simpleMonitorReactiveAudioRuntime", () => {
     expect(graph.driveNode.curve).not.toBeNull();
   });
 
+  it("uses sustained alert timings without gate pulses when gateFloor is null", () => {
+    const graph = createGraph();
+    const audio = { playbackRate: 1 } as HTMLAudioElement;
+
+    applyMonitorReactiveAudioPlan({
+      graph,
+      audio,
+      masterVolume: 0.7,
+      adjustedPlan: {
+        mode: "alert",
+        nextPressure: 0.95,
+        burstFactor: 0.9,
+        filterHz: 7600,
+        filterQ: 1.8,
+        outputGain: 0.92,
+        dryGain: 0.9,
+        driveWet: 0.08,
+        deckGain: 0.94,
+        driveCurveAmount: 1.5,
+        playbackRate: 0.98,
+        sustainedBurst: true,
+        recoverAtOffsetSec: 3,
+        transitionSec: 0.3,
+        gateFloor: null,
+      },
+    });
+
+    expect(graph.filter.frequency.exponentialRampToValueAtTime).toHaveBeenCalledWith(7600, 10.5);
+    expect(graph.outputGain.gain.linearRampToValueAtTime).toHaveBeenCalledWith(0.92, 10.38);
+    expect(graph.outputGain.gain.linearRampToValueAtTime).toHaveBeenCalledWith(0.7, 13);
+    expect(graph.deckGain.gain.linearRampToValueAtTime).not.toHaveBeenCalledWith(
+      expect.any(Number),
+      10.3,
+    );
+    expect(audio.playbackRate).toBe(0.98);
+  });
+
   it("builds the reactive audio hook state snapshot", () => {
     const backgroundGraphRef = { current: null };
     const audioContextRef = { current: null };

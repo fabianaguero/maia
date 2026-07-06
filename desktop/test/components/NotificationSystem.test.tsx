@@ -20,6 +20,12 @@ function NotificationHarness() {
 }
 
 describe("NotificationSystem", () => {
+  it("throws when the notification hook is used outside the provider", () => {
+    expect(() => render(<NotificationHarness />)).toThrow(
+      "useNotify must be used within a NotificationProvider",
+    );
+  });
+
   it("renders and dismisses notifications", () => {
     render(
       <NotificationProvider>
@@ -35,6 +41,29 @@ describe("NotificationSystem", () => {
     fireEvent.click(screen.getByRole("button", { name: "Dismiss notification" }));
 
     expect(screen.queryByText("Track imported")).not.toBeInTheDocument();
+  });
+
+  it("renders error notifications without a message body", () => {
+    function ErrorHarness() {
+      const { notify } = useNotify();
+
+      return (
+        <button type="button" onClick={() => notify("error", "Stream failed")}>
+          Trigger error toast
+        </button>
+      );
+    }
+
+    render(
+      <NotificationProvider>
+        <ErrorHarness />
+      </NotificationProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Trigger error toast" }));
+
+    expect(screen.getByText("Stream failed")).toBeInTheDocument();
+    expect(screen.queryByText("Ready for playback")).not.toBeInTheDocument();
   });
 
   it("auto-removes notifications after the timeout", () => {

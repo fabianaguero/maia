@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { buildSessionScreenViewModel } from "../../../src/features/session/sessionScreenViewModel";
+import {
+  buildSessionScreenViewModel,
+  buildSessionScreenViewModelSections,
+} from "../../../src/features/session/sessionScreenViewModel";
+import { buildSessionScreenHeaderState } from "../../../src/features/session/sessionScreenHeaderPropsRuntime";
+import { buildSessionScreenNoticeState } from "../../../src/features/session/sessionScreenNoticePropsRuntime";
 
 describe("sessionScreenViewModel", () => {
   it("assembles booth and panel props from the controller state", async () => {
@@ -62,7 +67,7 @@ describe("sessionScreenViewModel", () => {
       handleReplayBookmark: vi.fn(async () => undefined),
     } as never;
 
-    const viewModel = buildSessionScreenViewModel({
+    const input = {
       sessionsCount: 3,
       selectedSessionId: "session-1",
       loading: false,
@@ -77,8 +82,15 @@ describe("sessionScreenViewModel", () => {
       onDelete,
       onSelectSession,
       controller,
-    });
+    } as const;
+    const headerState = buildSessionScreenHeaderState(input);
+    const noticeState = buildSessionScreenNoticeState(input);
+    const sections = buildSessionScreenViewModelSections(input);
+    const viewModel = buildSessionScreenViewModel(input);
 
+    expect(headerState.sessionsCount).toBe(3);
+    expect(noticeState.createError).toBe("create failed");
+    expect(sections.boothProps.monitorSessionId).toBe("runtime-1");
     expect(viewModel.headerProps.sessionsCount).toBe(3);
     expect(viewModel.noticeProps).toEqual({
       error: "tail offline",
@@ -153,7 +165,7 @@ describe("sessionScreenViewModel", () => {
       handleReplayBookmark: vi.fn(async () => undefined),
     } as never;
 
-    const viewModel = buildSessionScreenViewModel({
+    const input = {
       sessionsCount: 0,
       selectedSessionId: null,
       loading: false,
@@ -169,8 +181,11 @@ describe("sessionScreenViewModel", () => {
       onDelete: vi.fn(async (_sessionId: string) => undefined),
       onSelectSession: vi.fn(),
       controller,
-    });
+    } as const;
+    const sections = buildSessionScreenViewModelSections(input);
+    const viewModel = buildSessionScreenViewModel(input);
 
+    expect(sections.headerProps.activeSession).toBeNull();
     await expect(viewModel.boothProps.onReplaySelected()).resolves.toBeUndefined();
     expect(controller.handlePlaybackSession).not.toHaveBeenCalled();
   });

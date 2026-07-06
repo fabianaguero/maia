@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   createBasePlaylist,
@@ -63,5 +63,84 @@ describe("monitorPrefs", () => {
 
     expect(nextPrefs).toEqual(currentPrefs);
     expect(loadMonitorPrefs("repo-feedback")).toEqual(currentPrefs);
+  });
+
+  it("returns null for invalid storage and normalizes migrated/current payloads", () => {
+    localStorage.setItem("maia.monitor-prefs.repo-bad", "{broken");
+    expect(loadMonitorPrefs("repo-bad")).toBeNull();
+
+    localStorage.setItem(
+      "maia.monitor-prefs.repo-current-weird",
+      JSON.stringify({
+        basePlaylist: {
+          id: "  ",
+          name: "",
+          trackIds: ["track-1", "", null, "track-2"],
+        },
+        selectedStyleProfileId: "",
+        selectedMutationProfileId: "",
+        masterVolume: 99,
+      }),
+    );
+
+    expect(loadMonitorPrefs("repo-current-weird")).toEqual(
+      expect.objectContaining({
+        basePlaylist: expect.objectContaining({
+          id: "playlist-repo-current-weird",
+          name: "Base playlist",
+          trackIds: ["track-1", "track-2"],
+        }),
+        selectedStyleProfileId: "steady-house",
+        selectedMutationProfileId: "balanced",
+        masterVolume: 1,
+      }),
+    );
+
+    localStorage.setItem(
+      "maia.monitor-prefs.repo-legacy-empty",
+      JSON.stringify({
+        referencePlaylistIds: ["", null, "track-9"],
+        selectedGenreId: "unknown",
+        selectedPresetId: "unknown",
+        masterVolume: -10,
+      }),
+    );
+
+    expect(loadMonitorPrefs("repo-legacy-empty")).toEqual(
+      expect.objectContaining({
+        basePlaylist: expect.objectContaining({
+          trackIds: ["track-9"],
+        }),
+        selectedStyleProfileId: "steady-house",
+        selectedMutationProfileId: "balanced",
+        masterVolume: 0,
+      }),
+    );
+  });
+
+  it("ignores storage write failures and still returns updated replay recommendations", () => {
+    const currentPrefs: MonitorPrefs = {
+      basePlaylist: createBasePlaylist(["track-7"], "Night watch"),
+      selectedStyleProfileId: "ambient-watch",
+      selectedMutationProfileId: "subtle",
+      masterVolume: 0.7,
+    };
+    const setItemSpy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("quota");
+    });
+
+    expect(() => saveMonitorPrefs("repo-fail", currentPrefs)).not.toThrow();
+
+    const nextPrefs = persistReplayFeedbackRecommendation("repo-fail", currentPrefs, {
+      suggestedStyleProfileId: "alert-techno",
+      suggestedMutationProfileId: "reactive",
+    });
+
+    expect(nextPrefs).toEqual({
+      ...currentPrefs,
+      selectedStyleProfileId: "alert-techno",
+      selectedMutationProfileId: "reactive",
+    });
+    expect(setItemSpy).toHaveBeenCalled();
   });
 });

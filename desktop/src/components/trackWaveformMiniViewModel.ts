@@ -9,10 +9,13 @@ export function sampleTrackWaveformMiniBins(
     });
   }
 
-  const max = Math.max(...bins, 1);
+  const normalizedBins = Array.from({ length: bins.length }, (_, index) =>
+    Number.isFinite(bins[index]) ? bins[index] : 0,
+  );
+  const max = Math.max(...normalizedBins, 1);
   return Array.from({ length: points }, (_, index) => {
-    const sourceIndex = Math.floor((index / points) * bins.length);
-    const value = bins[Math.min(sourceIndex, bins.length - 1)] ?? 0;
+    const sourceIndex = Math.floor((index / points) * normalizedBins.length);
+    const value = normalizedBins[Math.min(sourceIndex, normalizedBins.length - 1)] ?? 0;
     return Math.max(0.04, Math.min(1, value / max));
   });
 }

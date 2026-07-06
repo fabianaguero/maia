@@ -48,9 +48,15 @@ Examples:
 - `analyzer/fixtures/logs/sample-production.log`
 - `analyzer/fixtures/logs/*`
 - `desktop/test/logs/*`
+- `desktop/test/logs/*.zip`
 
 These exist to simulate operational signal for analysis, tests, and demos.
 They should be treated as fixtures and should remain synthetic or anonymized.
+
+Current review note:
+
+- some retained fixtures intentionally mimic production-style environments and may still contain machine-looking path fragments inside the log text
+- those are acceptable only if they remain synthetic/anonymized and do not expose real credentials, operators, or private infrastructure
 
 ## Generated Local Helper Output
 

@@ -1,15 +1,19 @@
+import { useMemo } from "react";
 import type { AppV0MonitorLaunchExecutionResult } from "../appV0MonitorRuntime";
 import {
+  buildAppV0MonitorOrchestratorInput,
   buildAppV0MonitorOrchestrator,
+  buildAppV0MonitorStateModelInput,
   buildAppV0MonitorStateModel,
 } from "./appV0MonitorScreenStateRuntime";
+import { buildAppV0MonitorScreenStateHookResult } from "./appV0MonitorScreenStateHookRuntime";
 import type { ActiveMonitorSession, MonitorMetrics } from "../features/monitor/monitorContextTypes";
 import type { AppSection } from "../features/simple/appSections";
 import type { AppV0Language } from "../appV0Preferences";
 import type { LibraryTrack, RepositoryAnalysis } from "../types/library";
 import type { StartSessionInput, StreamSessionRecord } from "../types/monitor";
 
-interface UseAppV0MonitorScreenStateInput {
+export interface UseAppV0MonitorScreenStateInput {
   lang: AppV0Language;
   currentSection: AppSection;
   setCurrentSection: (section: AppSection) => void;
@@ -52,36 +56,73 @@ export function reportAppV0MonitorLaunchFailure(
 }
 
 export function useAppV0MonitorScreenState(input: UseAppV0MonitorScreenStateInput) {
-  const { t, isMonitoring, uptimeLabel, fallbackViewModel, shellViewModel, waveformBins } =
-    buildAppV0MonitorStateModel({
-      lang: input.lang,
-      currentSection: input.currentSection,
-      selectedRepositoryTitle: input.selectedRepositoryTitle ?? null,
-      selectedTrack: input.selectedTrack,
-      tracks: input.tracks,
-      session: input.session,
-      metrics: input.metrics,
-    });
-  const monitorOrchestrator = buildAppV0MonitorOrchestrator({
-    repositories: input.repositories,
-    tracks: input.tracks,
-    selectedTrack: input.selectedTrack,
-    setGuideTrack: input.setGuideTrack,
-    resumeAudio: input.resumeAudio,
-    attachSession: input.attachSession,
-    startSession: input.startSession,
-    playbackSession: input.playbackSession,
-    onLaunchSuccess: () => input.setCurrentSection("monitor"),
-  });
+  const {
+    lang,
+    currentSection,
+    selectedRepositoryTitle,
+    selectedTrack,
+    tracks,
+    session,
+    metrics,
+    repositories,
+    setGuideTrack,
+    resumeAudio,
+    attachSession,
+    startSession,
+    playbackSession,
+    setCurrentSection,
+  } = input;
 
-  return {
-    t,
-    isMonitoring,
-    uptimeLabel,
-    fallbackViewModel,
-    monitorOrchestrator,
-    shellViewModel,
-    waveformBins,
-    reportMonitorLaunchFailure: reportAppV0MonitorLaunchFailure,
-  };
+  const stateModel = useMemo(
+    () =>
+      buildAppV0MonitorStateModel(
+        buildAppV0MonitorStateModelInput({
+          lang,
+          currentSection,
+          selectedRepositoryTitle,
+          selectedTrack,
+          tracks,
+          session,
+          metrics,
+        }),
+      ),
+    [lang, currentSection, selectedRepositoryTitle, selectedTrack, tracks, session, metrics],
+  );
+  const monitorOrchestrator = useMemo(
+    () =>
+      buildAppV0MonitorOrchestrator(
+        buildAppV0MonitorOrchestratorInput({
+          repositories,
+          tracks,
+          selectedTrack,
+          setGuideTrack,
+          resumeAudio,
+          attachSession,
+          startSession,
+          playbackSession,
+          onLaunchSuccess: () => setCurrentSection("monitor"),
+        }),
+      ),
+    [
+      repositories,
+      tracks,
+      selectedTrack,
+      setGuideTrack,
+      resumeAudio,
+      attachSession,
+      startSession,
+      playbackSession,
+      setCurrentSection,
+    ],
+  );
+
+  return useMemo(
+    () =>
+      buildAppV0MonitorScreenStateHookResult({
+        stateModel,
+        monitorOrchestrator,
+        reportMonitorLaunchFailure: reportAppV0MonitorLaunchFailure,
+      }),
+    [stateModel, monitorOrchestrator],
+  );
 }

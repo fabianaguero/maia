@@ -227,6 +227,50 @@ describe("monitorLiveLifecycleRuntime", () => {
     expect(stopStreamSession).toHaveBeenCalledWith("stream-1");
   });
 
+  it("swallows native stop failures while still resetting session state", async () => {
+    const stopPolling = vi.fn();
+    const setSession = vi.fn();
+    const setIsPlayback = vi.fn();
+    const setMetrics = vi.fn();
+    const resetReplayTelemetry = vi.fn();
+    const updatePersistedSessionStatus = vi.fn();
+    const stopStreamSession = vi.fn(async () => {
+      throw new Error("stop boom");
+    });
+    const sessionRef = { current: createActiveSession() as ActiveMonitorSession | null };
+    const directCursorRef = { current: 20 as number | undefined };
+    const emptyWindowsRef = { current: 1 };
+    const activeRef = { current: true };
+    const isPlaybackRef = { current: false };
+
+    await expect(
+      stopLiveMonitorSessionState({
+        session: createActiveSession(),
+        wasPlayback: false,
+        stopAllMonitorAudio: vi.fn(),
+        currentSegmentRef: { current: null },
+        audioContextRef: { current: null },
+        stopPolling,
+        sessionRef,
+        directCursorRef,
+        emptyWindowsRef,
+        activeRef,
+        isPlaybackRef,
+        setSession,
+        setIsPlayback,
+        setMetrics,
+        resetReplayTelemetry,
+        updatePersistedSessionStatus,
+        stopStreamSession,
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(stopPolling).toHaveBeenCalledTimes(1);
+    expect(sessionRef.current).toBeNull();
+    expect(updatePersistedSessionStatus).toHaveBeenCalledWith("persisted-1", "paused");
+    expect(stopStreamSession).toHaveBeenCalledWith("stream-1");
+  });
+
   it("resumes monitor audio contexts and emits probes only when the context is running", async () => {
     const emitProbe = vi.fn();
     const logger = { info: vi.fn(), warn: vi.fn() };
@@ -257,6 +301,25 @@ describe("monitorLiveLifecycleRuntime", () => {
 
     expect(emitProbe).not.toHaveBeenCalled();
     expect(logger.warn).toHaveBeenCalled();
+
+    logger.warn.mockClear();
+
+    await resumeMonitorAudioContextState({
+      ensureAudioContext: vi.fn(
+        async () =>
+          ({
+            state: "suspended",
+            sampleRate: 48000,
+          }) as AudioContext,
+      ),
+      emitProbe,
+      logger,
+    });
+
+    expect(emitProbe).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalledWith(
+      "[MAIA:Audio] context NOT running after resume — state=suspended",
+    );
   });
 
   it("resolves persisted-status and native-session stop effects", () => {
@@ -286,6 +349,17 @@ describe("monitorLiveLifecycleRuntime", () => {
       resolveStoppedMonitorSessionEffects({
         session: createActiveSession(),
         wasPlayback: true,
+      }),
+    ).toEqual({
+      persistedSessionIdToPause: null,
+      shouldStopNativeSession: false,
+      nativeSessionId: null,
+    });
+
+    expect(
+      resolveStoppedMonitorSessionEffects({
+        session: null,
+        wasPlayback: false,
       }),
     ).toEqual({
       persistedSessionIdToPause: null,

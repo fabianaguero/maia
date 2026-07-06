@@ -46,7 +46,7 @@ vi.mock(
   }),
 );
 
-vi.mock("../../../../src/features/analyzer/components/liveLogMonitorPanelRuntime", () => ({
+vi.mock("../../../../src/features/analyzer/components/liveLogMonitorSyncRuntime", () => ({
   appendSyncTailRows: (...args: unknown[]) => appendSyncTailRowsMock(...args),
   buildSyncTailRows: (...args: unknown[]) => buildSyncTailRowsMock(...args),
   resolveBackgroundTrackSecond: (...args: unknown[]) => resolveBackgroundTrackSecondMock(...args),

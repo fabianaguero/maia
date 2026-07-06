@@ -234,6 +234,52 @@ describe("soundcloudRuntime", () => {
         retryAfterSeconds: 120,
       });
     });
+
+    it("throws unknown on non-auth API failures and tolerates non-array payloads", async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        headers: new Map(),
+      });
+
+      await expect(
+        listSoundCloudPlaylists({
+          auth: {
+            sourceType: "soundcloud",
+            id: "soundcloud-user-123",
+            displayName: "Test",
+            isConnected: true,
+            lastSyncedAt: null,
+            oauthToken: "token",
+            createdAt: "2026-01-01T00:00:00Z",
+            updatedAt: "2026-01-01T00:00:00Z",
+          },
+        }),
+      ).rejects.toMatchObject({
+        kind: "unknown",
+        message: "SoundCloud API error: 500",
+      });
+
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ items: [] }),
+      });
+
+      await expect(
+        listSoundCloudPlaylists({
+          auth: {
+            sourceType: "soundcloud",
+            id: "soundcloud-user-123",
+            displayName: "Test",
+            isConnected: true,
+            lastSyncedAt: null,
+            oauthToken: "token",
+            createdAt: "2026-01-01T00:00:00Z",
+            updatedAt: "2026-01-01T00:00:00Z",
+          },
+        }),
+      ).resolves.toEqual([]);
+    });
   });
 
   describe("listTracksInSoundCloudPlaylist", () => {
@@ -294,6 +340,73 @@ describe("soundcloudRuntime", () => {
         kind: "not_found",
         resourceId: "missing-playlist",
       });
+    });
+
+    it("throws auth_expired when playlist-track requests have no token", async () => {
+      await expect(
+        listTracksInSoundCloudPlaylist({
+          auth: {
+            sourceType: "soundcloud",
+            id: "soundcloud-user-123",
+            displayName: "Test",
+            isConnected: true,
+            lastSyncedAt: null,
+            createdAt: "2026-01-01T00:00:00Z",
+            updatedAt: "2026-01-01T00:00:00Z",
+          },
+          playlistId: "playlist-1",
+        }),
+      ).rejects.toMatchObject({
+        kind: "auth_expired",
+        sourceType: "soundcloud",
+      });
+    });
+
+    it("throws unknown on non-404 track errors and tolerates non-array payloads", async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+      });
+
+      await expect(
+        listTracksInSoundCloudPlaylist({
+          auth: {
+            sourceType: "soundcloud",
+            id: "soundcloud-user-123",
+            displayName: "Test",
+            isConnected: true,
+            lastSyncedAt: null,
+            oauthToken: "token",
+            createdAt: "2026-01-01T00:00:00Z",
+            updatedAt: "2026-01-01T00:00:00Z",
+          },
+          playlistId: "playlist-1",
+        }),
+      ).rejects.toMatchObject({
+        kind: "unknown",
+        message: "SoundCloud API error: 503",
+      });
+
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ tracks: [] }),
+      });
+
+      await expect(
+        listTracksInSoundCloudPlaylist({
+          auth: {
+            sourceType: "soundcloud",
+            id: "soundcloud-user-123",
+            displayName: "Test",
+            isConnected: true,
+            lastSyncedAt: null,
+            oauthToken: "token",
+            createdAt: "2026-01-01T00:00:00Z",
+            updatedAt: "2026-01-01T00:00:00Z",
+          },
+          playlistId: "playlist-1",
+        }),
+      ).resolves.toEqual([]);
     });
 
     it("filters out null tracks", async () => {

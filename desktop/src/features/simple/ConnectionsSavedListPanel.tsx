@@ -1,9 +1,8 @@
-import { Cable, RefreshCw } from "lucide-react";
-
 import type { LogSourceConnection } from "../../types/monitor";
 import { type ConnectionKind, type ConnectionTestStatus } from "./connectionsViewModel";
+import { ConnectionsRefreshButton } from "./ConnectionsRefreshButton";
+import { ConnectionsSavedListState } from "./ConnectionsSavedListState";
 import { buildConnectionsSavedListViewModel } from "./connectionsSavedListViewModel";
-import { ConnectionsSavedRow } from "./ConnectionsSavedRow";
 import { ConnectionsTailConsole } from "./ConnectionsTailConsole";
 import { useT } from "../../i18n/I18nContext";
 
@@ -71,33 +70,19 @@ export function ConnectionsSavedListPanel({
         </div>
       </div>
 
-      {loading ? (
-        <div className="placeholder-loading">
-          <span className="spin-ring" aria-hidden="true" />
-          {viewModel.loadingLabel}
-        </div>
-      ) : connections.length === 0 ? (
-        <div className="empty-state compact-empty">
-          <Cable size={28} />
-          <strong>{viewModel.emptyTitle}</strong>
-          <p>{viewModel.emptyHelp}</p>
-        </div>
-      ) : (
-        <ul className="connections-saved-list">
-          {viewModel.rows.map((row) => (
-            <ConnectionsSavedRow
-              key={row.id}
-              row={row}
-              onSelectConnection={onSelectConnection}
-              onStartTail={onStartTail}
-              onStopTail={onStopTail}
-              onEditConnection={onEditConnection}
-              onTestConnection={onTestConnection}
-              onDeleteConnection={onDeleteConnection}
-            />
-          ))}
-        </ul>
-      )}
+      <ConnectionsSavedListState
+        loading={loading}
+        loadingLabel={viewModel.loadingLabel}
+        emptyTitle={viewModel.emptyTitle}
+        emptyHelp={viewModel.emptyHelp}
+        rows={viewModel.rows}
+        onSelectConnection={onSelectConnection}
+        onStartTail={onStartTail}
+        onStopTail={onStopTail}
+        onEditConnection={onEditConnection}
+        onTestConnection={onTestConnection}
+        onDeleteConnection={onDeleteConnection}
+      />
 
       {activeSessionId ? (
         <ConnectionsTailConsole
@@ -107,16 +92,11 @@ export function ConnectionsSavedListPanel({
         />
       ) : null}
 
-      <button
-        type="button"
-        className="control-button"
-        aria-label={viewModel.refreshTitle}
-        onClick={() => void onRefreshConnections()}
-        disabled={loading || saving}
+      <ConnectionsRefreshButton
         title={viewModel.refreshTitle}
-      >
-        <RefreshCw size={16} />
-      </button>
+        disabled={loading || saving}
+        onRefreshConnections={onRefreshConnections}
+      />
     </section>
   );
 }

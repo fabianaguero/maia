@@ -3,13 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_MONITOR_SETUP_PREFERENCES } from "../src/features/simple/monitorSetupPreferences";
 import {
   buildAppV0FallbackPanelStyle,
+  buildAppV0SectionPropsBundle,
   buildAppV0SectionRenderModel,
 } from "../src/appV0SectionContentRuntime";
 
 describe("appV0SectionContentRuntime", () => {
   it("builds a section render model for the simple monitor surface", () => {
     const onToggleConsole = vi.fn();
-    const model = buildAppV0SectionRenderModel({
+    const input = {
       currentSection: "monitor",
       userMode: "simple",
       fallbackViewModel: { message: "Nothing here", hint: "Select another section" },
@@ -47,8 +48,11 @@ describe("appV0SectionContentRuntime", () => {
       subscribe: vi.fn(() => vi.fn()),
       isConsoleExpanded: true,
       onToggleConsole,
-    });
+    } as const;
+    const bundle = buildAppV0SectionPropsBundle(input);
+    const model = buildAppV0SectionRenderModel(input);
 
+    expect(bundle.simpleMonitorProps.skin).toBe("nightfall");
     expect(model.kind).toBe("simple-monitor");
     expect(model.simpleMonitorProps.skin).toBe("nightfall");
     expect(model.simpleMonitorProps.trackName).toBe("Donna Summer");
@@ -58,7 +62,7 @@ describe("appV0SectionContentRuntime", () => {
   });
 
   it("builds section props for setup, connections and fallback views", () => {
-    const model = buildAppV0SectionRenderModel({
+    const input = {
       currentSection: "connections",
       userMode: "simple",
       fallbackViewModel: { message: "Nothing here", hint: "Select another section" },
@@ -96,8 +100,11 @@ describe("appV0SectionContentRuntime", () => {
       onReplaySession: vi.fn(),
       subscribe: vi.fn(() => vi.fn()),
       isConsoleExpanded: false,
-    });
+    } as const;
+    const bundle = buildAppV0SectionPropsBundle(input);
+    const model = buildAppV0SectionRenderModel(input);
 
+    expect(bundle.connectionsProps.defaultCloudLookback).toBe("120m");
     expect(model.kind).toBe("connections");
     expect(model.connectionsProps.defaultCloudLookback).toBe("120m");
     expect(model.setupProps.lang).toBe("en");

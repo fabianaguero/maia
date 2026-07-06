@@ -1,55 +1,13 @@
 import type { CSSProperties } from "react";
 
 import { useT } from "../../../i18n/I18nContext";
-import type {
-  BeatGridPoint,
-  TrackSavedLoop,
-  VisualizationCuePoint,
-  VisualizationRegionPoint,
-} from "../../../types/library";
-import type { BeatGridPhraseRange } from "../../../utils/beatGrid";
-import {
-  buildWaveformSummaryPills,
-  buildRenderedCueMarkers,
-  buildRenderedRegions,
-  formatDuration,
-  resolveAnchorPosition,
-  resolveDisplayBins,
-  resolveVisibleBeats,
-  resolveWaveformCursor,
-  resolveWaveformInteractionHints,
-  resolveWaveformPlayheadOverlayState,
-  resolveWaveformSummaryFlags,
-  type WaveformEditableCuePoint,
-} from "./waveformPlaceholderRuntime";
 import { WaveformCueOverlay } from "./WaveformCueOverlay";
+import { WaveformPanelHeader } from "./WaveformPanelHeader";
 import { WaveformRegionOverlay } from "./WaveformRegionOverlay";
-import { useWaveformPlaceholderInteractions } from "./useWaveformPlaceholderInteractions";
-
-interface WaveformPlaceholderProps {
-  bins: number[];
-  beatGrid: BeatGridPoint[];
-  durationSeconds: number | null;
-  hotCues?: VisualizationCuePoint[];
-  regions?: VisualizationRegionPoint[];
-  editableCues?: WaveformEditableCuePoint[];
-  editableLoops?: TrackSavedLoop[];
-  currentTime?: number;
-  hero?: boolean;
-  onSeek?: (second: number) => void;
-  analysisProgress?: number | null;
-  canEditBeatGrid?: boolean;
-  onSetDownbeatAtSecond?: (second: number) => void;
-  canSelectPhrase?: boolean;
-  selectedPhraseRange?: BeatGridPhraseRange | null;
-  onSelectPhraseRange?: (range: BeatGridPhraseRange) => void;
-  phraseBeatCount?: number;
-  canEditPerformance?: boolean;
-  onMoveCue?: (cue: WaveformEditableCuePoint, second: number) => void;
-  onNudgeCue?: (cue: WaveformEditableCuePoint, second: number) => void;
-  onMoveLoopBoundary?: (loopId: string, boundary: "start" | "end", second: number) => void;
-  onMoveLoop?: (loopId: string, startSecond: number) => void;
-}
+import { WaveformStageBase } from "./WaveformStageBase";
+import { WaveformSummaryFooter } from "./WaveformSummaryFooter";
+import { useWaveformPlaceholderViewModel } from "./useWaveformPlaceholderViewModel";
+import type { WaveformPlaceholderProps } from "./waveformPlaceholderTypes";
 
 export function WaveformPlaceholder({
   bins,
@@ -81,9 +39,7 @@ export function WaveformPlaceholder({
     gridClickArmed,
     phraseSelectArmed,
     gridAnchorDragging,
-    dragAnchorSecond,
     dragTarget,
-    dragEditSecond,
     dragMovedRef,
     resolveSecondFromClientX,
     handleWaveformClick,
@@ -94,104 +50,59 @@ export function WaveformPlaceholder({
     toggleGridClickArmed,
     togglePhraseSelectArmed,
     beginAnchorDrag,
-  } = useWaveformPlaceholderInteractions({
+    cursor,
+    displayBins,
+    visibleBeats,
+    anchorSecond,
+    anchorPosition,
+    renderedCueMarkers,
+    renderedRegions,
+    interactionHints,
+    playheadOverlay,
+    summaryPills,
+  } = useWaveformPlaceholderViewModel({
+    t,
+    bins,
     beatGrid,
     durationSeconds,
+    hotCues,
+    regions,
+    editableCues,
+    editableLoops,
+    currentTime,
+    analysisProgress,
     canEditBeatGrid,
-    canSelectPhrase,
-    canEditPerformance,
-    phraseBeatCount,
     onSeek,
     onSetDownbeatAtSecond,
+    canSelectPhrase,
+    selectedPhraseRange,
     onSelectPhraseRange,
+    phraseBeatCount,
+    canEditPerformance,
     onMoveCue,
     onMoveLoopBoundary,
     onMoveLoop,
   });
 
-  const displayBins = resolveDisplayBins(bins);
-  const visibleBeats = resolveVisibleBeats(beatGrid, durationSeconds);
-  const { anchorSecond, anchorPosition } = resolveAnchorPosition({
-    dragAnchorSecond,
-    durationSeconds,
-    visibleBeats,
-  });
-  const { showRegionSummary, showPhraseSummary } = resolveWaveformSummaryFlags(
-    regions,
-    selectedPhraseRange,
-    onSelectPhraseRange,
-  );
-  const renderedCueMarkers = buildRenderedCueMarkers({
-    editableCues,
-    hotCues,
-    dragTarget,
-    dragEditSecond,
-  });
-  const renderedRegions = buildRenderedRegions({
-    regions,
-    editableLoops,
-    dragTarget,
-    dragEditSecond,
-    durationSeconds,
-  });
-  const interactionHints = resolveWaveformInteractionHints({
-    gridClickArmed,
-    phraseSelectArmed,
-    gridAnchorDragging,
-    phraseBeatCount,
-    t,
-  });
-  const playheadOverlay = resolveWaveformPlayheadOverlayState({
-    currentTime,
-    durationSeconds,
-    analysisProgress,
-    t,
-  });
-  const summaryPills = buildWaveformSummaryPills({
-    visibleBeatsCount: visibleBeats.length,
-    showRegionSummary,
-    regionsCount: regions.length,
-    selectedPhraseRange,
-    displayBinsCount: displayBins.length,
-    gridAnchorDragging,
-    gridClickArmed,
-    phraseSelectArmed,
-    showPhraseSummary,
-    t,
-  });
-
   return (
     <section className={`panel waveform-panel${hero ? " waveform-panel--hero" : ""}`}>
-      <div className="panel-header">
-        <div>
-          <h2>{t.inspect.waveformBeatGridTitle}</h2>
-          <p className="support-copy">{t.inspect.waveformBeatGridCopy}</p>
-        </div>
-        {onSetDownbeatAtSecond || onSelectPhraseRange ? (
-          <div className="waveform-panel-actions">
-            {onSetDownbeatAtSecond ? (
-              <button
-                type="button"
-                className={`compact-action${gridClickArmed ? " waveform-grid-arm-active" : ""}`}
-                disabled={!canEditBeatGrid || !durationSeconds || durationSeconds <= 0}
-                onClick={toggleGridClickArmed}
-              >
-                {gridClickArmed ? t.inspect.cancelGridClick : t.inspect.armDownbeatClick}
-              </button>
-            ) : null}
-            {onSelectPhraseRange ? (
-              <button
-                type="button"
-                className={`compact-action${phraseSelectArmed ? " waveform-grid-arm-active" : ""}`}
-                disabled={!canSelectPhrase || !durationSeconds || durationSeconds <= 0}
-                onClick={togglePhraseSelectArmed}
-              >
-                {phraseSelectArmed ? t.inspect.cancelPhraseSelect : t.inspect.armPhraseSelectButton}
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+      <WaveformPanelHeader
+        title={t.inspect.waveformBeatGridTitle}
+        copy={t.inspect.waveformBeatGridCopy}
+        showActions={Boolean(onSetDownbeatAtSecond || onSelectPhraseRange)}
+        showGridButton={Boolean(onSetDownbeatAtSecond)}
+        gridClickArmed={gridClickArmed}
+        disableGridButton={!canEditBeatGrid || !durationSeconds || durationSeconds <= 0}
+        armDownbeatLabel={t.inspect.armDownbeatClick}
+        cancelGridClickLabel={t.inspect.cancelGridClick}
+        onToggleGridClickArmed={toggleGridClickArmed}
+        showPhraseButton={Boolean(onSelectPhraseRange)}
+        phraseSelectArmed={phraseSelectArmed}
+        disablePhraseButton={!canSelectPhrase || !durationSeconds || durationSeconds <= 0}
+        armPhraseSelectLabel={t.inspect.armPhraseSelectButton}
+        cancelPhraseSelectLabel={t.inspect.cancelPhraseSelect}
+        onTogglePhraseSelectArmed={togglePhraseSelectArmed}
+      />
 
       <div
         ref={stageRef}
@@ -199,15 +110,7 @@ export function WaveformPlaceholder({
         onClick={(event) => handleWaveformClick(event.clientX)}
         aria-label={t.inspect.waveformStage}
         style={{
-          cursor: resolveWaveformCursor({
-            gridAnchorDragging,
-            dragTarget,
-            phraseSelectArmed,
-            canSelectPhrase,
-            gridClickArmed,
-            canEditBeatGrid,
-            onSeek,
-          }),
+          cursor,
         }}
       >
         {interactionHints.gridHint ? (
@@ -223,48 +126,14 @@ export function WaveformPlaceholder({
             {interactionHints.dragHint}
           </div>
         ) : null}
-
-        <div
-          className="waveform-bars"
-          aria-label={t.inspect.waveformOverview}
-          style={
-            {
-              gridTemplateColumns: `repeat(${displayBins.length}, minmax(0, 1fr))`,
-            } as CSSProperties
-          }
-        >
-          {displayBins.map((bin, index) => (
-            <span
-              key={`${index}-${bin}`}
-              className="waveform-bar"
-              style={{ "--bar-scale": String(bin) } as CSSProperties}
-            />
-          ))}
-        </div>
-
-        <div className="beat-grid-overlay" aria-label={t.inspect.beatGridMarkers}>
-          {visibleBeats.map((beat) => {
-            const position =
-              durationSeconds && durationSeconds > 0
-                ? Math.min(100, (beat.second / durationSeconds) * 100)
-                : 0;
-
-            return (
-              <span
-                key={`${beat.index}-${beat.second}`}
-                className={`beat-grid-marker is-${beat.emphasis}`}
-                style={{ "--beat-position": `${position}%` } as CSSProperties}
-                title={t.inspect.beatAtSecond
-                  .replace("{label}", beat.label)
-                  .replace("{second}", beat.second.toFixed(2))}
-              >
-                {beat.emphasis !== "beat" ? (
-                  <span className="beat-grid-marker-label">{beat.label}</span>
-                ) : null}
-              </span>
-            );
-          })}
-        </div>
+        <WaveformStageBase
+          displayBins={displayBins}
+          visibleBeats={visibleBeats}
+          durationSeconds={durationSeconds}
+          waveformOverviewLabel={t.inspect.waveformOverview}
+          beatGridMarkersLabel={t.inspect.beatGridMarkers}
+          beatAtSecondTitle={t.inspect.beatAtSecond}
+        />
 
         {regions.length > 0 || selectedPhraseRange ? (
           <WaveformRegionOverlay
@@ -347,19 +216,7 @@ export function WaveformPlaceholder({
         </div>
       </div>
 
-      <div className="waveform-summary">
-        {summaryPills.map((pill) => (
-          <div key={pill.key} className="waveform-meta-pill">
-            <span>{pill.label}</span>
-            <strong>{pill.value}</strong>
-          </div>
-        ))}
-      </div>
-
-      <div className="waveform-footer">
-        <span>00:00</span>
-        <span>{formatDuration(durationSeconds)}</span>
-      </div>
+      <WaveformSummaryFooter summaryPills={summaryPills} durationSeconds={durationSeconds} />
     </section>
   );
 }
