@@ -20,19 +20,12 @@ vi.mock("../../../../src/utils/monitorPrefs", () => ({
   loadMonitorPrefs: (...args: unknown[]) => loadMonitorPrefsMock(...args),
 }));
 
-vi.mock(
-  "../../../../src/features/analyzer/components/liveLogMonitorPreferencesRuntime",
-  () => ({
-    buildRepoResetMonitorState: (...args: unknown[]) =>
-      buildRepoResetMonitorStateMock(...args),
-    resolveGuideTrackSeedPlaylist: (...args: unknown[]) =>
-      resolveGuideTrackSeedPlaylistMock(...args),
-    resolveNextSceneBaseAssetId: (...args: unknown[]) =>
-      resolveNextSceneBaseAssetIdMock(...args),
-    resolveNextSceneCompositionId: (...args: unknown[]) =>
-      resolveNextSceneCompositionIdMock(...args),
-  }),
-);
+vi.mock("../../../../src/features/analyzer/components/liveLogMonitorPreferencesRuntime", () => ({
+  buildRepoResetMonitorState: (...args: unknown[]) => buildRepoResetMonitorStateMock(...args),
+  resolveGuideTrackSeedPlaylist: (...args: unknown[]) => resolveGuideTrackSeedPlaylistMock(...args),
+  resolveNextSceneBaseAssetId: (...args: unknown[]) => resolveNextSceneBaseAssetIdMock(...args),
+  resolveNextSceneCompositionId: (...args: unknown[]) => resolveNextSceneCompositionIdMock(...args),
+}));
 
 vi.mock("../../../../src/features/analyzer/components/liveLogMonitorAudioRuntime", () => ({
   stopManagedBlobAudioState: (...args: unknown[]) => stopManagedBlobAudioStateMock(...args),

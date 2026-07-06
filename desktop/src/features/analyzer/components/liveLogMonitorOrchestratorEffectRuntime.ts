@@ -45,9 +45,7 @@ export interface ApplyLiveLogMonitorVisualUpdateInput {
   scheduleAnomalyFlashReset: () => void;
 }
 
-export function applyLiveLogMonitorVisualUpdate(
-  input: ApplyLiveLogMonitorVisualUpdateInput,
-): void {
+export function applyLiveLogMonitorVisualUpdate(input: ApplyLiveLogMonitorVisualUpdateInput): void {
   input.setLastUpdate(input.update);
   input.setRecentWarnings(buildLiveLogMonitorRecentWarnings(input.update));
   input.setError(null);
@@ -56,7 +54,9 @@ export function applyLiveLogMonitorVisualUpdate(
     return;
   }
 
-  const syncTailRowsUpdater = buildLiveLogMonitorSyncTailRowsUpdater(input.derivedUpdate.nextTailRows);
+  const syncTailRowsUpdater = buildLiveLogMonitorSyncTailRowsUpdater(
+    input.derivedUpdate.nextTailRows,
+  );
   if (syncTailRowsUpdater) {
     input.setSyncTailRows(syncTailRowsUpdater);
   }
@@ -96,9 +96,7 @@ export function applyLiveLogMonitorVisualUpdate(
     input.setSelectedExplanationId(selectedExplanationUpdater);
   }
 
-  input.setRecentVoices(
-    buildLiveLogMonitorRecentVoices(routedCues, input.arrangementDepth),
-  );
+  input.setRecentVoices(buildLiveLogMonitorRecentVoices(routedCues, input.arrangementDepth));
 }
 
 export interface ApplyLiveLogMonitorPlaybackUpdateInput {

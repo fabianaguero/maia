@@ -133,6 +133,26 @@ Core entity: `musical_asset`
 - Python 3.11+
 - System audio libs: `sudo apt install libasound2-dev libssl-dev`
 
+### First 10 Minutes
+
+If you want to understand Maia quickly without reading the whole codebase first:
+
+1. Install dependencies.
+2. Start the desktop app with `cd desktop && npm run tauri dev`.
+3. Use a real track from your machine or one already present in your local library.
+4. Use one of the bundled log fixtures under `desktop/test/logs/`.
+5. Start passive monitoring and verify the tail, deck, anomalies, and audio bed together.
+
+The highest-value local fixtures for a first run are:
+
+- `desktop/test/logs/maia_spring_logs/customers-service.log`
+- `desktop/test/logs/maia_spring_logs/vets-service.log`
+- `desktop/test/logs/maia-log-sources-loghub-jvm/Zookeeper_2k.log`
+
+If you want a release-style manual pass instead of a quick demo, use:
+
+- `docs/pre-release-manual-test-plan.md`
+
 ## Project Layout
 
 - `desktop/`: active Tauri + React + TypeScript desktop app
@@ -164,6 +184,25 @@ python3 -m pip install -e ./analyzer
 cd desktop
 npm run tauri dev
 ```
+
+### First Contributor Map
+
+If you are new to the repository, start from the layer you actually want to change:
+
+- `desktop/src/`: active desktop UX, monitoring flows, Web Audio, React state
+- `desktop/src-tauri/src/main.rs`: native commands, filesystem, SQLite, transient stream sessions
+- `analyzer/src/maia_analyzer/`: deterministic analysis logic
+- `contracts/`: JSON boundary between desktop and analyzer
+
+For the active frontend shell, the mounted path is:
+
+```text
+desktop/src/main.tsx
+  -> MonitorProvider
+  -> desktop/src/App-v0.tsx
+```
+
+That is the first path to inspect before changing monitor UX or startup behavior.
 
 ### Analyzer CLI (optional)
 

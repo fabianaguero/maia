@@ -29,34 +29,31 @@ const {
   shouldPlayLiveLogMonitorPanelProbeMock: vi.fn(),
 }));
 
-vi.mock(
-  "../../../../src/features/analyzer/components/liveLogMonitorOrchestratorRuntime",
-  () => ({
-    buildLiveLogMonitorBeatClockPlan: (...args: unknown[]) =>
-      buildLiveLogMonitorBeatClockPlanMock(...args),
-    buildLiveLogMonitorDerivedUpdate: vi.fn(),
-    buildLiveLogMonitorEmittedCueCountUpdater: (...args: unknown[]) =>
-      buildLiveLogMonitorEmittedCueCountUpdaterMock(...args),
-    buildLiveLogMonitorRecentCuesUpdater: (...args: unknown[]) =>
-      buildLiveLogMonitorRecentCuesUpdaterMock(...args),
-    buildLiveLogMonitorRecentExplanationsUpdater: (...args: unknown[]) =>
-      buildLiveLogMonitorRecentExplanationsUpdaterMock(...args),
-    buildLiveLogMonitorRecentMarkersUpdater: (...args: unknown[]) =>
-      buildLiveLogMonitorRecentMarkersUpdaterMock(...args),
-    buildLiveLogMonitorRecentVoices: (...args: unknown[]) =>
-      buildLiveLogMonitorRecentVoicesMock(...args),
-    buildLiveLogMonitorRecentWarnings: (...args: unknown[]) =>
-      buildLiveLogMonitorRecentWarningsMock(...args),
-    buildLiveLogMonitorSelectedExplanationUpdater: (...args: unknown[]) =>
-      buildLiveLogMonitorSelectedExplanationUpdaterMock(...args),
-    buildLiveLogMonitorSyncTailRowsUpdater: (...args: unknown[]) =>
-      buildLiveLogMonitorSyncTailRowsUpdaterMock(...args),
-    resolveLiveLogMonitorCurrentTrackSecond: vi.fn(),
-    shouldIgnoreLiveLogMonitorUpdate: vi.fn(),
-    shouldPlayLiveLogMonitorPanelProbe: (...args: unknown[]) =>
-      shouldPlayLiveLogMonitorPanelProbeMock(...args),
-  }),
-);
+vi.mock("../../../../src/features/analyzer/components/liveLogMonitorOrchestratorRuntime", () => ({
+  buildLiveLogMonitorBeatClockPlan: (...args: unknown[]) =>
+    buildLiveLogMonitorBeatClockPlanMock(...args),
+  buildLiveLogMonitorDerivedUpdate: vi.fn(),
+  buildLiveLogMonitorEmittedCueCountUpdater: (...args: unknown[]) =>
+    buildLiveLogMonitorEmittedCueCountUpdaterMock(...args),
+  buildLiveLogMonitorRecentCuesUpdater: (...args: unknown[]) =>
+    buildLiveLogMonitorRecentCuesUpdaterMock(...args),
+  buildLiveLogMonitorRecentExplanationsUpdater: (...args: unknown[]) =>
+    buildLiveLogMonitorRecentExplanationsUpdaterMock(...args),
+  buildLiveLogMonitorRecentMarkersUpdater: (...args: unknown[]) =>
+    buildLiveLogMonitorRecentMarkersUpdaterMock(...args),
+  buildLiveLogMonitorRecentVoices: (...args: unknown[]) =>
+    buildLiveLogMonitorRecentVoicesMock(...args),
+  buildLiveLogMonitorRecentWarnings: (...args: unknown[]) =>
+    buildLiveLogMonitorRecentWarningsMock(...args),
+  buildLiveLogMonitorSelectedExplanationUpdater: (...args: unknown[]) =>
+    buildLiveLogMonitorSelectedExplanationUpdaterMock(...args),
+  buildLiveLogMonitorSyncTailRowsUpdater: (...args: unknown[]) =>
+    buildLiveLogMonitorSyncTailRowsUpdaterMock(...args),
+  resolveLiveLogMonitorCurrentTrackSecond: vi.fn(),
+  shouldIgnoreLiveLogMonitorUpdate: vi.fn(),
+  shouldPlayLiveLogMonitorPanelProbe: (...args: unknown[]) =>
+    shouldPlayLiveLogMonitorPanelProbeMock(...args),
+}));
 
 function createDerivedUpdate() {
   return {
