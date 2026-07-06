@@ -33,6 +33,7 @@ If you are preparing a public release, also review:
 - [docs/frontend-architecture.md](docs/frontend-architecture.md)
 - [docs/open-source-maintainer-guide.md](docs/open-source-maintainer-guide.md)
 - [docs/testing-and-quality.md](docs/testing-and-quality.md)
+- [docs/pre-release-manual-test-plan.md](docs/pre-release-manual-test-plan.md)
 
 ## Documentation Map
 
@@ -41,6 +42,7 @@ If you are preparing a public release, also review:
 - `docs/sdd.md`: lightweight functional spec and shipped/future scope
 - `docs/open-source-maintainer-guide.md`: codebase tour, runtime boundaries, and architecture analysis for contributors
 - `docs/testing-and-quality.md`: quality gates, coverage commands, and testing priorities for contributors
+- `docs/pre-release-manual-test-plan.md`: manual QA flow to validate Maia as a desktop product before publishing or tagging a release
 - `docs/ai-roadmap.md`: staged plan for ML and AI adoption across analyzer, prep workflows, and hybrid mixing
 - `docs/github-publish-checklist.md`: pre-publication checklist before making the repository public
 - `docs/demo-assets-and-fixtures.md`: explanation of demo audio, curated fixtures, and non-runtime helper artifacts
@@ -228,6 +230,10 @@ Before proposing a release or a broader refactor pass:
 cd desktop
 npm run coverage
 ```
+
+Before publishing publicly or tagging a release candidate, also run the manual flow in:
+
+- `docs/pre-release-manual-test-plan.md`
 
 Repository hooks are tracked in `.githooks/`. After cloning, install them with:
 

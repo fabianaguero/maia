@@ -17,20 +17,14 @@ import type {
 } from "./liveSonificationScene";
 import type { LiveMutationExplanation } from "../../../utils/liveMutationExplainability";
 import {
-  buildLiveLogMonitorBeatClockPlan,
   buildLiveLogMonitorDerivedUpdate,
-  buildLiveLogMonitorEmittedCueCountUpdater,
-  buildLiveLogMonitorRecentCuesUpdater,
-  buildLiveLogMonitorRecentExplanationsUpdater,
-  buildLiveLogMonitorRecentMarkersUpdater,
-  buildLiveLogMonitorRecentVoices,
-  buildLiveLogMonitorRecentWarnings,
-  buildLiveLogMonitorSelectedExplanationUpdater,
-  buildLiveLogMonitorSyncTailRowsUpdater,
   resolveLiveLogMonitorCurrentTrackSecond,
   shouldIgnoreLiveLogMonitorUpdate,
-  shouldPlayLiveLogMonitorPanelProbe,
 } from "./liveLogMonitorOrchestratorRuntime";
+import {
+  applyLiveLogMonitorPlaybackUpdate,
+  applyLiveLogMonitorVisualUpdate,
+} from "./liveLogMonitorOrchestratorEffectRuntime";
 
 export interface LiveLogMonitorOrchestratorLogger {
   trace: (message: string, ...args: unknown[]) => void;
@@ -118,90 +112,49 @@ export function useLiveLogMonitorOrchestrator(input: LiveLogMonitorOrchestratorI
     if (derivedUpdate.updateDerivation.knownComponentsChanged) {
       input.setKnownComponents(input.knownComponentsRef.current.slice());
     }
-    const routedCues = derivedUpdate.updateDerivation.routedCues;
-    const nextExplanations = derivedUpdate.updateDerivation.nextExplanations;
-
     startTransition(() => {
-      input.setLastUpdate(update);
-      input.setRecentWarnings(buildLiveLogMonitorRecentWarnings(update));
-      input.setError(null);
-
-      if (!update.hasData) {
-        return;
-      }
-
-      const syncTailRowsUpdater = buildLiveLogMonitorSyncTailRowsUpdater(
-        derivedUpdate.nextTailRows,
-      );
-      if (syncTailRowsUpdater) {
-        input.setSyncTailRows(syncTailRowsUpdater);
-      }
-      input.setActiveTailWindowId(derivedUpdate.activeTailWindowId);
-
-      if (update.anomalyCount > 0) {
-        input.setIsAnomalyFlash(true);
-        globalThis.setTimeout(() => input.setIsAnomalyFlash(false), 1200);
-      }
-
-      if (input.replayActive) {
-        return;
-      }
-
-      input.setEmittedCueCount(buildLiveLogMonitorEmittedCueCountUpdater(routedCues));
-      input.setRecentCues(
-        buildLiveLogMonitorRecentCuesUpdater({
-          routedCues,
-          primaryLine: derivedUpdate.updateDerivation.primaryLine,
-        }),
-      );
-      input.setRecentMarkers(buildLiveLogMonitorRecentMarkersUpdater(update.anomalyMarkers));
-      input.setRecentExplanations(buildLiveLogMonitorRecentExplanationsUpdater(nextExplanations));
-      if (typeof currentTrackSecond === "number") {
-        input.setBackgroundPlayheadSecond(currentTrackSecond);
-      }
-      const selectedExplanationUpdater = buildLiveLogMonitorSelectedExplanationUpdater({
-        nextExplanations,
+      applyLiveLogMonitorVisualUpdate({
+        update,
+        derivedUpdate,
+        currentTrackSecond,
+        replayActive: input.replayActive,
         isPlayback: input.monitor.isPlayback,
+        arrangementDepth: input.scene.mutationProfile.arrangementDepth,
+        setLastUpdate: input.setLastUpdate,
+        setRecentWarnings: input.setRecentWarnings,
+        setError: input.setError,
+        setSyncTailRows: input.setSyncTailRows,
+        setActiveTailWindowId: input.setActiveTailWindowId,
+        setIsAnomalyFlash: input.setIsAnomalyFlash,
+        setEmittedCueCount: input.setEmittedCueCount,
+        setRecentCues: input.setRecentCues,
+        setRecentMarkers: input.setRecentMarkers,
+        setRecentExplanations: input.setRecentExplanations,
+        setBackgroundPlayheadSecond: input.setBackgroundPlayheadSecond,
+        setSelectedExplanationId: input.setSelectedExplanationId,
+        setRecentVoices: input.setRecentVoices,
+        scheduleAnomalyFlashReset: () => {
+          globalThis.setTimeout(() => input.setIsAnomalyFlash(false), 1200);
+        },
       });
-      if (selectedExplanationUpdater) {
-        input.setSelectedExplanationId(selectedExplanationUpdater);
-      }
-      input.setRecentVoices(
-        buildLiveLogMonitorRecentVoices(routedCues, input.scene.mutationProfile.arrangementDepth),
-      );
     });
 
-    if (update.hasData && !input.replayActive) {
-      void input.ensureAudioReady();
-
-      const beatClockSyncPlan = buildLiveLogMonitorBeatClockPlan({
-        beatClockRef: input.beatClockRef,
-        liveBpm: update.suggestedBpm,
-        useBeatGrid: input.scene.preset.useBeatGrid,
-        audioCurrentTime: input.audioContextRef.current?.currentTime ?? null,
-      });
-      if (beatClockSyncPlan.changed) {
-        input.beatClockRef.current = beatClockSyncPlan.nextClock;
-        input.setBeatClockBpm(beatClockSyncPlan.nextDisplayBpm);
-      }
-
-      input.logger.info(
-        "onStreamUpdate → playing %d routed cues, bpm=%s",
-        routedCues.length,
-        update.suggestedBpm,
-      );
-      if (
-        shouldPlayLiveLogMonitorPanelProbe({
-          panelAudioProbePlayed: input.panelAudioProbePlayedRef.current,
-          hasBackgroundDeck: input.backgroundDeckRef.current !== null,
-        })
-      ) {
-        input.panelAudioProbePlayedRef.current = true;
-        void input.playPanelTestTone();
-      }
-      input.playWithCurrentEngine(routedCues, update.suggestedBpm);
-      input.applyLogModulation(update);
-    }
+    applyLiveLogMonitorPlaybackUpdate({
+      update,
+      replayActive: input.replayActive,
+      panelAudioProbePlayedRef: input.panelAudioProbePlayedRef,
+      hasBackgroundDeck: input.backgroundDeckRef.current !== null,
+      beatClockRef: input.beatClockRef,
+      useBeatGrid: input.scene.preset.useBeatGrid,
+      audioCurrentTime: input.audioContextRef.current?.currentTime ?? null,
+      setBeatClockBpm: input.setBeatClockBpm,
+      ensureAudioReady: input.ensureAudioReady,
+      playPanelTestTone: input.playPanelTestTone,
+      playWithCurrentEngine: input.playWithCurrentEngine,
+      applyLogModulation: input.applyLogModulation,
+      logger: input.logger,
+      derivedUpdate,
+    });
   });
 
   return {
