@@ -1,4 +1,4 @@
-import { Pause, Play, Zap } from "lucide-react";
+import { AlertTriangle, Pause, Play, Zap } from "lucide-react";
 
 import type { AppTranslations } from "../../i18n/types";
 import type { LibraryTrack } from "../../types/library";
@@ -37,7 +37,15 @@ export function SimpleLibraryTracksSection({
             onClick={() => onSelectTrack(track.id)}
           >
             <div className="simple-asset-info">
-              <span className="simple-asset-name">{track.tags.title}</span>
+              <span className="simple-asset-name">
+                {track.tags.title}
+                {track.file.availabilityState === "missing" ? (
+                  <span className="track-lost-badge" title={t.library.lost}>
+                    <AlertTriangle size={10} />
+                    {t.library.lost}
+                  </span>
+                ) : null}
+              </span>
               <p className="simple-asset-desc">
                 {track.tags.musicStyleLabel || t.simpleMode.library.presetFallback}
               </p>
@@ -45,6 +53,7 @@ export function SimpleLibraryTracksSection({
             <button
               type="button"
               className="track-preview-button"
+              disabled={track.file.availabilityState === "missing"}
               title={
                 previewTrackId === track.id
                   ? t.simpleMode.setup.pausePreview
@@ -52,6 +61,9 @@ export function SimpleLibraryTracksSection({
               }
               onClick={(event) => {
                 event.stopPropagation();
+                if (track.file.availabilityState === "missing") {
+                  return;
+                }
                 void onToggleTrackPreview(track);
               }}
             >

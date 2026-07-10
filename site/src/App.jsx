@@ -8,6 +8,9 @@ import DidacticLogSection from "./components/sections/DidacticLogSection";
 import MvpSection from "./components/sections/MvpSection";
 import VisionSection from "./components/sections/VisionSection";
 import RoadmapSection from "./components/sections/RoadmapSection";
+import OpenSourceSection from "./components/sections/OpenSourceSection";
+import InstallSection from "./components/sections/InstallSection";
+import ContributeSection from "./components/sections/ContributeSection";
 import { useSiteContent } from "./hooks/useSiteContent";
 import { getTheme } from "./theme/getTheme";
 
@@ -44,6 +47,9 @@ export default function App() {
         <MvpSection t={t} theme={theme} />
         <VisionSection t={t} theme={theme} />
         <RoadmapSection t={t} theme={theme} />
+        <OpenSourceSection t={t} theme={theme} />
+        <InstallSection t={t} theme={theme} />
+        <ContributeSection t={t} theme={theme} />
         <FooterCTA t={t} theme={theme} />
       </main>
     </div>

@@ -98,6 +98,9 @@ Verify:
 - replay starts and stops predictably
 - bookmark or anomaly navigation still points to coherent moments
 - no broken coupling appears between deck state and tail state
+- sessions whose log file or selected track no longer exists are visibly marked as lost
+- lost sessions cannot be replayed silently
+- lost sessions can be cleaned from the previous-sessions panel without deleting unrelated valid sessions or tracks
 
 ## Connection Flow
 
@@ -153,6 +156,7 @@ For the current MVP, accept the release only if:
 - quiet logs sound mostly stable
 - anomalies change the mix without completely destroying continuity
 - start/stop/replay do not leave stuck audio behind
+- selecting a lost previous session does not start a silent or stuck monitor session
 
 ## Visual Acceptance
 

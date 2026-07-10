@@ -79,6 +79,7 @@ export function buildSimpleMonitorActiveHookArgs(input: {
     onSelectAnomalyLine: input.deckRuntime.focusAnomaly,
     registerLineRef: input.deckRuntime.registerLineRef,
     monitorTrackTitle: input.screenMeta.monitorTrackTitle,
+    monitorTrackMissing: input.deckRuntime.activeTrack?.file?.availabilityState === "missing",
     musicStyleLabel: input.deckRuntime.activeTrack?.tags?.musicStyleLabel,
     deckPresetLabel: input.deckRuntime.deckPresetLabel,
     deckBpm: input.deckRuntime.deckBpm,
@@ -113,7 +114,14 @@ export function buildSimpleMonitorIdleHookArgs(input: {
   launchState: SimpleMonitorLaunchStateSlice;
   collections: SimpleMonitorCollectionsState;
   deckRuntime: SimpleMonitorDeckRuntimeSlice;
-  onReplaySession: (sessionId: string, sourcePath: string, repoTitle: string) => void;
+  onReplaySession: (
+    sessionId: string,
+    sourcePath: string,
+    repoTitle: string,
+    trackId?: string | null,
+  ) => void;
+  onDeletePastSession: (sessionId: string) => Promise<void>;
+  onDeleteLibraryTrack: (trackId: string) => Promise<boolean>;
 }) {
   return {
     sourceFilter: input.launchState.sourceFilter,
@@ -134,5 +142,7 @@ export function buildSimpleMonitorIdleHookArgs(input: {
     onStartMonitoringRequest: input.launchState.handleStartMonitoringRequest,
     sessions: input.collections.safePastSessions,
     onReplaySession: input.onReplaySession,
+    onDeletePastSession: input.onDeletePastSession,
+    onDeleteLibraryTrack: input.onDeleteLibraryTrack,
   };
 }

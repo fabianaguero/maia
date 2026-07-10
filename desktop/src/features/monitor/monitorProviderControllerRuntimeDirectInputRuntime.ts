@@ -51,6 +51,7 @@ export function buildMonitorProviderRuntimeOrchestrationInput(
       pollIndexRef: input.pollIndexRef,
       isPlaybackRef: input.isPlaybackRef,
       listenersRef: input.listenersRef,
+      recentUpdatesRef: input.recentUpdatesRef,
     }),
     template: buildMonitorProviderRuntimeTemplateSlice({
       activeTemplateRef: input.activeTemplateRef,

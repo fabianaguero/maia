@@ -229,7 +229,7 @@ describe("useMonitorTrackAudio", () => {
       expect(audioInstances[0]?.play).toHaveBeenCalledTimes(1);
     });
 
-    expect(ensureBackgroundGraph).toHaveBeenCalledTimes(1);
+    expect(ensureBackgroundGraph).not.toHaveBeenCalled();
     expect(result.current.backgroundAudioRef.current).toBe(
       audioInstances[0] as unknown as HTMLAudioElement,
     );

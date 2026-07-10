@@ -277,6 +277,7 @@ describe("useAppV0SectionContentModel", () => {
       "persisted-1",
       "/logs/visits-service.log",
       "visits-service",
+      undefined,
     );
     expect(input.monitor.stopSession).toHaveBeenCalledTimes(1);
   });

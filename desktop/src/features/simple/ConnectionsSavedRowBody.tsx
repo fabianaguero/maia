@@ -1,4 +1,5 @@
 import type { ConnectionsSavedListRowViewModel } from "./connectionsSavedListViewModel";
+import { RuntimeStatusCard } from "../../components/RuntimeStatusCard";
 import { resolveConnectionsSavedRowStatusChipClass } from "./connectionsSavedRowRuntime";
 
 interface ConnectionsSavedRowBodyProps {
@@ -37,10 +38,48 @@ export function ConnectionsSavedRowBody({ row }: ConnectionsSavedRowBodyProps) {
 
       {row.testLabel ? (
         <div className="connections-saved-row__probe">
-          <span className={resolveConnectionsSavedRowStatusChipClass(row)}>{row.testLabel}</span>
-          {row.testMessage ? (
-            <span className="connections-saved-row__probe-text">{row.testMessage}</span>
-          ) : null}
+          {row.isPending ? (
+            <RuntimeStatusCard
+              title={row.pendingLabel ?? row.testLabel}
+              detail={row.sourceUri}
+              badge={row.kindLabel}
+              tone="pending"
+              activity="spinner"
+              compact
+              className="connections-saved-row__probe-card"
+            />
+          ) : row.testTone === "testing" ? (
+            <RuntimeStatusCard
+              title={row.testLabel}
+              detail={row.testMessage ?? row.sourceUri}
+              badge={row.kindLabel}
+              tone="pending"
+              activity="spinner"
+              compact
+              className="connections-saved-row__probe-card"
+            />
+          ) : (
+            <>
+              <span className={resolveConnectionsSavedRowStatusChipClass(row)}>
+                {row.testLabel}
+              </span>
+              {row.testMessage ? (
+                <span className="connections-saved-row__probe-text">{row.testMessage}</span>
+              ) : null}
+            </>
+          )}
+        </div>
+      ) : row.isPending ? (
+        <div className="connections-saved-row__probe">
+          <RuntimeStatusCard
+            title={row.pendingLabel ?? row.kindLabel}
+            detail={row.sourceUri}
+            badge={row.kindLabel}
+            tone="pending"
+            activity="spinner"
+            compact
+            className="connections-saved-row__probe-card"
+          />
         </div>
       ) : null}
 

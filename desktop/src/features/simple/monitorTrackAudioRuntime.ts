@@ -49,6 +49,7 @@ export function prepareBackgroundMonitorAudio(
 ): string {
   audio.loop = true;
   audio.volume = 1;
+  audio.playbackRate = 1;
   audio.muted = false;
   audio.defaultMuted = false;
   audio.preload = "auto";
@@ -64,4 +65,58 @@ export function prepareBackgroundMonitorAudio(
   }
 
   return currentUrl ?? playbackUrl;
+}
+
+export function startMonitorAudioPlayback(
+  audio: HTMLAudioElement,
+  warn: (message: string, error: unknown) => void,
+): void {
+  let settled = false;
+
+  const describeAudio = () =>
+    `readyState=${audio.readyState} paused=${audio.paused} currentTime=${audio.currentTime.toFixed(
+      2,
+    )} duration=${Number.isFinite(audio.duration) ? audio.duration.toFixed(2) : "n/a"} src=${
+      audio.currentSrc || audio.src || "none"
+    }`;
+
+  const start = () => {
+    if (settled) {
+      return;
+    }
+
+    void audio.play().then(
+      () => {
+        settled = true;
+        console.info(`[MAIA:MonitorAudio] playback started ${describeAudio()}`);
+      },
+      (error) => {
+        warn(`Simple monitor background playback failed (${describeAudio()})`, error);
+      },
+    );
+  };
+
+  const retryStart = () => {
+    if (settled) {
+      return;
+    }
+
+    start();
+  };
+
+  if (audio.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+    start();
+    return;
+  }
+
+  if (typeof audio.addEventListener !== "function") {
+    start();
+    return;
+  }
+
+  audio.addEventListener("loadedmetadata", retryStart, { once: true });
+  audio.addEventListener("canplay", retryStart, { once: true });
+  audio.addEventListener("canplaythrough", retryStart, { once: true });
+
+  start();
 }

@@ -136,7 +136,7 @@ describe("LibraryTabContent", () => {
   it("renders a loading shell while the active tab is busy", () => {
     renderWithI18n(<LibraryTabContent {...createProps()} loading={true} />);
 
-    expect(screen.getByText("Loading library")).toBeInTheDocument();
+    expect(screen.getAllByText("Loading library").length).toBeGreaterThan(0);
   });
 
   it("renders the empty state CTA and opens the form from the tracks tab", () => {

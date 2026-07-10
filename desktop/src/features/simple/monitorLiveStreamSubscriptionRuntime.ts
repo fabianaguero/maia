@@ -8,6 +8,10 @@ import type { MonitorLogSignalPoint } from "./monitorLiveStreamRuntime";
 import { shouldEmitMonitorCueAccent } from "./monitorLiveStreamRuntime";
 import type { WaveformAnomalyMarker } from "./monitorDeckViewModel";
 
+function hasReactiveAlertSignal(update: LiveLogStreamUpdate): boolean {
+  return (update.anomalyCount ?? 0) > 0 || (update.anomalyMarkers?.length ?? 0) > 0;
+}
+
 export interface ApplyMonitorLiveStreamSubscriptionUpdateInput {
   update: LiveLogStreamUpdate;
   currentTrack: LibraryTrack | null;
@@ -64,13 +68,14 @@ export function applyMonitorLiveStreamSubscriptionUpdate(
 
   let nextAudioProbePlayed = input.audioProbePlayed;
   let nextLastCueAccentAtMs = input.lastCueAccentAtMs;
+  const shouldApplyReactiveMutation = hasMeaningfulUpdate && hasReactiveAlertSignal(input.update);
 
   if (input.currentAudioContext?.state === "running") {
-    if (!nextAudioProbePlayed) {
+    if (!nextAudioProbePlayed && hasMeaningfulUpdate) {
       nextAudioProbePlayed = true;
       input.playTestTone();
     }
-    if (input.activeAudio && hasMeaningfulUpdate) {
+    if (input.activeAudio && shouldApplyReactiveMutation) {
       input.ensureBackgroundGraph(input.activeAudio, input.currentAudioContext);
       input.applyTrackMutation(input.update);
     }

@@ -45,6 +45,7 @@ export type MonitorProviderRuntimeOrchestrationStateDependencies = Pick<
   | "pollIndexRef"
   | "isPlaybackRef"
   | "listenersRef"
+  | "recentUpdatesRef"
   | "activeTemplateRef"
   | "setActiveTemplateState"
 >;

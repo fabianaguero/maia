@@ -37,6 +37,7 @@ export function buildMonitorProviderSessionActionsInput(
       directCursorRef: input.directCursorRef,
       emptyWindowsRef: input.emptyWindowsRef,
       pollTimerRef: input.pollTimerRef,
+      recentUpdatesRef: input.recentUpdatesRef,
     }),
     audio: buildMonitorProviderSessionAudioSlice({
       currentSegmentRef: input.currentSegmentRef,

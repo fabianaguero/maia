@@ -31,6 +31,19 @@ function createEvent(index: number): SessionEvent {
   };
 }
 
+function createBootstrapOnlyEvent(): SessionEvent {
+  return {
+    ...createEvent(0),
+    summary: "MAIA_MONITOR_INITIALIZED: FILE_TAIL armed",
+    lineCount: 1,
+    anomalyCount: 0,
+    levelCountsJson: JSON.stringify({ info: 1 }),
+    anomalyMarkersJson: JSON.stringify([]),
+    sonificationCuesJson: JSON.stringify([]),
+    parsedLinesJson: JSON.stringify(["MAIA_MONITOR_INITIALIZED: FILE_TAIL armed"]),
+  };
+}
+
 function createSession(): ActiveMonitorSession {
   return {
     sessionId: "playback_persisted-1",
@@ -86,6 +99,49 @@ describe("monitorReplayHydrationRuntime", () => {
     expect(replayHydratingRef.current).toBe(false);
     expect(setTimeoutFn).toHaveBeenCalledWith(replayTick, 0);
     expect(pollTimerRef.current).toBe(111);
+  });
+
+  it("replaces bootstrap-only replay windows with source windows that contain parsed lines", async () => {
+    const replayHydrationTokenRef = { current: 3 };
+    const replayEventsRef = { current: [createBootstrapOnlyEvent()] };
+    const replayMetricsRef = {
+      current: [{ windowCount: 1, processedLines: 1, totalAnomalies: 0 }],
+    };
+    const replayIndexRef = { current: 1 };
+    const replayHydratingRef = { current: true };
+    const activeRef = { current: true };
+    const playbackPausedRef = { current: false };
+    const pollTimerRef = { current: null as number | null };
+    const syncReplayTelemetry = vi.fn();
+    const setTimeoutFn = vi.fn(() => 112);
+    const replayTick = vi.fn();
+    const logger = { info: vi.fn(), warn: vi.fn() };
+
+    await hydrateReplayFromSourceState({
+      sessionId: "persisted-1",
+      sourcePath: "/logs/replay.log",
+      hydrationToken: 3,
+      replayHydrationTokenRef,
+      sessionRef: { current: createSession() as ActiveMonitorSession | null },
+      replayEventsRef,
+      replayMetricsRef,
+      replayIndexRef,
+      replayHydratingRef,
+      activeRef,
+      playbackPausedRef,
+      pollTimerRef,
+      syncReplayTelemetry,
+      rebuildReplayEventsFromSource: vi.fn(async () => [createEvent(0)]),
+      setTimeoutFn,
+      replayTick,
+      logger,
+    });
+
+    expect(replayEventsRef.current[0]?.summary).toBe("window-0");
+    expect(JSON.parse(replayEventsRef.current[0]?.parsedLinesJson ?? "[]")).toEqual(["line-0"]);
+    expect(replayIndexRef.current).toBe(0);
+    expect(syncReplayTelemetry).toHaveBeenCalledWith(0);
+    expect(setTimeoutFn).toHaveBeenCalledWith(replayTick, 0);
   });
 
   it("starts hydration only when replay source rebuild is needed", () => {

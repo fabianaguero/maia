@@ -59,6 +59,8 @@ describe("liveLogMonitorSessionRuntime", () => {
       emittedCueCount: 0,
       backgroundPlayheadSecond: 0,
       activeTailWindowId: null,
+      liveMutationState: "normal",
+      forcedLiveMutationState: "auto",
       error: null,
       isStarting: true,
       bounceWindowCount: 0,

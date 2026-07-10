@@ -12,7 +12,7 @@ import {
 const cloudSource: MonitorLaunchSource = {
   id: "connection:cloud-1",
   title: "services",
-  sourcePath: "gcp-cloud-run://innate-portal/services",
+  sourcePath: "gcp-cloud-run://demo-gcp-project/services",
   sourceType: "cloud",
   sourceTypeLabel: "Cloud",
   startable: true,
@@ -131,13 +131,16 @@ describe("simpleMonitorInteractionRuntime", () => {
       startMonitoring: async (_source, trackId) => {
         steps.push(`start:${trackId}`);
       },
+      finishLaunchingOnSuccess: () => {
+        steps.push("finish");
+      },
       resetLaunchingOnFailure: () => {
         steps.push("reset");
       },
     });
 
     expect(didStart).toBe(true);
-    expect(steps).toEqual(["launching", "frame", "resume", "start:track-1"]);
+    expect(steps).toEqual(["launching", "frame", "resume", "start:track-1", "finish"]);
   });
 
   it("resets launching state if the monitor start fails", async () => {
@@ -154,6 +157,7 @@ describe("simpleMonitorInteractionRuntime", () => {
       startMonitoring: async () => {
         throw new Error("boom");
       },
+      finishLaunchingOnSuccess: vi.fn(),
       resetLaunchingOnFailure,
     });
 
@@ -167,6 +171,7 @@ describe("simpleMonitorInteractionRuntime", () => {
     const waitForNextFrame = vi.fn(async () => undefined);
     const resumeAudio = vi.fn(async () => undefined);
     const startMonitoring = vi.fn(async () => undefined);
+    const finishLaunchingOnSuccess = vi.fn();
     const resetLaunchingOnFailure = vi.fn();
 
     const didStart = await executeSimpleMonitorStartRequest({
@@ -177,6 +182,7 @@ describe("simpleMonitorInteractionRuntime", () => {
       waitForNextFrame,
       resumeAudio,
       startMonitoring,
+      finishLaunchingOnSuccess,
       resetLaunchingOnFailure,
     });
 
@@ -185,6 +191,7 @@ describe("simpleMonitorInteractionRuntime", () => {
     expect(waitForNextFrame).not.toHaveBeenCalled();
     expect(resumeAudio).not.toHaveBeenCalled();
     expect(startMonitoring).not.toHaveBeenCalled();
+    expect(finishLaunchingOnSuccess).not.toHaveBeenCalled();
     expect(resetLaunchingOnFailure).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,5 @@
 import type {
+  LiveLogStreamUpdate,
   StartLogSourceConnectionInput,
   StartSessionInput,
   StreamSessionRecord,
@@ -13,12 +14,17 @@ export interface AppV0MonitorLaunchExecutionDeps {
   setGuideTrack: (path: string) => void;
   resumeAudio: () => Promise<void>;
   startConnection: (input: StartLogSourceConnectionInput) => Promise<StreamSessionRecord>;
+  pollConnectionSession: (
+    sessionId: string,
+    sourcePath: string,
+  ) => Promise<LiveLogStreamUpdate | null>;
   attachSession: (input: {
     session: StreamSessionRecord;
     repoId: string;
     repoTitle: string;
     trackId?: string;
     trackTitle?: string;
+    initialStreamUpdate?: LiveLogStreamUpdate | null;
   }) => Promise<boolean>;
   startSession: (repo: RepositoryAnalysis, input: StartSessionInput) => Promise<boolean>;
   onLaunchSuccess?: () => void;
@@ -42,6 +48,10 @@ export async function executeAppV0ConnectionLaunchPlan(
     sessionId: plan.sessionId,
     startFromBeginning: false,
   });
+  const initialStreamUpdate = await deps.pollConnectionSession(
+    streamSession.sessionId,
+    streamSession.source,
+  );
   const success = await deps.attachSession(
     buildAppV0ConnectionAttachInput({
       session: streamSession,
@@ -49,6 +59,7 @@ export async function executeAppV0ConnectionLaunchPlan(
       repoTitle: plan.repoTitle,
       track: plan.track,
       trackTitle: plan.trackTitle,
+      initialStreamUpdate,
     }),
   );
   if (!success) {

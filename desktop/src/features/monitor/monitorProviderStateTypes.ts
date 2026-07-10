@@ -1,5 +1,6 @@
 import type { SessionEvent } from "../../api/sessions";
 import type { SourceTemplate } from "../../config/sourceTemplates";
+import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { ActiveMonitorSession, MonitorMetrics, StreamListener } from "./monitorContextTypes";
 import type { CrossfadeHandle, GuideTrackPCM } from "./monitorAudioRuntimeTypes";
 
@@ -39,6 +40,7 @@ export type MonitorProviderRefsState = {
   pollTimerRef: React.MutableRefObject<number | null>;
   sessionRef: React.MutableRefObject<ActiveMonitorSession | null>;
   listenersRef: React.MutableRefObject<Set<StreamListener>>;
+  recentUpdatesRef: React.MutableRefObject<LiveLogStreamUpdate[]>;
   activeRef: React.MutableRefObject<boolean>;
   guideTrackRef: React.MutableRefObject<GuideTrackPCM | null>;
   guideTrackCursorRef: React.MutableRefObject<{ current: number }>;

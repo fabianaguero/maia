@@ -24,7 +24,14 @@ export interface SimpleMonitorIdleViewProps {
   isLaunchingMonitor: boolean;
   onStartMonitoringRequest: () => void | Promise<void>;
   sessions: PersistedSession[];
-  onReplaySession: (sessionId: string, sourcePath: string, repoTitle: string) => void;
+  onReplaySession: (
+    sessionId: string,
+    sourcePath: string,
+    repoTitle: string,
+    trackId?: string | null,
+  ) => void;
+  onDeletePastSession: (sessionId: string) => Promise<void>;
+  onDeleteLibraryTrack: (trackId: string) => Promise<boolean>;
 }
 
 export function SimpleMonitorIdleView({
@@ -46,6 +53,8 @@ export function SimpleMonitorIdleView({
   onStartMonitoringRequest,
   sessions,
   onReplaySession,
+  onDeletePastSession,
+  onDeleteLibraryTrack,
 }: SimpleMonitorIdleViewProps) {
   const t = useT();
 
@@ -74,7 +83,13 @@ export function SimpleMonitorIdleView({
             onStartMonitoringRequest={onStartMonitoringRequest}
           />
 
-          <PastSessionsPanel sessions={sessions} onReplaySession={onReplaySession} />
+          <PastSessionsPanel
+            sessions={sessions}
+            tracks={tracks}
+            onReplaySession={onReplaySession}
+            onDeletePastSession={onDeletePastSession}
+            onDeleteLibraryTrack={onDeleteLibraryTrack}
+          />
         </div>
       </div>
     </div>

@@ -1,14 +1,21 @@
 export const contentEs = {
-  nav: { product: "Producto", how: "Cómo funciona", mvp: "MVP", vision: "Visión" },
+  nav: {
+    product: "Producto",
+    how: "Cómo funciona",
+    mvp: "MVP",
+    vision: "Visión",
+    github: "GitHub",
+    install: "Instalar",
+  },
   controls: { lang: "English", theme: { dark: "Modo nocturno", light: "Modo claro" } },
   hero: {
-    badge: "App desktop de monitoreo audible",
+    badge: "Open source · Monitoreo audible · Licencia MIT",
     title: "Escuchá tus sistemas como música de fondo.",
     body: "MAIA convierte logs, streams, repositorios y scans de archivos en una mezcla de monitoreo en background para equipos técnicos.",
     body2:
       "El equipo elige un track o playlist base que le gusta escuchar y Maia deja que el comportamiento del sistema deforme esa base para que estabilidad, presión y anomalías se puedan oír sin quedarse mirando un dashboard.",
-    cta1: "Ver MVP",
-    cta2: "Explorar el flujo",
+    cta1: "Descargar para macOS/Windows/Linux",
+    cta2: "Ver en GitHub",
     stats: [
       { label: "Entradas", value: "Logs · Streams · Repos · Scans" },
       { label: "Runtime", value: "macOS · Windows · Ubuntu/Linux" },
@@ -250,11 +257,75 @@ export const contentEs = {
     tagline: "Tus sistemas, tu mood, tu cama de monitoreo.",
     title: "Del comportamiento del sistema al groove.",
     text: "Una app desktop multiplataforma que convierte comportamiento técnico en música de fondo, cues y estructura audible de monitoreo.",
-    ctaTitle: "CTAs sugeridos del site",
-    ctas: [
-      "Solicitar demo desktop",
-      "Ver el flujo de monitoreo audible",
-      "Explorar la arquitectura del producto",
+    ctaTitle: "Empezá aquí",
+    ctas: ["Descargar la última versión", "Explorar el código fuente", "Unirse a la comunidad"],
+  },
+  opensource: {
+    eyebrow: "Open Source",
+    title: "MAIA es MIT licensed y abierto a contribuciones",
+    text: "Ejecutá localmente, modificá para tu equipo y contribuí de vuelta al proyecto.",
+    badge: "Gratuito y open source",
+    features: [
+      {
+        title: "Ejecutá localmente",
+        text: "App desktop para macOS, Windows y Ubuntu/Linux. Código fuente disponible.",
+      },
+      {
+        title: "Licencia MIT",
+        text: "Usá libremente en proyectos comerciales y personales. Modificá y redistribuí.",
+      },
+      {
+        title: "Impulsado por comunidad",
+        text: "Issues, discussions y pull requests bienvenidos. Ver CONTRIBUTING.md para pautas.",
+      },
+      {
+        title: "Arquitectura documentada",
+        text: "Guías comprensivas para ejecutar localmente, entender el runtime y extender features.",
+      },
+    ],
+  },
+  install: {
+    eyebrow: "Instalación",
+    title: "Tené MAIA funcionando en minutos",
+    text: "Descargá la app compilada o compilá desde el código fuente.",
+    methods: [
+      {
+        label: "Inicio rápido (recomendado)",
+        text: "Descargá la última versión para tu plataforma desde la página de releases en GitHub.",
+        platform: "macOS · Windows · Linux",
+      },
+      {
+        label: "Compilar desde el código fuente",
+        text: "Cloná el repositorio y ejecutá `npm run tauri dev` desde el directorio desktop/.",
+        platform: "Requiere Node.js 18+ y toolchain de Rust",
+      },
+    ],
+    requirementsTitle: "Requisitos mínimos",
+    requirements: [
+      "Sistema operativo de 64 bits (macOS 11+, Windows 10+, Ubuntu 18.04+)",
+      "4GB RAM para sesiones de monitoreo cómodas",
+      "Micrófono o entrada de audio para sesiones en vivo",
+      "Opcional: Python 3.8+ para extensiones del analyzer local",
+    ],
+  },
+  contribute: {
+    eyebrow: "Contribuir",
+    title: "Ayudá a darle forma al futuro del monitoreo audible",
+    text: "Ya sea que arregles un bug, agregues una feature o mejores la documentación, las contribuciones son bienvenidas.",
+    guidelines: [
+      "Leé CONTRIBUTING.md para workflow y estilo de código",
+      "Hacé fork del repositorio y creá una rama para tu feature",
+      "Ejecutá `npm run quality:strict` antes de hacer el pull request",
+      "Referenciar issues en tus mensajes de commit",
+    ],
+    areasTitle: "Áreas donde ayuda es apreciada",
+    areas: [
+      "Frontend: componentes React y mejoras de UI/UX",
+      "Backend: runtime de Rust, integración con Tauri y features nativas",
+      "Análisis: extensiones del analyzer Python y lógica de sonificación",
+      "Documentación: guías, ejemplos y docs de arquitectura",
+      "Testing: cobertura de tests y QA manual",
+      "Internacionalización: traducciones y localización",
     ],
   },
 };

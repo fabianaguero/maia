@@ -93,7 +93,7 @@ describe("useImportRepositoryFormController", () => {
     expect(result.current.error).toBe("Project and service are required.");
 
     act(() => {
-      result.current.setGcpProjectId("innate-portal");
+      result.current.setGcpProjectId("demo-gcp-project");
       result.current.setGcpServiceName("services");
       result.current.setGcpRegion("us-central1");
       result.current.setLabel("Prod Cloud Run");
@@ -107,7 +107,7 @@ describe("useImportRepositoryFormController", () => {
       kind: "gcp_cloud_run",
       label: "Prod Cloud Run",
       config: {
-        projectId: "innate-portal",
+        projectId: "demo-gcp-project",
         serviceName: "services",
         region: "us-central1",
         minimumSeverity: "DEFAULT",

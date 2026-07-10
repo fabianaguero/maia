@@ -32,6 +32,7 @@ export interface AppV0LibraryBindings {
   selectedTrackId: string | null;
   selectedTrack: LibraryTrack | null;
   setSelectedTrackId: (id: string | null) => void;
+  deleteLibraryTrack: (trackId: string) => Promise<boolean>;
 }
 
 export interface AppV0RepositoryBindings {
@@ -48,6 +49,7 @@ export interface AppV0BaseAssetBindings {
 
 export interface AppV0PastSessionsBindings {
   sessions: PersistedSession[];
+  removeSession: (sessionId: string) => Promise<void>;
 }
 
 export interface AppV0MonitorOrchestratorBindings {
@@ -56,7 +58,12 @@ export interface AppV0MonitorOrchestratorBindings {
     source: MonitorLaunchSource,
     trackId?: string,
   ) => Promise<AppV0MonitorLaunchExecutionResult>;
-  replaySession: (sessionId: string, sourcePath: string, repoTitle: string) => Promise<void>;
+  replaySession: (
+    sessionId: string,
+    sourcePath: string,
+    repoTitle: string,
+    trackId?: string | null,
+  ) => Promise<void>;
 }
 
 export interface UseAppV0ScreenModelInput {

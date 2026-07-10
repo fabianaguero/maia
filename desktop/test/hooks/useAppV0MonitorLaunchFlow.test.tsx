@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { MonitorLaunchSource } from "../../src/types/monitorLaunch";
 import { useAppV0MonitorScreenState } from "../../src/hooks/useAppV0MonitorScreenState";
@@ -7,11 +7,32 @@ import type { LibraryTrack, RepositoryAnalysis } from "../../src/types/library";
 
 const repositoriesApiMock = vi.hoisted(() => ({
   startLogSourceConnection: vi.fn(),
+  pollStreamSession: vi.fn(),
 }));
 
 vi.mock("../../src/api/repositories", () => ({
   startLogSourceConnection: repositoriesApiMock.startLogSourceConnection,
+  pollStreamSession: repositoriesApiMock.pollStreamSession,
 }));
+
+const emptyPollResult = {
+  sourcePath: "gcp-cloud-run://project/services",
+  fromOffset: 0,
+  toOffset: 0,
+  hasData: false,
+  summary: "",
+  suggestedBpm: null,
+  confidence: 0,
+  dominantLevel: "info",
+  lineCount: 0,
+  anomalyCount: 0,
+  levelCounts: {},
+  anomalyMarkers: [],
+  topComponents: [],
+  sonificationCues: [],
+  parsedLines: [],
+  warnings: [],
+};
 
 function createTrack(): LibraryTrack {
   return {
@@ -118,6 +139,11 @@ function createRepository(): RepositoryAnalysis {
 }
 
 describe("useAppV0MonitorScreenState launch flow", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    repositoriesApiMock.pollStreamSession.mockResolvedValue(emptyPollResult);
+  });
+
   it("switches to the active monitor section after a successful connection launch", async () => {
     const setCurrentSection = vi.fn();
     const setGuideTrack = vi.fn();
@@ -137,7 +163,6 @@ describe("useAppV0MonitorScreenState launch flow", () => {
       totalPolls: 0,
       fileCursor: null,
     });
-
     const { result } = renderHook(() =>
       useAppV0MonitorScreenState({
         lang: "en",

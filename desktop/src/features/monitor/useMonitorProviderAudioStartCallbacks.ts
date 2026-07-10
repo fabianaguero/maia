@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 
-import { emitMonitorAudioProbe } from "./monitorContextRuntime";
 import {
   buildMonitorProviderLiveStartHookInput,
   type MonitorProviderAudioStartHookDeps,
@@ -14,14 +13,7 @@ export function useMonitorProviderAudioStartCallbacks(
   const { live, persistence, session, template } = input;
   const { doPoll, ensureProviderAudioContext, resetReplayTelemetry } = deps;
 
-  const emitLiveStartProbe = useCallback((context: AudioContext) => {
-    emitMonitorAudioProbe({
-      context,
-      frequency: 528,
-      attackGain: 0.12,
-      releaseTimeSec: 0.25,
-    });
-  }, []);
+  const emitLiveStartProbe = useCallback((_context: AudioContext) => {}, []);
 
   const runProviderPoll = useCallback(() => {
     void doPoll();

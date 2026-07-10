@@ -53,6 +53,7 @@ export interface MonitorContextValue {
     repoTitle: string;
     trackId?: string;
     trackTitle?: string;
+    initialStreamUpdate?: LiveLogStreamUpdate | null;
     sourceTemplateId?: string | null;
     persistedSessionId?: string | null;
   }) => Promise<boolean>;
@@ -62,6 +63,8 @@ export interface MonitorContextValue {
     label: string;
     sourcePath: string;
     repoId?: string | null;
+    trackId?: string | null;
+    trackTitle?: string | null;
   }) => Promise<boolean>;
   seekPlaybackProgress: (progress: number) => void;
   seekPlaybackWindow: (replayWindowIndex: number) => void;

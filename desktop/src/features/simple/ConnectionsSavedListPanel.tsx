@@ -13,6 +13,8 @@ interface ConnectionsSavedListPanelProps {
   connectionKindLabel: Record<ConnectionKind, string>;
   activeConnectionId: string | null;
   activeSessionId: string | null;
+  pendingConnectionId: string | null;
+  tailPhase: "starting" | "stopping" | null;
   saving: boolean;
   testStatusById: Record<string, ConnectionTestStatus>;
   testMessageById: Record<string, string>;
@@ -34,6 +36,8 @@ export function ConnectionsSavedListPanel({
   connectionKindLabel,
   activeConnectionId,
   activeSessionId,
+  pendingConnectionId,
+  tailPhase,
   saving,
   testStatusById,
   testMessageById,
@@ -54,6 +58,8 @@ export function ConnectionsSavedListPanel({
     connectionKindLabel,
     activeConnectionId,
     activeSessionId,
+    pendingConnectionId,
+    tailPhase,
     editingConnectionId,
     saving,
     testStatusById,

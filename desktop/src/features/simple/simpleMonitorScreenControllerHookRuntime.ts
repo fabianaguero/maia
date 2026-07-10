@@ -136,6 +136,8 @@ export interface BuildSimpleMonitorScreenControllerHookArgsInput {
     | "onStop"
     | "onResumeAudio"
     | "onReplaySession"
+    | "onDeletePastSession"
+    | "onDeleteLibraryTrack"
     | "audioStatus"
   >;
   t: AppTranslations;
@@ -162,6 +164,8 @@ export function buildSimpleMonitorScreenControllerHookBaseArgs(
     onRefresh: input.onRefresh,
     onResumeAudio: input.state.onResumeAudio,
     onReplaySession: input.state.onReplaySession,
+    onDeletePastSession: input.state.onDeletePastSession,
+    onDeleteLibraryTrack: input.state.onDeleteLibraryTrack,
     audioStatus: input.state.audioStatus,
   };
 }

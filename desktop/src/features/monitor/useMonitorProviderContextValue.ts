@@ -1,5 +1,6 @@
 import { useMemo, type MutableRefObject } from "react";
 
+import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { MonitorContextValue, StreamListener } from "./monitorContextTypes";
 import { buildMonitorProviderContextHookValue } from "./monitorProviderContextValueHookRuntime";
 import { buildMonitorProviderMemoContextValue } from "./monitorProviderContextValueMemoRuntime";
@@ -14,6 +15,7 @@ export interface UseMonitorProviderContextValueInput extends Omit<
   "subscribe"
 > {
   listenersRef: MutableRefObject<Set<StreamListener>>;
+  recentUpdatesRef?: MutableRefObject<LiveLogStreamUpdate[]>;
   logger: MonitorProviderContextLogger;
 }
 

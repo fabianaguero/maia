@@ -13,7 +13,7 @@ import type { AppV0Language } from "../appV0Preferences";
 import type { ActiveMonitorSession, MonitorMetrics } from "../features/monitor/monitorContextTypes";
 import type { AppSection } from "../features/simple/appSections";
 import type { LibraryTrack, RepositoryAnalysis, StartSessionInput } from "../types/library";
-import type { StreamSessionRecord } from "../types/monitor";
+import type { LiveLogStreamUpdate, StreamSessionRecord } from "../types/monitor";
 import { getTrackTitle } from "../utils/track";
 import type { UseAppV0MonitorScreenStateInput } from "./useAppV0MonitorScreenState";
 
@@ -118,6 +118,7 @@ export interface BuildAppV0MonitorOrchestratorInput {
     repoTitle: string;
     trackId?: string;
     trackTitle?: string;
+    initialStreamUpdate?: LiveLogStreamUpdate | null;
   }) => Promise<boolean>;
   startSession: (repo: RepositoryAnalysis, input: StartSessionInput) => Promise<boolean>;
   playbackSession: (input: {

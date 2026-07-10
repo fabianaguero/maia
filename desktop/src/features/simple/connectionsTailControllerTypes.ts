@@ -19,6 +19,8 @@ export interface UseConnectionTailControllerInput {
 export interface ConnectionTailControllerState {
   activeSessionId: string | null;
   activeConnectionId: string | null;
+  pendingConnectionId: string | null;
+  tailPhase: "starting" | "stopping" | null;
   tailPreview: string[];
   tailStatus: string | null;
   handleStartTail: (connection: LogSourceConnection) => Promise<void>;

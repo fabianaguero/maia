@@ -2,7 +2,7 @@ import type { ActiveMonitorSession } from "./features/monitor/monitorContextType
 import type { MonitorLaunchSource } from "./types/monitorLaunch";
 import { getTrackTitle, resolvePlayableTrackPath } from "./utils/track";
 import type { LibraryTrack, RepositoryAnalysis } from "./types/library";
-import type { StartSessionInput, StreamSessionRecord } from "./types/monitor";
+import type { LiveLogStreamUpdate, StartSessionInput, StreamSessionRecord } from "./types/monitor";
 
 export interface AppV0TrackSelection {
   track: LibraryTrack | null;
@@ -16,6 +16,7 @@ export interface AppV0ConnectionAttachInput {
   session: StreamSessionRecord;
   trackId?: string;
   trackTitle?: string;
+  initialStreamUpdate?: LiveLogStreamUpdate | null;
 }
 
 export type AppV0MonitorLaunchPlan =
@@ -82,6 +83,7 @@ export function buildAppV0ConnectionAttachInput(input: {
   repoTitle: string;
   track: LibraryTrack;
   trackTitle: string;
+  initialStreamUpdate?: LiveLogStreamUpdate | null;
 }): AppV0ConnectionAttachInput {
   return {
     session: input.session,
@@ -89,6 +91,7 @@ export function buildAppV0ConnectionAttachInput(input: {
     repoTitle: input.repoTitle,
     trackId: input.track.id,
     trackTitle: input.trackTitle,
+    initialStreamUpdate: input.initialStreamUpdate ?? null,
   };
 }
 

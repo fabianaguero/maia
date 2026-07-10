@@ -106,6 +106,8 @@ describe("monitorPlaybackRuntime", () => {
       label: "Night watch",
       sourcePath: "/logs/replay.log",
       repoId: "repo-1",
+      trackId: "track-1",
+      trackTitle: "Replay Track",
       startedAt: 42,
     });
 
@@ -114,6 +116,8 @@ describe("monitorPlaybackRuntime", () => {
       persistedSessionId: "persisted-1",
       repoId: "repo-1",
       repoTitle: "Night watch",
+      trackId: "track-1",
+      trackName: "Replay Track",
       sourcePath: "/logs/replay.log",
       adapterKind: "file",
       pollMode: "direct",
@@ -133,7 +137,7 @@ describe("monitorPlaybackRuntime", () => {
     });
 
     expect(prepared?.events).toHaveLength(2);
-    expect(prepared?.shouldHydrateReplay).toBe(false);
+    expect(prepared?.shouldHydrateReplay).toBe(true);
     expect(prepared?.session.repoTitle).toBe("Night watch");
 
     const sessionRef = { current: null as ActiveMonitorSession | null };
@@ -176,7 +180,7 @@ describe("monitorPlaybackRuntime", () => {
     expect(replayEventsRef.current).toHaveLength(2);
     expect(activeRef.current).toBe(true);
     expect(isPlaybackRef.current).toBe(true);
-    expect(replayHydratingRef.current).toBe(false);
+    expect(replayHydratingRef.current).toBe(true);
     expect(syncReplayTelemetry).toHaveBeenCalledWith(0);
   });
 

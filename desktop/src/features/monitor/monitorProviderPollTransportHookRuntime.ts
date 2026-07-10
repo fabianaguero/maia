@@ -24,6 +24,7 @@ export function buildMonitorProviderEmitUpdateHookInput(input: {
   return buildEmitMonitorProviderUpdateStateInput({
     update: input.update,
     listenersRef: input.live.listenersRef,
+    recentUpdatesRef: input.live.recentUpdatesRef,
     sessionRef: input.session.sessionRef,
     pollIndexRef: input.live.pollIndexRef,
     audioContextRef: input.audio.audioContextRef,

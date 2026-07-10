@@ -90,7 +90,7 @@ describe("monitorProviderPlaybackSessionRuntime", () => {
     expect(input.setSession).toHaveBeenCalled();
     expect(input.setIsPlayback).toHaveBeenCalledWith(true);
     expect(input.ensureAudioContext).toHaveBeenCalled();
-    expect(input.replayTick).toHaveBeenCalled();
+    expect(input.setTimeoutFn).toHaveBeenCalledWith(input.replayTick, 120);
   });
 
   it("starts provider playback sessions after clearing any active poll loop", async () => {
@@ -113,6 +113,8 @@ describe("monitorProviderPlaybackSessionRuntime", () => {
       label: "Night watch",
       sourcePath: "/logs/replay.log",
       repoId: "repo-1",
+      trackId: "track-1",
+      trackTitle: "Replay Track",
       stopPolling,
       loadSessionEvents,
       ...input,
@@ -121,6 +123,11 @@ describe("monitorProviderPlaybackSessionRuntime", () => {
     expect(ok).toBe(true);
     expect(stopPolling).toHaveBeenCalled();
     expect(loadSessionEvents).toHaveBeenCalledWith("persisted-1");
-    expect(input.setSession).toHaveBeenCalled();
+    expect(input.setSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        trackId: "track-1",
+        trackName: "Replay Track",
+      }),
+    );
   });
 });

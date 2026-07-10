@@ -1,5 +1,6 @@
 import type { MutableRefObject } from "react";
 
+import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { MonitorMetrics, ActiveMonitorSession } from "./monitorContextTypes";
 import { createEmptyMonitorMetrics } from "./monitorReplayRuntime";
 import type { MonitorOrchestrationLogger } from "./monitorOrchestrationRuntime";
@@ -13,6 +14,7 @@ export function resetMonitorSessionState(input: {
   sessionRef: MutableRefObject<ActiveMonitorSession | null>;
   directCursorRef: MutableRefObject<number | undefined>;
   emptyWindowsRef: MutableRefObject<number>;
+  recentUpdatesRef?: MutableRefObject<LiveLogStreamUpdate[]>;
   activeRef: MutableRefObject<boolean>;
   isPlaybackRef: MutableRefObject<boolean>;
   setSession: SetSessionState;
@@ -23,6 +25,9 @@ export function resetMonitorSessionState(input: {
   input.sessionRef.current = null;
   input.directCursorRef.current = undefined;
   input.emptyWindowsRef.current = 0;
+  if (input.recentUpdatesRef) {
+    input.recentUpdatesRef.current = [];
+  }
   input.activeRef.current = false;
   input.setSession(null);
   input.setIsPlayback(false);

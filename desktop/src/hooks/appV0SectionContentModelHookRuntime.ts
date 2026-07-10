@@ -52,6 +52,8 @@ export function buildAppV0SectionContentStateInput(
     waveformBins: input.waveformBins,
     onStartMonitoring: contentActions.onStartMonitoring,
     onReplaySession: contentActions.onReplaySession,
+    onDeletePastSession: input.pastSessions.removeSession,
+    onDeleteLibraryTrack: input.library.deleteLibraryTrack,
     subscribe: input.monitor.subscribe,
     isConsoleExpanded: input.isConsoleExpanded,
     onToggleConsole: input.toggleConsoleExpanded,

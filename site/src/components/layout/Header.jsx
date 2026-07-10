@@ -30,6 +30,17 @@ export default function Header({ t, theme, lang, setLang, isDark, setIsDark }) {
           <a href="#vision" className="transition hover:text-cyan-300">
             {t.nav.vision}
           </a>
+          <a
+            href="https://github.com/faguero/maia"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition hover:text-cyan-300"
+          >
+            {t.nav.github}
+          </a>
+          <a href="#install" className="transition hover:text-cyan-300">
+            {t.nav.install}
+          </a>
         </nav>
 
         <button

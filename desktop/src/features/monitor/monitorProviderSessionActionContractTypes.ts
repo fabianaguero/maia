@@ -1,5 +1,9 @@
 import type { RepositoryAnalysis } from "../../types/library";
-import type { StartSessionInput, StreamSessionRecord } from "../../types/monitor";
+import type {
+  LiveLogStreamUpdate,
+  StartSessionInput,
+  StreamSessionRecord,
+} from "../../types/monitor";
 import type { PlaybackSessionSelection } from "./monitorPlaybackRuntime";
 
 export interface MonitorProviderAttachSessionSelection {
@@ -8,6 +12,7 @@ export interface MonitorProviderAttachSessionSelection {
   repoTitle: string;
   trackId?: string;
   trackTitle?: string;
+  initialStreamUpdate?: LiveLogStreamUpdate | null;
   sourceTemplateId?: string | null;
   persistedSessionId?: string | null;
 }

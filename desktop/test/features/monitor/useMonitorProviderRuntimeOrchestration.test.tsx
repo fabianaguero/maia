@@ -322,13 +322,7 @@ describe("useMonitorProviderRuntimeOrchestration", () => {
       }),
     );
     expect(input.template.buildReloadPendingGuideTrack).toHaveBeenCalledWith("session-start");
-    expect(emitMonitorAudioProbe).toHaveBeenCalledWith(
-      expect.objectContaining({
-        frequency: 528,
-        attackGain: 0.12,
-        releaseTimeSec: 0.25,
-      }),
-    );
+    expect(emitMonitorAudioProbe).not.toHaveBeenCalled();
     expect(runMonitorProviderPollState).toHaveBeenCalled();
   });
 });

@@ -1,5 +1,6 @@
 import type { SourceTemplate } from "../../config/sourceTemplates";
 import type { SessionEvent } from "../../api/sessions";
+import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { GuideTrackPCM, CrossfadeHandle } from "./monitorAudioRuntimeTypes";
 import type { ActiveMonitorSession, MonitorMetrics, StreamListener } from "./monitorContextTypes";
 
@@ -23,6 +24,7 @@ export interface MonitorProviderStateViewModel {
   setIsPlaybackPaused: React.Dispatch<React.SetStateAction<boolean>>;
   audioContextRef: React.MutableRefObject<AudioContext | null>;
   listenersRef: React.MutableRefObject<Set<StreamListener>>;
+  recentUpdatesRef: React.MutableRefObject<LiveLogStreamUpdate[]>;
   currentSegmentRef: React.MutableRefObject<CrossfadeHandle | null>;
   guideTrackPathRef: React.MutableRefObject<string | null>;
   guideTrackQueueRef: React.MutableRefObject<string[]>;

@@ -16,6 +16,7 @@ type SetMetricsState = (
 export function emitMonitorProviderUpdateState(input: {
   update: LiveLogStreamUpdate;
   listenersRef: MutableRefObject<Set<StreamListener>>;
+  recentUpdatesRef: MutableRefObject<LiveLogStreamUpdate[]>;
   sessionRef: MutableRefObject<ActiveMonitorSession | null>;
   pollIndexRef: MutableRefObject<number>;
   audioContextRef: MutableRefObject<AudioContext | null>;
@@ -31,6 +32,14 @@ export function emitMonitorProviderUpdateState(input: {
   nextPollIndex: number;
   dispatchedListeners: number;
 } {
+  if (
+    input.update.hasData ||
+    input.update.parsedLines.length > 0 ||
+    input.update.warnings.length > 0
+  ) {
+    input.recentUpdatesRef.current = [...input.recentUpdatesRef.current, input.update].slice(-24);
+  }
+
   const result = applyMonitorStreamUpdateState({
     update: input.update,
     listeners: input.listenersRef.current,

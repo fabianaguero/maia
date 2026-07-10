@@ -1,4 +1,5 @@
 import { GitBranch } from "lucide-react";
+import { RuntimeStatusCard } from "../../../components/RuntimeStatusCard";
 
 interface ImportRepositoryActionsFooterProps {
   busy: boolean;
@@ -19,16 +20,21 @@ export function ImportRepositoryActionsFooter({
 }: ImportRepositoryActionsFooterProps) {
   return (
     <div className="form-actions-footer">
+      {busy ? (
+        <RuntimeStatusCard
+          title={analyzingLabel}
+          detail={startIngestionLabel}
+          badge={analyzingLabel}
+          tone="pending"
+          activity="spinner"
+          compact
+          className="form-runtime-status"
+        />
+      ) : null}
       <button type="submit" className="action primary-launch-btn" disabled={busy}>
-        {busy ? (
-          <>
-            <span className="spin-ring" aria-hidden="true" /> {analyzingLabel}
-          </>
-        ) : (
-          <>
-            <GitBranch size={16} /> {startIngestionLabel}
-          </>
-        )}
+        <>
+          <GitBranch size={16} /> {busy ? analyzingLabel : startIngestionLabel}
+        </>
       </button>
 
       {defaultDirectoryPath && (

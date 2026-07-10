@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyLiveLogMonitorPlaybackUpdate,
   applyLiveLogMonitorVisualUpdate,
+  buildIdleLiveLogMonitorUpdate,
 } from "../../../../src/features/analyzer/components/liveLogMonitorOrchestratorEffectRuntime";
 
 const {
@@ -155,6 +156,16 @@ describe("liveLogMonitorOrchestratorEffectRuntime", () => {
 
     expect(input.ensureAudioReady).not.toHaveBeenCalled();
     expect(input.playWithCurrentEngine).not.toHaveBeenCalled();
+    expect(input.applyLogModulation).toHaveBeenCalledWith({
+      hasData: false,
+      suggestedBpm: 126,
+      lineCount: 0,
+      anomalyCount: 0,
+      levelCounts: {},
+      anomalyMarkers: [],
+      sonificationCues: [],
+      warnings: [],
+    });
   });
 
   it("applies beat sync and playback side effects for active live data", () => {
@@ -182,5 +193,27 @@ describe("liveLogMonitorOrchestratorEffectRuntime", () => {
     expect(input.playPanelTestTone).toHaveBeenCalled();
     expect(input.playWithCurrentEngine).toHaveBeenCalledWith([{ id: "cue-1" }], 126);
     expect(input.applyLogModulation).toHaveBeenCalledWith(input.update);
+  });
+
+  it("builds a neutral idle update for modulation reset", () => {
+    expect(
+      buildIdleLiveLogMonitorUpdate({
+        hasData: false,
+        lineCount: 12,
+        anomalyCount: 3,
+        levelCounts: { ERROR: 2 },
+        anomalyMarkers: [{ id: "marker-1" }],
+        sonificationCues: [{ id: "cue-1" }],
+        warnings: ["warn-1"],
+      } as never),
+    ).toEqual({
+      hasData: false,
+      lineCount: 0,
+      anomalyCount: 0,
+      levelCounts: {},
+      anomalyMarkers: [],
+      sonificationCues: [],
+      warnings: [],
+    });
   });
 });

@@ -1,7 +1,7 @@
 import type { MutableRefObject } from "react";
 
 import type { SourceTemplate } from "../../config/sourceTemplates";
-import type { StartSessionInput } from "../../types/monitor";
+import type { LiveLogStreamUpdate, StartSessionInput } from "../../types/monitor";
 import { bootstrapLiveMonitorSessionState } from "./monitorOrchestrationRuntime";
 import type { ActiveMonitorSession, MonitorMetrics } from "./monitorContextTypes";
 import {
@@ -29,12 +29,14 @@ export async function resolveLiveMonitorPollMode(input: {
 
 export async function startLiveMonitorSessionState(input: {
   session: ActiveMonitorSession;
+  initialStreamUpdate?: LiveLogStreamUpdate | null;
   sourceTemplateId?: string | null;
   persistedSessionId?: string | null;
   startFromBeginning?: boolean;
   directCursorRef: MutableRefObject<number | undefined>;
   emptyWindowsRef: MutableRefObject<number>;
   pollIndexRef: MutableRefObject<number>;
+  recentUpdatesRef: MutableRefObject<LiveLogStreamUpdate[]>;
   activeTemplateRef: MutableRefObject<SourceTemplate>;
   setActiveTemplateState: SetSourceTemplateState;
   updatePersistedSessionStatus: (
@@ -57,12 +59,14 @@ export async function startLiveMonitorSessionState(input: {
 }): Promise<void> {
   bootstrapLiveMonitorSessionState({
     session: input.session,
+    initialStreamUpdate: input.initialStreamUpdate ?? null,
     sourceTemplateId: input.sourceTemplateId ?? null,
     persistedSessionId: input.persistedSessionId,
     startFromBeginning: input.startFromBeginning,
     directCursorRef: input.directCursorRef,
     emptyWindowsRef: input.emptyWindowsRef,
     pollIndexRef: input.pollIndexRef,
+    recentUpdatesRef: input.recentUpdatesRef,
     activeTemplateRef: input.activeTemplateRef,
     setActiveTemplateState: input.setActiveTemplateState,
     updatePersistedSessionStatus: input.updatePersistedSessionStatus,
@@ -76,6 +80,8 @@ export async function startLiveMonitorSessionState(input: {
   });
 
   await finalizeLiveMonitorStartupState({
+    initialStreamUpdate: input.initialStreamUpdate ?? null,
+    recentUpdatesRef: input.recentUpdatesRef,
     ensureAudioContext: input.ensureAudioContext,
     emitProbe: input.emitProbe,
     reloadPendingGuideTrack: input.reloadPendingGuideTrack,

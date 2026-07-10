@@ -31,6 +31,8 @@ export interface ConnectionsScreenFormControllerState {
 export interface ConnectionsScreenTailControllerState {
   activeSessionId: string | null;
   activeConnectionId: string | null;
+  pendingConnectionId: string | null;
+  tailPhase: "starting" | "stopping" | null;
   tailPreview: string[];
   tailStatus: string | null;
   handleStartTail: ConnectionsScreenHookState["handleStartTail"];
@@ -68,6 +70,8 @@ export function buildConnectionsScreenControllerState(input: {
     error: input.form.error,
     activeSessionId: input.tail.activeSessionId,
     activeConnectionId: input.tail.activeConnectionId,
+    pendingConnectionId: input.tail.pendingConnectionId,
+    tailPhase: input.tail.tailPhase,
     tailPreview: input.tail.tailPreview,
     tailStatus: input.tail.tailStatus,
     testStatusById: input.test.testStatusById,

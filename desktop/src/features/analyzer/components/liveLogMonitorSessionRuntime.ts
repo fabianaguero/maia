@@ -1,4 +1,5 @@
 import type { RepositoryAnalysis, StartSessionInput } from "../../../types/library";
+import type { LiveMutationState } from "./liveLogMonitorAudioRuntime";
 import type { ArrangementTrack, RoutedLiveCue } from "./liveSonificationScene";
 import { resolveBeatLooperStartBpm } from "./liveLogMonitorControlRuntime";
 
@@ -11,6 +12,8 @@ export interface LiveMonitorStartResetState {
   emittedCueCount: number;
   backgroundPlayheadSecond: number;
   activeTailWindowId: string | null;
+  liveMutationState: LiveMutationState;
+  forcedLiveMutationState: "auto";
   error: string | null;
   isStarting: boolean;
   bounceWindowCount: number;
@@ -55,6 +58,8 @@ export function buildLiveMonitorStartResetState(): LiveMonitorStartResetState {
     emittedCueCount: 0,
     backgroundPlayheadSecond: 0,
     activeTailWindowId: null,
+    liveMutationState: "normal",
+    forcedLiveMutationState: "auto",
     error: null,
     isStarting: true,
     bounceWindowCount: 0,

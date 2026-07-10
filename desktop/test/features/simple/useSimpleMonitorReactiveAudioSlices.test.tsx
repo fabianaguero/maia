@@ -75,7 +75,7 @@ describe("useSimpleMonitorReactiveAudioSlices", () => {
     });
 
     expect(result.current.audioContextRef.current).toBe(audioContext);
-    expect(audioContext.createOscillator).toHaveBeenCalled();
-    expect(audioContext.createGain).toHaveBeenCalled();
+    expect(audioContext.createOscillator).not.toHaveBeenCalled();
+    expect(audioContext.createGain).not.toHaveBeenCalled();
   });
 });

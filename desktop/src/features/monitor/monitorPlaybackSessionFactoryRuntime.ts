@@ -5,6 +5,8 @@ export function createPlaybackMonitorSession(input: {
   label: string;
   sourcePath: string;
   repoId?: string | null;
+  trackId?: string | null;
+  trackTitle?: string | null;
   startedAt?: number;
 }): ActiveMonitorSession {
   return {
@@ -12,6 +14,8 @@ export function createPlaybackMonitorSession(input: {
     persistedSessionId: input.sessionId,
     repoId: input.repoId ?? input.sessionId,
     repoTitle: input.label,
+    trackId: input.trackId ?? undefined,
+    trackName: input.trackTitle ?? undefined,
     sourcePath: input.sourcePath,
     adapterKind: "file",
     pollMode: "direct",

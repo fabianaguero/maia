@@ -8,12 +8,14 @@ export function buildMonitorProviderLiveStartState(
 ): MonitorProviderLiveStartSharedInput {
   return {
     session: input.session,
+    initialStreamUpdate: input.initialStreamUpdate ?? null,
     sourceTemplateId: input.sourceTemplateId ?? null,
     persistedSessionId: input.persistedSessionId,
     startFromBeginning: input.startFromBeginning,
     directCursorRef: input.directCursorRef,
     emptyWindowsRef: input.emptyWindowsRef,
     pollIndexRef: input.pollIndexRef,
+    recentUpdatesRef: input.recentUpdatesRef,
     activeTemplateRef: input.activeTemplateRef,
     setActiveTemplateState: input.setActiveTemplateState,
     updatePersistedSessionStatus: input.updatePersistedSessionStatus,
@@ -40,6 +42,7 @@ export function buildMonitorProviderLiveStartBaseInput(
     directCursorRef: input.directCursorRef,
     emptyWindowsRef: input.emptyWindowsRef,
     pollIndexRef: input.pollIndexRef,
+    recentUpdatesRef: input.recentUpdatesRef,
     activeTemplateRef: input.activeTemplateRef,
     setActiveTemplateState: input.setActiveTemplateState,
     updatePersistedSessionStatus: input.updatePersistedSessionStatus,

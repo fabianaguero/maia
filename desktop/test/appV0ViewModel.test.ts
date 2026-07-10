@@ -184,7 +184,7 @@ describe("appV0ViewModel", () => {
     });
     expect(reportMonitorLaunchFailure).toHaveBeenCalledTimes(1);
     expect(resumeAudio).not.toHaveBeenCalled();
-    expect(replaySession).toHaveBeenCalledWith("session-1", "/tmp/log", "repo");
+    expect(replaySession).toHaveBeenCalledWith("session-1", "/tmp/log", "repo", undefined);
   });
 
   it("builds shell and section content props without inline app composition", () => {

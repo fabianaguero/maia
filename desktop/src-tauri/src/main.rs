@@ -3,7 +3,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::cmp::Ordering;
 use std::collections::hash_map::DefaultHasher;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
 use std::hash::{Hash, Hasher};
@@ -11,7 +11,6 @@ use std::io::{BufRead, BufReader, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
-use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager, State};
 
@@ -395,11 +394,22 @@ struct StreamSessionState {
     ring_buffer: Vec<String>,
     pending_lines: Vec<String>,
     process: Option<Child>,
+    connection_config: Option<Value>,
+    gcp_backfill_freshness: Option<String>,
+    gcp_history_seeded: bool,
 }
 
 impl StreamSessionState {
     fn new(record: StreamSessionRecord) -> Self {
-        Self { record, ring_buffer: Vec::new(), pending_lines: Vec::new(), process: None }
+        Self {
+            record,
+            ring_buffer: Vec::new(),
+            pending_lines: Vec::new(),
+            process: None,
+            connection_config: None,
+            gcp_backfill_freshness: None,
+            gcp_history_seeded: false,
+        }
     }
 
     fn append_lines<I>(&mut self, lines: I)
@@ -686,6 +696,109 @@ fn normalize_gcloud_log_line(line: &str) -> Option<String> {
     }
 
     Some(trimmed.to_string())
+}
+
+fn build_gcp_cloud_run_connection_from_source_uri(
+    source_uri: &str,
+) -> Result<LogSourceConnection, String> {
+    let raw = source_uri
+        .strip_prefix("gcp-cloud-run://")
+        .ok_or_else(|| "Source is not a gcp-cloud-run URI.".to_string())?;
+    let parts: Vec<&str> = raw.split('/').filter(|segment| !segment.trim().is_empty()).collect();
+    let (project_id, region, service_name) = match parts.as_slice() {
+        [project_id, service_name] => (
+            (*project_id).to_string(),
+            None,
+            (*service_name).to_string(),
+        ),
+        [project_id, region, service_name] => (
+            (*project_id).to_string(),
+            Some((*region).to_string()),
+            (*service_name).to_string(),
+        ),
+        _ => {
+            return Err(format!(
+                "Invalid gcp-cloud-run source URI. Expected project/service or project/region/service: {source_uri}"
+            ))
+        }
+    };
+
+    let mut config = serde_json::Map::new();
+    config.insert("projectId".to_string(), Value::String(project_id));
+    config.insert("serviceName".to_string(), Value::String(service_name));
+    config.insert("minimumSeverity".to_string(), Value::String("DEFAULT".to_string()));
+    if let Some(region_value) = region {
+        config.insert("region".to_string(), Value::String(region_value));
+    }
+
+    Ok(LogSourceConnection {
+        id: format!("runtime-{}", stable_hash(source_uri)),
+        kind: "gcp_cloud_run".to_string(),
+        label: source_uri.to_string(),
+        source_uri: source_uri.to_string(),
+        enabled: true,
+        adapter_kind: "process".to_string(),
+        config: Value::Object(config),
+        last_cursor: 0,
+        last_seen_at: None,
+        created_at: now_iso(),
+        updated_at: now_iso(),
+    })
+}
+
+fn append_missing_lines_to_session(
+    registry: &SessionRegistryState,
+    session_id: &str,
+    lines: Vec<String>,
+) -> Result<usize, String> {
+    let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+    let session = reg
+        .sessions
+        .get_mut(session_id)
+        .ok_or_else(|| format!("Session not found: {session_id}"))?;
+
+    let known: HashSet<&str> = session.ring_buffer.iter().map(String::as_str).collect();
+    let fresh_lines: Vec<String> = lines
+        .into_iter()
+        .filter(|line| {
+            let trimmed = line.trim();
+            !trimmed.is_empty() && !known.contains(trimmed)
+        })
+        .collect();
+
+    let appended = fresh_lines.len();
+    if appended > 0 {
+        session.append_lines(fresh_lines);
+    }
+
+    Ok(appended)
+}
+
+fn hydrate_session_connection_config(
+    registry: &SessionRegistryState,
+    session_id: &str,
+    config: Value,
+) -> Result<(), String> {
+    let backfill_freshness =
+        normalize_gcp_backfill_freshness(config_string(&config, "backfillFreshness"))?;
+    let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+    let session = reg
+        .sessions
+        .get_mut(session_id)
+        .ok_or_else(|| format!("Session not found: {session_id}"))?;
+    session.connection_config = Some(config);
+    session.gcp_backfill_freshness = backfill_freshness;
+    session.gcp_history_seeded = false;
+    Ok(())
+}
+
+fn fetch_gcp_cloud_run_poll_fallback_lines(
+    source_uri: &str,
+    freshness: &str,
+    limit: usize,
+) -> Result<Vec<String>, String> {
+    let connection = build_gcp_cloud_run_connection_from_source_uri(source_uri)?;
+    gcp_cloud_run_backfill_lines(&connection, freshness, limit)
 }
 
 fn spawn_process_reader<R>(session_id: String, registry: SessionRegistryState, reader: R)
@@ -1786,12 +1899,6 @@ fn iso_from_unix_secs(secs: u64) -> String {
     format!("{y:04}-{mo:02}-{d:02}T{h:02}:{min:02}:{s:02}Z")
 }
 
-fn gcp_backfill_freshness_for_connection(
-    connection: &LogSourceConnection,
-) -> Result<Option<String>, String> {
-    normalize_gcp_backfill_freshness(config_string(&connection.config, "backfillFreshness"))
-}
-
 fn normalize_log_source_connection(
     input: &UpsertLogSourceConnectionInput,
 ) -> Result<(String, String, String, Value), String> {
@@ -2000,26 +2107,6 @@ fn build_gcp_cloud_run_filter(connection: &LogSourceConnection) -> Result<String
     Ok(filter)
 }
 
-fn gcp_cloud_run_tail_command(connection: &LogSourceConnection) -> Result<Vec<String>, String> {
-    let project_id = config_string(&connection.config, "projectId")
-        .ok_or_else(|| "Missing projectId in GCP connection config.".to_string())?;
-    let filter = build_gcp_cloud_run_filter(connection)?;
-    Ok(vec![
-        "gcloud".to_string(),
-        "alpha".to_string(),
-        "logging".to_string(),
-        "tail".to_string(),
-        filter,
-        "--project".to_string(),
-        project_id,
-        "--buffer-window".to_string(),
-        "0s".to_string(),
-        "--format".to_string(),
-        "value(timestamp,severity,textPayload,jsonPayload.message)".to_string(),
-        "--quiet".to_string(),
-    ])
-}
-
 fn gcp_cloud_run_backfill_lines(
     connection: &LogSourceConnection,
     freshness: &str,
@@ -2113,15 +2200,16 @@ fn start_log_source_connection(
     if !connection.enabled {
         return Err("Log source connection is disabled.".to_string());
     }
-    let command = if connection.kind == "gcp_cloud_run" {
-        Some(gcp_cloud_run_tail_command(&connection)?)
+    let command = None;
+    let adapter_kind = if connection.kind == "gcp_cloud_run" {
+        "http-poll".to_string()
     } else {
-        None
+        connection.adapter_kind.clone()
     };
     let session = start_stream_session(
         StartSessionInput {
             session_id: session_id.clone(),
-            adapter_kind: connection.adapter_kind.clone(),
+            adapter_kind,
             source: connection.source_uri.clone(),
             label: Some(connection.label.clone()),
             command,
@@ -2131,37 +2219,68 @@ fn start_log_source_connection(
     )?;
 
     if connection.kind == "gcp_cloud_run" {
-        let backfill_connection = connection.clone();
-        let backfill_registry = Arc::clone(&registry_state);
-        let backfill_session_id = session_id.clone();
-        thread::spawn(move || match gcp_backfill_freshness_for_connection(&backfill_connection) {
-            Ok(Some(freshness)) => match gcp_cloud_run_backfill_lines(
-                &backfill_connection,
-                &freshness,
-                GCLOUD_BACKFILL_LINE_LIMIT,
-            ) {
-                Ok(lines) if !lines.is_empty() => {
-                    let _ =
-                        append_lines_to_session(&backfill_registry, &backfill_session_id, lines);
+        if let Err(error) = hydrate_session_connection_config(
+            &registry_state,
+            &session_id,
+            connection.config.clone(),
+        ) {
+            eprintln!(
+                "[MAIA:Rust] gcloud session config hydrate failed session={} error={}",
+                session_id, error
+            );
+            append_lines_to_session(
+                &registry_state,
+                &session_id,
+                vec![format!("MAIA_GCLOUD_BACKFILL_WARNING: {error}")],
+            )?;
+        }
+    }
+    if connection.kind == "file_log" {
+        match read_log_stream_chunk(&connection.source_uri, None, None) {
+            Ok((resolved_path, _from_offset, to_offset, chunk, warnings)) => {
+                let file_lines: Vec<String> = chunk
+                    .lines()
+                    .map(str::trim_end)
+                    .filter(|line| !line.trim().is_empty())
+                    .map(|line| line.to_string())
+                    .collect();
+
+                let session_record =
+                    update_session_metadata(&registry_state, &session_id, |session| {
+                        if session.record.source != resolved_path {
+                            session.record.source = resolved_path.clone();
+                        }
+                        session.record.file_cursor = Some(to_offset);
+                    })?;
+
+                if !file_lines.is_empty() {
+                    append_lines_to_session(&registry_state, &session_id, file_lines)?;
                 }
-                Ok(_) => {}
-                Err(error) => {
-                    let _ = append_lines_to_session(
-                        &backfill_registry,
-                        &backfill_session_id,
-                        vec![format!("MAIA_GCLOUD_BACKFILL_WARNING: {error}")],
-                    );
+
+                if !warnings.is_empty() {
+                    append_lines_to_session(
+                        &registry_state,
+                        &session_id,
+                        warnings
+                            .into_iter()
+                            .map(|warning| format!("INFO {} {}", now_iso(), warning)),
+                    )?;
                 }
-            },
-            Ok(None) => {}
-            Err(error) => {
-                let _ = append_lines_to_session(
-                    &backfill_registry,
-                    &backfill_session_id,
-                    vec![format!("MAIA_GCLOUD_BACKFILL_WARNING: {error}")],
+
+                eprintln!(
+                    "[MAIA:Rust] file bootstrap session={} source={} cursor={:?}",
+                    session_id, session_record.source, session_record.file_cursor
                 );
             }
-        });
+            Err(error) => {
+                eprintln!("[MAIA:Rust] file bootstrap session={} error={}", session_id, error);
+                append_lines_to_session(
+                    &registry_state,
+                    &session_id,
+                    vec![format!("FILE_TAIL_BOOTSTRAP_WARNING: {error}")],
+                )?;
+            }
+        }
     }
 
     Ok(session)
@@ -2439,6 +2558,43 @@ fn poll_stream_session(
         return analyze_stream_chunk(session_record, pending_chunk, warnings);
     }
 
+    if source.starts_with("gcp-cloud-run://") {
+        let (freshness, limit) = {
+            let reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+            let session = reg
+                .sessions
+                .get(&session_id)
+                .ok_or_else(|| format!("Session not found: {session_id}"))?;
+            let freshness = if session.gcp_history_seeded {
+                "30s".to_string()
+            } else {
+                session.gcp_backfill_freshness.clone().unwrap_or_else(|| "10m".to_string())
+            };
+            let limit = if session.gcp_history_seeded { 32 } else { GCLOUD_BACKFILL_LINE_LIMIT };
+            (freshness, limit)
+        };
+
+        match fetch_gcp_cloud_run_poll_fallback_lines(&source, &freshness, limit) {
+            Ok(lines) => {
+                let appended = append_missing_lines_to_session(&registry, &session_id, lines)?;
+                if appended > 0 {
+                    warnings.push(format!(
+                        "MAIA_GCLOUD_FALLBACK: pulled {appended} line(s) from Cloud Logging read"
+                    ));
+                }
+                let _ = update_session_metadata(&registry, &session_id, |session| {
+                    session.gcp_history_seeded = true;
+                });
+            }
+            Err(error) => {
+                warnings.push(format!("MAIA_GCLOUD_FALLBACK_WARNING: {error}"));
+                let _ = update_session_metadata(&registry, &session_id, |session| {
+                    session.gcp_history_seeded = true;
+                });
+            }
+        }
+    }
+
     let (session_record, chunk) = {
         let session_record = update_session_metadata(&registry, &session_id, |session| {
             session.record.last_polled_at = Some(now_iso());
@@ -2447,6 +2603,14 @@ fn poll_stream_session(
         let (_, chunk) = drain_pending_chunk(&registry, &session_id)?;
         (session_record, chunk)
     };
+
+    if chunk.trim().is_empty() {
+        return Ok(waiting_stream_poll_result(
+            session_record,
+            "Waiting for new log lines.",
+            warnings,
+        ));
+    }
 
     analyze_stream_chunk(session_record, chunk, warnings)
 }
@@ -7334,10 +7498,8 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                // Hide to background instead of quitting so the monitor keeps running.
-                // The user can quit via the system tray "Quit Maia" menu item.
                 api.prevent_close();
-                let _ = window.hide();
+                window.app_handle().exit(0);
             }
         })
         .invoke_handler(tauri::generate_handler![

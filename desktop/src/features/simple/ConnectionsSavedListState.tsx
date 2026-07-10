@@ -1,5 +1,6 @@
 import { Cable } from "lucide-react";
 
+import { RuntimeStatusCard } from "../../components/RuntimeStatusCard";
 import { ConnectionsSavedRow } from "./ConnectionsSavedRow";
 import type { ConnectionsSavedListViewModel } from "./connectionsSavedListViewModel";
 
@@ -40,10 +41,14 @@ export function ConnectionsSavedListState({
 }: ConnectionsSavedListStateProps) {
   if (loading) {
     return (
-      <div className="placeholder-loading">
-        <span className="spin-ring" aria-hidden="true" />
-        {loadingLabel}
-      </div>
+      <RuntimeStatusCard
+        title={loadingLabel}
+        badge={loadingLabel}
+        tone="pending"
+        activity="spinner"
+        compact
+        className="placeholder-loading placeholder-loading--runtime"
+      />
     );
   }
 

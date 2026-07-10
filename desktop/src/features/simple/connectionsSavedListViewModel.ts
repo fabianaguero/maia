@@ -15,6 +15,8 @@ export interface ConnectionsSavedListRowViewModel {
   enabledTone: "enabled" | "disabled";
   isSelected: boolean;
   isActive: boolean;
+  isPending: boolean;
+  pendingLabel: string | null;
   disableStartAction: boolean;
   disableEditAction: boolean;
   disableTestAction: boolean;
@@ -53,6 +55,8 @@ export function buildConnectionsSavedListViewModel(input: {
   connectionKindLabel: Record<ConnectionKind, string>;
   activeConnectionId: string | null;
   activeSessionId: string | null;
+  pendingConnectionId: string | null;
+  tailPhase: "starting" | "stopping" | null;
   editingConnectionId: string | null;
   saving: boolean;
   testStatusById: Record<string, ConnectionTestStatus>;
@@ -80,6 +84,8 @@ export function buildConnectionsSavedListViewModel(input: {
         connectionKindLabel: input.connectionKindLabel,
         activeConnectionId: input.activeConnectionId,
         activeSessionId: input.activeSessionId,
+        pendingConnectionId: input.pendingConnectionId,
+        tailPhase: input.tailPhase,
         editingConnectionId: input.editingConnectionId,
         saving: input.saving,
         testStatusById: input.testStatusById,

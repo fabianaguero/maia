@@ -72,6 +72,10 @@ export function describeTrackPlaybackSource(track: LibraryTrack): string {
 }
 
 export function resolvePlayableTrackPath(track: LibraryTrack): string | null {
+  if (track.file.availabilityState === "missing") {
+    return null;
+  }
+
   const storagePath = getTrackStoragePath(track);
   const sourcePath = getTrackSourcePath(track);
 

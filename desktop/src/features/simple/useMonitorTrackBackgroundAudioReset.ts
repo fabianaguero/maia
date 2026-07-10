@@ -7,6 +7,7 @@ interface UseMonitorTrackBackgroundAudioResetInput {
   isListening: boolean;
   backgroundAudioRef: { current: HTMLAudioElement | null };
   backgroundAudioUrlRef: { current: string | null };
+  backgroundAudioPathRef: { current: string | null };
   revokePreviewUrl: (url: string | null | undefined) => void;
   setTrackWaveProgress: (value: number) => void;
   setTrackElapsedSeconds: (value: number) => void;
@@ -17,6 +18,7 @@ export function useMonitorTrackBackgroundAudioReset({
   isListening,
   backgroundAudioRef,
   backgroundAudioUrlRef,
+  backgroundAudioPathRef,
   revokePreviewUrl,
   setTrackWaveProgress,
   setTrackElapsedSeconds,
@@ -35,6 +37,7 @@ export function useMonitorTrackBackgroundAudioReset({
       if (resetState.clearBackgroundUrl) {
         revokePreviewUrl(backgroundAudioUrlRef.current);
         backgroundAudioUrlRef.current = null;
+        backgroundAudioPathRef.current = null;
       }
       setTrackWaveProgress(resetState.trackWaveProgress);
       setTrackElapsedSeconds(resetState.trackElapsedSeconds);
@@ -42,6 +45,7 @@ export function useMonitorTrackBackgroundAudioReset({
     }
   }, [
     backgroundAudioRef,
+    backgroundAudioPathRef,
     backgroundAudioUrlRef,
     isListening,
     revokePreviewUrl,

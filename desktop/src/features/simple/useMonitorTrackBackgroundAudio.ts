@@ -30,11 +30,13 @@ export function useMonitorTrackBackgroundAudio({
 }: UseMonitorTrackBackgroundAudioInput) {
   const backgroundAudioRef = useRef<HTMLAudioElement | null>(null);
   const backgroundAudioUrlRef = useRef<string | null>(null);
+  const backgroundAudioPathRef = useRef<string | null>(null);
 
   useMonitorTrackBackgroundAudioReset({
     isListening,
     backgroundAudioRef,
     backgroundAudioUrlRef,
+    backgroundAudioPathRef,
     revokePreviewUrl,
     setTrackWaveProgress,
     setTrackElapsedSeconds,
@@ -57,6 +59,7 @@ export function useMonitorTrackBackgroundAudio({
     activeTrack,
     backgroundAudioRef,
     backgroundAudioUrlRef,
+    backgroundAudioPathRef,
     ensureBackgroundGraph,
     revokePreviewUrl,
   });

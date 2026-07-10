@@ -108,6 +108,8 @@ export function buildConnectionsSavedListRow(input: {
   connectionKindLabel: Record<ConnectionKind, string>;
   activeConnectionId: string | null;
   activeSessionId: string | null;
+  pendingConnectionId: string | null;
+  tailPhase: "starting" | "stopping" | null;
   editingConnectionId: string | null;
   saving: boolean;
   testStatusById: Record<string, ConnectionTestStatus>;
@@ -115,6 +117,13 @@ export function buildConnectionsSavedListRow(input: {
 }): ConnectionsSavedListRowViewModel {
   const { connection } = input;
   const testState = resolveTestStateLabel(input.t, input.testStatusById[connection.id]);
+  const isPending = input.pendingConnectionId === connection.id;
+  const pendingLabel =
+    isPending && input.tailPhase === "stopping"
+      ? input.t.simpleMode.common.stop
+      : isPending
+        ? input.t.simpleMode.connections.openingLiveTail
+        : null;
 
   return {
     id: connection.id,
@@ -127,10 +136,14 @@ export function buildConnectionsSavedListRow(input: {
     enabledTone: connection.enabled ? "enabled" : "disabled",
     isSelected: input.editingConnectionId === connection.id,
     isActive: input.activeConnectionId === connection.id,
-    disableStartAction: input.activeSessionId !== null,
-    disableEditAction: input.saving,
+    isPending,
+    pendingLabel,
+    disableStartAction: input.activeSessionId !== null || isPending,
+    disableEditAction: input.saving || isPending,
     disableTestAction:
-      input.activeSessionId !== null || input.testStatusById[connection.id] === "testing",
+      input.activeSessionId !== null ||
+      input.testStatusById[connection.id] === "testing" ||
+      isPending,
     metaChips: buildConnectionsSavedListMetaChips({
       t: input.t,
       connection,

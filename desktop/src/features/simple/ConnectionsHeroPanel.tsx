@@ -36,7 +36,7 @@ export function ConnectionsHeroPanel({
           disabled={loading || saving}
           title={viewModel.refreshTitle}
         >
-          <RefreshCw size={16} />
+          <RefreshCw size={16} className={loading || saving ? "spin-ring" : undefined} />
         </button>
       </div>
     </div>

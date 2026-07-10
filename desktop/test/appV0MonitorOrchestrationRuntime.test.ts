@@ -1,5 +1,26 @@
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("../src/api/repositories", () => ({
+  pollStreamSession: vi.fn(async () => ({
+    sourcePath: "gcp-cloud-run://project/service",
+    fromOffset: 0,
+    toOffset: 0,
+    hasData: false,
+    summary: "",
+    suggestedBpm: null,
+    confidence: 0,
+    dominantLevel: "info",
+    lineCount: 0,
+    anomalyCount: 0,
+    levelCounts: {},
+    anomalyMarkers: [],
+    topComponents: [],
+    sonificationCues: [],
+    parsedLines: [],
+    warnings: [],
+  })),
+}));
+
 import type { MonitorLaunchSource } from "../src/types/monitorLaunch";
 import {
   buildAppV0MonitorLaunchExecutionDeps,
@@ -201,12 +222,22 @@ describe("appV0MonitorOrchestrationRuntime", () => {
   it("replays persisted sessions through the shared runtime helper", async () => {
     const deps = createDeps();
 
-    await replayAppV0MonitorSession(deps, "session-9", "/tmp/visits-service.log", "visits-service");
+    await replayAppV0MonitorSession(
+      deps,
+      "session-9",
+      "/tmp/visits-service.log",
+      "visits-service",
+      "track-1",
+    );
 
+    expect(deps.setGuideTrack).toHaveBeenCalledWith("/music/around-the-world.mp3");
+    expect(deps.resumeAudio).toHaveBeenCalled();
     expect(deps.playbackSession).toHaveBeenCalledWith({
       sessionId: "session-9",
       sourcePath: "/tmp/visits-service.log",
       label: "visits-service",
+      trackId: "track-1",
+      trackTitle: "around-the-world.mp3",
     });
   });
 });

@@ -25,7 +25,14 @@ export interface SimpleMonitorScreenStateInput {
   audioStatus: AudioContextState;
   audioContext: AudioContext | null;
   onStartMonitoring: (source: MonitorLaunchSource, trackId?: string) => void | Promise<void>;
-  onReplaySession: (sessionId: string, sourcePath: string, repoTitle: string) => void;
+  onReplaySession: (
+    sessionId: string,
+    sourcePath: string,
+    repoTitle: string,
+    trackId?: string | null,
+  ) => void;
+  onDeletePastSession: (sessionId: string) => Promise<void>;
+  onDeleteLibraryTrack: (trackId: string) => Promise<boolean>;
   subscribe: (listener: (update: LiveLogStreamUpdate) => void) => () => void;
   trackName?: string;
   waveformBins?: number[];

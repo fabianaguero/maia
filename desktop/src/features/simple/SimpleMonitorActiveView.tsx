@@ -37,6 +37,7 @@ export interface SimpleMonitorActiveViewProps {
   onSelectAnomalyLine: (anomalyId: string) => void;
   registerLineRef: (lineId: string, node: HTMLDivElement | null) => void;
   monitorTrackTitle: string;
+  monitorTrackMissing: boolean;
   musicStyleLabel?: string | null;
   deckPresetLabel?: string | null;
   deckBpm: number | null;

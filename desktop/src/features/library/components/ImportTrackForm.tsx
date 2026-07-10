@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 
 import { pickTrackSourcePath } from "../../../api/library";
+import { RuntimeStatusCard } from "../../../components/RuntimeStatusCard";
 import { useT } from "../../../i18n/I18nContext";
 import type { ImportTrackInput } from "../../../types/library";
 import type { MusicStyleOption } from "../../../types/music";
@@ -151,6 +152,19 @@ export function ImportTrackForm({
       <p className="field-hint">{t.library.forms.track.hint}</p>
 
       {error ? <p className="inline-error">{error}</p> : null}
+      {busy || pickerBusy ? (
+        <RuntimeStatusCard
+          title={pickerBusy ? t.library.forms.track.browsing : t.library.forms.track.saving}
+          detail={pickerBusy ? t.library.forms.track.localPathPlaceholder : title || sourcePath}
+          badge={
+            pickerBusy ? t.library.forms.track.browseAudioFile : t.library.forms.track.importTrack
+          }
+          tone="pending"
+          activity="spinner"
+          compact
+          className="form-runtime-status"
+        />
+      ) : null}
 
       <div className="form-actions">
         <button
@@ -160,9 +174,7 @@ export function ImportTrackForm({
           disabled={busy || pickerBusy}
         >
           {pickerBusy ? (
-            <>
-              <span className="spin-ring" aria-hidden="true" /> {t.library.forms.track.browsing}
-            </>
+            t.library.forms.track.browsing
           ) : (
             <>
               <FolderOpen size={14} /> {t.library.forms.track.browseAudioFile}
@@ -171,9 +183,7 @@ export function ImportTrackForm({
         </button>
         <button type="submit" className="action" disabled={busy}>
           {busy ? (
-            <>
-              <span className="spin-ring" aria-hidden="true" /> {t.library.forms.track.saving}
-            </>
+            t.library.forms.track.saving
           ) : (
             <>
               <Music size={14} /> {t.library.forms.track.importTrack}

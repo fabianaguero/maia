@@ -59,6 +59,7 @@ export function buildSimpleMonitorActiveViewSections(input: {
     deckSectionProps: {
       monitorSourcePath: props.monitorSourcePath,
       deckTrackLine: deckViewModel.deckTrackLine,
+      trackMissing: props.monitorTrackMissing,
       legendItems: deckViewModel.legendItems,
       metaChips: deckViewModel.metaChips,
       focusBadgeLabel: deckViewModel.focusBadgeLabel,

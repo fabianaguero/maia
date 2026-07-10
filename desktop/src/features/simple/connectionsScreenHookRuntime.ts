@@ -29,6 +29,8 @@ export interface ConnectionsScreenHookState {
   error: string | null;
   activeSessionId: string | null;
   activeConnectionId: string | null;
+  pendingConnectionId: string | null;
+  tailPhase: "starting" | "stopping" | null;
   tailPreview: string[];
   tailStatus: string | null;
   testStatusById: Record<string, ConnectionTestStatus>;
@@ -86,6 +88,8 @@ export function buildConnectionsScreenHookState(
     error: input.error,
     activeSessionId: input.activeSessionId,
     activeConnectionId: input.activeConnectionId,
+    pendingConnectionId: input.pendingConnectionId,
+    tailPhase: input.tailPhase,
     tailPreview: input.tailPreview,
     tailStatus: input.tailStatus,
     testStatusById: input.testStatusById,

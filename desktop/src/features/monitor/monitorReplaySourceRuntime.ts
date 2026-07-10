@@ -14,8 +14,9 @@ export const MAX_REPLAY_REBUILD_WINDOWS = 48;
 export function shouldHydrateReplayFromSource(
   eventsLength: number,
   sourcePath: string | null | undefined,
+  storedReplayLines = 0,
 ): boolean {
-  return eventsLength <= 1 && Boolean(sourcePath);
+  return Boolean(sourcePath) && (eventsLength <= 4 || storedReplayLines <= eventsLength);
 }
 
 export async function rebuildReplayEventsFromSource(input: {

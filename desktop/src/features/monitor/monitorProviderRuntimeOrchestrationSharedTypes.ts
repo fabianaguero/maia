@@ -2,6 +2,7 @@ import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 
 import type { SessionEvent } from "../../api/sessions";
 import type { SourceTemplate } from "../../config/sourceTemplates";
+import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { GuideTrackPCM } from "./monitorAudioRuntimeTypes";
 import type { ActiveMonitorSession, MonitorMetrics, StreamListener } from "./monitorContextTypes";
 import type {
@@ -49,6 +50,7 @@ export interface MonitorProviderRuntimeLiveSlice {
   pollIndexRef: MutableRefObject<number>;
   isPlaybackRef: MutableRefObject<boolean>;
   listenersRef: MutableRefObject<Set<StreamListener>>;
+  recentUpdatesRef: MutableRefObject<LiveLogStreamUpdate[]>;
 }
 
 export interface MonitorProviderRuntimeTemplateSlice {
