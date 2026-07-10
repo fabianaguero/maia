@@ -8,7 +8,7 @@ on:
       - ".github/workflows/deploy.yml"
 
 jobs:
-  deploy-site:
+  build-and-verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,22 +27,18 @@ jobs:
         working-directory: site
         run: npm run build
 
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
-        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: maia
-          directory: site/dist
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build complete (manual Cloudflare Pages connect required)
-        if: ${{ secrets.CLOUDFLARE_API_TOKEN == '' }}
+      - name: Verify build output
+        working-directory: site
         run: |
-          echo "✅ Site built successfully"
-          echo "⚠️  Cloudflare Pages deployment requires:"
-          echo "   1. Set CLOUDFLARE_API_TOKEN secret in GitHub repo settings"
-          echo "   2. Set CLOUDFLARE_ACCOUNT_ID secret in GitHub repo settings"
-          echo "   3. Or: Connect repo directly to Cloudflare Pages dashboard"
+          test -f dist/index.html && echo "✅ Build successful: dist/index.html exists" || exit 1
+          test -d dist/assets && echo "✅ Assets directory exists" || exit 1
+
+      - name: Info
+        run: |
+          echo "🚀 Site is ready for deployment"
+          echo "📝 To deploy to Cloudflare Pages:"
+          echo "   1. Connect this repo to your Cloudflare Pages project"
+          echo "   2. Set build command: npm install && npm run build"
+          echo "   3. Set build output directory: site/dist"
+          echo "   4. Configure custom domain: maiaflow.app"
           echo "   📖 https://developers.cloudflare.com/pages/get-started/git-integration/"
