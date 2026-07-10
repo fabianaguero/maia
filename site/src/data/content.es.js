@@ -1,5 +1,12 @@
 export const contentEs = {
-  nav: { product: "Producto", how: "Cómo funciona", mvp: "MVP", vision: "Visión", github: "GitHub", install: "Instalar" },
+  nav: {
+    product: "Producto",
+    how: "Cómo funciona",
+    mvp: "MVP",
+    vision: "Visión",
+    github: "GitHub",
+    install: "Instalar",
+  },
   controls: { lang: "English", theme: { dark: "Modo nocturno", light: "Modo claro" } },
   hero: {
     badge: "Open source · Monitoreo audible · Licencia MIT",
@@ -251,11 +258,7 @@ export const contentEs = {
     title: "Del comportamiento del sistema al groove.",
     text: "Una app desktop multiplataforma que convierte comportamiento técnico en música de fondo, cues y estructura audible de monitoreo.",
     ctaTitle: "Empezá aquí",
-    ctas: [
-      "Descargar la última versión",
-      "Explorar el código fuente",
-      "Unirse a la comunidad",
-    ],
+    ctas: ["Descargar la última versión", "Explorar el código fuente", "Unirse a la comunidad"],
   },
   opensource: {
     eyebrow: "Open Source",

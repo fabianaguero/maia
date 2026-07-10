@@ -1,0 +1,15 @@
+name = "maia"
+type = "javascript"
+compatibility_date = "2024-12-16"
+
+[build]
+command = "npm install && npm run build"
+cwd = "."
+watch_paths = ["src/**/*.{jsx,js,ts,tsx}", "public/**/*"]
+
+[build.upload]
+format = "modules"
+
+[env.production]
+name = "maia"
+compatibility_date = "2024-12-16"

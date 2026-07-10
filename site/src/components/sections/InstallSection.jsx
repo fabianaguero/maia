@@ -1,5 +1,5 @@
-import { motion } from 'framer-motion';
-import { Download, Code2 } from 'lucide-react';
+import { motion } from "framer-motion";
+import { Download, Code2 } from "lucide-react";
 
 export default function InstallSection({ t, theme }) {
   const icons = [Download, Code2];
@@ -60,9 +60,7 @@ export default function InstallSection({ t, theme }) {
           transition={{ duration: 0.6, delay: 0.3 }}
           className={`rounded-lg p-8 ${theme.cardBg} border ${theme.border}`}
         >
-          <h3 className={`mb-6 text-xl font-bold ${theme.text}`}>
-            {t.install.requirementsTitle}
-          </h3>
+          <h3 className={`mb-6 text-xl font-bold ${theme.text}`}>{t.install.requirementsTitle}</h3>
           <ul className="space-y-3">
             {t.install.requirements.map((req, idx) => (
               <li key={idx} className={`flex items-start gap-3 ${theme.textMuted}`}>

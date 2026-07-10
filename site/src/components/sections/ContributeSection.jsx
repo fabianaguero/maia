@@ -1,7 +1,6 @@
-import { motion } from 'framer-motion';
+import { motion } from "framer-motion";
 
 export default function ContributeSection({ t, theme }) {
-
   return (
     <section id="contribute" className={`relative py-24 ${theme.bg}`}>
       <div className="mx-auto max-w-6xl px-6">
@@ -43,7 +42,9 @@ export default function ContributeSection({ t, theme }) {
             <ol className="space-y-3">
               {t.contribute.guidelines.map((guideline, idx) => (
                 <li key={idx} className={`flex items-start gap-4 ${theme.textMuted}`}>
-                  <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${theme.accent} text-white font-bold text-sm`}>
+                  <div
+                    className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${theme.accent} text-white font-bold text-sm`}
+                  >
                     {idx + 1}
                   </div>
                   <span className="pt-0.5">{guideline}</span>
@@ -58,9 +59,7 @@ export default function ContributeSection({ t, theme }) {
             transition={{ duration: 0.6, delay: 0.3 }}
             className={`rounded-lg p-8 ${theme.cardBg} border ${theme.border}`}
           >
-            <h3 className={`mb-6 text-xl font-bold ${theme.text}`}>
-              {t.contribute.areasTitle}
-            </h3>
+            <h3 className={`mb-6 text-xl font-bold ${theme.text}`}>{t.contribute.areasTitle}</h3>
             <ul className="space-y-3">
               {t.contribute.areas.map((area, idx) => (
                 <li key={idx} className={`flex items-start gap-3 ${theme.textMuted}`}>
@@ -79,7 +78,8 @@ export default function ContributeSection({ t, theme }) {
           className={`rounded-lg p-8 text-center ${theme.cardBg} border ${theme.border}`}
         >
           <p className={`mb-6 text-lg ${theme.textMuted}`}>
-            Ready to start? Head over to the GitHub repository to fork, clone, and submit your first PR.
+            Ready to start? Head over to the GitHub repository to fork, clone, and submit your first
+            PR.
           </p>
           <a
             href="https://github.com/faguero/maia"

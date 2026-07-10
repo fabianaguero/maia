@@ -1,5 +1,12 @@
 export const contentEn = {
-  nav: { product: "Product", how: "How it works", mvp: "MVP", vision: "Vision", github: "GitHub", install: "Install" },
+  nav: {
+    product: "Product",
+    how: "How it works",
+    mvp: "MVP",
+    vision: "Vision",
+    github: "GitHub",
+    install: "Install",
+  },
   controls: { lang: "Español", theme: { dark: "Dark mode", light: "Light mode" } },
   hero: {
     badge: "Open source auditory monitoring · MIT licensed",
@@ -250,11 +257,7 @@ export const contentEn = {
     title: "From system behavior to groove.",
     text: "A cross-platform desktop app that turns technical behavior into background music, cues, and audible monitoring structure.",
     ctaTitle: "Get started",
-    ctas: [
-      "Download the latest release",
-      "Browse the source code",
-      "Join the community",
-    ],
+    ctas: ["Download the latest release", "Browse the source code", "Join the community"],
   },
   opensource: {
     eyebrow: "Open Source",
