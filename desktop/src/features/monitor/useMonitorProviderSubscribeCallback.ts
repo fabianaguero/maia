@@ -12,7 +12,7 @@ export function useMonitorProviderSubscribeCallback(
       return subscribeToMonitorStreamState({
         listeners: input.listenersRef.current,
         listener,
-        bufferedUpdates: input.recentUpdatesRef.current,
+        bufferedUpdates: input.recentUpdatesRef?.current ?? [],
         logger: input.logger,
       });
     },

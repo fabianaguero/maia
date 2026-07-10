@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { LibraryTrack, RepositoryAnalysis } from "../src/types/library";
+import type { LiveLogStreamUpdate } from "../src/types/monitor";
 import type { MonitorLaunchSource } from "../src/types/monitorLaunch";
 import {
   buildAppV0ConnectionAttachInput,
@@ -114,6 +115,20 @@ const repo: RepositoryAnalysis = {
   suggestedBpm: null,
   suggestedBpmReason: null,
   notes: [],
+};
+
+const emptyStreamUpdate: LiveLogStreamUpdate = {
+  sourcePath: "gcp-cloud-run://project/service",
+  summary: "",
+  suggestedBpm: null,
+  confidence: 0,
+  dominantLevel: "info",
+  levelCounts: {},
+  anomalyMarkers: [],
+  topComponents: [],
+  sonificationCues: [],
+  parsedLines: [],
+  warnings: [],
 };
 
 describe("appV0MonitorRuntime", () => {
@@ -313,6 +328,7 @@ describe("appV0MonitorRuntime", () => {
           fileCursor: null,
         };
       },
+      pollConnectionSession: async () => emptyStreamUpdate,
       attachSession: async () => {
         calls.push("attach");
         return true;
@@ -400,6 +416,7 @@ describe("appV0MonitorRuntime", () => {
           totalPolls: 0,
           fileCursor: null,
         }) as const,
+      pollConnectionSession: async () => emptyStreamUpdate,
       attachSession: async () => false,
       startSession: async () => false,
     };
@@ -461,6 +478,7 @@ describe("appV0MonitorRuntime", () => {
           fileCursor: null,
         };
       },
+      pollConnectionSession: async () => emptyStreamUpdate,
       attachSession: async () => {
         calls.push("attach");
         return true;

@@ -109,6 +109,11 @@ export function startMonitorAudioPlayback(
     return;
   }
 
+  if (typeof audio.addEventListener !== "function") {
+    start();
+    return;
+  }
+
   audio.addEventListener("loadedmetadata", retryStart, { once: true });
   audio.addEventListener("canplay", retryStart, { once: true });
   audio.addEventListener("canplaythrough", retryStart, { once: true });

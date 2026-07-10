@@ -15,7 +15,7 @@ export interface UseMonitorProviderContextValueInput extends Omit<
   "subscribe"
 > {
   listenersRef: MutableRefObject<Set<StreamListener>>;
-  recentUpdatesRef: MutableRefObject<LiveLogStreamUpdate[]>;
+  recentUpdatesRef?: MutableRefObject<LiveLogStreamUpdate[]>;
   logger: MonitorProviderContextLogger;
 }
 

@@ -58,7 +58,7 @@ describe("useSimpleMonitorReactiveAudio", () => {
     console.warn = originalWarn;
   });
 
-  it("plays a test tone and cue batches when the audio context is running", () => {
+  it("keeps test tones and cue batches silent so the track remains faithful", () => {
     const audioContext = createAudioContext();
 
     const { result } = renderHook(() =>
@@ -87,8 +87,8 @@ describe("useSimpleMonitorReactiveAudio", () => {
       ]);
     });
 
-    expect(audioContext.createOscillator).toHaveBeenCalled();
-    expect(audioContext.createGain).toHaveBeenCalled();
+    expect(audioContext.createOscillator).not.toHaveBeenCalled();
+    expect(audioContext.createGain).not.toHaveBeenCalled();
   });
 
   it("skips tone and cue playback when the audio context is not running", () => {

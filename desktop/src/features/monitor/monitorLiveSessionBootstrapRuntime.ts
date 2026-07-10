@@ -22,7 +22,7 @@ export function bootstrapLiveMonitorSessionState(input: {
   directCursorRef: MutableRefObject<number | undefined>;
   emptyWindowsRef: MutableRefObject<number>;
   pollIndexRef: MutableRefObject<number>;
-  recentUpdatesRef: MutableRefObject<LiveLogStreamUpdate[]>;
+  recentUpdatesRef?: MutableRefObject<LiveLogStreamUpdate[]>;
   activeTemplateRef: MutableRefObject<SourceTemplate>;
   setActiveTemplateState: SetSourceTemplateState;
   updatePersistedSessionStatus: (
@@ -43,7 +43,9 @@ export function bootstrapLiveMonitorSessionState(input: {
     pollIndexRef: input.pollIndexRef,
     startFromBeginning: input.startFromBeginning,
   });
-  input.recentUpdatesRef.current = input.initialStreamUpdate ? [input.initialStreamUpdate] : [];
+  if (input.recentUpdatesRef) {
+    input.recentUpdatesRef.current = input.initialStreamUpdate ? [input.initialStreamUpdate] : [];
+  }
 
   applyMonitorSourceTemplateState({
     sourceTemplateId: input.sourceTemplateId ?? null,

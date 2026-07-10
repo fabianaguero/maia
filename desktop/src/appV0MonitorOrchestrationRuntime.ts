@@ -27,6 +27,7 @@ export interface AppV0MonitorOrchestrationRuntimeDeps {
   setGuideTrack: (path: string) => void;
   resumeAudio: () => Promise<void>;
   startConnection: (input: StartLogSourceConnectionInput) => Promise<StreamSessionRecord>;
+  pollConnectionSession?: AppV0MonitorLaunchExecutionDeps["pollConnectionSession"];
   attachSession: AppV0MonitorLaunchExecutionDeps["attachSession"];
   startSession: (repo: RepositoryAnalysis, input: StartSessionInput) => Promise<boolean>;
   playbackSession: (input: {
@@ -46,12 +47,14 @@ export function buildAppV0MonitorLaunchExecutionDeps(
     setGuideTrack: deps.setGuideTrack,
     resumeAudio: deps.resumeAudio,
     startConnection: deps.startConnection,
-    pollConnectionSession: async (sessionId, sourcePath) => {
-      const result = await pollStreamSession(sessionId);
-      return result.hasData || result.parsedLines.length > 0 || result.warnings.length > 0
-        ? mapStreamPollResultToUpdate(result, sourcePath)
-        : null;
-    },
+    pollConnectionSession:
+      deps.pollConnectionSession ??
+      (async (sessionId, sourcePath) => {
+        const result = await pollStreamSession(sessionId);
+        return result.hasData || result.parsedLines.length > 0 || result.warnings.length > 0
+          ? mapStreamPollResultToUpdate(result, sourcePath)
+          : null;
+      }),
     attachSession: deps.attachSession,
     startSession: deps.startSession,
     onLaunchSuccess: deps.onLaunchSuccess,

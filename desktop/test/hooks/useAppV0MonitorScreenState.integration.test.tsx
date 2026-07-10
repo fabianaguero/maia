@@ -15,6 +15,7 @@ const repositoriesApiMock = vi.hoisted(() => ({
         startFromBeginning?: boolean;
       }) => Promise<StreamSessionRecord>
     >(),
+  pollStreamSession: vi.fn(),
 }));
 
 vi.mock("../../src/api/repositories", () => repositoriesApiMock);
@@ -131,6 +132,24 @@ describe("useAppV0MonitorScreenState integration", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    repositoriesApiMock.pollStreamSession.mockResolvedValue({
+      sourcePath: "gcp-cloud-run://project/service",
+      fromOffset: 0,
+      toOffset: 0,
+      hasData: false,
+      summary: "",
+      suggestedBpm: null,
+      confidence: 0,
+      dominantLevel: "info",
+      lineCount: 0,
+      anomalyCount: 0,
+      levelCounts: {},
+      anomalyMarkers: [],
+      topComponents: [],
+      sonificationCues: [],
+      parsedLines: [],
+      warnings: [],
+    });
     Object.defineProperty(globalThis, "crypto", {
       configurable: true,
       value: {
@@ -267,6 +286,7 @@ describe("useAppV0MonitorScreenState integration", () => {
       repoTitle: source.title,
       trackId: track.id,
       trackTitle: "around-the-world.mp3",
+      initialStreamUpdate: null,
     });
     expect(setCurrentSection).toHaveBeenCalledWith("monitor");
   });

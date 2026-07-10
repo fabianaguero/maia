@@ -132,6 +132,7 @@ function createOrchestrator() {
         fileCursor: null,
       };
     },
+    pollConnectionSession: async () => null,
     attachSession: async ({ repoTitle, trackTitle }) => {
       calls.push(`attach:${repoTitle}:${trackTitle}`);
       return true;
@@ -196,7 +197,11 @@ describe("appV0MonitorOrchestration", () => {
 
     await orchestrator.replaySession("session-9", "/tmp/visits-service.log", "visits-service");
 
-    expect(calls).toEqual(["replay:session-9:/tmp/visits-service.log:visits-service"]);
+    expect(calls).toEqual([
+      "guide:/music/around-the-world.mp3",
+      "resume",
+      "replay:session-9:/tmp/visits-service.log:visits-service",
+    ]);
   });
 
   it("surfaces invalid repository launches without executing runtime deps", async () => {
@@ -263,6 +268,7 @@ describe("appV0MonitorOrchestration", () => {
         totalPolls: 0,
         fileCursor: null,
       })),
+      pollConnectionSession: vi.fn(async () => null),
       attachSession: vi.fn(async () => false),
       startSession: vi.fn(async () => true),
       playbackSession: vi.fn(),

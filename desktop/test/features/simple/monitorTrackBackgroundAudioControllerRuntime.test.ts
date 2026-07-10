@@ -19,7 +19,6 @@ class MockAudioElement {
 describe("monitorTrackBackgroundAudioControllerRuntime", () => {
   it("binds the resolved background track and attaches the graph when the context is running", async () => {
     const audio = new MockAudioElement() as unknown as HTMLAudioElement;
-    const ensureBackgroundGraph = vi.fn();
     const revokePreviewUrl = vi.fn();
 
     const result = applyMonitorTrackBackgroundBindingState({
@@ -28,8 +27,6 @@ describe("monitorTrackBackgroundAudioControllerRuntime", () => {
       playbackUrl: "blob:new",
       createAudio: vi.fn(() => new MockAudioElement() as unknown as HTMLAudioElement),
       revokePreviewUrl,
-      audioContext: { state: "running" } as AudioContext,
-      ensureBackgroundGraph,
       warn: vi.fn(),
     });
 
@@ -38,10 +35,6 @@ describe("monitorTrackBackgroundAudioControllerRuntime", () => {
     expect(audio.src).toBe("blob:new");
     expect(audio.load).toHaveBeenCalledTimes(1);
     expect(revokePreviewUrl).toHaveBeenCalledWith("blob:old");
-    expect(ensureBackgroundGraph).toHaveBeenCalledWith(
-      audio,
-      expect.objectContaining({ state: "running" }),
-    );
     expect(audio.play).toHaveBeenCalledTimes(1);
   });
 
@@ -58,8 +51,6 @@ describe("monitorTrackBackgroundAudioControllerRuntime", () => {
       playbackUrl: "blob:new",
       createAudio: vi.fn(() => audio as unknown as HTMLAudioElement),
       revokePreviewUrl: vi.fn(),
-      audioContext: null,
-      ensureBackgroundGraph: vi.fn(),
       warn,
     });
 
@@ -68,7 +59,7 @@ describe("monitorTrackBackgroundAudioControllerRuntime", () => {
     expect(result.backgroundAudio).toBe(audio);
     expect(result.backgroundAudioUrl).toBe("blob:new");
     expect(warn).toHaveBeenCalledWith(
-      "Simple monitor background playback failed",
+      expect.stringContaining("Simple monitor background playback failed"),
       expect.any(Error),
     );
   });

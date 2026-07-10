@@ -24,27 +24,25 @@ export async function finalizeLiveMonitorStartupState(input: {
   input.reloadPendingGuideTrack();
   input.doPoll();
 
-  void input
-    .ensureAudioContext()
-    .then((currentCtx) => {
-      if (input.logger && input.logLabel) {
-        input.logger.info(
-          `[MAIA:Audio] ${input.logLabel} ctx state=${currentCtx.state} sampleRate=${currentCtx.sampleRate}`,
-        );
-      }
-
-      if (currentCtx.state === "running" && input.emitProbe) {
-        input.emitProbe(currentCtx);
-        if (input.logger && input.logLabel) {
-          input.logger.info("[MAIA:Audio] start-tone fired");
-        }
-      }
-    })
-    .catch((error: unknown) => {
-      input.logger?.warn?.(
-        `[MAIA:Audio] startup bootstrap failed — ${error instanceof Error ? error.message : String(error)}`,
+  try {
+    const currentCtx = await input.ensureAudioContext();
+    if (input.logger && input.logLabel) {
+      input.logger.info(
+        `[MAIA:Audio] ${input.logLabel} ctx state=${currentCtx.state} sampleRate=${currentCtx.sampleRate}`,
       );
-    });
+    }
+
+    if (currentCtx.state === "running" && input.emitProbe) {
+      input.emitProbe(currentCtx);
+      if (input.logger && input.logLabel) {
+        input.logger.info("[MAIA:Audio] start-tone fired");
+      }
+    }
+  } catch (error: unknown) {
+    input.logger?.warn?.(
+      `[MAIA:Audio] startup bootstrap failed — ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 }
 
 export function clearMonitorAudioState(input: {

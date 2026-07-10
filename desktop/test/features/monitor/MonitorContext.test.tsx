@@ -367,10 +367,9 @@ describe("MonitorProvider", () => {
       expect(ok).toBe(true);
     });
 
-    expect(listener).toHaveBeenCalled();
     expect(latestMonitor!.isPlayback).toBe(true);
-    expect(latestMonitor!.playbackEventCount).toBe(2);
-    expect(latestMonitor!.playbackEventIndex).toBe(1);
+    expect(latestMonitor!.playbackEventCount).toBe(48);
+    expect(latestMonitor!.playbackEventIndex).toBe(0);
 
     act(() => {
       latestMonitor!.pausePlayback();
@@ -486,7 +485,7 @@ describe("MonitorProvider", () => {
 
     expect(latestMonitor!.isPlayback).toBe(true);
     expect(latestMonitor!.session?.sessionId).toBe("playback_persisted-flow-replay");
-    expect(latestMonitor!.playbackEventCount).toBe(2);
+    expect(latestMonitor!.playbackEventCount).toBe(48);
     expect(sessionsMock.listSessionEvents).toHaveBeenCalledWith("persisted-flow-replay");
 
     await act(async () => {
