@@ -1,14 +1,14 @@
 export const contentEn = {
-  nav: { product: "Product", how: "How it works", mvp: "MVP", vision: "Vision" },
+  nav: { product: "Product", how: "How it works", mvp: "MVP", vision: "Vision", github: "GitHub", install: "Install" },
   controls: { lang: "Español", theme: { dark: "Dark mode", light: "Light mode" } },
   hero: {
-    badge: "Auditory monitoring desktop app",
+    badge: "Open source auditory monitoring · MIT licensed",
     title: "Hear your systems as background music.",
     body: "MAIA turns logs, streams, repositories, and scanned files into a background monitoring mix for technical teams.",
     body2:
       "A team chooses a favorite track or playlist as the musical bed, then Maia lets system behavior bend that bed so stability, pressure, and anomalies can be heard without staring at a dashboard.",
-    cta1: "See MVP",
-    cta2: "Explore the workflow",
+    cta1: "Download for macOS/Windows/Linux",
+    cta2: "View on GitHub",
     stats: [
       { label: "Inputs", value: "Logs · Streams · Repos · File scans" },
       { label: "Runtime", value: "macOS · Windows · Ubuntu/Linux" },
@@ -249,11 +249,79 @@ export const contentEn = {
     tagline: "Your systems, your mood, your monitoring bed.",
     title: "From system behavior to groove.",
     text: "A cross-platform desktop app that turns technical behavior into background music, cues, and audible monitoring structure.",
-    ctaTitle: "Suggested site CTAs",
+    ctaTitle: "Get started",
     ctas: [
-      "Request desktop demo",
-      "See the auditory monitoring workflow",
-      "Explore the product architecture",
+      "Download the latest release",
+      "Browse the source code",
+      "Join the community",
+    ],
+  },
+  opensource: {
+    eyebrow: "Open Source",
+    title: "MAIA is MIT licensed and ready for contribution",
+    text: "Run locally, modify for your team, and contribute back to the project.",
+    badge: "Free and open source",
+    features: [
+      {
+        title: "Run locally",
+        text: "Desktop app for macOS, Windows, and Ubuntu/Linux. Full source code available.",
+      },
+      {
+        title: "MIT licensed",
+        text: "Use freely in commercial and personal projects. Modify and redistribute.",
+      },
+      {
+        title: "Community driven",
+        text: "Issues, discussions, and pull requests welcome. See CONTRIBUTING.md for guidelines.",
+      },
+      {
+        title: "Architecture documented",
+        text: "Comprehensive guides for running locally, understanding the runtime, and extending features.",
+      },
+    ],
+  },
+  install: {
+    eyebrow: "Installation",
+    title: "Get MAIA running in minutes",
+    text: "Download the compiled app or build from source.",
+    methods: [
+      {
+        label: "Quick start (recommended)",
+        text: "Download the latest release for your platform from the GitHub releases page.",
+        platform: "macOS · Windows · Linux",
+      },
+      {
+        label: "Build from source",
+        text: "Clone the repository and run `npm run tauri dev` from the desktop/ directory.",
+        platform: "Requires Node.js 18+ and Rust toolchain",
+      },
+    ],
+    requirementsTitle: "Minimum requirements",
+    requirements: [
+      "64-bit operating system (macOS 11+, Windows 10+, Ubuntu 18.04+)",
+      "4GB RAM for comfortable monitoring sessions",
+      "Microphone or audio input for live sessions",
+      "Optional: Python 3.8+ for local analyzer extensions",
+    ],
+  },
+  contribute: {
+    eyebrow: "Contribute",
+    title: "Help shape the future of auditory monitoring",
+    text: "Whether you're fixing a bug, adding a feature, or improving documentation, contributions are welcome.",
+    guidelines: [
+      "Read CONTRIBUTING.md for workflow and code style",
+      "Fork the repository and create a feature branch",
+      "Run `npm run quality:strict` before submitting a pull request",
+      "Reference issues in your commit messages",
+    ],
+    areasTitle: "Areas where help is appreciated",
+    areas: [
+      "Frontend: React components and UI/UX improvements",
+      "Backend: Rust runtime, Tauri integration, and native features",
+      "Analysis: Python analyzer extensions and sonification logic",
+      "Documentation: Guides, examples, and architecture docs",
+      "Testing: Test coverage and manual QA",
+      "Internationalization: Translations and localization",
     ],
   },
 };
