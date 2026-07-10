@@ -23,14 +23,26 @@ jobs:
         working-directory: site
         run: npm ci
 
-      - name: Build
+      - name: Build site
         working-directory: site
         run: npm run build
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/pages-action@v1
+        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
         with:
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: pages deploy dist --project-name=maia
-          workingDirectory: site
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: maia
+          directory: site/dist
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build complete (manual Cloudflare Pages connect required)
+        if: ${{ secrets.CLOUDFLARE_API_TOKEN == '' }}
+        run: |
+          echo "✅ Site built successfully"
+          echo "⚠️  Cloudflare Pages deployment requires:"
+          echo "   1. Set CLOUDFLARE_API_TOKEN secret in GitHub repo settings"
+          echo "   2. Set CLOUDFLARE_ACCOUNT_ID secret in GitHub repo settings"
+          echo "   3. Or: Connect repo directly to Cloudflare Pages dashboard"
+          echo "   📖 https://developers.cloudflare.com/pages/get-started/git-integration/"
