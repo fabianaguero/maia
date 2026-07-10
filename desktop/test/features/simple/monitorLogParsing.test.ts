@@ -122,7 +122,7 @@ describe("monitorLogParsing", () => {
   });
 
   it("keeps anomaly regex narrow enough for non-error operational text", () => {
-    expect(isMonitorAnomaly("info", "Process result for reservation CTO-34853: skipped")).toBe(
+    expect(isMonitorAnomaly("info", "Process result for reservation DEMO-34853: skipped")).toBe(
       false,
     );
     expect(isMonitorAnomaly("info", "timeout while reading upstream response")).toBe(true);

@@ -55,15 +55,16 @@ Use this before switching the repository to public visibility on GitHub.
 
 ## Current Repo Notes
 
-Based on a quick pre-publication pass, these items deserve explicit review:
+Based on the pre-publication pass, these areas were reviewed for public release:
 
-- sample production log fixtures under `analyzer/fixtures/logs/`
-- zipped desktop log fixtures under `desktop/test/logs/`
-- fixture lines that still contain local-looking machine paths such as `/home/curi/...` inside log samples
+- sample log fixtures under `analyzer/fixtures/logs/` and `desktop/test/logs/`
+- maintainer-local absolute paths in archived docs and planning docs
+- Cloud Run / reservation examples in tests and analyzer fixtures
 - generated helper scripts and demo artifacts such as `scripts/demo/tropical_log_gen.py`, `scripts/verification/`, and `demo/audio/`
 - tracked non-runtime demo assets under `demo/`
 - deployment references for the landing site under `site/` and `README.md`
-- planning docs under `docs/superpowers/` that still mention maintainer-local absolute paths like `/home/faguero/...`
+
+The remaining release decision is not code hygiene; it is whether every retained demo/audio asset is intentionally redistributable.
 
 ## Practical Release Sequence
 
@@ -83,5 +84,6 @@ As of this checklist update, the repository is closer to a public MVP but should
 
 - The desktop refactor has reduced the largest shell and monitor-screen risks, and the active flow is more modular.
 - Previous-session replay now validates physical log/track availability and exposes a lost-session cleanup path.
-- The repo still needs a final quality-gate pass, a fixture/secret audit, and one complete manual app run before public visibility.
-- Any dirty local config, especially `.codex/config.toml`, must be excluded from the release commit unless intentionally sanitized.
+- The local quality gates pass, including desktop/site strict checks and Rust formatting/clippy.
+- A bounded fixture/secret audit was run over tracked files; remaining `/webhooks/log` references are generic test endpoints.
+- One complete manual app run is still recommended before switching GitHub visibility or cutting a public tag.

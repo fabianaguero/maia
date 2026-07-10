@@ -152,7 +152,7 @@ Expected output should list the new tables.
 - [ ] **Step 3: Commit**
 
 ```bash
-cd /home/faguero/dev/maia
+cd <repo-root>
 git add database/schema.sql
 git commit -m "chore: add provider_sources, provider_playlists, provider_tracks tables"
 ```
@@ -176,7 +176,7 @@ git commit -m "chore: add provider_sources, provider_playlists, provider_tracks 
 
 - [ ] **Step 1: Create types.ts with all interfaces**
 
-Create file `/home/faguero/dev/maia/desktop/src/providers/runtime/types.ts`:
+Create file `<repo-root>/desktop/src/providers/runtime/types.ts`:
 
 ```typescript
 export type PlaylistSourceType = "spotify" | "soundcloud" | "local_directory";
@@ -262,7 +262,7 @@ export function formatProviderErrorForUser(error: ProviderError): string {
 - [ ] **Step 2: Run TypeScript check**
 
 ```bash
-cd /home/faguero/dev/maia/desktop && npm run quality:ts
+cd <repo-root>/desktop && npm run quality:ts
 ```
 
 Expected: No errors
@@ -289,7 +289,7 @@ git commit -m "feat: add provider types and interfaces"
 
 - [ ] **Step 1: Create normalization.ts**
 
-Create file `/home/faguero/dev/maia/desktop/src/providers/runtime/normalization.ts`:
+Create file `<repo-root>/desktop/src/providers/runtime/normalization.ts`:
 
 ```typescript
 import type { PlaylistSourceType, PlaylistMetadata, RemoteTrackMetadata } from "./types";
@@ -322,7 +322,7 @@ export function isoToDisplayDate(isoString: string): string {
 - [ ] **Step 2: Run TypeScript check**
 
 ```bash
-cd /home/faguero/dev/maia/desktop && npm run quality:ts
+cd <repo-root>/desktop && npm run quality:ts
 ```
 
 Expected: No errors
@@ -352,7 +352,7 @@ git commit -m "feat: add normalization utilities for playlist and track IDs"
 
 - [ ] **Step 1: Write failing test for normalizeSpotifyPlaylist**
 
-Create file `/home/faguero/dev/maia/desktop/test/providers/runtime/spotify.test.ts`:
+Create file `<repo-root>/desktop/test/providers/runtime/spotify.test.ts`:
 
 ```typescript
 import { describe, it, expect } from "vitest";
@@ -464,14 +464,14 @@ describe("spotifyRuntime", () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 ```bash
-cd /home/faguero/dev/maia/desktop && npm test -- test/providers/runtime/spotify.test.ts
+cd <repo-root>/desktop && npm test -- test/providers/runtime/spotify.test.ts
 ```
 
 Expected: FAIL — functions not defined
 
 - [ ] **Step 3: Create spotify.ts with implementations**
 
-Create file `/home/faguero/dev/maia/desktop/src/providers/runtime/spotify.ts`:
+Create file `<repo-root>/desktop/src/providers/runtime/spotify.ts`:
 
 ```typescript
 import type { PlaylistSourceInput, PlaylistMetadata, RemoteTrackMetadata, ProviderError } from "./types";
@@ -580,7 +580,7 @@ export async function listTracksInSpotifyPlaylist(
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-cd /home/faguero/dev/maia/desktop && npm test -- test/providers/runtime/spotify.test.ts
+cd <repo-root>/desktop && npm test -- test/providers/runtime/spotify.test.ts
 ```
 
 Expected: PASS
@@ -618,7 +618,7 @@ git commit -m "feat: add Spotify runtime module with playlist and track parsing"
 
 - [ ] **Step 1: Write test file**
 
-Create file `/home/faguero/dev/maia/desktop/test/providers/runtime/soundcloud.test.ts`:
+Create file `<repo-root>/desktop/test/providers/runtime/soundcloud.test.ts`:
 
 ```typescript
 import { describe, it, expect } from "vitest";
@@ -711,14 +711,14 @@ describe("soundcloudRuntime", () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 ```bash
-cd /home/faguero/dev/maia/desktop && npm test -- test/providers/runtime/soundcloud.test.ts
+cd <repo-root>/desktop && npm test -- test/providers/runtime/soundcloud.test.ts
 ```
 
 Expected: FAIL
 
 - [ ] **Step 3: Create soundcloud.ts with implementations**
 
-Create file `/home/faguero/dev/maia/desktop/src/providers/runtime/soundcloud.ts`:
+Create file `<repo-root>/desktop/src/providers/runtime/soundcloud.ts`:
 
 ```typescript
 import type { PlaylistSourceInput, PlaylistMetadata, RemoteTrackMetadata, ProviderError } from "./types";
@@ -825,7 +825,7 @@ export async function listTracksInSoundCloudPlaylist(
 - [ ] **Step 4: Run tests**
 
 ```bash
-cd /home/faguero/dev/maia/desktop && npm test -- test/providers/runtime/soundcloud.test.ts
+cd <repo-root>/desktop && npm test -- test/providers/runtime/soundcloud.test.ts
 ```
 
 Expected: PASS
@@ -862,7 +862,7 @@ git commit -m "feat: add SoundCloud runtime module with playlist and track parsi
 
 - [ ] **Step 1: Write test file**
 
-Create file `/home/faguero/dev/maia/desktop/test/providers/runtime/local.test.ts`:
+Create file `<repo-root>/desktop/test/providers/runtime/local.test.ts`:
 
 ```typescript
 import { describe, it, expect } from "vitest";
@@ -919,14 +919,14 @@ describe("localRuntime", () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 ```bash
-cd /home/faguero/dev/maia/desktop && npm test -- test/providers/runtime/local.test.ts
+cd <repo-root>/desktop && npm test -- test/providers/runtime/local.test.ts
 ```
 
 Expected: FAIL
 
 - [ ] **Step 3: Create local.ts**
 
-Create file `/home/faguero/dev/maia/desktop/src/providers/runtime/local.ts`:
+Create file `<repo-root>/desktop/src/providers/runtime/local.ts`:
 
 ```typescript
 import type { PlaylistMetadata, RemoteTrackMetadata, ProviderError } from "./types";
@@ -1008,7 +1008,7 @@ export async function listLocalPlaylists(dirPath: string): Promise<PlaylistMetad
 - [ ] **Step 4: Run tests**
 
 ```bash
-cd /home/faguero/dev/maia/desktop && npm test -- test/providers/runtime/local.test.ts
+cd <repo-root>/desktop && npm test -- test/providers/runtime/local.test.ts
 ```
 
 Expected: PASS
@@ -1044,7 +1044,7 @@ git commit -m "feat: add local directory runtime module with M3U and JSON parsin
 
 - [ ] **Step 1: Create hook interface types at top of file**
 
-Create file `/home/faguero/dev/maia/desktop/src/providers/hooks/usePlaylistSources.ts`:
+Create file `<repo-root>/desktop/src/providers/hooks/usePlaylistSources.ts`:
 
 ```typescript
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -1234,7 +1234,7 @@ export function usePlaylistSources(): UsePlaylistSourcesReturn {
 
 - [ ] **Step 2: Create basic test file**
 
-Create file `/home/faguero/dev/maia/desktop/test/providers/hooks/usePlaylistSources.test.tsx`:
+Create file `<repo-root>/desktop/test/providers/hooks/usePlaylistSources.test.tsx`:
 
 ```typescript
 import { describe, it, expect, beforeEach, vi } from "vitest";
@@ -1270,7 +1270,7 @@ describe("usePlaylistSources", () => {
 - [ ] **Step 3: Run tests**
 
 ```bash
-cd /home/faguero/dev/maia/desktop && npm test -- test/providers/hooks/usePlaylistSources.test.tsx
+cd <repo-root>/desktop && npm test -- test/providers/hooks/usePlaylistSources.test.tsx
 ```
 
 Expected: PASS
@@ -1306,7 +1306,7 @@ git commit -m "feat: add usePlaylistSources hook for state management and OAuth 
 
 - [ ] **Step 1: Create ViewModel**
 
-Create file `/home/faguero/dev/maia/desktop/src/providers/viewmodels/playlistSourcesViewModel.ts`:
+Create file `<repo-root>/desktop/src/providers/viewmodels/playlistSourcesViewModel.ts`:
 
 ```typescript
 import type { PlaylistSourceAuth, PlaylistMetadata } from "../runtime/types";
@@ -1362,7 +1362,7 @@ export function buildPlaylistSourcesViewModel(input: {
 
 - [ ] **Step 2: Create test file**
 
-Create file `/home/faguero/dev/maia/desktop/test/providers/viewmodels/playlistSourcesViewModel.test.ts`:
+Create file `<repo-root>/desktop/test/providers/viewmodels/playlistSourcesViewModel.test.ts`:
 
 ```typescript
 import { describe, it, expect } from "vitest";
@@ -1430,7 +1430,7 @@ describe("playlistSourcesViewModel", () => {
 - [ ] **Step 3: Run tests**
 
 ```bash
-cd /home/faguero/dev/maia/desktop && npm test -- test/providers/viewmodels/playlistSourcesViewModel.test.ts
+cd <repo-root>/desktop && npm test -- test/providers/viewmodels/playlistSourcesViewModel.test.ts
 ```
 
 Expected: PASS
@@ -1465,7 +1465,7 @@ git commit -m "feat: add playlistSourcesViewModel for UI presentation"
 
 - [ ] **Step 1: Create SourceCard component**
 
-Create file `/home/faguero/dev/maia/desktop/src/features/library/components/SourceCard.tsx`:
+Create file `<repo-root>/desktop/src/features/library/components/SourceCard.tsx`:
 
 ```typescript
 import React from "react";
@@ -1521,7 +1521,7 @@ export function SourceCard({ viewModel, onDisconnect, onSyncNow }: SourceCardPro
 
 - [ ] **Step 2: Create SourcesView component**
 
-Create file `/home/faguero/dev/maia/desktop/src/features/library/components/SourcesView.tsx`:
+Create file `<repo-root>/desktop/src/features/library/components/SourcesView.tsx`:
 
 ```typescript
 import React, { useCallback } from "react";
@@ -1662,7 +1662,7 @@ export function SourcesView({}: SourcesViewProps) {
 
 - [ ] **Step 3: Create CSS for components**
 
-Create file `/home/faguero/dev/maia/desktop/src/features/library/styles/SourceCard.css`:
+Create file `<repo-root>/desktop/src/features/library/styles/SourceCard.css`:
 
 ```css
 .source-card {
@@ -1745,7 +1745,7 @@ button:disabled {
 }
 ```
 
-Create file `/home/faguero/dev/maia/desktop/src/features/library/styles/SourcesView.css`:
+Create file `<repo-root>/desktop/src/features/library/styles/SourcesView.css`:
 
 ```css
 .sources-view {
@@ -1856,7 +1856,7 @@ Create file `/home/faguero/dev/maia/desktop/src/features/library/styles/SourcesV
 
 - [ ] **Step 4: Create test file**
 
-Create file `/home/faguero/dev/maia/desktop/test/features/library/SourcesView.test.tsx`:
+Create file `<repo-root>/desktop/test/features/library/SourcesView.test.tsx`:
 
 ```typescript
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -1902,7 +1902,7 @@ describe("SourcesView", () => {
 - [ ] **Step 5: Run tests**
 
 ```bash
-cd /home/faguero/dev/maia/desktop && npm test -- test/features/library/SourcesView.test.tsx
+cd <repo-root>/desktop && npm test -- test/features/library/SourcesView.test.tsx
 ```
 
 Expected: PASS
@@ -1966,7 +1966,7 @@ type LibraryTab = "tracks" | "playlists" | "sources";
 - [ ] **Step 3: Run the app and verify tab renders**
 
 ```bash
-cd /home/faguero/dev/maia/desktop && npm run dev
+cd <repo-root>/desktop && npm run dev
 ```
 
 Navigate to Library, verify "Sources" tab exists and shows UI.
@@ -1992,7 +1992,7 @@ git commit -m "feat: integrate SourcesView tab into LibraryScreen"
 
 - [ ] **Step 1: Create providers.ts API layer**
 
-Create file `/home/faguero/dev/maia/desktop/src/api/providers.ts`:
+Create file `<repo-root>/desktop/src/api/providers.ts`:
 
 ```typescript
 import type { PlaylistSourceAuth, PlaylistMetadata } from "../providers/runtime/types";
@@ -2104,7 +2104,7 @@ tauri::Builder::default()
 - [ ] **Step 3: Run TypeScript check**
 
 ```bash
-cd /home/faguero/dev/maia/desktop && npm run quality:ts
+cd <repo-root>/desktop && npm run quality:ts
 ```
 
 Expected: No errors
@@ -2112,7 +2112,7 @@ Expected: No errors
 - [ ] **Step 4: Run Rust check**
 
 ```bash
-cd /home/faguero/dev/maia/desktop/src-tauri && cargo check
+cd <repo-root>/desktop/src-tauri && cargo check
 ```
 
 Expected: No errors
@@ -2191,7 +2191,7 @@ providers: {
 - [ ] **Step 3: Verify i18n types**
 
 ```bash
-cd /home/faguero/dev/maia/desktop && npm run quality:ts
+cd <repo-root>/desktop && npm run quality:ts
 ```
 
 Expected: No errors
@@ -2216,7 +2216,7 @@ git commit -m "feat: add i18n strings for playlist providers UI"
 
 - [ ] **Step 1: Create integration test**
 
-Create file `/home/faguero/dev/maia/desktop/test/integration/playlistSources.integration.test.tsx`:
+Create file `<repo-root>/desktop/test/integration/playlistSources.integration.test.tsx`:
 
 ```typescript
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -2252,7 +2252,7 @@ describe("Playlist Sources Integration", () => {
 - [ ] **Step 2: Run integration tests**
 
 ```bash
-cd /home/faguero/dev/maia/desktop && npm test -- test/integration/playlistSources.integration.test.tsx
+cd <repo-root>/desktop && npm test -- test/integration/playlistSources.integration.test.tsx
 ```
 
 Expected: PASS
@@ -2285,7 +2285,7 @@ git commit -m "test: add integration test for playlist sources end-to-end flow"
 - [ ] **Step 1: Run full quality suite**
 
 ```bash
-cd /home/faguero/dev/maia/desktop && npm run quality
+cd <repo-root>/desktop && npm run quality
 ```
 
 Expected: All checks pass (TypeScript, ESLint, tests)

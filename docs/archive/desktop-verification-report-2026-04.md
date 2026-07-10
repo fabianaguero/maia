@@ -58,7 +58,7 @@ The Maia desktop app is fully functional across all four main screens (Library, 
 
 ## CSS Changes Applied
 
-The following spacing refinements were made to the inspect panel (persisted in `/home/faguero/dev/maia/desktop/src/styles.css`):
+The following spacing refinements were made to the inspect panel (persisted in `<repo-root>/desktop/src/styles.css`):
 
 | Component | Change | Rationale |
 |-----------|--------|-----------|

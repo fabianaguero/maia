@@ -39,7 +39,7 @@ const cloudConnection: LogSourceConnection = {
   id: "cloud-1",
   kind: "gcp_cloud_run",
   label: "services",
-  sourceUri: "gcp-cloud-run://innate-portal/services",
+  sourceUri: "gcp-cloud-run://demo-gcp-project/services",
   enabled: true,
   adapterKind: "process",
   config: {},

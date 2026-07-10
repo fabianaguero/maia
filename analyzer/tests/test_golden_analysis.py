@@ -153,11 +153,11 @@ def test_gcloud_info_notice_backfill_stays_non_anomalous():
     """Cloud backfill lines with INFO/NOTICE timestamps alone should not trigger anomalies."""
     chunk = "\n".join(
         [
-            'DEFAULT 2026-06-24T21:55:46.323583Z HTTP Request: GET https://restapi-847752433493.us-central1.run.app/reservations/CTO-34853 "HTTP/1.1 200 OK"',
-            "DEFAULT 2026-06-24T21:55:46.550023Z Notifying changes for reservation CTO-34853",
+            'DEFAULT 2026-06-24T21:55:46.323583Z HTTP Request: GET https://example-api-000000000000.us-central1.run.app/reservations/DEMO-34853 "HTTP/1.1 200 OK"',
+            "DEFAULT 2026-06-24T21:55:46.550023Z Notifying changes for reservation DEMO-34853",
             "DEFAULT 2026-06-24T21:55:46.552974Z Logging {'id': 'V4zlx54eKGi30jzEJYSW', 'status': 'ORCHESTRATING'}",
             "DEFAULT 2026-06-24T21:55:48.563665Z [Mail to NonApi Providers] attempt=1 decision=skipped reason=no_relevant_changes metrics={'sent': 0, 'filtered': 0, 'zohoSkipped': 0}",
-            "DEFAULT 2026-06-24T21:55:48.647129Z Process result for reservation CTO-34853: skipped (skipped_empty_window)",
+            "DEFAULT 2026-06-24T21:55:48.647129Z Process result for reservation DEMO-34853: skipped (skipped_empty_window)",
         ]
     )
     asset, warnings = analyze_repository(

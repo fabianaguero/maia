@@ -69,7 +69,7 @@ describe("importRepositoryFormControllerRuntime", () => {
         sourceKind: "url",
         sourcePath: "gcp-cloud-run",
         label: "Prod Cloud Run",
-        gcpProjectId: "innate-portal",
+        gcpProjectId: "demo-gcp-project",
         gcpServiceName: "services",
         gcpRegion: "us-central1",
       },
@@ -83,7 +83,7 @@ describe("importRepositoryFormControllerRuntime", () => {
       kind: "gcp_cloud_run",
       label: "Prod Cloud Run",
       config: {
-        projectId: "innate-portal",
+        projectId: "demo-gcp-project",
         serviceName: "services",
         region: "us-central1",
         minimumSeverity: "DEFAULT",

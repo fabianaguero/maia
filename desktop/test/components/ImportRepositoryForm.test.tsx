@@ -134,7 +134,7 @@ describe("ImportRepositoryForm", () => {
 
     fireEvent.change(
       screen.getByPlaceholderText(en.library.forms.repository.gcpProjectIdPlaceholder),
-      { target: { value: "innate-portal" } },
+      { target: { value: "demo-gcp-project" } },
     );
     fireEvent.change(
       screen.getByPlaceholderText(en.library.forms.repository.cloudRunServicePlaceholder),
@@ -157,7 +157,7 @@ describe("ImportRepositoryForm", () => {
         kind: "gcp_cloud_run",
         label: "Prod Cloud Run",
         config: {
-          projectId: "innate-portal",
+          projectId: "demo-gcp-project",
           serviceName: "services",
           region: "us-central1",
           minimumSeverity: "DEFAULT",

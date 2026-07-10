@@ -14,7 +14,7 @@ describe("importRepositoryFormRuntime", () => {
       sourceKind: "url",
       sourcePath: " gcp-cloud-run ",
       label: " Prod ",
-      gcpProjectId: " innate-portal ",
+      gcpProjectId: " demo-gcp-project ",
       gcpServiceName: " services ",
       gcpRegion: " us-central1 ",
     });
@@ -23,7 +23,7 @@ describe("importRepositoryFormRuntime", () => {
       sourceKind: "url",
       sourcePath: "gcp-cloud-run",
       label: "Prod",
-      gcpProjectId: "innate-portal",
+      gcpProjectId: "demo-gcp-project",
       gcpServiceName: "services",
       gcpRegion: "us-central1",
     });
@@ -57,7 +57,7 @@ describe("importRepositoryFormRuntime", () => {
           sourceKind: "url",
           sourcePath: "gcp-cloud-run",
           label: "",
-          gcpProjectId: "innate-portal",
+          gcpProjectId: "demo-gcp-project",
           gcpServiceName: "services",
           gcpRegion: "us-central1",
         },
@@ -72,7 +72,7 @@ describe("importRepositoryFormRuntime", () => {
         kind: "gcp_cloud_run",
         label: "services · Cloud Run",
         config: {
-          projectId: "innate-portal",
+          projectId: "demo-gcp-project",
           serviceName: "services",
           region: "us-central1",
           minimumSeverity: "DEFAULT",
