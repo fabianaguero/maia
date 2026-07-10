@@ -11,6 +11,8 @@ export interface PlaybackSessionSelection {
   label: string;
   sourcePath: string;
   repoId?: string | null;
+  trackId?: string | null;
+  trackTitle?: string | null;
 }
 
 export interface PreparedPlaybackMonitorSession {

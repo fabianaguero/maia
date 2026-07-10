@@ -11,6 +11,7 @@ export interface SimpleMonitorStartRequest {
   waitForNextFrame: () => Promise<void>;
   resumeAudio: () => Promise<void> | void;
   startMonitoring: (source: MonitorLaunchSource, trackId?: string) => Promise<void> | void;
+  finishLaunchingOnSuccess: () => void;
   resetLaunchingOnFailure: () => void;
 }
 
@@ -73,6 +74,7 @@ export async function executeSimpleMonitorStartRequest(
       input.selectedSourceOption as MonitorLaunchSource,
       input.selectedSoundId,
     );
+    input.finishLaunchingOnSuccess();
     return true;
   } catch {
     input.resetLaunchingOnFailure();

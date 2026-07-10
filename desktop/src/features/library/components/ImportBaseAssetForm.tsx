@@ -1,4 +1,5 @@
 import { FolderOpen, PackagePlus } from "lucide-react";
+import { RuntimeStatusCard } from "../../../components/RuntimeStatusCard";
 import type { BaseAssetCategoryOption } from "../../../types/baseAsset";
 import type { ImportBaseAssetInput } from "../../../types/library";
 import { useImportBaseAssetFormController } from "./useImportBaseAssetFormController";
@@ -127,6 +128,25 @@ export function ImportBaseAssetForm({
       <p className="field-hint">{t.library.forms.baseAsset.hint}</p>
 
       {error ? <p className="inline-error">{error}</p> : null}
+      {busy || pickerBusy ? (
+        <RuntimeStatusCard
+          title={
+            pickerBusy ? t.library.forms.baseAsset.browsing : t.library.forms.baseAsset.registering
+          }
+          detail={sourcePath || label || t.library.forms.baseAsset.displayLabelPlaceholder}
+          badge={
+            pickerBusy
+              ? sourceKind === "directory"
+                ? t.library.forms.baseAsset.browseFolder
+                : t.library.forms.baseAsset.browseFile
+              : t.library.forms.baseAsset.registerBaseAsset
+          }
+          tone="pending"
+          activity="spinner"
+          compact
+          className="form-runtime-status"
+        />
+      ) : null}
 
       <div className="form-actions">
         <button
@@ -136,9 +156,7 @@ export function ImportBaseAssetForm({
           onClick={() => void handleBrowse()}
         >
           {pickerBusy ? (
-            <>
-              <span className="spin-ring" aria-hidden="true" /> {t.library.forms.baseAsset.browsing}
-            </>
+            t.library.forms.baseAsset.browsing
           ) : (
             <>
               <FolderOpen size={14} />{" "}
@@ -150,10 +168,7 @@ export function ImportBaseAssetForm({
         </button>
         <button type="submit" className="action" disabled={busy}>
           {busy ? (
-            <>
-              <span className="spin-ring" aria-hidden="true" />{" "}
-              {t.library.forms.baseAsset.registering}
-            </>
+            t.library.forms.baseAsset.registering
           ) : (
             <>
               <PackagePlus size={14} /> {t.library.forms.baseAsset.registerBaseAsset}

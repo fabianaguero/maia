@@ -1,4 +1,5 @@
 import type { SessionEvent } from "../../api/sessions";
+import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { MonitorMetrics, StreamListener } from "./monitorContextTypes";
 import type { UseMonitorProviderRuntimeOrchestrationInput } from "./monitorProviderRuntimeOrchestrationTypes";
 
@@ -39,6 +40,7 @@ export function buildMonitorProviderRuntimeLiveSlice(input: {
   pollIndexRef: React.MutableRefObject<number>;
   isPlaybackRef: React.MutableRefObject<boolean>;
   listenersRef: React.MutableRefObject<Set<StreamListener>>;
+  recentUpdatesRef: React.MutableRefObject<LiveLogStreamUpdate[]>;
 }): UseMonitorProviderRuntimeOrchestrationInput["live"] {
   return {
     activeRef: input.activeRef,
@@ -51,5 +53,6 @@ export function buildMonitorProviderRuntimeLiveSlice(input: {
     pollIndexRef: input.pollIndexRef,
     isPlaybackRef: input.isPlaybackRef,
     listenersRef: input.listenersRef,
+    recentUpdatesRef: input.recentUpdatesRef,
   };
 }

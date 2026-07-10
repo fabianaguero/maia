@@ -10,11 +10,12 @@ import {
   type SessionBookmark,
 } from "../api/sessions";
 import { toSessionErrorMessage } from "./sessionsRuntime";
+import { buildCreatedSessionState, buildLoadedSessionsState } from "./sessionsStateRuntime";
 import {
-  buildCreatedSessionState,
-  buildLoadedSessionsState,
-  buildRemovedSessionState,
-} from "./sessionsStateRuntime";
+  clearDeletedSelectedSessionId,
+  removeDeletedSession,
+  removeDeletedSessionBookmarks,
+} from "./sessionsRuntime";
 
 interface UseSessionsPersistenceInput {
   sessions: PersistedSession[];
@@ -31,8 +32,6 @@ interface UseSessionsPersistenceInput {
 export function useSessionsPersistence(input: UseSessionsPersistenceInput) {
   const {
     sessions,
-    selectedSessionId,
-    sessionBookmarksBySessionId,
     setSessions,
     setLoading,
     setMutating,
@@ -87,15 +86,11 @@ export function useSessionsPersistence(input: UseSessionsPersistenceInput) {
       try {
         const success = await deletePersistedSession(sessionId);
         if (success) {
-          const nextState = buildRemovedSessionState({
-            sessions,
-            sessionBookmarksBySessionId,
-            selectedSessionId,
-            sessionId,
-          });
-          setSessions(nextState.sessions);
-          setSessionBookmarksBySessionId(nextState.sessionBookmarksBySessionId);
-          setSelectedSessionId(nextState.selectedSessionId);
+          setSessions((current) => removeDeletedSession(current, sessionId));
+          setSessionBookmarksBySessionId((current) =>
+            removeDeletedSessionBookmarks(current, sessionId),
+          );
+          setSelectedSessionId((current) => clearDeletedSelectedSessionId(current, sessionId));
         }
         setError(null);
       } catch (err) {
@@ -104,16 +99,7 @@ export function useSessionsPersistence(input: UseSessionsPersistenceInput) {
         setMutating(false);
       }
     },
-    [
-      selectedSessionId,
-      sessionBookmarksBySessionId,
-      sessions,
-      setError,
-      setMutating,
-      setSelectedSessionId,
-      setSessionBookmarksBySessionId,
-      setSessions,
-    ],
+    [setError, setMutating, setSelectedSessionId, setSessionBookmarksBySessionId, setSessions],
   );
 
   return {

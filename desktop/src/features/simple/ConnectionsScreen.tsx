@@ -1,3 +1,4 @@
+import { ScreenBusyOverlay } from "../../components/ScreenBusyOverlay";
 import { useT } from "../../i18n/I18nContext";
 import { ConnectionsFormPanel } from "./ConnectionsFormPanel";
 import { ConnectionsHeroPanel } from "./ConnectionsHeroPanel";
@@ -22,6 +23,8 @@ export function ConnectionsScreen({ defaultCloudLookback = "10m" }: ConnectionsS
     error,
     activeSessionId,
     activeConnectionId,
+    pendingConnectionId,
+    tailPhase,
     tailPreview,
     tailStatus,
     testStatusById,
@@ -40,9 +43,34 @@ export function ConnectionsScreen({ defaultCloudLookback = "10m" }: ConnectionsS
     t,
     defaultCloudLookback,
   });
+  const isBusy = loading || saving || pickerBusy || pendingConnectionId !== null;
+  const busyTitle = pendingConnectionId
+    ? tailPhase === "stopping"
+      ? t.simpleMode.connections.stopLiveTail
+      : t.simpleMode.connections.openingLiveTail
+    : pickerBusy
+      ? t.simpleMode.connections.loading
+      : saving
+        ? t.simpleMode.status.loading
+        : loading
+          ? t.simpleMode.connections.loading
+          : t.simpleMode.status.loading;
+  const busyDetail = pendingConnectionId
+    ? (tailStatus ?? t.simpleMode.connections.waitingCloudEntries)
+    : pickerBusy
+      ? t.simpleMode.connections.logFilePath
+      : screenViewModel.heroDescription;
+  const busyBadge = pendingConnectionId
+    ? t.simpleMode.connections.liveTail
+    : saving
+      ? t.simpleMode.connections.saveConnection
+      : loading
+        ? screenViewModel.refreshTitle
+        : t.simpleMode.connections.loading;
 
   return (
     <section className="connections-screen">
+      <ScreenBusyOverlay visible={isBusy} title={busyTitle} detail={busyDetail} badge={busyBadge} />
       <ConnectionsHeroPanel
         viewModel={screenViewModel}
         loading={loading}
@@ -72,6 +100,8 @@ export function ConnectionsScreen({ defaultCloudLookback = "10m" }: ConnectionsS
           connectionKindLabel={connectionKindLabel}
           activeConnectionId={activeConnectionId}
           activeSessionId={activeSessionId}
+          pendingConnectionId={pendingConnectionId}
+          tailPhase={tailPhase}
           saving={saving}
           testStatusById={testStatusById}
           testMessageById={testMessageById}

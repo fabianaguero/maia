@@ -38,6 +38,7 @@ export function buildMonitorProviderRuntimeOrchestrationStateDependencies(
     pollIndexRef: state.pollIndexRef,
     isPlaybackRef: state.isPlaybackRef,
     listenersRef: state.listenersRef,
+    recentUpdatesRef: state.recentUpdatesRef,
     activeTemplateRef: state.activeTemplateRef,
     setActiveTemplateState: state.setActiveTemplateState,
   };

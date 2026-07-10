@@ -5,6 +5,7 @@ import type {
   LibraryTrack,
   RepositoryAnalysis,
 } from "../../../types/library";
+import { RuntimeStatusCard } from "../../../components/RuntimeStatusCard";
 import { getPlaylistMedianBpm, summarizePlaylistTracks } from "../../../utils/playlist";
 import { getTrackTitle } from "../../../utils/track";
 import { resolveImportCompositionSubmitDisabled } from "./importCompositionFormRuntime";
@@ -210,6 +211,17 @@ export function ImportCompositionForm({
       <p className="field-hint">{t.compose.forms.hint}</p>
 
       {error ? <p className="inline-error">{error}</p> : null}
+      {busy ? (
+        <RuntimeStatusCard
+          title={t.compose.forms.composing}
+          detail={label || selectedBaseAsset?.title || t.compose.forms.compositionLabelPlaceholder}
+          badge={t.compose.forms.createComposition}
+          tone="pending"
+          activity="spinner"
+          compact
+          className="form-runtime-status"
+        />
+      ) : null}
 
       <div className="form-actions">
         <button
@@ -223,13 +235,7 @@ export function ImportCompositionForm({
             playlistId,
           })}
         >
-          {busy ? (
-            <>
-              <span className="spin-ring" aria-hidden="true" /> {t.compose.forms.composing}
-            </>
-          ) : (
-            t.compose.forms.createComposition
-          )}
+          {busy ? t.compose.forms.composing : t.compose.forms.createComposition}
         </button>
       </div>
     </form>

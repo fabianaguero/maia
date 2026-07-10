@@ -49,6 +49,7 @@ export function buildSimpleMonitorStartRequestInput(input: {
   onStartMonitoring: UseSimpleMonitorLaunchStateInput["onStartMonitoring"];
   setLaunchingImmediate: () => void;
   waitForNextFrame: () => Promise<void>;
+  finishLaunchingOnSuccess: () => void;
   resetLaunchingOnFailure: () => void;
 }): SimpleMonitorStartRequest {
   return {
@@ -59,6 +60,7 @@ export function buildSimpleMonitorStartRequestInput(input: {
     waitForNextFrame: input.waitForNextFrame,
     resumeAudio: input.onResumeAudio,
     startMonitoring: input.onStartMonitoring,
+    finishLaunchingOnSuccess: input.finishLaunchingOnSuccess,
     resetLaunchingOnFailure: input.resetLaunchingOnFailure,
   };
 }

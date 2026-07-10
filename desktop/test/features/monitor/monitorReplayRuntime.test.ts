@@ -177,7 +177,9 @@ describe("monitorReplayRuntime", () => {
     expect(cursorRef.current.current).toBe(500);
     expect(finishedRef.current).toBe(false);
     expect(shouldHydrateReplayFromSource(0, "/logs/replay.log")).toBe(true);
-    expect(shouldHydrateReplayFromSource(4, "/logs/replay.log")).toBe(false);
+    expect(shouldHydrateReplayFromSource(4, "/logs/replay.log")).toBe(true);
+    expect(shouldHydrateReplayFromSource(5, "/logs/replay.log", 0)).toBe(true);
+    expect(shouldHydrateReplayFromSource(5, "/logs/replay.log", 20)).toBe(false);
   });
 
   it("rebuilds replay events from a log source until no more data", async () => {

@@ -1,8 +1,7 @@
 import { useCallback } from "react";
 
-import { emitMonitorAudioProbe, ensureMonitorAudioContext } from "./monitorContextRuntime";
+import { ensureMonitorAudioContext } from "./monitorContextRuntime";
 import { resumeMonitorAudioContextState } from "./monitorLiveLifecycleRuntime";
-import { buildResumeMonitorAudioContextStateInput } from "./monitorProviderOrchestrationRuntime";
 import type { UseMonitorProviderRuntimeOrchestrationInput } from "./monitorProviderRuntimeOrchestrationTypes";
 
 export function useMonitorProviderAudioLifecycleCallbacks(
@@ -20,15 +19,16 @@ export function useMonitorProviderAudioLifecycleCallbacks(
   );
 
   const resumeAudio = useCallback(async () => {
-    const resumeState = buildResumeMonitorAudioContextStateInput({
-      audioContextRef: audio.audioContextRef,
-      setAudioContext: audio.setAudioContext,
-      logger,
-    });
     await resumeMonitorAudioContextState({
-      ensureAudioContext: () => ensureMonitorAudioContext(resumeState.ensureAudioContext()),
-      emitProbe: (context) => emitMonitorAudioProbe(resumeState.emitProbe(context)),
-      logger: resumeState.logger,
+      ensureAudioContext: () =>
+        ensureMonitorAudioContext({
+          audioContextRef: audio.audioContextRef,
+          setAudioContext: audio.setAudioContext,
+          logger,
+          reason: "manual-resume",
+        }),
+      emitProbe: () => {},
+      logger,
     });
   }, [audio.audioContextRef, audio.setAudioContext, logger]);
 

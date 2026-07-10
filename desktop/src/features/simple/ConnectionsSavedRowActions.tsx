@@ -1,4 +1,4 @@
-import { Pencil, Play, Square, Trash2 } from "lucide-react";
+import { Pencil, Play, RefreshCw, Square, Trash2 } from "lucide-react";
 
 import type { AppTranslations } from "../../i18n/types";
 import type { ConnectionsSavedListRowViewModel } from "./connectionsSavedListViewModel";
@@ -51,7 +51,7 @@ export function ConnectionsSavedRowActions({
           }}
           disabled={row.disableStartAction}
         >
-          <Play size={14} />
+          {row.isPending ? <RefreshCw size={14} className="spin-ring" /> : <Play size={14} />}
         </button>
       )}
       <button
@@ -79,6 +79,7 @@ export function ConnectionsSavedRowActions({
         }}
         disabled={row.disableTestAction}
       >
+        {row.testTone === "testing" ? <RefreshCw size={14} className="spin-ring" /> : null}
         {t.simpleMode.connections.testConnection}
       </button>
       <button

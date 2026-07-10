@@ -1,12 +1,18 @@
+import { RuntimeStatusCard } from "../../../components/RuntimeStatusCard";
+
 interface LibraryTabLoadingStateProps {
   loadingLabel: string;
 }
 
 export function LibraryTabLoadingState({ loadingLabel }: LibraryTabLoadingStateProps) {
   return (
-    <div className="placeholder-loading">
-      <span className="spin-ring" aria-hidden="true" />
-      {loadingLabel}
-    </div>
+    <RuntimeStatusCard
+      title={loadingLabel}
+      badge={loadingLabel}
+      tone="pending"
+      activity="spinner"
+      compact
+      className="placeholder-loading placeholder-loading--runtime"
+    />
   );
 }

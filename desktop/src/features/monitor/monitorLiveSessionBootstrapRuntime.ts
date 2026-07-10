@@ -1,6 +1,7 @@
 import type { MutableRefObject } from "react";
 
 import type { SourceTemplate } from "../../config/sourceTemplates";
+import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { MonitorMetrics, ActiveMonitorSession } from "./monitorContextTypes";
 import { applyMonitorSourceTemplateState } from "./monitorStartupRuntime";
 import { activateLiveMonitorSessionState } from "./monitorLiveSessionActivationRuntime";
@@ -14,12 +15,14 @@ type ResetReplayTelemetryFn = () => void;
 
 export function bootstrapLiveMonitorSessionState(input: {
   session: ActiveMonitorSession;
+  initialStreamUpdate?: LiveLogStreamUpdate | null;
   sourceTemplateId?: string | null;
   persistedSessionId?: string | null;
   startFromBeginning?: boolean;
   directCursorRef: MutableRefObject<number | undefined>;
   emptyWindowsRef: MutableRefObject<number>;
   pollIndexRef: MutableRefObject<number>;
+  recentUpdatesRef: MutableRefObject<LiveLogStreamUpdate[]>;
   activeTemplateRef: MutableRefObject<SourceTemplate>;
   setActiveTemplateState: SetSourceTemplateState;
   updatePersistedSessionStatus: (
@@ -40,6 +43,7 @@ export function bootstrapLiveMonitorSessionState(input: {
     pollIndexRef: input.pollIndexRef,
     startFromBeginning: input.startFromBeginning,
   });
+  input.recentUpdatesRef.current = input.initialStreamUpdate ? [input.initialStreamUpdate] : [];
 
   applyMonitorSourceTemplateState({
     sourceTemplateId: input.sourceTemplateId ?? null,

@@ -15,7 +15,12 @@ export interface AppV0MonitorOrchestrator {
     source: MonitorLaunchSource,
     trackId?: string,
   ) => Promise<AppV0MonitorLaunchExecutionResult>;
-  replaySession: (sessionId: string, sourcePath: string, repoTitle: string) => Promise<void>;
+  replaySession: (
+    sessionId: string,
+    sourcePath: string,
+    repoTitle: string,
+    trackId?: string | null,
+  ) => Promise<void>;
 }
 
 export function createAppV0MonitorOrchestrator(
@@ -25,7 +30,7 @@ export function createAppV0MonitorOrchestrator(
     startLibraryMonitoring: async (repoId) => startAppV0LibraryMonitoring(deps, repoId),
     startSourceMonitoring: async (source, trackId) =>
       startAppV0SourceMonitoring(deps, source, trackId),
-    replaySession: async (sessionId, sourcePath, repoTitle) =>
-      replayAppV0MonitorSession(deps, sessionId, sourcePath, repoTitle),
+    replaySession: async (sessionId, sourcePath, repoTitle, trackId) =>
+      replayAppV0MonitorSession(deps, sessionId, sourcePath, repoTitle, trackId),
   };
 }

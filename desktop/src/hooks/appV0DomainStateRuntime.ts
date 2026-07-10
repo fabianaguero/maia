@@ -4,7 +4,7 @@ import type { AppSkin } from "../features/simple/appSkin";
 import type { MonitorSetupPreferences } from "../features/simple/monitorSetupPreferences";
 import type { UserMode } from "../features/simple/UserModeContext";
 import type { RepositoryAnalysis } from "../types/library";
-import type { StartSessionInput, StreamSessionRecord } from "../types/monitor";
+import type { LiveLogStreamUpdate, StartSessionInput, StreamSessionRecord } from "../types/monitor";
 import type {
   AppV0BaseAssetBindings,
   AppV0LibraryBindings,
@@ -54,6 +54,7 @@ export interface AppV0DomainState {
       repoTitle: string;
       trackId?: string;
       trackTitle?: string;
+      initialStreamUpdate?: LiveLogStreamUpdate | null;
       sourceTemplateId?: string | null;
       persistedSessionId?: string | null;
     }) => Promise<boolean>;

@@ -138,6 +138,7 @@ export const esControls = {
     monitor: {
       systemActive: "Sistema activo",
       connectingStream: "Conectando flujo",
+      validatingFiles: "Validando archivos",
       anomalies: "Anomalías",
       uptime: "Tiempo activo",
       waitingHandshake: "Esperando el enlace inicial del flujo y la primera respuesta…",

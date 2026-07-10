@@ -17,6 +17,7 @@ export interface BuildMonitorProviderSessionActionsInput {
   isPlaybackRef: React.MutableRefObject<boolean>;
   directCursorRef: React.MutableRefObject<number | undefined>;
   emptyWindowsRef: React.MutableRefObject<number>;
+  recentUpdatesRef: React.MutableRefObject<LiveLogStreamUpdate[]>;
   currentSegmentRef: React.MutableRefObject<CrossfadeHandle | null>;
   audioContextRef: React.MutableRefObject<AudioContext | null>;
   replayEventsRef: React.MutableRefObject<SessionEvent[]>;

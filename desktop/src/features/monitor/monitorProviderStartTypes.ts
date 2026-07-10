@@ -1,6 +1,7 @@
 import type { MutableRefObject } from "react";
 
 import type { SourceTemplate } from "../../config/sourceTemplates";
+import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { ActiveMonitorSession, MonitorMetrics } from "./monitorContextTypes";
 
 type SetSessionState = (value: ActiveMonitorSession | null) => void;
@@ -15,12 +16,14 @@ export interface MonitorProviderStartLogger {
 
 export interface MonitorProviderLiveStartSharedInput {
   session: ActiveMonitorSession;
+  initialStreamUpdate?: LiveLogStreamUpdate | null;
   sourceTemplateId?: string | null;
   persistedSessionId?: string | null;
   startFromBeginning?: boolean;
   directCursorRef: MutableRefObject<number | undefined>;
   emptyWindowsRef: MutableRefObject<number>;
   pollIndexRef: MutableRefObject<number>;
+  recentUpdatesRef: MutableRefObject<LiveLogStreamUpdate[]>;
   activeTemplateRef: MutableRefObject<SourceTemplate>;
   setActiveTemplateState: SetSourceTemplateState;
   updatePersistedSessionStatus: (
@@ -44,5 +47,10 @@ export interface MonitorProviderLiveStartSharedInput {
 
 export type MonitorProviderLiveStartBaseInput = Omit<
   MonitorProviderLiveStartSharedInput,
-  "session" | "sourceTemplateId" | "persistedSessionId" | "startFromBeginning" | "logLabel"
+  | "session"
+  | "initialStreamUpdate"
+  | "sourceTemplateId"
+  | "persistedSessionId"
+  | "startFromBeginning"
+  | "logLabel"
 >;

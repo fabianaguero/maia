@@ -1,5 +1,6 @@
 import type { SourceTemplate } from "../../config/sourceTemplates";
 import type { SessionEvent } from "../../api/sessions";
+import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { GuideTrackPCM } from "./monitorAudioRuntimeTypes";
 import type { ActiveMonitorSession, MonitorMetrics, StreamListener } from "./monitorContextTypes";
 import type {
@@ -40,6 +41,7 @@ export interface BuildMonitorProviderRuntimeOrchestrationDependencies {
   pollIndexRef: React.MutableRefObject<number>;
   isPlaybackRef: React.MutableRefObject<boolean>;
   listenersRef: React.MutableRefObject<Set<StreamListener>>;
+  recentUpdatesRef: React.MutableRefObject<LiveLogStreamUpdate[]>;
   activeTemplateRef: React.MutableRefObject<SourceTemplate>;
   setActiveTemplateState: React.Dispatch<React.SetStateAction<SourceTemplate>>;
   buildReloadPendingGuideTrack: (reason: "session-start" | "attach-session") => () => void;

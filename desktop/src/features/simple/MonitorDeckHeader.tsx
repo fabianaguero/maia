@@ -9,6 +9,7 @@ import { buildMonitorDeckFocusBarState } from "./monitorDeckHeaderRuntime";
 
 interface MonitorDeckHeaderProps {
   deckTrackLine: string;
+  trackMissing: boolean;
   logSourceLine: string;
   legendItems: MonitorLegendItemViewModel[];
   metaChips: MonitorMetaChipViewModel[];
@@ -22,6 +23,7 @@ interface MonitorDeckHeaderProps {
 
 export function MonitorDeckHeader({
   deckTrackLine,
+  trackMissing,
   logSourceLine,
   legendItems,
   metaChips,
@@ -55,7 +57,18 @@ export function MonitorDeckHeader({
               <span className="monitor-deck-source-card__label">
                 {t.simpleMode.monitor.trackAudio}
               </span>
-              <span className="monitor-deck-source-card__value">{deckTrackLine}</span>
+              <span className="monitor-deck-source-card__value">
+                {deckTrackLine}
+                {trackMissing ? (
+                  <span
+                    className="track-lost-badge monitor-track-lost-badge"
+                    title={t.library.lost}
+                  >
+                    <AlertTriangle size={10} />
+                    {t.library.lost}
+                  </span>
+                ) : null}
+              </span>
             </div>
             <div
               className="monitor-deck-source-card log"

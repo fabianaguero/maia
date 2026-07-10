@@ -20,6 +20,7 @@ export function buildMonitorProviderContextStateValue(input: {
     audioContext: input.state.audioContext,
     activeTemplate: input.state.activeTemplate,
     listenersRef: input.state.listenersRef,
+    recentUpdatesRef: input.state.recentUpdatesRef,
     logger: input.logger,
   };
 }

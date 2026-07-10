@@ -35,6 +35,8 @@ Use this before switching the repository to public visibility on GitHub.
 - Keep historical implementation reports under `docs/archive/` instead of the repository root.
 - Verify that browser/mock fallbacks do not misrepresent unsupported native behavior.
 - Check that the roadmap and README do not promise features that are intentionally deferred.
+- Verify that local developer config files are not included in the public commit. In particular, do not publish `.codex/config.toml` unless it has been intentionally sanitized and documented.
+- Verify that previous monitor sessions with missing log files or missing tracks are marked as lost and can be cleaned from the UI instead of failing silently.
 
 ## GitHub Features To Enable
 
@@ -67,8 +69,19 @@ Based on a quick pre-publication pass, these items deserve explicit review:
 
 For a pragmatic first public release, use this order:
 
-1. Run `make quality` and confirm CI is green.
-2. Run the desktop manual flow in `docs/pre-release-manual-test-plan.md`.
-3. Review demo assets and fixtures for redistribution intent and anonymization.
-4. Review README and contributor docs from the perspective of a first-time outsider.
-5. Only then switch the repository visibility or cut a public tag.
+1. Confirm the worktree only contains intentional product/docs changes. Exclude local agent config and machine-specific files.
+2. Run `make quality-pre-commit` and fix anything red before committing.
+3. Run `make quality-pre-push` and confirm CI-equivalent checks are green before pushing.
+4. Run the desktop manual flow in `docs/pre-release-manual-test-plan.md`.
+5. Review demo assets and fixtures for redistribution intent and anonymization.
+6. Review README and contributor docs from the perspective of a first-time outsider.
+7. Only then switch the repository visibility or cut a public tag.
+
+## Current Publication State
+
+As of this checklist update, the repository is closer to a public MVP but should not be published blindly.
+
+- The desktop refactor has reduced the largest shell and monitor-screen risks, and the active flow is more modular.
+- Previous-session replay now validates physical log/track availability and exposes a lost-session cleanup path.
+- The repo still needs a final quality-gate pass, a fixture/secret audit, and one complete manual app run before public visibility.
+- Any dirty local config, especially `.codex/config.toml`, must be excluded from the release commit unless intentionally sanitized.

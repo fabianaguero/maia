@@ -112,6 +112,8 @@ describe("useLiveLogMonitorResetActions", () => {
         emittedCueCount: 6,
         backgroundPlayheadSecond: 48,
         activeTailWindowId: "window-4",
+        liveMutationState: "normal",
+        forcedLiveMutationState: "auto",
         error: "soft warning",
         isStarting: true,
         bounceWindowCount: 3,
@@ -126,6 +128,8 @@ describe("useLiveLogMonitorResetActions", () => {
     expect(input.setRecentExplanations).toHaveBeenCalledWith([]);
     expect(input.setSelectedExplanationId).toHaveBeenCalledWith(null);
     expect(input.setBackgroundPlayheadSecond).toHaveBeenCalledWith(48);
+    expect(input.setLiveMutationState).toHaveBeenCalledWith("normal");
+    expect(input.setForcedLiveMutationState).toHaveBeenCalledWith("auto");
     expect(input.setSyncTailRows).toHaveBeenCalledWith([]);
     expect(input.setActiveTailWindowId).toHaveBeenCalledWith("window-4");
     expect(input.setError).toHaveBeenCalledWith("soft warning");

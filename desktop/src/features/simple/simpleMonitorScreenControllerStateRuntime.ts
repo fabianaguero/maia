@@ -21,6 +21,8 @@ export function buildSimpleMonitorScreenControllerState(
     audioContext: input.audioContext,
     onStartMonitoring: input.onStartMonitoring,
     onReplaySession: input.onReplaySession,
+    onDeletePastSession: input.onDeletePastSession,
+    onDeleteLibraryTrack: input.onDeleteLibraryTrack,
     subscribe: input.subscribe,
     trackName: input.trackName,
     waveformBins: input.waveformBins,

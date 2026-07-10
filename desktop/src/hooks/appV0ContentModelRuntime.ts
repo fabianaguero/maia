@@ -78,6 +78,7 @@ export function buildAppV0ScreenModelInput(
       selectedTrackId: domainState.library.selectedTrackId,
       selectedTrack: domainState.library.selectedTrack ?? null,
       setSelectedTrackId: domainState.library.setSelectedTrackId,
+      deleteLibraryTrack: domainState.library.deleteLibraryTrack,
     },
     repositories: {
       repositories: domainState.repositories.repositories,

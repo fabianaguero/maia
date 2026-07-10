@@ -23,7 +23,12 @@ export async function preparePlaybackMonitorSessionState(
   const events = await input.loadSessionEvents(input.sessionId);
   input.logger.info("playbackSession loaded %d stored events", events.length);
 
-  const shouldHydrateReplay = shouldHydrateReplayFromSource(events.length, input.sourcePath);
+  const storedReplayLines = events.reduce((total, event) => total + event.lineCount, 0);
+  const shouldHydrateReplay = shouldHydrateReplayFromSource(
+    events.length,
+    input.sourcePath,
+    storedReplayLines,
+  );
   if (events.length === 0 && !shouldHydrateReplay) {
     input.logger.warn("playbackSession — 0 events, aborting");
     return null;
@@ -35,6 +40,8 @@ export async function preparePlaybackMonitorSessionState(
       label: input.label,
       sourcePath: input.sourcePath,
       repoId: input.repoId,
+      trackId: input.trackId,
+      trackTitle: input.trackTitle,
     }),
     events,
     shouldHydrateReplay,

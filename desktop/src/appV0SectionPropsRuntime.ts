@@ -27,7 +27,14 @@ export interface AppV0SimpleMonitorSectionProps {
   trackName?: string;
   waveformBins?: number[];
   onStartMonitoring: (source: MonitorLaunchSource, trackId?: string) => void | Promise<void>;
-  onReplaySession: (sessionId: string, sourcePath: string, repoTitle: string) => void;
+  onReplaySession: (
+    sessionId: string,
+    sourcePath: string,
+    repoTitle: string,
+    trackId?: string | null,
+  ) => void;
+  onDeletePastSession: (sessionId: string) => Promise<void>;
+  onDeleteLibraryTrack: (trackId: string) => Promise<boolean>;
   subscribe: (listener: (update: LiveLogStreamUpdate) => void) => () => void;
   liveSettings: MonitorSetupPreferences;
   isConsoleExpanded: boolean;
@@ -83,7 +90,14 @@ export function buildAppV0SimpleMonitorSectionProps(input: {
   monitorTrackName?: string;
   waveformBins?: number[];
   onStartMonitoring: (source: MonitorLaunchSource, trackId?: string) => void | Promise<void>;
-  onReplaySession: (sessionId: string, sourcePath: string, repoTitle: string) => void;
+  onReplaySession: (
+    sessionId: string,
+    sourcePath: string,
+    repoTitle: string,
+    trackId?: string | null,
+  ) => void;
+  onDeletePastSession: (sessionId: string) => Promise<void>;
+  onDeleteLibraryTrack: (trackId: string) => Promise<boolean>;
   subscribe: (listener: (update: LiveLogStreamUpdate) => void) => () => void;
   setupPreferences: MonitorSetupPreferences;
   isConsoleExpanded: boolean;
@@ -104,6 +118,8 @@ export function buildAppV0SimpleMonitorSectionProps(input: {
     waveformBins: input.waveformBins,
     onStartMonitoring: input.onStartMonitoring,
     onReplaySession: input.onReplaySession,
+    onDeletePastSession: input.onDeletePastSession,
+    onDeleteLibraryTrack: input.onDeleteLibraryTrack,
     subscribe: input.subscribe,
     liveSettings: input.setupPreferences,
     isConsoleExpanded: input.isConsoleExpanded,

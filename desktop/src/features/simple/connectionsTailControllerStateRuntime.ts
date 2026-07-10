@@ -28,6 +28,8 @@ export function buildConnectionTailControllerState(
   return {
     activeSessionId: input.activeSessionId,
     activeConnectionId: input.activeConnectionId,
+    pendingConnectionId: input.pendingConnectionId,
+    tailPhase: input.tailPhase,
     tailPreview: input.tailPreview,
     tailStatus: input.tailStatus,
     handleStartTail: input.handleStartTail,

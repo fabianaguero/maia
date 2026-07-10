@@ -1,13 +1,16 @@
 import type { MonitorLaunchSource } from "./types/monitorLaunch";
+import { pollStreamSession } from "./api/repositories";
 import {
   buildAppV0LibraryMonitorLaunchPlan,
   buildAppV0MonitorLaunchPlan,
+  resolveAppV0TrackSelection,
 } from "./appV0MonitorLaunchPlanRuntime";
 import {
   executeAppV0MonitorLaunchPlan,
   type AppV0MonitorLaunchExecutionDeps,
   type AppV0MonitorLaunchExecutionResult,
 } from "./appV0MonitorLaunchExecutionRuntime";
+import { mapStreamPollResultToUpdate } from "./features/monitor/monitorSessionRuntime";
 import type {
   LibraryTrack,
   RepositoryAnalysis,
@@ -30,6 +33,8 @@ export interface AppV0MonitorOrchestrationRuntimeDeps {
     sessionId: string;
     sourcePath: string;
     label: string;
+    trackId?: string | null;
+    trackTitle?: string | null;
   }) => Promise<boolean> | Promise<void>;
   onLaunchSuccess?: () => void;
 }
@@ -41,25 +46,46 @@ export function buildAppV0MonitorLaunchExecutionDeps(
     setGuideTrack: deps.setGuideTrack,
     resumeAudio: deps.resumeAudio,
     startConnection: deps.startConnection,
+    pollConnectionSession: async (sessionId, sourcePath) => {
+      const result = await pollStreamSession(sessionId);
+      return result.hasData || result.parsedLines.length > 0 || result.warnings.length > 0
+        ? mapStreamPollResultToUpdate(result, sourcePath)
+        : null;
+    },
     attachSession: deps.attachSession,
     startSession: deps.startSession,
     onLaunchSuccess: deps.onLaunchSuccess,
   };
 }
 
-export function replayAppV0MonitorSession(
-  deps: Pick<AppV0MonitorOrchestrationRuntimeDeps, "playbackSession">,
+export async function replayAppV0MonitorSession(
+  deps: Pick<
+    AppV0MonitorOrchestrationRuntimeDeps,
+    "playbackSession" | "tracks" | "selectedTrack" | "setGuideTrack" | "resumeAudio"
+  >,
   sessionId: string,
   sourcePath: string,
   repoTitle: string,
+  trackId?: string | null,
 ): Promise<void> {
-  return Promise.resolve(
-    deps.playbackSession({
-      sessionId,
-      sourcePath,
-      label: repoTitle,
-    }),
-  ).then(() => undefined);
+  const trackSelection = resolveAppV0TrackSelection({
+    tracks: deps.tracks,
+    trackId,
+    fallbackTrack: deps.selectedTrack ?? deps.tracks[0] ?? null,
+  });
+
+  if (trackSelection.guideTrackPath) {
+    deps.setGuideTrack(trackSelection.guideTrackPath);
+  }
+
+  await deps.resumeAudio();
+  await deps.playbackSession({
+    sessionId,
+    sourcePath,
+    label: repoTitle,
+    trackId: trackSelection.track?.id ?? null,
+    trackTitle: trackSelection.trackTitle,
+  });
 }
 
 export function startAppV0LibraryMonitoring(

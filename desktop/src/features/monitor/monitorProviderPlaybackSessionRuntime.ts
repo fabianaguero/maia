@@ -22,6 +22,8 @@ export async function startMonitorProviderPlaybackSessionState(
     label: input.label,
     sourcePath: input.sourcePath,
     repoId: input.repoId,
+    trackId: input.trackId,
+    trackTitle: input.trackTitle,
     loadSessionEvents: input.loadSessionEvents,
     logger: input.logger,
   });

@@ -13,6 +13,7 @@ interface UseMonitorTrackBackgroundAudioBindingInput {
   activeTrack: LibraryTrack | null;
   backgroundAudioRef: { current: HTMLAudioElement | null };
   backgroundAudioUrlRef: { current: string | null };
+  backgroundAudioPathRef: { current: string | null };
   ensureBackgroundGraph: (audio: HTMLAudioElement, context: AudioContext) => unknown;
   revokePreviewUrl: (url: string | null | undefined) => void;
 }
@@ -24,6 +25,7 @@ export function useMonitorTrackBackgroundAudioBinding({
   activeTrack,
   backgroundAudioRef,
   backgroundAudioUrlRef,
+  backgroundAudioPathRef,
   ensureBackgroundGraph,
   revokePreviewUrl,
 }: UseMonitorTrackBackgroundAudioBindingInput) {
@@ -50,6 +52,19 @@ export function useMonitorTrackBackgroundAudioBinding({
         return;
       }
 
+      if (
+        backgroundAudioRef.current &&
+        backgroundAudioPathRef.current === playablePath &&
+        backgroundAudioUrlRef.current
+      ) {
+        if (backgroundAudioRef.current.paused || backgroundAudioRef.current.ended) {
+          void backgroundAudioRef.current.play().catch((error) => {
+            console.warn("Simple monitor background resume failed", error);
+          });
+        }
+        return;
+      }
+
       const playbackUrl = await resolvePreviewAudioUrl(playablePath);
       if (cancelled) {
         revokePreviewUrl(playbackUrl);
@@ -62,14 +77,13 @@ export function useMonitorTrackBackgroundAudioBinding({
         playbackUrl,
         createAudio: () => new Audio(),
         revokePreviewUrl,
-        audioContext,
-        ensureBackgroundGraph,
         warn: (message, error) => {
           console.warn(message, error);
         },
       });
       backgroundAudioRef.current = bindingState.backgroundAudio;
       backgroundAudioUrlRef.current = bindingState.backgroundAudioUrl;
+      backgroundAudioPathRef.current = playablePath;
     };
 
     void bindBackgroundTrack();
@@ -81,23 +95,11 @@ export function useMonitorTrackBackgroundAudioBinding({
     activeTrack,
     audioContext,
     backgroundAudioRef,
+    backgroundAudioPathRef,
     backgroundAudioUrlRef,
     ensureBackgroundGraph,
     isListening,
     revokePreviewUrl,
     safeRuntime,
   ]);
-
-  useEffect(() => {
-    if (!audioContext || audioContext.state !== "running") {
-      return;
-    }
-
-    const audio = backgroundAudioRef.current;
-    if (!audio) {
-      return;
-    }
-
-    ensureBackgroundGraph(audio, audioContext);
-  }, [audioContext, backgroundAudioRef, ensureBackgroundGraph]);
 }

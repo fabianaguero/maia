@@ -1,4 +1,7 @@
-import { prepareBackgroundMonitorAudio } from "./monitorTrackAudioRuntime";
+import {
+  prepareBackgroundMonitorAudio,
+  startMonitorAudioPlayback,
+} from "./monitorTrackAudioRuntime";
 
 export function applyMonitorTrackBackgroundBindingState(input: {
   currentBackgroundAudio: HTMLAudioElement | null;
@@ -6,8 +9,6 @@ export function applyMonitorTrackBackgroundBindingState(input: {
   playbackUrl: string;
   createAudio: () => HTMLAudioElement;
   revokePreviewUrl: (url: string | null | undefined) => void;
-  audioContext: AudioContext | null;
-  ensureBackgroundGraph: (audio: HTMLAudioElement, context: AudioContext) => unknown;
   warn: (message: string, error: unknown) => void;
 }): {
   backgroundAudio: HTMLAudioElement;
@@ -21,13 +22,7 @@ export function applyMonitorTrackBackgroundBindingState(input: {
     input.revokePreviewUrl,
   );
 
-  if (input.audioContext?.state === "running") {
-    input.ensureBackgroundGraph(audio, input.audioContext);
-  }
-
-  void audio.play().catch((error) => {
-    input.warn("Simple monitor background playback failed", error);
-  });
+  startMonitorAudioPlayback(audio, input.warn);
 
   return {
     backgroundAudio: audio,

@@ -164,11 +164,27 @@ describe("useSessionsPersistence", () => {
       await result.current.removeSession("first");
     });
 
-    expect(input.setSessions).toHaveBeenCalledWith([
-      createSession("second", "2026-06-30T10:00:00.000Z"),
-    ]);
-    expect(input.setSessionBookmarksBySessionId).toHaveBeenCalledWith({ second: [] });
-    expect(input.setSelectedSessionId).toHaveBeenCalledWith(null);
+    const sessionsUpdater = input.setSessions.mock.calls.find(
+      ([value]) => typeof value === "function",
+    )?.[0] as ((current: PersistedSession[]) => PersistedSession[]) | undefined;
+    expect(
+      sessionsUpdater?.([
+        createSession("first", "2026-06-30T09:00:00.000Z"),
+        createSession("second", "2026-06-30T10:00:00.000Z"),
+      ]),
+    ).toEqual([createSession("second", "2026-06-30T10:00:00.000Z")]);
+
+    const bookmarksUpdater = input.setSessionBookmarksBySessionId.mock.calls.find(
+      ([value]) => typeof value === "function",
+    )?.[0] as
+      | ((current: Record<string, SessionBookmark[]>) => Record<string, SessionBookmark[]>)
+      | undefined;
+    expect(bookmarksUpdater?.({ first: [bookmark], second: [] })).toEqual({ second: [] });
+
+    const selectedUpdater = input.setSelectedSessionId.mock.calls.find(
+      ([value]) => typeof value === "function",
+    )?.[0] as ((current: string | null) => string | null) | undefined;
+    expect(selectedUpdater?.("first")).toBeNull();
     expect(input.setError).toHaveBeenCalledWith(null);
 
     sessionsApiMock.deletePersistedSession.mockResolvedValueOnce(false);

@@ -11,6 +11,44 @@ type RebuildReplayEventsFromSourceFn = (input: {
   sourcePath: string;
 }) => Promise<SessionEvent[]>;
 
+function countParsedReplayLines(events: SessionEvent[]): number {
+  return events.reduce((total, event) => {
+    try {
+      const parsedLines: unknown = JSON.parse(event.parsedLinesJson);
+      if (!Array.isArray(parsedLines)) {
+        return total;
+      }
+
+      return (
+        total +
+        parsedLines.filter((line) => {
+          if (typeof line !== "string") {
+            return true;
+          }
+          return !line.includes("MAIA_MONITOR_INITIALIZED");
+        }).length
+      );
+    } catch {
+      return total;
+    }
+  }, 0);
+}
+
+function shouldReplaceReplayEvents(input: {
+  currentEvents: SessionEvent[];
+  rebuiltEvents: SessionEvent[];
+}): boolean {
+  if (input.rebuiltEvents.length === 0) {
+    return false;
+  }
+
+  if (input.rebuiltEvents.length > input.currentEvents.length) {
+    return true;
+  }
+
+  return countParsedReplayLines(input.rebuiltEvents) > countParsedReplayLines(input.currentEvents);
+}
+
 export async function hydrateReplayFromSourceState(input: {
   sessionId: string;
   sourcePath: string;
@@ -42,13 +80,23 @@ export async function hydrateReplayFromSourceState(input: {
       return;
     }
 
-    if (rebuiltEvents.length > input.replayEventsRef.current.length) {
+    if (
+      shouldReplaceReplayEvents({
+        currentEvents: input.replayEventsRef.current,
+        rebuiltEvents,
+      })
+    ) {
       input.replayEventsRef.current = rebuiltEvents;
       input.replayMetricsRef.current = buildReplayCumulativeMetrics(rebuiltEvents);
-      input.syncReplayTelemetry(Math.min(input.replayIndexRef.current, rebuiltEvents.length));
+      input.replayIndexRef.current = Math.min(input.replayIndexRef.current, rebuiltEvents.length);
+      if (input.replayIndexRef.current >= rebuiltEvents.length) {
+        input.replayIndexRef.current = 0;
+      }
+      input.syncReplayTelemetry(input.replayIndexRef.current);
       input.logger.info(
-        "playbackSession rebuilt replay windows from source → %d events",
+        "playbackSession rebuilt replay windows from source → %d events, %d parsed lines",
         rebuiltEvents.length,
+        countParsedReplayLines(rebuiltEvents),
       );
     }
   } catch (error) {

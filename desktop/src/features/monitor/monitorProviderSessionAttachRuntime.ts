@@ -1,6 +1,6 @@
 import type { MutableRefObject } from "react";
 
-import type { StreamSessionRecord } from "../../types/monitor";
+import type { LiveLogStreamUpdate, StreamSessionRecord } from "../../types/monitor";
 import type { ActiveMonitorSession } from "./monitorContextTypes";
 import {
   buildMonitorProviderLiveStartBaseInput,
@@ -19,6 +19,7 @@ export async function attachMonitorProviderSessionState(input: {
   repoTitle: string;
   trackId?: string;
   trackTitle?: string;
+  initialStreamUpdate?: LiveLogStreamUpdate | null;
   sourceTemplateId?: string | null;
   persistedSessionId?: string | null;
   sessionRef: MutableRefObject<ActiveMonitorSession | null>;
@@ -54,6 +55,7 @@ export async function attachMonitorProviderSessionState(input: {
     buildMonitorProviderLiveStartState({
       ...buildMonitorProviderLiveStartBaseInput(input.liveStartInput),
       session,
+      initialStreamUpdate: input.initialStreamUpdate ?? null,
       sourceTemplateId: input.sourceTemplateId ?? null,
       persistedSessionId: input.persistedSessionId,
     }),

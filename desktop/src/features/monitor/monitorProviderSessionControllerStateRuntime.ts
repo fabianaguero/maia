@@ -18,6 +18,7 @@ export function buildMonitorProviderSessionActionsInputFromState(
     isPlaybackRef: state.isPlaybackRef,
     directCursorRef: state.directCursorRef,
     emptyWindowsRef: state.emptyWindowsRef,
+    recentUpdatesRef: state.recentUpdatesRef,
     currentSegmentRef: state.currentSegmentRef,
     audioContextRef: state.audioContextRef,
     replayEventsRef: state.replayEventsRef,

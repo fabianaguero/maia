@@ -46,6 +46,7 @@ describe("monitorProviderLiveRuntime", () => {
 
   it("applies stream updates through provider refs and advances persisted poll index", () => {
     const listenersRef = { current: new Set([vi.fn()]) };
+    const recentUpdatesRef = { current: [] as LiveLogStreamUpdate[] };
     const sessionRef = { current: { persistedSessionId: "persisted-1" } };
     const pollIndexRef = { current: 4 };
     const resume = vi.fn();
@@ -62,6 +63,7 @@ describe("monitorProviderLiveRuntime", () => {
     const result = emitMonitorProviderUpdateState({
       update: createUpdate(),
       listenersRef,
+      recentUpdatesRef,
       sessionRef: sessionRef as never,
       pollIndexRef,
       audioContextRef,
@@ -74,6 +76,7 @@ describe("monitorProviderLiveRuntime", () => {
     expect(result.nextPollIndex).toBe(5);
     expect(result.dispatchedListeners).toBe(1);
     expect(pollIndexRef.current).toBe(5);
+    expect(recentUpdatesRef.current).toHaveLength(1);
     expect(resume).toHaveBeenCalled();
     expect(updatePersistedCursor).toHaveBeenCalledWith({
       sessionId: "persisted-1",
@@ -120,6 +123,7 @@ describe("monitorProviderLiveRuntime", () => {
 
   it("does not resume audio when there is no suspended audio context", () => {
     const listenersRef = { current: new Set([vi.fn()]) };
+    const recentUpdatesRef = { current: [] as LiveLogStreamUpdate[] };
     const sessionRef = { current: { persistedSessionId: null } };
     const pollIndexRef = { current: 0 };
     const runningResume = vi.fn();
@@ -130,6 +134,7 @@ describe("monitorProviderLiveRuntime", () => {
     emitMonitorProviderUpdateState({
       update: createUpdate(),
       listenersRef,
+      recentUpdatesRef,
       sessionRef: sessionRef as never,
       pollIndexRef,
       audioContextRef: {
@@ -147,6 +152,7 @@ describe("monitorProviderLiveRuntime", () => {
     emitMonitorProviderUpdateState({
       update: createUpdate(),
       listenersRef,
+      recentUpdatesRef,
       sessionRef: sessionRef as never,
       pollIndexRef,
       audioContextRef: { current: null },
@@ -157,5 +163,31 @@ describe("monitorProviderLiveRuntime", () => {
     });
 
     expect(runningResume).not.toHaveBeenCalled();
+  });
+
+  it("does not buffer empty waiting updates", () => {
+    const listenersRef = { current: new Set([vi.fn()]) };
+    const recentUpdatesRef = { current: [] as LiveLogStreamUpdate[] };
+
+    emitMonitorProviderUpdateState({
+      update: createUpdate({
+        hasData: false,
+        parsedLines: [],
+        warnings: [],
+        lineCount: 0,
+        anomalyCount: 0,
+      }),
+      listenersRef,
+      recentUpdatesRef,
+      sessionRef: { current: { persistedSessionId: null } } as never,
+      pollIndexRef: { current: 0 },
+      audioContextRef: { current: null },
+      setMetrics: vi.fn(),
+      updatePersistedCursor: vi.fn(),
+      insertPersistedEvent: vi.fn<[InsertSessionEventInput], void>(),
+      logger: { info: vi.fn(), debug: vi.fn(), trace: vi.fn() },
+    });
+
+    expect(recentUpdatesRef.current).toEqual([]);
   });
 });

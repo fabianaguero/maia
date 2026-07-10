@@ -1,4 +1,5 @@
 import React from "react";
+import { AlertTriangle } from "lucide-react";
 
 import type { LibraryTrack } from "../../types/library";
 import { BrandIcon } from "../../components/Branding";
@@ -54,7 +55,7 @@ export function MonitorSetupPanel({
   const canLaunch = Boolean(selectedSourceId && selectedSoundId && canStartSelectedSource);
 
   return (
-    <>
+    <section className="monitor-setup-workbench" aria-label={t.simpleMode.setup.startMonitoring}>
       <MonitorSetupHero
         canLaunch={canLaunch}
         isLaunchingMonitor={isLaunchingMonitor}
@@ -113,12 +114,21 @@ export function MonitorSetupPanel({
           renderSub={(track) => track.tags.musicStyleLabel || t.simpleMode.setup.ambientFallback}
           color="var(--color-accent)"
           seedPrefix="track"
+          renderBadge={(track) =>
+            track.file.availabilityState === "missing" ? (
+              <span className="track-lost-badge" title={t.library.lost}>
+                <AlertTriangle size={10} />
+                {t.library.lost}
+              </span>
+            ) : null
+          }
           renderAction={(track) => (
             <MonitorSetupTrackPreviewAction
               track={track}
               previewTrackId={previewTrackId}
               previewLabel={t.simpleMode.setup.previewTrack}
               pauseLabel={t.simpleMode.setup.pausePreview}
+              disabled={track.file.availabilityState === "missing"}
               onToggleTrackPreview={onToggleTrackPreview}
             />
           )}
@@ -128,6 +138,6 @@ export function MonitorSetupPanel({
           emptyMessage={t.simpleMode.setup.noItemsAvailable}
         />
       </div>
-    </>
+    </section>
   );
 }

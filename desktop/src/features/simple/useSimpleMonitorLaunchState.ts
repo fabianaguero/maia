@@ -75,6 +75,7 @@ export function useSimpleMonitorLaunchState({
           new Promise<void>((resolve) => {
             window.requestAnimationFrame(() => resolve());
           }),
+        finishLaunchingOnSuccess: () => setIsLaunchingMonitor(false),
         resetLaunchingOnFailure: () => setIsLaunchingMonitor(false),
       }),
     );

@@ -1,4 +1,5 @@
 import { Play, RefreshCw } from "lucide-react";
+import { RuntimeStatusCard } from "../../components/RuntimeStatusCard";
 
 interface MonitorSetupHeroProps {
   canLaunch: boolean;
@@ -35,7 +36,19 @@ export function MonitorSetupHero({
         <span className="btn-text">{isLaunchingMonitor ? loadingLabel : launchLabel}</span>
         <div className="btn-impact-scan" />
       </button>
-      <p className="setup-hero-hint">{startHint}</p>
+      {isLaunchingMonitor ? (
+        <RuntimeStatusCard
+          title={loadingLabel}
+          detail={startHint}
+          badge={loadingLabel}
+          tone="pending"
+          activity="spinner"
+          compact
+          className="setup-runtime-status"
+        />
+      ) : (
+        <p className="setup-hero-hint">{startHint}</p>
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
+import type { LiveLogStreamUpdate } from "../../types/monitor";
 import { applyMonitorLiveStreamSubscriptionResult } from "./monitorLiveStreamSubscriptionApplyRuntime";
 import { buildMonitorLiveStreamSubscriptionListener } from "./monitorLiveStreamSubscriptionControllerRuntime";
 import { applyMonitorLiveStreamSubscriptionUpdate } from "./monitorLiveStreamSubscriptionRuntime";
@@ -34,76 +35,52 @@ export function useMonitorLiveStreamSubscription({
   setSelectedAnomalyId,
   setLogSignalBuffer,
 }: UseMonitorLiveStreamSubscriptionInput): void {
+  const listenerRef = useRef<(update: LiveLogStreamUpdate) => void>(() => undefined);
+
+  listenerRef.current = buildMonitorLiveStreamSubscriptionListener({
+    input: {
+      isListening,
+      subscribe,
+      audioContextRef,
+      backgroundAudioRef,
+      backgroundGraphRef,
+      activeTrackRef,
+      deckDurationSecondsRef,
+      trackWaveProgressRef,
+      deckControlsRef,
+      maxLiveLines,
+      liveSuggestedBpmRef,
+      liveLinesRef,
+      logSignalBufferRef,
+      waveformAnomaliesRef,
+      selectedAnomalyIdRef,
+      audioProbePlayedRef,
+      lastCueAccentAtRef,
+      lastStreamEventAtRef,
+      ensureBackgroundGraph,
+      applyTrackMutation,
+      playTestTone,
+      playCueBatch,
+      setLiveSuggestedBpm,
+      setLiveLines,
+      setWaveformAnomalies,
+      setSelectedAnomalyId,
+      setLogSignalBuffer,
+    },
+    now: () => Date.now(),
+    applyUpdate: applyMonitorLiveStreamSubscriptionUpdate,
+    applyResult: applyMonitorLiveStreamSubscriptionResult,
+  });
+
   useEffect(() => {
     if (!isListening) {
       return;
     }
 
-    const listener = buildMonitorLiveStreamSubscriptionListener({
-      input: {
-        isListening,
-        subscribe,
-        audioContextRef,
-        backgroundAudioRef,
-        backgroundGraphRef,
-        activeTrackRef,
-        deckDurationSecondsRef,
-        trackWaveProgressRef,
-        deckControlsRef,
-        maxLiveLines,
-        liveSuggestedBpmRef,
-        liveLinesRef,
-        logSignalBufferRef,
-        waveformAnomaliesRef,
-        selectedAnomalyIdRef,
-        audioProbePlayedRef,
-        lastCueAccentAtRef,
-        lastStreamEventAtRef,
-        ensureBackgroundGraph,
-        applyTrackMutation,
-        playTestTone,
-        playCueBatch,
-        setLiveSuggestedBpm,
-        setLiveLines,
-        setWaveformAnomalies,
-        setSelectedAnomalyId,
-        setLogSignalBuffer,
-      },
-      now: () => Date.now(),
-      applyUpdate: applyMonitorLiveStreamSubscriptionUpdate,
-      applyResult: applyMonitorLiveStreamSubscriptionResult,
+    const unsub = subscribe((update) => {
+      listenerRef.current(update);
     });
 
-    const unsub = subscribe(listener);
-
     return unsub;
-  }, [
-    activeTrackRef,
-    applyTrackMutation,
-    audioContextRef,
-    audioProbePlayedRef,
-    backgroundAudioRef,
-    backgroundGraphRef,
-    deckControlsRef,
-    deckDurationSecondsRef,
-    ensureBackgroundGraph,
-    isListening,
-    lastCueAccentAtRef,
-    lastStreamEventAtRef,
-    liveLinesRef,
-    liveSuggestedBpmRef,
-    logSignalBufferRef,
-    maxLiveLines,
-    playCueBatch,
-    playTestTone,
-    selectedAnomalyIdRef,
-    setLiveLines,
-    setLiveSuggestedBpm,
-    setLogSignalBuffer,
-    setSelectedAnomalyId,
-    setWaveformAnomalies,
-    subscribe,
-    trackWaveProgressRef,
-    waveformAnomaliesRef,
-  ]);
+  }, [isListening, subscribe]);
 }

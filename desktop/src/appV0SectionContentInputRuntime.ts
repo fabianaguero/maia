@@ -43,6 +43,8 @@ export function buildAppV0SectionContentInput(input: {
   waveformBins?: number[];
   onStartMonitoring: AppV0SectionContentInput["onStartMonitoring"];
   onReplaySession: AppV0SectionContentInput["onReplaySession"];
+  onDeletePastSession: AppV0SectionContentInput["onDeletePastSession"];
+  onDeleteLibraryTrack: AppV0SectionContentInput["onDeleteLibraryTrack"];
   subscribe: (listener: (update: LiveLogStreamUpdate) => void) => () => void;
   isConsoleExpanded: boolean;
   onToggleConsole?: () => void;
@@ -78,6 +80,8 @@ export function buildAppV0SectionContentInput(input: {
     waveformBins: input.waveformBins,
     onStartMonitoring: input.onStartMonitoring,
     onReplaySession: input.onReplaySession,
+    onDeletePastSession: input.onDeletePastSession,
+    onDeleteLibraryTrack: input.onDeleteLibraryTrack,
     subscribe: input.subscribe,
     isConsoleExpanded: input.isConsoleExpanded,
     onToggleConsole: input.onToggleConsole,

@@ -17,6 +17,7 @@ import { truncateMiddle } from "./monitorDisplay";
 export interface MonitorActiveDeckSectionProps {
   monitorSourcePath: string;
   deckTrackLine: string;
+  trackMissing: boolean;
   legendItems: MonitorLegendItemViewModel[];
   metaChips: MonitorMetaChipViewModel[];
   focusBadgeLabel: string | null;
@@ -62,6 +63,7 @@ export function MonitorActiveDeckSection(props: MonitorActiveDeckSectionProps) {
       <div className="monitor-deck-shell">
         <MonitorDeckHeader
           deckTrackLine={props.deckTrackLine}
+          trackMissing={props.trackMissing}
           logSourceLine={truncateMiddle(props.monitorSourcePath, 52)}
           legendItems={props.legendItems}
           metaChips={props.metaChips}

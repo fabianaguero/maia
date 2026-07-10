@@ -1,6 +1,7 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 
 import type { SessionEvent } from "../../api/sessions";
+import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { GuideTrackPCM, CrossfadeHandle } from "./monitorAudioRuntimeTypes";
 import type { ActiveMonitorSession, MonitorMetrics } from "./monitorContextTypes";
 import type {
@@ -27,6 +28,7 @@ export interface MonitorProviderSessionLiveSlice {
   directCursorRef: MutableRefObject<number | undefined>;
   emptyWindowsRef: MutableRefObject<number>;
   pollTimerRef: MutableRefObject<number | null>;
+  recentUpdatesRef: MutableRefObject<LiveLogStreamUpdate[]>;
 }
 
 export interface MonitorProviderSessionAudioSlice {

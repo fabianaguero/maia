@@ -1,4 +1,5 @@
 import type { SessionEvent } from "../../api/sessions";
+import type { LiveLogStreamUpdate } from "../../types/monitor";
 import type { GuideTrackPCM, CrossfadeHandle } from "./monitorAudioRuntimeTypes";
 import type { ActiveMonitorSession, MonitorMetrics } from "./monitorContextTypes";
 import type { UseMonitorProviderSessionActionsInput } from "./monitorProviderSessionActionTypes";
@@ -27,6 +28,7 @@ export function buildMonitorProviderSessionLiveSlice(input: {
   directCursorRef: React.MutableRefObject<number | undefined>;
   emptyWindowsRef: React.MutableRefObject<number>;
   pollTimerRef: React.MutableRefObject<number | null>;
+  recentUpdatesRef: React.MutableRefObject<LiveLogStreamUpdate[]>;
 }): UseMonitorProviderSessionActionsInput["live"] {
   return {
     activeRef: input.activeRef,
@@ -34,6 +36,7 @@ export function buildMonitorProviderSessionLiveSlice(input: {
     directCursorRef: input.directCursorRef,
     emptyWindowsRef: input.emptyWindowsRef,
     pollTimerRef: input.pollTimerRef,
+    recentUpdatesRef: input.recentUpdatesRef,
   };
 }
 

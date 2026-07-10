@@ -21,6 +21,7 @@ export function buildStopMonitorProviderSessionInput(
     sessionRef: input.session.sessionRef,
     directCursorRef: input.live.directCursorRef,
     emptyWindowsRef: input.live.emptyWindowsRef,
+    recentUpdatesRef: input.live.recentUpdatesRef,
     activeRef: input.live.activeRef,
     isPlaybackRef: input.live.isPlaybackRef,
     setSession: input.session.setSession,

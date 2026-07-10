@@ -107,6 +107,7 @@ Current emphasis for the next iterations:
 - keep audio control shells thin by routing managed-player and live-monitor DSP behavior through focused runtimes/hooks
 - keep shared utility surfaces split by domain concern, instead of letting formatting, timing, and mutation logic accumulate in one helper file
 - keep translation contracts independent from concrete locale files; `desktop/src/i18n/types.ts` is now the stable typing seam so future locale/domain splits do not require app-wide import churn
+- keep invalid or missing local assets represented as explicit domain states instead of letting UI handlers discover failures during playback
 
 ## Translation architecture
 
@@ -161,6 +162,36 @@ Practical rule for contributors:
 - if the logic is not UI-specific, keep launch-source contracts in `types/monitorLaunch.ts` rather than in `features/simple`
 - if you are deciding how live audio or waveforms mutate, stay inside monitor runtimes
 - if you need persistence or adapter behavior, do not re-implement it in React; push that concern to the existing native/api contract
+
+## Previous-session validation
+
+Previous monitor sessions are treated as persisted launch records, not as guaranteed playable sessions.
+The idle monitor surface validates local log paths and referenced track files before enabling replay.
+
+```mermaid
+flowchart LR
+  Sessions[Persisted sessions]
+  Tracks[Library tracks]
+  Exists[Native path existence checks]
+  VM[pastSessionsViewModel]
+  Panel[PastSessionsPanel]
+  Cleanup[pastSessionsCleanupRuntime]
+
+  Sessions --> VM
+  Tracks --> VM
+  Exists --> VM
+  VM --> Panel
+  Panel --> Cleanup
+  Cleanup --> DeleteSession[remove persisted session]
+  Cleanup --> DeleteTrack[remove missing track reference]
+```
+
+Contributor rules:
+
+- use stable invalid-reason codes such as `missing-log` or `missing-track` in pure runtimes
+- localize labels at the view-model boundary before rendering
+- disable replay for invalid previous sessions instead of attempting a best-effort launch
+- keep cleanup plans pure and testable before calling persistence mutations
 
 ## Monitor launch flow
 

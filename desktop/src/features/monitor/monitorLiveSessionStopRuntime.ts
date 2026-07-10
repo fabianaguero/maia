@@ -1,5 +1,6 @@
 import type { MutableRefObject } from "react";
 
+import type { LiveLogStreamUpdate } from "../../types/monitor";
 import { resetMonitorSessionState } from "./monitorOrchestrationRuntime";
 import type { ActiveMonitorSession, MonitorMetrics } from "./monitorContextTypes";
 import { clearMonitorAudioState } from "./monitorLiveAudioLifecycleRuntime";
@@ -25,6 +26,7 @@ export async function stopLiveMonitorSessionState(input: {
   sessionRef: MutableRefObject<ActiveMonitorSession | null>;
   directCursorRef: MutableRefObject<number | undefined>;
   emptyWindowsRef: MutableRefObject<number>;
+  recentUpdatesRef: MutableRefObject<LiveLogStreamUpdate[]>;
   activeRef: MutableRefObject<boolean>;
   isPlaybackRef: MutableRefObject<boolean>;
   setSession: SetSessionState;
@@ -48,6 +50,7 @@ export async function stopLiveMonitorSessionState(input: {
     sessionRef: input.sessionRef,
     directCursorRef: input.directCursorRef,
     emptyWindowsRef: input.emptyWindowsRef,
+    recentUpdatesRef: input.recentUpdatesRef,
     activeRef: input.activeRef,
     isPlaybackRef: input.isPlaybackRef,
     setSession: input.setSession,

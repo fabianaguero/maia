@@ -70,7 +70,14 @@ export interface AppV0SectionContentInput {
   monitorTrackName?: string;
   waveformBins?: number[];
   onStartMonitoring: (source: MonitorLaunchSource, trackId?: string) => void | Promise<void>;
-  onReplaySession: (sessionId: string, sourcePath: string, repoTitle: string) => void;
+  onReplaySession: (
+    sessionId: string,
+    sourcePath: string,
+    repoTitle: string,
+    trackId?: string | null,
+  ) => void;
+  onDeletePastSession: (sessionId: string) => Promise<void>;
+  onDeleteLibraryTrack: (trackId: string) => Promise<boolean>;
   subscribe: (listener: (update: LiveLogStreamUpdate) => void) => () => void;
   isConsoleExpanded: boolean;
   onToggleConsole?: () => void;

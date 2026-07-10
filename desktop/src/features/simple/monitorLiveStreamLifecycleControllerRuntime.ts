@@ -34,6 +34,13 @@ export function applyMonitorLiveStreamLifecycleState(input: {
 }): void {
   if (input.isListening) {
     input.refs.lastStreamEventAtRef.current = input.nowMs;
+    const hasExistingRealLines = input.refs.liveLinesRef.current.some(
+      (line) => !line.message.includes("MAIA_MONITOR_INITIALIZED"),
+    );
+    if (hasExistingRealLines) {
+      return;
+    }
+
     const bootstrapLine = buildMonitorBootstrapLine({
       sessionSourcePath: input.sessionSourcePath,
       streamAdapterLabel: input.streamAdapterLabel,

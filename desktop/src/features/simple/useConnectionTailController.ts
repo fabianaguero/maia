@@ -16,6 +16,8 @@ import type { UseConnectionTailControllerInput } from "./connectionsTailControll
 export function useConnectionTailController(input: UseConnectionTailControllerInput) {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [activeConnectionId, setActiveConnectionId] = useState<string | null>(null);
+  const [pendingConnectionId, setPendingConnectionId] = useState<string | null>(null);
+  const [tailPhase, setTailPhase] = useState<"starting" | "stopping" | null>(null);
   const [tailPreview, setTailPreview] = useState<string[]>([]);
   const [tailStatus, setTailStatus] = useState<string | null>(null);
   const pollTimerRef = useRef<number | null>(null);
@@ -32,6 +34,8 @@ export function useConnectionTailController(input: UseConnectionTailControllerIn
   function applyTailFailure(error: unknown) {
     const nextState = buildConnectionTailFailureApplyState(error);
     input.setError(nextState.error);
+    setPendingConnectionId(null);
+    setTailPhase(null);
     setActiveSessionId(nextState.activeSessionId);
     setActiveConnectionId(nextState.activeConnectionId);
   }
@@ -65,6 +69,8 @@ export function useConnectionTailController(input: UseConnectionTailControllerIn
         connectionId: connection.id,
       });
       input.setError(null);
+      setPendingConnectionId(connection.id);
+      setTailPhase("starting");
       setTailPreview(startPlan.clearedPreview);
       setTailStatus(startPlan.openingStatus);
       clearPollTimer();
@@ -81,6 +87,8 @@ export function useConnectionTailController(input: UseConnectionTailControllerIn
 
       setActiveSessionId(startPlan.nextSessionId);
       setActiveConnectionId(startPlan.activeConnectionId);
+      setPendingConnectionId(null);
+      setTailPhase(null);
       setTailStatus(startPlan.connectedStatus);
       scheduleConnectionPoll(startPlan.nextSessionId);
     } catch (error) {
@@ -91,6 +99,8 @@ export function useConnectionTailController(input: UseConnectionTailControllerIn
   async function handleStopTail() {
     const sessionId = activeSessionId;
     clearPollTimer();
+    setPendingConnectionId(activeConnectionId);
+    setTailPhase("stopping");
     const nextState = buildConnectionTailStopState();
     setActiveSessionId(nextState.activeSessionId);
     setActiveConnectionId(nextState.activeConnectionId);
@@ -99,6 +109,9 @@ export function useConnectionTailController(input: UseConnectionTailControllerIn
     if (sessionId) {
       await input.stopStreamSession(sessionId);
     }
+
+    setPendingConnectionId(null);
+    setTailPhase(null);
   }
 
   useEffect(
@@ -111,6 +124,8 @@ export function useConnectionTailController(input: UseConnectionTailControllerIn
   return buildConnectionTailControllerState({
     activeSessionId,
     activeConnectionId,
+    pendingConnectionId,
+    tailPhase,
     tailPreview,
     tailStatus,
     handleStartTail,

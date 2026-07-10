@@ -156,15 +156,22 @@ describe("monitorUpdateRuntime", () => {
     const listeners = new Set<(update: LiveLogStreamUpdate) => void>();
     const listener = vi.fn();
     const logger = { info: vi.fn() };
+    const bufferedUpdates = [
+      createUpdate({ summary: "buffered-a" }),
+      createUpdate({ summary: "buffered-b" }),
+    ];
 
     const unsubscribe = subscribeToMonitorStreamState({
       listeners,
       listener,
+      bufferedUpdates,
       logger,
     });
 
     expect(listeners.has(listener)).toBe(true);
     expect(logger.info).toHaveBeenCalledWith("subscribe → listeners=%d", 1);
+    expect(listener).toHaveBeenNthCalledWith(1, bufferedUpdates[0]);
+    expect(listener).toHaveBeenNthCalledWith(2, bufferedUpdates[1]);
 
     unsubscribe();
 

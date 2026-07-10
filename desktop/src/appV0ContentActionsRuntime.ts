@@ -13,7 +13,12 @@ export interface AppV0ContentActions {
   onStopMonitor: () => Promise<void>;
   onResumeAudio: () => Promise<void>;
   onStartMonitoring: (source: MonitorLaunchSource, trackId?: string) => Promise<void>;
-  onReplaySession: (sessionId: string, sourcePath: string, repoTitle: string) => Promise<void>;
+  onReplaySession: (
+    sessionId: string,
+    sourcePath: string,
+    repoTitle: string,
+    trackId?: string | null,
+  ) => Promise<void>;
   onInspectFloatingWaveform: () => void;
 }
 
@@ -47,7 +52,12 @@ export function buildAppV0ContentActions(input: {
     result: AppV0MonitorLaunchExecutionResult,
   ) => void;
   resumeAudio: () => Promise<void>;
-  replaySession: (sessionId: string, sourcePath: string, repoTitle: string) => Promise<void>;
+  replaySession: (
+    sessionId: string,
+    sourcePath: string,
+    repoTitle: string,
+    trackId?: string | null,
+  ) => Promise<void>;
 }): AppV0ContentActions {
   return {
     onSectionChange: (section: AppSection) => {
@@ -77,8 +87,12 @@ export function buildAppV0ContentActions(input: {
       const result = await input.startSourceMonitoring(source, trackId);
       reportLaunchFailureWhenNeeded("source", result, input.reportMonitorLaunchFailure);
     },
-    onReplaySession: (sessionId: string, sourcePath: string, repoTitle: string) =>
-      input.replaySession(sessionId, sourcePath, repoTitle),
+    onReplaySession: (
+      sessionId: string,
+      sourcePath: string,
+      repoTitle: string,
+      trackId?: string | null,
+    ) => input.replaySession(sessionId, sourcePath, repoTitle, trackId),
     onInspectFloatingWaveform: () => {
       input.setCurrentSection("monitor");
     },

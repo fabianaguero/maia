@@ -137,6 +137,7 @@ export const enControls = {
     monitor: {
       systemActive: "System active",
       connectingStream: "Connecting stream",
+      validatingFiles: "Validating files",
       anomalies: "Anomalies",
       uptime: "Uptime",
       waitingHandshake: "Waiting for stream handshake and first response…",

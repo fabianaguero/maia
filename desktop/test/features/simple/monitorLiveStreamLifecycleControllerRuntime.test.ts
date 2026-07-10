@@ -69,4 +69,42 @@ describe("monitorLiveStreamLifecycleControllerRuntime", () => {
     expect(setters.setLiveSuggestedBpm).toHaveBeenCalledWith(null);
     expect(setters.setLogSignalBuffer).toHaveBeenCalledTimes(1);
   });
+
+  it("does not replace replay lines with bootstrap while already listening", () => {
+    const existingLine = {
+      id: "line-1",
+      timestamp: "20:00:00",
+      level: "info",
+      message: "real replay log line",
+      isAnomaly: false,
+      anomalyId: null,
+    };
+    const refs = {
+      liveLinesRef: { current: [existingLine] },
+      logSignalBufferRef: { current: createMonitorSignalBuffer() },
+      waveformAnomaliesRef: { current: [] as never[] },
+      selectedAnomalyIdRef: { current: null as string | null },
+      lastStreamEventAtRef: { current: 0 },
+      audioProbePlayedRef: { current: false },
+    };
+    const setters = {
+      setLiveLines: vi.fn(),
+      setLogSignalBuffer: vi.fn(),
+      setLiveSuggestedBpm: vi.fn(),
+      setWaveformAnomalies: vi.fn(),
+      setSelectedAnomalyId: vi.fn(),
+    };
+
+    applyMonitorLiveStreamLifecycleState({
+      isListening: true,
+      sessionSourcePath: "/logs/app.log",
+      streamAdapterLabel: "FILE_TAIL",
+      refs: refs as never,
+      setters,
+      nowMs: 7890,
+    });
+
+    expect(refs.liveLinesRef.current).toEqual([existingLine]);
+    expect(setters.setLiveLines).not.toHaveBeenCalled();
+  });
 });

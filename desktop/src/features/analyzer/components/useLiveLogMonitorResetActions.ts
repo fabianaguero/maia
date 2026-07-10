@@ -118,6 +118,8 @@ export function useLiveLogMonitorResetActions(input: UseLiveLogMonitorResetActio
       input.setRecentExplanations([]);
       input.setSelectedExplanationId(null);
       input.setBackgroundPlayheadSecond(resetState.backgroundPlayheadSecond);
+      input.setLiveMutationState(resetState.liveMutationState);
+      input.setForcedLiveMutationState(resetState.forcedLiveMutationState);
       input.setSyncTailRows([]);
       input.setActiveTailWindowId(resetState.activeTailWindowId);
       input.setError(resetState.error);

@@ -1,4 +1,4 @@
-import { RefreshCw } from "lucide-react";
+import { RuntimeStatusCard } from "../../components/RuntimeStatusCard";
 
 interface LiveTailPanelEmptyStateProps {
   isConnectingMonitor: boolean;
@@ -15,14 +15,14 @@ export function LiveTailPanelEmptyState({
 }: LiveTailPanelEmptyStateProps) {
   return (
     <div className="terminal-empty">
-      {isConnectingMonitor ? (
-        <RefreshCw size={16} className="spin-ring terminal-connecting-spinner" />
-      ) : (
-        <div className="pulsing-dot teal" />
-      )}
-      <span>{emptyStateLabel}</span>
-      <p className="terminal-hint">{emptyStateHint}</p>
-      <div className="terminal-status-badge">{statusBadgeLabel}</div>
+      <RuntimeStatusCard
+        title={emptyStateLabel}
+        detail={emptyStateHint}
+        badge={statusBadgeLabel}
+        tone={isConnectingMonitor ? "pending" : "live"}
+        activity={isConnectingMonitor ? "spinner" : "pulse"}
+        className="terminal-runtime-status"
+      />
     </div>
   );
 }

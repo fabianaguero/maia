@@ -33,7 +33,12 @@ export async function activateAndBootstrapPlaybackSessionState(
     guideTrackRef: input.guideTrackRef,
     guideTrackLoadPromiseRef: input.guideTrackLoadPromiseRef,
     awaitGuideTrack: input.awaitGuideTrack,
-    replayTick: input.replayTick,
+    replayTick: () => {
+      if (input.pollTimerRef.current !== null) {
+        window.clearTimeout(input.pollTimerRef.current);
+      }
+      input.pollTimerRef.current = input.setTimeoutFn(input.replayTick, 120);
+    },
     logger: input.logger,
   });
 

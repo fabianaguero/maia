@@ -1,13 +1,9 @@
 import { useEffectEvent } from "react";
 
-import type { MonitorCueBatch } from "./monitorCueBatchTypes";
 import type { MonitorDeckControls } from "./monitorDeckControls";
 import type { MonitorTrackMutationInput } from "./monitorAudioMutation";
-import { playSimpleMonitorVoicePlans } from "./simpleMonitorReactiveAudioPlaybackRuntime";
 import {
   applySimpleMonitorTrackMutationRefState,
-  buildSimpleMonitorCueBatchPlaybackState,
-  buildSimpleMonitorTestTonePlaybackState,
   resolveSimpleMonitorBackgroundGraphState,
 } from "./simpleMonitorReactiveAudioHookRuntime";
 import { applyMonitorReactiveAudioPlan } from "./simpleMonitorReactiveAudioRuntime";
@@ -32,29 +28,11 @@ export function useSimpleMonitorReactiveAudioSlices({
     });
 
   const playTestTone = useEffectEvent(() => {
-    const playbackState = buildSimpleMonitorTestTonePlaybackState({
-      audioContext: audioContextRef.current,
-      masterVolume: deckControlsRef.current.masterVolume,
-    });
-    if (!playbackState) {
-      return;
-    }
-
-    playSimpleMonitorVoicePlans(playbackState.context, playbackState.voicePlans);
+    return;
   });
 
-  const playCueBatch = useEffectEvent((cues: MonitorCueBatch) => {
-    const playbackState = buildSimpleMonitorCueBatchPlaybackState({
-      audioContext: audioContextRef.current,
-      cues,
-      masterVolume: deckControlsRef.current.masterVolume,
-      hasBackgroundGraph: Boolean(backgroundGraphRef.current),
-    });
-    if (!playbackState) {
-      return;
-    }
-
-    playSimpleMonitorVoicePlans(playbackState.context, playbackState.voicePlans);
+  const playCueBatch = useEffectEvent(() => {
+    return;
   });
 
   const ensureBackgroundGraph = useEffectEvent((audio: HTMLAudioElement, context: AudioContext) => {

@@ -15,6 +15,7 @@ export function useMonitorProviderRefs(
   const listenersRef = useRef<
     Set<MonitorProviderRefsState["listenersRef"]["current"] extends Set<infer Item> ? Item : never>
   >(new Set());
+  const recentUpdatesRef = useRef<MonitorProviderRefsState["recentUpdatesRef"]["current"]>([]);
   const activeRef = useRef(false);
   const guideTrackRef = useRef<MonitorProviderRefsState["guideTrackRef"]["current"]>(null);
   const guideTrackCursorRef = useRef({ current: 0 });
@@ -44,6 +45,7 @@ export function useMonitorProviderRefs(
     pollTimerRef,
     sessionRef,
     listenersRef,
+    recentUpdatesRef,
     activeRef,
     guideTrackRef,
     guideTrackCursorRef,

@@ -11,7 +11,7 @@ import type { ActiveMonitorSession, MonitorMetrics } from "../features/monitor/m
 import type { AppSection } from "../features/simple/appSections";
 import type { AppV0Language } from "../appV0Preferences";
 import type { LibraryTrack, RepositoryAnalysis } from "../types/library";
-import type { StartSessionInput, StreamSessionRecord } from "../types/monitor";
+import type { LiveLogStreamUpdate, StartSessionInput, StreamSessionRecord } from "../types/monitor";
 
 export interface UseAppV0MonitorScreenStateInput {
   lang: AppV0Language;
@@ -31,6 +31,7 @@ export interface UseAppV0MonitorScreenStateInput {
     repoTitle: string;
     trackId?: string;
     trackTitle?: string;
+    initialStreamUpdate?: LiveLogStreamUpdate | null;
   }) => Promise<boolean>;
   startSession: (repo: RepositoryAnalysis, input: StartSessionInput) => Promise<boolean>;
   playbackSession: (input: {

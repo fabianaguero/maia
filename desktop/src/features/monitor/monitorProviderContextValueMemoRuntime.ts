@@ -3,7 +3,7 @@ import type { MonitorContextValue } from "./monitorContextTypes";
 import type { UseMonitorProviderContextValueInput } from "./useMonitorProviderContextValue";
 
 export function buildMonitorProviderMemoContextValue(input: {
-  value: Omit<UseMonitorProviderContextValueInput, "listenersRef" | "logger">;
+  value: Omit<UseMonitorProviderContextValueInput, "listenersRef" | "recentUpdatesRef" | "logger">;
   subscribe: MonitorContextValue["subscribe"];
 }): MonitorContextValue {
   return buildMonitorContextValue({

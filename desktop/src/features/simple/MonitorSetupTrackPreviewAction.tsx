@@ -7,6 +7,7 @@ interface MonitorSetupTrackPreviewActionProps {
   previewTrackId: string | null;
   previewLabel: string;
   pauseLabel: string;
+  disabled?: boolean;
   onToggleTrackPreview: (track: LibraryTrack) => void | Promise<void>;
 }
 
@@ -15,6 +16,7 @@ export function MonitorSetupTrackPreviewAction({
   previewTrackId,
   previewLabel,
   pauseLabel,
+  disabled = false,
   onToggleTrackPreview,
 }: MonitorSetupTrackPreviewActionProps) {
   const isPreviewing = previewTrackId === track.id;
@@ -24,7 +26,11 @@ export function MonitorSetupTrackPreviewAction({
       type="button"
       className="track-preview-button"
       title={isPreviewing ? pauseLabel : previewLabel}
+      disabled={disabled}
       onClick={() => {
+        if (disabled) {
+          return;
+        }
         void onToggleTrackPreview(track);
       }}
     >

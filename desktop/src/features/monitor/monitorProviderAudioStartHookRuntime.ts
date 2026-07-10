@@ -28,6 +28,7 @@ export function buildMonitorProviderLiveStartHookInput(input: {
     directCursorRef: input.live.directCursorRef,
     emptyWindowsRef: input.live.emptyWindowsRef,
     pollIndexRef: input.live.pollIndexRef,
+    recentUpdatesRef: input.live.recentUpdatesRef,
     activeTemplateRef: input.template.activeTemplateRef,
     setActiveTemplateState: input.template.setActiveTemplateState,
     updatePersistedSessionStatus: input.persistence.updatePersistedSessionStatus,

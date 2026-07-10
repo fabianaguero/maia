@@ -11,6 +11,7 @@ type SetMetricsState = Dispatch<SetStateAction<MonitorMetrics>>;
 export function buildEmitMonitorProviderUpdateStateInput(input: {
   update: LiveLogStreamUpdate;
   listenersRef: MutableRefObject<Set<StreamListener>>;
+  recentUpdatesRef: MutableRefObject<LiveLogStreamUpdate[]>;
   sessionRef: MutableRefObject<ActiveMonitorSession | null>;
   pollIndexRef: MutableRefObject<number>;
   audioContextRef: MutableRefObject<AudioContext | null>;
@@ -32,6 +33,7 @@ export function buildEmitMonitorProviderUpdateStateInput(input: {
   return {
     update: input.update,
     listenersRef: input.listenersRef,
+    recentUpdatesRef: input.recentUpdatesRef,
     sessionRef: input.sessionRef,
     pollIndexRef: input.pollIndexRef,
     audioContextRef: input.audioContextRef,

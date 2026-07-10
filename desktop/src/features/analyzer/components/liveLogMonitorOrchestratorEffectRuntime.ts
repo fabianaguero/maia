@@ -22,6 +22,18 @@ import type { buildLiveLogMonitorDerivedUpdate } from "./liveLogMonitorOrchestra
 
 type LiveLogMonitorDerivedUpdate = ReturnType<typeof buildLiveLogMonitorDerivedUpdate>;
 
+export function buildIdleLiveLogMonitorUpdate(update: LiveLogStreamUpdate): LiveLogStreamUpdate {
+  return {
+    ...update,
+    lineCount: 0,
+    anomalyCount: 0,
+    levelCounts: {},
+    anomalyMarkers: [],
+    sonificationCues: [],
+    warnings: [],
+  };
+}
+
 export interface ApplyLiveLogMonitorVisualUpdateInput {
   update: LiveLogStreamUpdate;
   derivedUpdate: LiveLogMonitorDerivedUpdate;
@@ -121,7 +133,12 @@ export interface ApplyLiveLogMonitorPlaybackUpdateInput {
 export function applyLiveLogMonitorPlaybackUpdate(
   input: ApplyLiveLogMonitorPlaybackUpdateInput,
 ): void {
-  if (!input.update.hasData || input.replayActive) {
+  if (input.replayActive) {
+    return;
+  }
+
+  if (!input.update.hasData) {
+    input.applyLogModulation(buildIdleLiveLogMonitorUpdate(input.update));
     return;
   }
 

@@ -55,7 +55,7 @@ export function scheduleNextReplayTick(input: {
 }): void {
   input.logger.info(
     "playback event %d/%d",
-    input.replayIndexRef.current + 1,
+    input.replayIndexRef.current,
     input.replayEventsRef.current.length,
   );
   input.pollTimerRef.current = input.setTimeoutFn(input.replayTick, input.intervalMs);

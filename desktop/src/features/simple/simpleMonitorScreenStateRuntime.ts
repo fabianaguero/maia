@@ -49,7 +49,14 @@ export function buildSimpleMonitorScreenHookStateArgs(input: {
   onRefresh: () => void;
   onSimulateLog: () => void;
   onResumeAudio: () => Promise<void> | void;
-  onReplaySession: (sessionId: string, sourcePath: string, repoTitle: string) => void;
+  onReplaySession: (
+    sessionId: string,
+    sourcePath: string,
+    repoTitle: string,
+    trackId?: string | null,
+  ) => void;
+  onDeletePastSession: (sessionId: string) => Promise<void>;
+  onDeleteLibraryTrack: (trackId: string) => Promise<boolean>;
   isAnomalyFilterActive: boolean;
   onToggleAnomalyFilter: () => void;
   onClearAnomalyFilter: () => void;
@@ -80,6 +87,8 @@ export function buildSimpleMonitorScreenHookStateArgs(input: {
     collections: input.collections,
     deckRuntime: input.deckRuntime,
     onReplaySession: input.onReplaySession,
+    onDeletePastSession: input.onDeletePastSession,
+    onDeleteLibraryTrack: input.onDeleteLibraryTrack,
   });
 
   return {

@@ -17,10 +17,14 @@ export function dispatchMonitorStreamListeners(
 export function subscribeToMonitorStreamState(input: {
   listeners: Set<StreamListener>;
   listener: StreamListener;
+  bufferedUpdates?: LiveLogStreamUpdate[];
   logger?: MonitorListenerRuntimeLogger;
 }): () => void {
   input.listeners.add(input.listener);
   input.logger?.info("subscribe → listeners=%d", input.listeners.size);
+  input.bufferedUpdates?.forEach((update) => {
+    input.listener(update);
+  });
 
   return () => {
     input.listeners.delete(input.listener);
