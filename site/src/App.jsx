@@ -12,6 +12,7 @@ import OpenSourceSection from "./components/sections/OpenSourceSection";
 import InstallSection from "./components/sections/InstallSection";
 import ContributeSection from "./components/sections/ContributeSection";
 import ScreenshotsSection from "./components/ScreenshotsSection";
+import FeatureMapSection from "./components/FeatureMapSection";
 import { useSiteContent } from "./hooks/useSiteContent";
 import { getTheme } from "./theme/getTheme";
 
@@ -48,6 +49,7 @@ export default function App() {
         <MvpSection t={t} theme={theme} />
         <VisionSection t={t} theme={theme} />
         <RoadmapSection t={t} theme={theme} />
+        <FeatureMapSection />
         <ScreenshotsSection />
         <OpenSourceSection t={t} theme={theme} />
         <InstallSection t={t} theme={theme} />
