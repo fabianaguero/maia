@@ -397,6 +397,7 @@ struct StreamSessionState {
     connection_config: Option<Value>,
     gcp_backfill_freshness: Option<String>,
     gcp_history_seeded: bool,
+    sonarqube_last_known_issues: HashSet<String>,
 }
 
 impl StreamSessionState {
@@ -409,6 +410,7 @@ impl StreamSessionState {
             connection_config: None,
             gcp_backfill_freshness: None,
             gcp_history_seeded: false,
+            sonarqube_last_known_issues: HashSet::new(),
         }
     }
 
@@ -2505,6 +2507,87 @@ fn delete_session_bookmark(app_handle: AppHandle, id: i64) -> Result<bool, Strin
     db_delete_session_bookmark(&conn, id)
 }
 
+// ---------------------------------------------------------------------------
+// SonarQube Adapter — Static code analysis polling
+// ---------------------------------------------------------------------------
+
+fn format_sonarqube_issue_as_log_line(issue: &Value) -> String {
+    let severity = issue.get("severity").and_then(|v| v.as_str()).unwrap_or("INFO");
+
+    let rule = issue.get("rule").and_then(|v| v.as_str()).unwrap_or("unknown:rule");
+
+    let message = issue.get("message").and_then(|v| v.as_str()).unwrap_or("Code quality issue");
+
+    let component = issue.get("component").and_then(|v| v.as_str()).unwrap_or("unknown");
+
+    let line = issue.get("line").and_then(|v| v.as_i64());
+
+    let log_level = match severity {
+        "BLOCKER" => "CRITICAL",
+        "CRITICAL" => "CRITICAL",
+        "MAJOR" => "ERROR",
+        "MINOR" => "WARN",
+        _ => "INFO",
+    };
+
+    let now = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+
+    if let Some(line_num) = line {
+        format!(
+            "[{}] [SONARQUBE-{}] {} {} ({}:{})",
+            now, log_level, rule, message, component, line_num
+        )
+    } else {
+        format!("[{}] [SONARQUBE-{}] {} {} ({})", now, log_level, rule, message, component)
+    }
+}
+
+async fn poll_sonarqube_issues(
+    api_url: &str,
+    project_key: &str,
+    auth_token: &str,
+    last_known_keys: &mut HashSet<String>,
+) -> Result<Vec<String>, String> {
+    let client = reqwest::Client::new();
+    let url = format!(
+        "{}/api/issues/search?componentKeys={}&statuses=OPEN,CONFIRMED&ps=500",
+        api_url, project_key
+    );
+
+    let response = client
+        .get(&url)
+        .bearer_auth(auth_token)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch SonarQube issues: {}", e))?;
+
+    let data: Value =
+        response.json().await.map_err(|e| format!("Failed to parse SonarQube response: {}", e))?;
+
+    let issues = data
+        .get("issues")
+        .and_then(|v| v.as_array())
+        .ok_or("No issues array in SonarQube response")?;
+
+    let mut new_log_lines = Vec::new();
+    let mut current_keys = HashSet::new();
+
+    for issue in issues {
+        let key = issue.get("key").and_then(|v| v.as_str()).unwrap_or("unknown");
+
+        current_keys.insert(key.to_string());
+
+        // Only report new issues
+        if !last_known_keys.contains(key) {
+            let line = format_sonarqube_issue_as_log_line(issue);
+            new_log_lines.push(line);
+        }
+    }
+
+    *last_known_keys = current_keys;
+    Ok(new_log_lines)
+}
+
 #[tauri::command]
 fn poll_stream_session(
     session_id: String,
@@ -2551,6 +2634,82 @@ fn poll_stream_session(
             return Ok(waiting_stream_poll_result(
                 session_record,
                 "Waiting for new log lines.",
+                warnings,
+            ));
+        }
+
+        return analyze_stream_chunk(session_record, pending_chunk, warnings);
+    }
+
+    if adapter_kind == "sonarqube" {
+        // SonarQube adapter: poll API for code quality issues
+        let connection_config = {
+            let reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+            let session = reg
+                .sessions
+                .get(&session_id)
+                .ok_or_else(|| format!("Session not found: {session_id}"))?;
+            session.connection_config.clone()
+        };
+
+        let config = connection_config.ok_or("SonarQube connection config missing")?;
+        let api_url = config
+            .get("apiUrl")
+            .and_then(|v| v.as_str())
+            .ok_or("SonarQube apiUrl not found in config")?
+            .to_string();
+        let project_key = config
+            .get("projectKey")
+            .and_then(|v| v.as_str())
+            .ok_or("SonarQube projectKey not found in config")?
+            .to_string();
+        let auth_token = config
+            .get("authToken")
+            .and_then(|v| v.as_str())
+            .ok_or("SonarQube authToken not found in config")?
+            .to_string();
+
+        // Use tokio runtime to call async function
+        let runtime = tokio::runtime::Runtime::new()
+            .map_err(|e| format!("Failed to create tokio runtime: {}", e))?;
+
+        let new_lines = runtime.block_on(async {
+            let reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+            let session = reg
+                .sessions
+                .get(&session_id)
+                .ok_or_else(|| format!("Session not found: {session_id}"))?;
+            let mut last_known = session.sonarqube_last_known_issues.clone();
+            drop(reg);
+
+            let lines =
+                poll_sonarqube_issues(&api_url, &project_key, &auth_token, &mut last_known).await?;
+
+            // Update session with new last_known_issues
+            {
+                let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+                if let Some(session) = reg.sessions.get_mut(&session_id) {
+                    session.sonarqube_last_known_issues = last_known;
+                }
+            }
+
+            Ok::<Vec<String>, String>(lines)
+        })?;
+
+        let session_record = update_session_metadata(&registry, &session_id, |session| {
+            session.record.last_polled_at = Some(now_iso());
+            session.record.total_polls += 1;
+        })?;
+
+        if !new_lines.is_empty() {
+            append_lines_to_session(&registry, &session_id, new_lines)?;
+        }
+
+        let (_, pending_chunk) = drain_pending_chunk(&registry, &session_id)?;
+        if pending_chunk.trim().is_empty() {
+            return Ok(waiting_stream_poll_result(
+                session_record,
+                "Waiting for new code quality issues.",
                 warnings,
             ));
         }
