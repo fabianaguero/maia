@@ -372,6 +372,50 @@ struct LiveLogStreamUpdate {
 }
 
 // ---------------------------------------------------------------------------
+// Code Projects
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct CodeProjectSonarQubeConfig {
+    api_url: String,
+    project_key: String,
+    auth_token: String,
+    polling_interval: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct CodeProject {
+    id: String,
+    label: String,
+    repository_url: String,
+    sonarqube_config: Option<CodeProjectSonarQubeConfig>,
+    enabled: bool,
+    status: String,
+    error_message: Option<String>,
+    last_checked_at: Option<String>,
+    created_at: String,
+    updated_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UpsertCodeProjectInput {
+    id: Option<String>,
+    label: String,
+    repository_url: String,
+    sonarqube_config: Option<CodeProjectSonarQubeConfig>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SonarQubeTestResult {
+    success: bool,
+    message: String,
+}
+
+// ---------------------------------------------------------------------------
 // Stream session registry — persists session metadata across poll cycles
 // ---------------------------------------------------------------------------
 
@@ -3705,6 +3749,7 @@ fn open_database(app_handle: &AppHandle) -> Result<Connection, String> {
     ensure_session_source_template_id_column(&conn)?;
     ensure_session_bookmark_feedback_columns(&conn)?;
     ensure_session_event_parsed_lines_column(&conn)?;
+    ensure_code_projects_table(&conn)?;
     let managed_compositions_root = managed_compositions_root(app_handle)?;
     backfill_composition_export_paths(&conn, &managed_compositions_root)?;
 
@@ -4064,6 +4109,12 @@ fn ensure_session_event_parsed_lines_column(conn: &Connection) -> Result<(), Str
     )
     .map_err(|error| format!("Failed to add session_events parsed_lines_json column: {error}"))?;
 
+    Ok(())
+}
+
+fn ensure_code_projects_table(_conn: &Connection) -> Result<(), String> {
+    // This is a stub — the table is created by schema.sql
+    // This function exists for consistency with other ensure_* migrations
     Ok(())
 }
 
@@ -7594,6 +7645,43 @@ fn show_window(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn create_code_project(
+    _input: UpsertCodeProjectInput,
+) -> Result<CodeProject, String> {
+    // Stub: will implement in Task 3
+    Err("Not yet implemented".to_string())
+}
+
+#[tauri::command]
+async fn list_code_projects() -> Result<Vec<CodeProject>, String> {
+    // Stub: will implement in Task 3
+    Err("Not yet implemented".to_string())
+}
+
+#[tauri::command]
+async fn update_code_project(
+    _id: String,
+    _input: UpsertCodeProjectInput,
+) -> Result<CodeProject, String> {
+    // Stub: will implement in Task 3
+    Err("Not yet implemented".to_string())
+}
+
+#[tauri::command]
+async fn delete_code_project(_id: String) -> Result<(), String> {
+    // Stub: will implement in Task 3
+    Err("Not yet implemented".to_string())
+}
+
+#[tauri::command]
+async fn test_sonarqube_connection(
+    _config: CodeProjectSonarQubeConfig,
+) -> Result<SonarQubeTestResult, String> {
+    // Stub: will implement in Task 3
+    Err("Not yet implemented".to_string())
+}
+
+#[tauri::command]
 fn quit_app(app: AppHandle) {
     app.exit(0);
 }
@@ -7715,6 +7803,11 @@ fn main() {
             log_to_terminal,
             hide_window,
             show_window,
+            create_code_project,
+            list_code_projects,
+            update_code_project,
+            delete_code_project,
+            test_sonarqube_connection,
             quit_app
         ])
         .run(tauri::generate_context!())

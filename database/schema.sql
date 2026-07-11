@@ -244,3 +244,21 @@ CREATE TABLE IF NOT EXISTS provider_tracks (
 );
 
 CREATE INDEX IF NOT EXISTS idx_provider_tracks_playlist ON provider_tracks(provider_playlist_id);
+
+CREATE TABLE IF NOT EXISTS code_projects (
+  id TEXT PRIMARY KEY,
+  label TEXT NOT NULL,
+  repository_url TEXT NOT NULL,
+  sonarqube_api_url TEXT,
+  sonarqube_project_key TEXT,
+  sonarqube_auth_token TEXT,
+  sonarqube_polling_interval TEXT,
+  status TEXT DEFAULT 'not-configured',
+  error_message TEXT,
+  last_checked_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_code_projects_status_updated
+  ON code_projects (status, updated_at DESC);
