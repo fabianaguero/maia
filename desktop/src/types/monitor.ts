@@ -74,7 +74,13 @@ export interface StartLogSourceConnectionInput {
   startFromBeginning?: boolean;
 }
 
-export type StreamAdapterKind = "file" | "process" | "websocket" | "http-poll" | "journald" | "sonarqube";
+export type StreamAdapterKind =
+  | "file"
+  | "process"
+  | "websocket"
+  | "http-poll"
+  | "journald"
+  | "sonarqube";
 
 export interface StreamSessionRecord {
   sessionId: string;

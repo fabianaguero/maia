@@ -23,9 +23,7 @@ export function ConnectionsSonarQubeFields({
           onChange={(event) => onDraftChange({ sonarqubeApiUrl: event.target.value })}
           placeholder="https://sonarqube.example.com"
         />
-        <span className="support-copy">
-          {t.simpleMode.streamInput.sonarqubeServerUrlHelp}
-        </span>
+        <span className="support-copy">{t.simpleMode.streamInput.sonarqubeServerUrlHelp}</span>
       </label>
 
       <label className="field maia-field">
@@ -36,9 +34,7 @@ export function ConnectionsSonarQubeFields({
           onChange={(event) => onDraftChange({ sonarqubeProjectKey: event.target.value })}
           placeholder="org.example:my-service"
         />
-        <span className="support-copy">
-          {t.simpleMode.streamInput.sonarqubeProjectKeyHelp}
-        </span>
+        <span className="support-copy">{t.simpleMode.streamInput.sonarqubeProjectKeyHelp}</span>
       </label>
 
       <label className="field maia-field">
@@ -50,9 +46,7 @@ export function ConnectionsSonarQubeFields({
           onChange={(event) => onDraftChange({ sonarqubeAuthToken: event.target.value })}
           placeholder="squ_xxxxxxxxxxxx"
         />
-        <span className="support-copy">
-          {t.simpleMode.streamInput.sonarqubeAuthTokenHelp}
-        </span>
+        <span className="support-copy">{t.simpleMode.streamInput.sonarqubeAuthTokenHelp}</span>
       </label>
 
       <label className="field maia-field">

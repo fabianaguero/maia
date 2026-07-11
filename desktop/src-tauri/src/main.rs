@@ -1985,7 +1985,32 @@ fn normalize_log_source_connection(
             }
             Ok(("gcp_cloud_run".to_string(), "process".to_string(), source_uri, config))
         }
-        _ => Err("Unsupported log connection kind. Use file_log or gcp_cloud_run.".to_string()),
+        "sonarqube" => {
+            let api_url = config_string(&input.config, "apiUrl")
+                .ok_or_else(|| "SonarQube connections require config.apiUrl.".to_string())?;
+            let project_key = config_string(&input.config, "projectKey")
+                .ok_or_else(|| "SonarQube connections require config.projectKey.".to_string())?;
+            let auth_token = config_string(&input.config, "authToken")
+                .ok_or_else(|| "SonarQube connections require config.authToken.".to_string())?;
+            let polling_interval =
+                config_string(&input.config, "pollingInterval").unwrap_or_else(|| "30".to_string());
+            let source_uri =
+                input.source_uri.clone().unwrap_or_else(|| format!("sonarqube://{project_key}"));
+            let mut config = input.config.clone();
+            if !config.is_object() {
+                config = json!({});
+            }
+            if let Some(map) = config.as_object_mut() {
+                map.insert("apiUrl".to_string(), Value::String(api_url));
+                map.insert("projectKey".to_string(), Value::String(project_key));
+                map.insert("authToken".to_string(), Value::String(auth_token));
+                map.insert("pollingInterval".to_string(), Value::String(polling_interval));
+                map.insert("standard".to_string(), Value::String("sonarqube-api-poll".to_string()));
+            }
+            Ok(("sonarqube".to_string(), "http-poll".to_string(), source_uri, config))
+        }
+        _ => Err("Unsupported log connection kind. Use file_log, gcp_cloud_run, or sonarqube."
+            .to_string()),
     }
 }
 

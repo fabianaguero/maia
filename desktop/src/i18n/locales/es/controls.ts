@@ -349,7 +349,8 @@ export const esControls = {
       sonarqubeProjectKey: "Clave del proyecto",
       sonarqubeProjectKeyHelp: "La clave del proyecto en SonarQube (ej: org.ejemplo:mi-servicio)",
       sonarqubeAuthToken: "Token de autenticación",
-      sonarqubeAuthTokenHelp: "Token de usuario de SonarQube para acceso a la API (comienza con squ_)",
+      sonarqubeAuthTokenHelp:
+        "Token de usuario de SonarQube para acceso a la API (comienza con squ_)",
       sonarqubePollingInterval: "Intervalo de sondeo",
     },
     proMonitor: {
