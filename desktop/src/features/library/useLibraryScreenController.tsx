@@ -105,6 +105,7 @@ export function useLibraryScreenController({
       showForm,
       tracksCount: tracks.length,
       repositoriesCount: repositories.length,
+      codeProjectsCount: 0,
       logConnectionsCount: logConnections.length,
       baseAssetsCount: baseAssets.length,
       missingTrackCount,
