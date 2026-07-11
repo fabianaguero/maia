@@ -343,6 +343,15 @@ export const esControls = {
       cloudLabelPlaceholder: "checkout-api · Cloud Run",
       cloudRunLabelSuffix: "Cloud Run",
     },
+    streamInput: {
+      sonarqubeServerUrl: "URL del servidor SonarQube",
+      sonarqubeServerUrlHelp: "URL base de tu instancia SonarQube",
+      sonarqubeProjectKey: "Clave del proyecto",
+      sonarqubeProjectKeyHelp: "La clave del proyecto en SonarQube (ej: org.ejemplo:mi-servicio)",
+      sonarqubeAuthToken: "Token de autenticación",
+      sonarqubeAuthTokenHelp: "Token de usuario de SonarQube para acceso a la API (comienza con squ_)",
+      sonarqubePollingInterval: "Intervalo de sondeo",
+    },
     proMonitor: {
       demoSessionTitle: "demo-payments-api",
       demoTrackTitle: "Pista de referencia del monitor",

@@ -19,6 +19,7 @@ export function buildConnectionKindLabelMap(t: AppTranslations): Record<Connecti
   return {
     file_log: t.simpleMode.connections.fileLog,
     gcp_cloud_run: t.simpleMode.connections.gcpCloudRun,
+    sonarqube: "SonarQube",
   };
 }
 
@@ -50,6 +51,12 @@ export function buildConnectionsFormViewModel(input: {
         label: input.t.simpleMode.connections.gcpCloudRun,
         description: input.t.simpleMode.connections.gcpCloudRunDescription,
         isActive: input.draft.kind === "gcp_cloud_run",
+      },
+      {
+        id: "sonarqube",
+        label: "SonarQube",
+        description: "Code quality analysis via SonarQube API",
+        isActive: input.draft.kind === "sonarqube",
       },
     ],
     isFileLog,

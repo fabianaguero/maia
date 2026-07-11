@@ -3,6 +3,7 @@ import { ConnectionsCloudFields } from "./ConnectionsCloudFields";
 import { ConnectionsFileFields } from "./ConnectionsFileFields";
 import { ConnectionsFormActions } from "./ConnectionsFormActions";
 import { ConnectionsKindSelector } from "./ConnectionsKindSelector";
+import { ConnectionsSonarQubeFields } from "./ConnectionsSonarQubeFields";
 import {
   buildConnectionsFormViewModel,
   type ConnectionDraft,
@@ -44,6 +45,25 @@ export function ConnectionsFormPanel({
     t,
   });
 
+  const renderFieldsByKind = () => {
+    if (viewModel.isFileLog) {
+      return (
+        <ConnectionsFileFields
+          draft={draft}
+          saving={saving}
+          pickerBusy={pickerBusy}
+          t={t}
+          onDraftChange={onDraftChange}
+          onBrowseFile={onBrowseFile}
+        />
+      );
+    }
+    if (draft.kind === "sonarqube") {
+      return <ConnectionsSonarQubeFields draft={draft} t={t} onDraftChange={onDraftChange} />;
+    }
+    return <ConnectionsCloudFields draft={draft} t={t} onDraftChange={onDraftChange} />;
+  };
+
   return (
     <section className="panel connections-panel">
       <div className="form-intro">
@@ -58,18 +78,7 @@ export function ConnectionsFormPanel({
       />
 
       <div className="form-fields-section">
-        {viewModel.isFileLog ? (
-          <ConnectionsFileFields
-            draft={draft}
-            saving={saving}
-            pickerBusy={pickerBusy}
-            t={t}
-            onDraftChange={onDraftChange}
-            onBrowseFile={onBrowseFile}
-          />
-        ) : (
-          <ConnectionsCloudFields draft={draft} t={t} onDraftChange={onDraftChange} />
-        )}
+        {renderFieldsByKind()}
 
         <label className="field maia-field">
           <span className="field-label">{t.simpleMode.connections.connectionLabel}</span>

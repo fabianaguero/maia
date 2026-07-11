@@ -43,7 +43,7 @@ export interface LiveLogStreamUpdate {
   warnings: string[];
 }
 
-export type LogSourceConnectionKind = "file_log" | "gcp_cloud_run";
+export type LogSourceConnectionKind = "file_log" | "gcp_cloud_run" | "sonarqube";
 
 export interface LogSourceConnection {
   id: string;
@@ -74,7 +74,7 @@ export interface StartLogSourceConnectionInput {
   startFromBeginning?: boolean;
 }
 
-export type StreamAdapterKind = "file" | "process" | "websocket" | "http-poll" | "journald";
+export type StreamAdapterKind = "file" | "process" | "websocket" | "http-poll" | "journald" | "sonarqube";
 
 export interface StreamSessionRecord {
   sessionId: string;

@@ -5,11 +5,18 @@ export type ConnectionKind = LogSourceConnectionKind;
 export interface ConnectionDraft {
   kind: ConnectionKind;
   label: string;
+  // File adapter
   sourcePath: string;
+  // GCP Cloud Run
   gcpProjectId: string;
   gcpServiceName: string;
   gcpRegion: string;
   gcpBackfillFreshness: string;
+  // SonarQube adapter
+  sonarqubeApiUrl: string;
+  sonarqubeProjectKey: string;
+  sonarqubeAuthToken: string;
+  sonarqubePollingInterval: string;
 }
 
 export function createEmptyConnectionDraft(defaultCloudLookback = "10m"): ConnectionDraft {
@@ -21,6 +28,10 @@ export function createEmptyConnectionDraft(defaultCloudLookback = "10m"): Connec
     gcpServiceName: "",
     gcpRegion: "",
     gcpBackfillFreshness: defaultCloudLookback,
+    sonarqubeApiUrl: "",
+    sonarqubeProjectKey: "",
+    sonarqubeAuthToken: "",
+    sonarqubePollingInterval: "30",
   };
 }
 
@@ -53,6 +64,10 @@ export function createConnectionDraftFromConnection(
     gcpServiceName: readConfigString(connection.config, "serviceName") ?? "",
     gcpRegion: readConfigString(connection.config, "region") ?? "",
     gcpBackfillFreshness: readConfigString(connection.config, "backfillFreshness") ?? "10m",
+    sonarqubeApiUrl: readConfigString(connection.config, "apiUrl") ?? "",
+    sonarqubeProjectKey: readConfigString(connection.config, "projectKey") ?? "",
+    sonarqubeAuthToken: readConfigString(connection.config, "authToken") ?? "",
+    sonarqubePollingInterval: readConfigString(connection.config, "pollingInterval") ?? "30",
   };
 }
 
