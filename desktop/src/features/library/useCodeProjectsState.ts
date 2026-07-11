@@ -102,14 +102,12 @@ export function useCodeProjectsState(): UseCodeProjectsStateResult {
           pollingInterval: "30",
         };
         const result = await invoke<{
-          valid: boolean;
-          error?: string;
-          issue_count?: number;
+          success: boolean;
+          message: string;
         }>("test_sonarqube_connection", { config });
         return {
-          valid: result.valid,
-          error: result.error,
-          issueCount: result.issue_count,
+          valid: result.success,
+          error: !result.success ? result.message : undefined,
         };
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
