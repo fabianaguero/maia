@@ -6,7 +6,6 @@ const STREAM_ADAPTER_LABELS: Record<StreamAdapterKind, string> = {
   websocket: "WebSocket",
   "http-poll": "HTTP poll",
   journald: "journald",
-  sonarqube: "SonarQube",
 };
 
 const DISABLED_ADAPTER_DESCRIPTION =
@@ -18,7 +17,6 @@ const STREAM_ADAPTER_DESCRIPTIONS: Record<StreamAdapterKind, string> = {
   websocket: DISABLED_ADAPTER_DESCRIPTION,
   "http-poll": DISABLED_ADAPTER_DESCRIPTION,
   journald: DISABLED_ADAPTER_DESCRIPTION,
-  sonarqube: "Poll SonarQube API for code quality issues and anomaly detection.",
 };
 
 export function getStreamAdapterLabel(adapterKind: StreamAdapterKind): string {

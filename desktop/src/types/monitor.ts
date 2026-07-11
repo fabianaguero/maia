@@ -43,7 +43,7 @@ export interface LiveLogStreamUpdate {
   warnings: string[];
 }
 
-export type LogSourceConnectionKind = "file_log" | "gcp_cloud_run" | "sonarqube";
+export type LogSourceConnectionKind = "file_log" | "gcp_cloud_run";
 
 export interface LogSourceConnection {
   id: string;
@@ -74,13 +74,7 @@ export interface StartLogSourceConnectionInput {
   startFromBeginning?: boolean;
 }
 
-export type StreamAdapterKind =
-  | "file"
-  | "process"
-  | "websocket"
-  | "http-poll"
-  | "journald"
-  | "sonarqube";
+export type StreamAdapterKind = "file" | "process" | "websocket" | "http-poll" | "journald";
 
 export interface StreamSessionRecord {
   sessionId: string;
@@ -122,4 +116,21 @@ export interface StreamSessionPollResult {
   sonificationCues: LiveLogCue[];
   parsedLines: string[];
   warnings: string[];
+}
+
+export interface CodeProjectSonarQubeConfig {
+  apiUrl: string;
+  projectKey: string;
+  authToken: string;
+  pollingInterval: string;
+}
+
+export interface CodeProject {
+  id: string;
+  label: string;
+  repositoryUrl: string;
+  sonarqubeConfig: CodeProjectSonarQubeConfig;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
 }

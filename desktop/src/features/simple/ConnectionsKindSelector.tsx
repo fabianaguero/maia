@@ -1,4 +1,4 @@
-import { Bug, Globe, ScrollText } from "lucide-react";
+import { Globe, ScrollText } from "lucide-react";
 
 import type { ConnectionsFormViewModel } from "./connectionsFormViewModelRuntime";
 import type { ConnectionKind } from "./connectionsViewModel";
@@ -10,14 +10,7 @@ interface ConnectionsKindSelectorProps {
 }
 
 function getIconForKind(kind: ConnectionKind) {
-  switch (kind) {
-    case "file_log":
-      return <ScrollText size={24} />;
-    case "sonarqube":
-      return <Bug size={24} />;
-    default:
-      return <Globe size={24} />;
-  }
+  return kind === "file_log" ? <ScrollText size={24} /> : <Globe size={24} />;
 }
 
 export function ConnectionsKindSelector({

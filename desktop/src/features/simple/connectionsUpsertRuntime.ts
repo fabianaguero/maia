@@ -32,34 +32,6 @@ export function buildConnectionUpsertInput(input: {
     };
   }
 
-  if (draft.kind === "sonarqube") {
-    const apiUrl = draft.sonarqubeApiUrl.trim();
-    const projectKey = draft.sonarqubeProjectKey.trim();
-    const authToken = draft.sonarqubeAuthToken.trim();
-    if (!apiUrl || !projectKey || !authToken) {
-      return {
-        ok: false,
-        error: "SonarQube requires server URL, project key, and authentication token.",
-      };
-    }
-
-    return {
-      ok: true,
-      value: {
-        id: editingConnectionId ?? undefined,
-        kind: "sonarqube",
-        label: draft.label.trim() || `${projectKey} · SonarQube`,
-        sourceUri: `sonarqube://${projectKey}`,
-        config: {
-          apiUrl,
-          projectKey,
-          authToken,
-          pollingInterval: draft.sonarqubePollingInterval || "30",
-        },
-      },
-    };
-  }
-
   const projectId = draft.gcpProjectId.trim();
   const serviceName = draft.gcpServiceName.trim();
   const region = draft.gcpRegion.trim();

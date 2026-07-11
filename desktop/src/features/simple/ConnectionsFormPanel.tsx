@@ -3,7 +3,6 @@ import { ConnectionsCloudFields } from "./ConnectionsCloudFields";
 import { ConnectionsFileFields } from "./ConnectionsFileFields";
 import { ConnectionsFormActions } from "./ConnectionsFormActions";
 import { ConnectionsKindSelector } from "./ConnectionsKindSelector";
-import { ConnectionsSonarQubeFields } from "./ConnectionsSonarQubeFields";
 import {
   buildConnectionsFormViewModel,
   type ConnectionDraft,
@@ -57,9 +56,6 @@ export function ConnectionsFormPanel({
           onBrowseFile={onBrowseFile}
         />
       );
-    }
-    if (draft.kind === "sonarqube") {
-      return <ConnectionsSonarQubeFields draft={draft} t={t} onDraftChange={onDraftChange} />;
     }
     return <ConnectionsCloudFields draft={draft} t={t} onDraftChange={onDraftChange} />;
   };
