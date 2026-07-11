@@ -559,5 +559,11 @@ export const enControls = {
       soundPresets: "Sound presets",
       presetFallback: "Preset",
     },
+    codeProjects: {
+      ready: "Ready",
+      testing: "Testing",
+      error: "Error",
+      notConfigured: "Not configured",
+    },
   },
 } as const;
