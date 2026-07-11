@@ -251,6 +251,10 @@ CREATE TABLE IF NOT EXISTS code_projects (
   repository_url TEXT NOT NULL,
   sonarqube_api_url TEXT,
   sonarqube_project_key TEXT,
+  -- SECURITY LIMITATION: stored as plaintext. No encryption-at-rest layer exists
+  -- yet for this column. Treat the SQLite file as sensitive (do not commit it,
+  -- back it up unencrypted, or sync it to untrusted storage) until an
+  -- encryption layer (e.g. OS keychain or an encrypted column) is added.
   sonarqube_auth_token TEXT,
   sonarqube_polling_interval TEXT,
   enabled INTEGER NOT NULL DEFAULT 1,

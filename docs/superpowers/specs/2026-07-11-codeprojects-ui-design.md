@@ -7,12 +7,12 @@
 
 ## Overview
 
-CodeProjects is a new tab in Maia's Library that lets users manage repositories with SonarQube integration for code quality analysis. Unlike Connections (which stream real-time logs), CodeProjects poll a SonarQube instance for static code analysis issues, which then feed into the same anomaly-detection and sonification pipeline.
+CodeProjects is a new tab in Maia's Library that lets users manage repositories with SonarQube integration for code quality analysis. CodeProjects are a non-log **signal source**: they poll a SonarQube instance for static code analysis issues and feed normalized source evidence into the same anomaly-detection and sonification pipeline used by logs, processes, cloud streams, and future CI/metrics adapters.
 
 **Key Design Principle:** Hybrid Setup
 - Step 1: Create project (name + repository URL)
 - Step 2: Configure SonarQube (API URL, project key, auth token) with live validation
-- Step 3: Use in Monitor (select CodeProject as data source alongside Connections)
+- Step 3: Use in Monitor (select CodeProject as a signal source alongside stream connections)
 
 ---
 
@@ -326,6 +326,12 @@ CREATE TABLE code_projects (
 );
 ```
 
+> **Security limitation:** `sonarqube_auth_token` is stored as plaintext.
+> There is no encryption-at-rest layer for this column yet. Treat the
+> SQLite database file as sensitive (do not commit it, back it up
+> unencrypted, or sync it to untrusted storage) until an encryption layer
+> (OS keychain or an encrypted column) is added.
+
 ### State Hook: `useCodeProjectsState`
 
 ```typescript
@@ -439,4 +445,3 @@ Add to `simpleMode.codeProjects.*`:
 - Issue detail view (drill-down into specific SonarQube issues)
 - Batch operations (create multiple projects)
 - SonarQube instance health dashboard
-

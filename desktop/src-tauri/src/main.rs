@@ -375,6 +375,11 @@ struct LiveLogStreamUpdate {
 // Code Projects
 // ---------------------------------------------------------------------------
 
+// SECURITY LIMITATION: `auth_token` is persisted as plaintext in the
+// `code_projects.sonarqube_auth_token` column (see database/schema.sql).
+// There is no encryption-at-rest layer yet. Do not log this struct's
+// contents, and treat the SQLite database file as sensitive until an
+// encryption layer (OS keychain or encrypted column) is added.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct CodeProjectSonarQubeConfig {
