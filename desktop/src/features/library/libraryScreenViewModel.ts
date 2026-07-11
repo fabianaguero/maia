@@ -104,7 +104,7 @@ export function buildLibraryScreenViewModel(input: {
   const tabs: LibraryTabViewModel[] = [
     { id: "tracks", label: t.library.sounds, count: counts.tracks },
     { id: "sources", label: t.library.logSources, count: counts.repositories },
-    { id: "projects", label: "Code Projects", count: counts.codeProjects },
+    { id: "projects", label: t.library.codeProjects.title, count: counts.codeProjects },
     { id: "connections", label: t.library.connections, count: counts.logConnections },
     { id: "bases", label: t.library.profiles, count: counts.baseAssets },
   ];
@@ -131,10 +131,10 @@ export function buildLibraryScreenViewModel(input: {
       showCleanOrphans: counts.repositories > 0,
     },
     projects: {
-      eyebrow: "Code Projects",
+      eyebrow: t.library.codeProjects.title,
       count: counts.codeProjects,
-      title: "Code Projects with SonarQube",
-      note: "Analyze repositories for code quality issues",
+      title: t.library.codeProjects.title,
+      note: t.library.codeProjects.description,
       showSeedDemo: false,
       showNewPlaylist: false,
       showRelinkMissing: false,
@@ -174,9 +174,9 @@ export function buildLibraryScreenViewModel(input: {
       actionLabel: t.library.addSource,
     },
     projects: {
-      title: "No Code Projects yet",
-      body: "Create your first SonarQube project to analyze code quality",
-      actionLabel: "New Project",
+      title: t.library.codeProjects.noProjectsYet,
+      body: t.library.codeProjects.noProjectsBody,
+      actionLabel: t.library.codeProjects.newProject,
     },
     connections: {
       title: t.library.noConnectionsYet,
