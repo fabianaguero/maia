@@ -64,7 +64,6 @@ interface LibraryTabContentProps {
   onSelectPlaylist: (playlistId: string) => void;
   onSetPlaylistName: (value: string) => void;
   onTogglePlaylistTrack: (trackId: string) => void;
-  onStartMonitor?: (project: CodeProject) => void;
 }
 
 export function LibraryTabContent({
@@ -106,7 +105,6 @@ export function LibraryTabContent({
   onSelectPlaylist,
   onSetPlaylistName,
   onTogglePlaylistTrack,
-  onStartMonitor,
 }: LibraryTabContentProps) {
   // Code Projects state
   const {
@@ -214,7 +212,6 @@ export function LibraryTabContent({
             setShowCodeProjectDrawer(true);
           }}
           onDelete={handleDeleteProject}
-          onStartMonitor={onStartMonitor || (() => {})}
         />
         <LibraryCodeProjectDrawer
           visible={showCodeProjectDrawer}
