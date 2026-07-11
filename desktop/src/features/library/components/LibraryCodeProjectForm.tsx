@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { useT } from "../../../i18n/I18nContext";
 import type { CodeProjectFormDraft } from "../../../types/codeProject";
+import "./LibraryCodeProjectForm.css";
 
 interface LibraryCodeProjectFormProps {
   draft: CodeProjectFormDraft;
@@ -101,98 +102,6 @@ export function LibraryCodeProjectForm({
           {t.simpleMode.common.cancel}
         </button>
       </div>
-
-      <style>{`
-        .code-project-form {
-          display: flex;
-          flex-direction: column;
-          gap: var(--space-md, 16px);
-        }
-
-        .form-field {
-          display: flex;
-          flex-direction: column;
-          gap: var(--space-xs, 4px);
-        }
-
-        .field-label {
-          font-weight: 500;
-          font-size: 13px;
-          color: inherit;
-        }
-
-        .maia-input {
-          padding: var(--space-sm, 8px) var(--space-md, 16px);
-          border: 1px solid var(--color-calm);
-          border-radius: 4px;
-          font-family: IBM Plex Sans, -apple-system, BlinkMacSystemFont, sans-serif;
-          font-size: 13px;
-          background-color: inherit;
-          color: inherit;
-        }
-
-        .maia-input:focus {
-          outline: none;
-          border-color: var(--color-accent);
-          box-shadow: 0 0 0 2px rgba(var(--color-accent-rgb), 0.1);
-        }
-
-        .maia-input:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .field-error {
-          color: var(--color-critical);
-          font-size: 12px;
-        }
-
-        .support-copy {
-          font-size: 12px;
-          opacity: 0.7;
-        }
-
-        .form-actions {
-          display: flex;
-          gap: var(--space-sm, 8px);
-          margin-top: var(--space-md, 16px);
-        }
-
-        .btn {
-          padding: var(--space-sm, 8px) var(--space-md, 16px);
-          border: none;
-          border-radius: 4px;
-          font-weight: 500;
-          cursor: pointer;
-          font-size: 13px;
-          transition: background-color 0.2s;
-          font-family: IBM Plex Sans, -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-
-        .btn-primary {
-          background-color: var(--color-accent);
-          color: #fff;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-          opacity: 0.9;
-        }
-
-        .btn-secondary {
-          background-color: transparent;
-          color: inherit;
-          border: 1px solid var(--color-calm);
-        }
-
-        .btn-secondary:hover:not(:disabled) {
-          border-color: var(--color-accent);
-        }
-
-        .btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-      `}</style>
     </form>
   );
 }
