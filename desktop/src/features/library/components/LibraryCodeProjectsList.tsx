@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Edit2, Play, Trash2 } from "lucide-react";
+import { Edit2, Trash2 } from "lucide-react";
 import { useT } from "../../../i18n/I18nContext";
 import { CodeProjectStatusIndicator } from "./CodeProjectStatusIndicator";
 import type { CodeProject } from "../../../types/codeProject";
@@ -11,7 +11,6 @@ interface LibraryCodeProjectsListProps {
   onNew: () => void;
   onEdit: (project: CodeProject) => void;
   onDelete: (project: CodeProject) => Promise<void>;
-  onStartMonitor: (project: CodeProject) => void;
 }
 
 export function LibraryCodeProjectsList({
@@ -20,7 +19,6 @@ export function LibraryCodeProjectsList({
   onNew,
   onEdit,
   onDelete,
-  onStartMonitor,
 }: LibraryCodeProjectsListProps) {
   const t = useT();
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -73,11 +71,6 @@ export function LibraryCodeProjectsList({
           <CodeProjectStatusIndicator
             status={project.status as any}
             errorMessage={project.errorMessage}
-            issueCount={
-              project.status === "ready"
-                ? Math.floor(Math.random() * 10) // Placeholder: will come from backend
-                : undefined
-            }
             lastCheckedAt={project.lastCheckedAt}
           />
 
@@ -88,13 +81,6 @@ export function LibraryCodeProjectsList({
               onClick={() => onEdit(project)}
             >
               <Edit2 size={16} />
-            </button>
-            <button
-              className="action-button"
-              title={t.simpleMode.codeProjects.startMonitoring}
-              onClick={() => onStartMonitor(project)}
-            >
-              <Play size={16} />
             </button>
             <button
               className="action-button delete"
