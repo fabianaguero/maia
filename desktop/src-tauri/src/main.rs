@@ -4112,11 +4112,70 @@ fn ensure_session_event_parsed_lines_column(conn: &Connection) -> Result<(), Str
     Ok(())
 }
 
-fn ensure_code_projects_table(_conn: &Connection) -> Result<(), String> {
-    // This is a stub — the table is created by schema.sql
-    // This function exists for consistency with other ensure_* migrations
+fn ensure_code_projects_table(conn: &Connection) -> Result<(), String> {
+    // Table is created by schema.sql; this migration backfills the `enabled`
+    // column on databases created before it was added to the schema.
+    let mut statement = conn
+        .prepare("PRAGMA table_info(code_projects)")
+        .map_err(|error| format!("Failed to inspect code_projects columns: {error}"))?;
+    let mut rows = statement
+        .query([])
+        .map_err(|error| format!("Failed to query code_projects columns: {error}"))?;
+    let mut has_enabled = false;
+
+    while let Some(row) = rows
+        .next()
+        .map_err(|error| format!("Failed to iterate code_projects columns: {error}"))?
+    {
+        let name: String = row
+            .get(1)
+            .map_err(|error| format!("Failed to read code_projects column name: {error}"))?;
+        if name == "enabled" {
+            has_enabled = true;
+            break;
+        }
+    }
+
+    if has_enabled {
+        return Ok(());
+    }
+
+    conn.execute_batch("ALTER TABLE code_projects ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1;")
+        .map_err(|error| format!("Failed to add code_projects enabled column: {error}"))?;
+
     Ok(())
 }
+
+fn row_to_code_project(row: &rusqlite::Row<'_>) -> rusqlite::Result<CodeProject> {
+    let api_url: Option<String> = row.get(3)?;
+    let sonarqube_config = if api_url.is_some() {
+        Some(CodeProjectSonarQubeConfig {
+            api_url: api_url.unwrap_or_default(),
+            project_key: row.get(4)?,
+            auth_token: row.get(5)?,
+            polling_interval: row.get(6)?,
+        })
+    } else {
+        None
+    };
+
+    Ok(CodeProject {
+        id: row.get(0)?,
+        label: row.get(1)?,
+        repository_url: row.get(2)?,
+        sonarqube_config,
+        enabled: row.get::<_, i64>(7)? == 1,
+        status: row.get(8)?,
+        error_message: row.get(9)?,
+        last_checked_at: row.get(10)?,
+        created_at: row.get(11)?,
+        updated_at: row.get(12)?,
+    })
+}
+
+const CODE_PROJECT_SELECT_COLUMNS: &str = "id, label, repository_url, sonarqube_api_url, \
+     sonarqube_project_key, sonarqube_auth_token, sonarqube_polling_interval, enabled, status, \
+     error_message, last_checked_at, created_at, updated_at";
 
 fn composition_export_note(export_path: &str) -> String {
     format!("Managed composition plan snapshot written to {export_path}.")
@@ -7645,40 +7704,168 @@ fn show_window(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn create_code_project(
-    _input: UpsertCodeProjectInput,
+fn create_code_project(
+    app_handle: AppHandle,
+    input: UpsertCodeProjectInput,
 ) -> Result<CodeProject, String> {
-    // Stub: will implement in Task 3
-    Err("Not yet implemented".to_string())
+    let conn = open_database(&app_handle)?;
+
+    let now = now_iso();
+    let id = format!("project-{:x}", stable_hash(&format!("{}:{}", input.label, now)));
+
+    let sonarqube_config = input.sonarqube_config.as_ref();
+
+    conn.execute(
+        "INSERT INTO code_projects
+         (id, label, repository_url, sonarqube_api_url, sonarqube_project_key,
+          sonarqube_auth_token, sonarqube_polling_interval, status, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        rusqlite::params![
+            &id,
+            input.label.trim(),
+            input.repository_url.trim(),
+            sonarqube_config.map(|c| c.api_url.clone()),
+            sonarqube_config.map(|c| c.project_key.clone()),
+            sonarqube_config.map(|c| c.auth_token.clone()),
+            sonarqube_config.map(|c| c.polling_interval.clone()),
+            "not-configured",
+            &now,
+            &now,
+        ],
+    )
+    .map_err(|e| format!("Failed to create project: {e}"))?;
+
+    conn.query_row(
+        &format!("SELECT {CODE_PROJECT_SELECT_COLUMNS} FROM code_projects WHERE id = ?1"),
+        [&id],
+        row_to_code_project,
+    )
+    .map_err(|e| format!("Failed to fetch created project: {e}"))
 }
 
 #[tauri::command]
-async fn list_code_projects() -> Result<Vec<CodeProject>, String> {
-    // Stub: will implement in Task 3
-    Err("Not yet implemented".to_string())
+fn list_code_projects(app_handle: AppHandle) -> Result<Vec<CodeProject>, String> {
+    let conn = open_database(&app_handle)?;
+
+    let mut stmt = conn
+        .prepare(&format!(
+            "SELECT {CODE_PROJECT_SELECT_COLUMNS} FROM code_projects ORDER BY created_at DESC"
+        ))
+        .map_err(|e| format!("Failed to prepare query: {e}"))?;
+
+    let projects = stmt
+        .query_map([], row_to_code_project)
+        .map_err(|e| format!("Query failed: {e}"))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("Failed to collect results: {e}"))?;
+
+    Ok(projects)
 }
 
 #[tauri::command]
-async fn update_code_project(
-    _id: String,
-    _input: UpsertCodeProjectInput,
+fn update_code_project(
+    app_handle: AppHandle,
+    id: String,
+    input: UpsertCodeProjectInput,
 ) -> Result<CodeProject, String> {
-    // Stub: will implement in Task 3
-    Err("Not yet implemented".to_string())
+    let conn = open_database(&app_handle)?;
+
+    let now = now_iso();
+    let sonarqube_config = input.sonarqube_config.as_ref();
+
+    conn.execute(
+        "UPDATE code_projects
+         SET label = ?1, repository_url = ?2, sonarqube_api_url = ?3,
+             sonarqube_project_key = ?4, sonarqube_auth_token = ?5,
+             sonarqube_polling_interval = ?6, updated_at = ?7
+         WHERE id = ?8",
+        rusqlite::params![
+            input.label.trim(),
+            input.repository_url.trim(),
+            sonarqube_config.map(|c| c.api_url.clone()),
+            sonarqube_config.map(|c| c.project_key.clone()),
+            sonarqube_config.map(|c| c.auth_token.clone()),
+            sonarqube_config.map(|c| c.polling_interval.clone()),
+            &now,
+            &id,
+        ],
+    )
+    .map_err(|e| format!("Failed to update project: {e}"))?;
+
+    conn.query_row(
+        &format!("SELECT {CODE_PROJECT_SELECT_COLUMNS} FROM code_projects WHERE id = ?1"),
+        [&id],
+        row_to_code_project,
+    )
+    .map_err(|e| format!("Failed to fetch updated project: {e}"))
 }
 
 #[tauri::command]
-async fn delete_code_project(_id: String) -> Result<(), String> {
-    // Stub: will implement in Task 3
-    Err("Not yet implemented".to_string())
+fn delete_code_project(app_handle: AppHandle, id: String) -> Result<(), String> {
+    let conn = open_database(&app_handle)?;
+
+    conn.execute("DELETE FROM code_projects WHERE id = ?1", [&id])
+        .map_err(|e| format!("Failed to delete project: {e}"))?;
+
+    Ok(())
 }
 
 #[tauri::command]
 async fn test_sonarqube_connection(
-    _config: CodeProjectSonarQubeConfig,
+    config: CodeProjectSonarQubeConfig,
 ) -> Result<SonarQubeTestResult, String> {
-    // Stub: will implement in Task 3
-    Err("Not yet implemented".to_string())
+    // Validate URL format
+    if !config.api_url.starts_with("http://") && !config.api_url.starts_with("https://") {
+        return Ok(SonarQubeTestResult {
+            success: false,
+            message: "Invalid URL format".to_string(),
+        });
+    }
+
+    // Make test request to SonarQube API
+    let client = reqwest::Client::new();
+    let url = format!(
+        "{}/api/issues/search?componentKeys={}&ps=1",
+        config.api_url.trim_end_matches('/'),
+        urlencoding::encode(&config.project_key)
+    );
+
+    let response = match client
+        .get(&url)
+        .basic_auth("token", Some(&config.auth_token))
+        .timeout(std::time::Duration::from_secs(5))
+        .send()
+        .await
+    {
+        Ok(resp) => resp,
+        Err(e) => {
+            return Ok(SonarQubeTestResult {
+                success: false,
+                message: format!("Connection failed: {e}"),
+            })
+        }
+    };
+
+    if !response.status().is_success() {
+        return Ok(SonarQubeTestResult {
+            success: false,
+            message: "Invalid credentials or project not found".to_string(),
+        });
+    }
+
+    match response.json::<serde_json::Value>().await {
+        Ok(json) => {
+            let total = json.get("total").and_then(|v| v.as_i64()).unwrap_or(0);
+            Ok(SonarQubeTestResult {
+                success: true,
+                message: format!("Connection successful ({total} issues found)"),
+            })
+        }
+        Err(e) => Ok(SonarQubeTestResult {
+            success: false,
+            message: format!("Failed to parse response: {e}"),
+        }),
+    }
 }
 
 #[tauri::command]

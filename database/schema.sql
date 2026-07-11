@@ -253,6 +253,7 @@ CREATE TABLE IF NOT EXISTS code_projects (
   sonarqube_project_key TEXT,
   sonarqube_auth_token TEXT,
   sonarqube_polling_interval TEXT,
+  enabled INTEGER NOT NULL DEFAULT 1,
   status TEXT DEFAULT 'not-configured',
   error_message TEXT,
   last_checked_at TEXT,
