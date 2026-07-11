@@ -117,20 +117,3 @@ export interface StreamSessionPollResult {
   parsedLines: string[];
   warnings: string[];
 }
-
-export interface CodeProjectSonarQubeConfig {
-  apiUrl: string;
-  projectKey: string;
-  authToken: string;
-  pollingInterval: string;
-}
-
-export interface CodeProject {
-  id: string;
-  label: string;
-  repositoryUrl: string;
-  sonarqubeConfig: CodeProjectSonarQubeConfig;
-  enabled: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
