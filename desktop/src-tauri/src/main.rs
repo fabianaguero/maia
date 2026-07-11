@@ -7832,7 +7832,7 @@ async fn test_sonarqube_connection(
 
     let response = match client
         .get(&url)
-        .basic_auth("token", Some(&config.auth_token))
+        .bearer_auth(&config.auth_token)
         .timeout(std::time::Duration::from_secs(5))
         .send()
         .await
