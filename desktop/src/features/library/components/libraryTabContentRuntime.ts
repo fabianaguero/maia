@@ -6,9 +6,10 @@ export type LibraryTabContentKind =
   | "tracks"
   | "sources"
   | "connections"
+  | "projects"
   | "bases";
 
-export type LibraryTabEmptyIconKind = "tracks" | "sources" | "connections" | "bases";
+export type LibraryTabEmptyIconKind = "tracks" | "sources" | "connections" | "projects" | "bases";
 
 export interface LibraryTabContentState {
   kind: LibraryTabContentKind;
@@ -25,6 +26,9 @@ export function resolveLibraryTabEmptyIconKind(tab: LibraryTab): LibraryTabEmpty
   if (tab === "connections") {
     return "connections";
   }
+  if (tab === "projects") {
+    return "projects";
+  }
   return "bases";
 }
 
@@ -34,6 +38,7 @@ export function buildLibraryTabContentState(input: {
   trackCount: number;
   repositoryCount: number;
   connectionCount: number;
+  codeProjectCount: number;
   baseAssetCount: number;
 }): LibraryTabContentState {
   const emptyIconKind = resolveLibraryTabEmptyIconKind(input.tab);
@@ -62,6 +67,13 @@ export function buildLibraryTabContentState(input: {
   if (input.tab === "connections") {
     return {
       kind: input.connectionCount === 0 ? "empty" : "connections",
+      emptyIconKind,
+    };
+  }
+
+  if (input.tab === "projects") {
+    return {
+      kind: input.codeProjectCount === 0 ? "empty" : "projects",
       emptyIconKind,
     };
   }

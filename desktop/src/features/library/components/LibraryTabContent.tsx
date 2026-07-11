@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type {
   BaseAssetRecord,
   BaseTrackPlaylist,
@@ -5,6 +6,7 @@ import type {
   LogSourceConnection,
   RepositoryAnalysis,
 } from "../../../types/library";
+import type { CodeProject } from "../../../types/codeProject";
 import type { LibraryTab } from "../libraryScreenTypes";
 import { LibraryBaseAssetsListPanel } from "./LibraryBaseAssetsListPanel";
 import { LibraryConnectionsListPanel } from "./LibraryConnectionsListPanel";
@@ -12,6 +14,9 @@ import { LibrarySourcesListPanel } from "./LibrarySourcesListPanel";
 import { LibraryTabEmptySection } from "./LibraryTabEmptySection";
 import { LibraryTabLoadingState } from "./LibraryTabLoadingState";
 import { LibraryTracksTabSection } from "./LibraryTracksTabSection";
+import { LibraryCodeProjectsList } from "./LibraryCodeProjectsList";
+import { LibraryCodeProjectDrawer } from "./LibraryCodeProjectDrawer";
+import { useCodeProjectsState } from "../useCodeProjectsState";
 import { buildLibraryTabContentState } from "./libraryTabContentRuntime";
 
 export interface EmptyStateContent {
@@ -59,6 +64,7 @@ interface LibraryTabContentProps {
   onSelectPlaylist: (playlistId: string) => void;
   onSetPlaylistName: (value: string) => void;
   onTogglePlaylistTrack: (trackId: string) => void;
+  onStartMonitor?: (project: CodeProject) => void;
 }
 
 export function LibraryTabContent({
@@ -100,13 +106,28 @@ export function LibraryTabContent({
   onSelectPlaylist,
   onSetPlaylistName,
   onTogglePlaylistTrack,
+  onStartMonitor,
 }: LibraryTabContentProps) {
+  // Code Projects state
+  const {
+    projects: codeProjects,
+    loading: codeProjectsLoading,
+    createProject: createCodeProject,
+    updateProject: updateCodeProject,
+    deleteProject: deleteCodeProject,
+    testConnection,
+  } = useCodeProjectsState();
+
+  const [showCodeProjectDrawer, setShowCodeProjectDrawer] = useState(false);
+  const [selectedCodeProject, setSelectedCodeProject] = useState<CodeProject | null>(null);
+
   const contentState = buildLibraryTabContentState({
     tab,
     loading,
     trackCount: tracks.length,
     repositoryCount: repositories.length,
     connectionCount: logConnections.length,
+    codeProjectCount: codeProjects.length,
     baseAssetCount: baseAssets.length,
   });
 
@@ -174,6 +195,39 @@ export function LibraryTabContent({
         connections={logConnections}
         onDeleteConnection={onDeleteConnection}
       />
+    );
+  }
+
+  if (contentState.kind === "projects") {
+    const handleDeleteProject = async (project: CodeProject) => {
+      await deleteCodeProject(project.id);
+    };
+
+    return (
+      <>
+        <LibraryCodeProjectsList
+          projects={codeProjects}
+          loading={codeProjectsLoading}
+          onNew={() => setShowCodeProjectDrawer(true)}
+          onEdit={(project) => {
+            setSelectedCodeProject(project);
+            setShowCodeProjectDrawer(true);
+          }}
+          onDelete={handleDeleteProject}
+          onStartMonitor={onStartMonitor || (() => {})}
+        />
+        <LibraryCodeProjectDrawer
+          visible={showCodeProjectDrawer}
+          project={selectedCodeProject ?? undefined}
+          onClose={() => {
+            setShowCodeProjectDrawer(false);
+            setSelectedCodeProject(null);
+          }}
+          onCreate={createCodeProject}
+          onUpdate={updateCodeProject}
+          onTestConnection={testConnection}
+        />
+      </>
     );
   }
 
