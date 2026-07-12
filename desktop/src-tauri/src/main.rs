@@ -2645,23 +2645,27 @@ fn poll_code_project_stream_session(
 
     if !new_lines.is_empty() {
         append_lines_to_session(registry, session_id, new_lines)?;
-    } else if baseline_seeded {
-        // Emit a status message on first poll after baseline is seeded to show monitoring is active
-        let status = waiting_status_for_code_project(
-            &code_project_config.analysis_mode,
-            baseline_seeded,
-            issue_count,
-        );
-        let status_line = format!(
-            "[{}] [INFO] SONARQUBE_STATUS: {}",
-            chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-            status
-        );
-        append_lines_to_session(registry, session_id, vec![status_line])?;
     }
 
     let (_, pending_chunk) = drain_pending_chunk(registry, session_id)?;
+
     if pending_chunk.trim().is_empty() {
+        // If no new lines, emit a status message to show the monitor is active
+        if baseline_seeded {
+            let status = waiting_status_for_code_project(
+                &code_project_config.analysis_mode,
+                baseline_seeded,
+                issue_count,
+            );
+            let status_line = format!(
+                "[{}] [INFO] SONARQUBE_STATUS: {}",
+                chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+                status
+            );
+            // Return status as a line so frontend receives it
+            return analyze_stream_chunk(session_record, status_line, warnings);
+        }
+
         let status = waiting_status_for_code_project(
             &code_project_config.analysis_mode,
             baseline_seeded,
