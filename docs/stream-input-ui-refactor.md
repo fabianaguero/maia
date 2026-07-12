@@ -44,6 +44,7 @@ Refactor the connection management UI from "Log-centric" to "Stream Input" - a g
 - `desktop/src-tauri/src/code_project_stream.rs` contains CodeProject stream config parsing, connected-mode validation, and idle/baseline status copy.
 - `desktop/src-tauri/src/sonarqube_client.rs` contains SonarQube issue formatting and remote polling.
 - `desktop/src-tauri/src/main.rs` coordinates CodeProject stream sessions through `poll_code_project_stream_session`.
+- CodeProject sources now launch through the monitor setup path with the same deck/session surface used by file, process, and cloud streams.
 - `database/schema.sql` includes `code_projects`.
 
 Known gaps:
@@ -52,7 +53,7 @@ Known gaps:
 - Local CodeProjects intentionally clear SonarQube URL/project/token values when switching from connected mode back to local mode.
 - SonarQube findings are converted to log-shaped lines before analysis.
 - CodeProjects and `log_source_connections` are two parallel source systems, not one unified `stream_input_connections` table.
-- Real SonarQube server verification is still pending.
+- Real SonarQube server verification is still pending; local CodeProject monitoring is the stable offline path.
 
 ## Refactoring Plan
 
@@ -272,7 +273,7 @@ WHERE kind = 'gcloud';
 - [ ] All 7+ adapter types work identically through generic UI
 - [ ] No log-specific terminology in UI or API
 - [x] SonarQube-backed CodeProject can be created and connection-tested
-- [ ] SonarQube-backed CodeProject can be monitored like any other source
+- [x] CodeProject sources can be launched through the same monitor flow as other sources
 - [ ] At least one non-log event source can be monitored without source-specific deck code
 - [ ] At least one numeric source can affect pressure without creating fake anomalies
 - [ ] i18n strings support all connection types
