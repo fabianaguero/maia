@@ -13,6 +13,9 @@ export interface SimpleMonitorIdleViewProps {
   selectedSourceId: string;
   onSelectSourceId: (value: string) => void;
   sourceEmptyMessage: string;
+  codeProjectSourceOptions: MonitorLaunchSource[];
+  selectedCodeProjectId: string;
+  onSelectCodeProjectId: (value: string) => void;
   tracks: LibraryTrack[];
   selectedSoundId: string;
   onSelectSoundId: (value: string) => void;
@@ -41,6 +44,9 @@ export function SimpleMonitorIdleView({
   selectedSourceId,
   onSelectSourceId,
   sourceEmptyMessage,
+  codeProjectSourceOptions,
+  selectedCodeProjectId,
+  onSelectCodeProjectId,
   tracks,
   selectedSoundId,
   onSelectSoundId,
@@ -71,6 +77,9 @@ export function SimpleMonitorIdleView({
             selectedSourceId={selectedSourceId}
             onSelectSourceId={onSelectSourceId}
             sourceEmptyMessage={sourceEmptyMessage}
+            codeProjectSourceOptions={codeProjectSourceOptions}
+            selectedCodeProjectId={selectedCodeProjectId}
+            onSelectCodeProjectId={onSelectCodeProjectId}
             tracks={tracks}
             selectedSoundId={selectedSoundId}
             onSelectSoundId={onSelectSoundId}
@@ -82,15 +91,15 @@ export function SimpleMonitorIdleView({
             isLaunchingMonitor={isLaunchingMonitor}
             onStartMonitoringRequest={onStartMonitoringRequest}
           />
-
-          <PastSessionsPanel
-            sessions={sessions}
-            tracks={tracks}
-            onReplaySession={onReplaySession}
-            onDeletePastSession={onDeletePastSession}
-            onDeleteLibraryTrack={onDeleteLibraryTrack}
-          />
         </div>
+
+        <PastSessionsPanel
+          sessions={sessions}
+          tracks={tracks}
+          onReplaySession={onReplaySession}
+          onDeletePastSession={onDeletePastSession}
+          onDeleteLibraryTrack={onDeleteLibraryTrack}
+        />
       </div>
     </div>
   );

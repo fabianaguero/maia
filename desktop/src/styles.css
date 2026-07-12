@@ -9793,7 +9793,7 @@ dd {
 
 .idle-main-grid {
   display: grid;
-  grid-template-columns: minmax(720px, 1fr) minmax(340px, 420px);
+  grid-template-columns: 1fr;
   gap: 20px;
   align-items: start;
 }
