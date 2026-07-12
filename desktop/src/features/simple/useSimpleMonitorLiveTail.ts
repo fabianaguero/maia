@@ -38,6 +38,13 @@ export function useSimpleMonitorLiveTail({
       return;
     }
 
+    // Update tail pinned state based on current scroll position
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    const currentlyAtBottom = distanceFromBottom <= 48; // Match threshold
+    if (currentlyAtBottom) {
+      isTailPinnedRef.current = true;
+    }
+
     const syncPlan = buildSimpleMonitorLiveTailEffectState({
       liveLines,
       selectedAnomalyId,
