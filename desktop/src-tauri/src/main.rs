@@ -2588,6 +2588,8 @@ fn poll_code_project_stream_session(
     registry: &SessionRegistryState,
     warnings: Vec<String>,
 ) -> Result<StreamSessionPollResult, String> {
+    eprintln!("[MAIA:Rust] poll_code_project_stream_session START id={}", session_id);
+
     let (connection_config, mut last_known, baseline_seeded) = {
         let reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
         let session = reg
@@ -2603,12 +2605,15 @@ fn poll_code_project_stream_session(
 
     let config = connection_config.ok_or("SonarQube connection config missing")?;
     let code_project_config = CodeProjectStreamConfig::from_json(&config);
+    eprintln!("[MAIA:Rust] CodeProject config: mode={:?}, baseline_seeded={}",
+        code_project_config.analysis_mode, baseline_seeded);
 
     let runtime = tokio::runtime::Runtime::new()
         .map_err(|e| format!("Failed to create tokio runtime: {}", e))?;
 
     let (new_lines, issue_count) = runtime.block_on(async {
         let result = if code_project_config.analysis_mode.is_local() {
+            eprintln!("[MAIA:Rust] Scanning local code project: {}", code_project_config.repository_url);
             scan_local_code_project_issues(
                 &code_project_config.repository_url,
                 &code_project_config.local_rules_profile,
@@ -2616,6 +2621,7 @@ fn poll_code_project_stream_session(
                 baseline_seeded,
             )?
         } else {
+            eprintln!("[MAIA:Rust] Polling SonarQube: {}", code_project_config.api_url);
             code_project_config.validate_connected()?;
             poll_sonarqube_issues(
                 &code_project_config.api_url,
@@ -2629,6 +2635,8 @@ fn poll_code_project_stream_session(
 
         Ok::<(Vec<String>, usize), String>(result)
     })?;
+
+    eprintln!("[MAIA:Rust] poll_code_project got {} new lines, {} total issues", new_lines.len(), issue_count);
 
     {
         let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
