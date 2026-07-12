@@ -7,6 +7,9 @@ import type { BuildSimpleMonitorDeckHookStateArgs } from "./simpleMonitorDeckHoo
 export interface SimpleMonitorLaunchStateSlice {
   selectedSoundId: string;
   setSelectedSoundId: Dispatch<SetStateAction<string>>;
+  codeProjectSourceOptions: MonitorLaunchSource[];
+  selectedCodeProjectId: string;
+  setSelectedCodeProjectId: Dispatch<SetStateAction<string>>;
   filteredMonitorSourceOptions: MonitorLaunchSource[];
   selectedSourceOption: MonitorLaunchSource | null;
   canStartSelectedSource: boolean;
@@ -64,6 +67,9 @@ export function buildSimpleMonitorLaunchStateSlice(
   return {
     selectedSoundId: launchState.selectedSoundId,
     setSelectedSoundId: launchState.setSelectedSoundId,
+    codeProjectSourceOptions: launchState.codeProjectSourceOptions,
+    selectedCodeProjectId: launchState.selectedCodeProjectId,
+    setSelectedCodeProjectId: launchState.setSelectedCodeProjectId,
     filteredMonitorSourceOptions: launchState.filteredMonitorSourceOptions,
     selectedSourceOption: launchState.selectedSourceOption,
     canStartSelectedSource: launchState.canStartSelectedSource,

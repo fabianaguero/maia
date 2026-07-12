@@ -8,6 +8,7 @@ import type { UseSimpleMonitorLaunchStateInput } from "./useSimpleMonitorLaunchS
 import type { SimpleMonitorStartRequest } from "./simpleMonitorInteractionRuntime";
 
 export interface SimpleMonitorLaunchStateSelectorSlice {
+  allMonitorSourceOptions: MonitorLaunchSource[];
   filteredMonitorSourceOptions: MonitorLaunchSource[];
   selectedSourceOption: MonitorLaunchSource | null;
   canStartSelectedSource: boolean;
@@ -24,6 +25,9 @@ export interface SimpleMonitorLaunchStateSelectorSlice {
 export interface SimpleMonitorLaunchStateResult extends SimpleMonitorLaunchStateSelectorSlice {
   selectedSoundId: string;
   setSelectedSoundId: Dispatch<SetStateAction<string>>;
+  codeProjectSourceOptions: MonitorLaunchSource[];
+  selectedCodeProjectId: string;
+  setSelectedCodeProjectId: Dispatch<SetStateAction<string>>;
   handleStartMonitoringRequest: () => Promise<void>;
 }
 

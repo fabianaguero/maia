@@ -208,7 +208,7 @@ describe("appV0MonitorOrchestrationRuntime", () => {
     expect(deps.startConnection).toHaveBeenCalledWith({
       connectionId: "cloud-1",
       sessionId: "session-seq",
-      startFromBeginning: false,
+      startFromBeginning: true,
     });
     expect(deps.attachSession).toHaveBeenCalledWith(
       expect.objectContaining({

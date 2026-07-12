@@ -56,7 +56,7 @@ describe("simpleMonitorLiveTailRuntime", () => {
     ).toEqual({ isTailPinned: true });
     expect(
       buildSimpleMonitorLiveTailScrollState({
-        distanceFromBottom: 20,
+        distanceFromBottom: 80,
       }),
     ).toEqual({ isTailPinned: false });
     expect(buildSimpleMonitorLiveTailFocusState("anomaly-1")).toEqual({

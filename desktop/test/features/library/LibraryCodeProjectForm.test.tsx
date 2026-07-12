@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -6,6 +6,12 @@ import { LibraryCodeProjectForm } from "../../../src/features/library/components
 import { I18nContext } from "../../../src/i18n/I18nContext";
 import { en } from "../../../src/i18n/en";
 import type { CodeProjectFormDraft } from "../../../src/types/codeProject";
+
+const pickRepositoryDirectoryMock = vi.fn();
+
+vi.mock("../../../src/api/repositories", () => ({
+  pickRepositoryDirectory: (...args: unknown[]) => pickRepositoryDirectoryMock(...args),
+}));
 
 function renderWithI18n(node: ReactNode) {
   return render(<I18nContext.Provider value={en}>{node}</I18nContext.Provider>);
@@ -39,6 +45,7 @@ function renderForm(overrides: Partial<CodeProjectFormDraft> = {}) {
 
 describe("LibraryCodeProjectForm", () => {
   afterEach(() => {
+    pickRepositoryDirectoryMock.mockReset();
     cleanup();
   });
 
@@ -66,5 +73,23 @@ describe("LibraryCodeProjectForm", () => {
 
     expect(props.onSubmit).not.toHaveBeenCalled();
     expect(screen.getByText("Invalid repository URL or local path")).toBeInTheDocument();
+  });
+
+  it("fills the repository path from the native directory picker", async () => {
+    pickRepositoryDirectoryMock.mockResolvedValue("/home/user/repos/local-checkout");
+    const props = renderForm({ repositoryUrl: "" });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: en.simpleMode.codeProjects.browseLocalRepository }),
+    );
+
+    await waitFor(() => {
+      expect(pickRepositoryDirectoryMock).toHaveBeenCalledWith("");
+    });
+    await waitFor(() => {
+      expect(props.onDraftChange).toHaveBeenCalledWith({
+        repositoryUrl: "/home/user/repos/local-checkout",
+      });
+    });
   });
 });

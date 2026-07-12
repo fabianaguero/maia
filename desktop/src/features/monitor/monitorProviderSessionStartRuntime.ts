@@ -17,6 +17,10 @@ import {
 
 type LiveStartInput = Omit<MonitorProviderLiveStartBaseInput, never>;
 
+function isSessionBackedMonitoringAdapter(adapterKind: StartSessionInput["adapterKind"]): boolean {
+  return adapterKind === "file" || adapterKind === "sonarqube";
+}
+
 export async function startMonitorProviderSessionState(input: {
   repo: RepositoryAnalysis;
   sessionInput: StartSessionInput;
@@ -38,7 +42,7 @@ export async function startMonitorProviderSessionState(input: {
     input.persistedSessionId,
   );
 
-  if (input.sessionInput.adapterKind !== "file") {
+  if (!isSessionBackedMonitoringAdapter(input.sessionInput.adapterKind)) {
     throw new Error(FILE_ONLY_MONITORING_ERROR);
   }
 

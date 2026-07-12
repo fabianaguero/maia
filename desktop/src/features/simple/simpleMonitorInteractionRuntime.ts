@@ -1,7 +1,7 @@
 import type { MonitorLogLine } from "./monitorLogParsing";
 import type { MonitorLaunchSource } from "../../types/monitorLaunch";
 
-export const DEFAULT_MONITOR_TAIL_PIN_THRESHOLD_PX = 8;
+export const DEFAULT_MONITOR_TAIL_PIN_THRESHOLD_PX = 48;
 
 export interface SimpleMonitorStartRequest {
   selectedSourceOption: MonitorLaunchSource | null;

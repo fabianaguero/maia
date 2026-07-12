@@ -1,4 +1,6 @@
 import { useCallback, useState } from "react";
+import { FolderOpen } from "lucide-react";
+import { pickRepositoryDirectory } from "../../../api/repositories";
 import { useT } from "../../../i18n/I18nContext";
 import type { CodeProjectFormDraft } from "../../../types/codeProject";
 import "./LibraryCodeProjectForm.css";
@@ -20,6 +22,7 @@ export function LibraryCodeProjectForm({
 }: LibraryCodeProjectFormProps) {
   const t = useT();
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [pickerBusy, setPickerBusy] = useState(false);
 
   const validateForm = useCallback(() => {
     const newErrors: Record<string, string> = {};
@@ -40,6 +43,25 @@ export function LibraryCodeProjectForm({
       await onSubmit();
     }
   }, [validateForm, onSubmit]);
+
+  const handleBrowseLocalRepository = useCallback(async () => {
+    setPickerBusy(true);
+    setErrors((current) => ({ ...current, repositoryUrl: "" }));
+    try {
+      const pickedPath = await pickRepositoryDirectory(draft.repositoryUrl);
+      if (pickedPath) {
+        onDraftChange({ repositoryUrl: pickedPath });
+      }
+    } catch (error) {
+      setErrors((current) => ({
+        ...current,
+        repositoryUrl:
+          error instanceof Error ? error.message : t.simpleMode.codeProjects.repositoryPickerFailed,
+      }));
+    } finally {
+      setPickerBusy(false);
+    }
+  }, [draft.repositoryUrl, onDraftChange, t.simpleMode.codeProjects.repositoryPickerFailed]);
 
   return (
     <form className="code-project-form" onSubmit={(e) => e.preventDefault()}>
@@ -65,17 +87,29 @@ export function LibraryCodeProjectForm({
         <label htmlFor="repo-url" className="field-label">
           {t.simpleMode.codeProjects.repositoryUrl}
         </label>
-        <input
-          id="repo-url"
-          type="text"
-          className="maia-input"
-          value={draft.repositoryUrl}
-          onChange={(e) => onDraftChange({ repositoryUrl: e.target.value })}
-          placeholder="https://github.com/org/repo"
-          disabled={saving}
-        />
+        <div className="code-project-form__path-row">
+          <input
+            id="repo-url"
+            type="text"
+            className="maia-input"
+            value={draft.repositoryUrl}
+            onChange={(e) => onDraftChange({ repositoryUrl: e.target.value })}
+            placeholder="/home/user/work/my-repo"
+            disabled={saving || pickerBusy}
+          />
+          <button
+            type="button"
+            className="code-project-form__browse"
+            onClick={handleBrowseLocalRepository}
+            disabled={saving || pickerBusy}
+            title={t.simpleMode.codeProjects.browseLocalRepository}
+          >
+            {pickerBusy ? t.simpleMode.connections.loading : <FolderOpen size={16} />}
+          </button>
+        </div>
         {errors.repositoryUrl && <span className="field-error">{errors.repositoryUrl}</span>}
         <span className="support-copy">{t.simpleMode.codeProjects.repositoryUrlHelp}</span>
+        <span className="support-copy">{t.simpleMode.codeProjects.localRepositoryPickerHelp}</span>
       </div>
 
       <div className="form-actions">

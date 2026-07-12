@@ -116,7 +116,8 @@ export function parseMonitorLogLine(raw: string, lineIndex: number): MonitorLogL
   }
 
   // SonarQube format: [timestamp] [SONARQUBE-LEVEL] rule message (component:line)
-  const sonarQubePattern = /^\[(.+?)\]\s\[SONARQUBE-(\w+)\]\s(\S+)\s(.*?)\s\(([^:()]+)(?::(\d+))?\)$/;
+  // More flexible pattern that handles various spacing
+  const sonarQubePattern = /^\[(.+?)\]\s*\[SONARQUBE-(\w+)\]\s+(\S+)\s+(.+?)\s*\(([^:)]+)(?::(\d+))?\)\s*$/;
   const sonarQubeMatch = raw.match(sonarQubePattern);
   if (sonarQubeMatch) {
     const timestamp = sonarQubeMatch[1] ?? "";
@@ -124,7 +125,7 @@ export function parseMonitorLogLine(raw: string, lineIndex: number): MonitorLogL
     const rule = sonarQubeMatch[3] ?? "";
     const message = (sonarQubeMatch[4] || "").trim() || raw.trim();
     const component = sonarQubeMatch[5] ?? "";
-    const lineNum = sonarQubeMatch[6] ? parseInt(sonarQubeMatch[6], 10) : undefined;
+    const lineNum = sonarQubeMatch[6] ? Number.parseInt(sonarQubeMatch[6], 10) : undefined;
 
     const level = mapSonarQubeSeverityToLevel(sonarSeverity);
     const isAnomaly = isMonitorAnomaly(level, message);

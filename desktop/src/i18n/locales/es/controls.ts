@@ -57,6 +57,7 @@ export const esControls = {
     nav: {
       monitor: "Monitor",
       connections: "Conexiones",
+      codeProjects: "CodeProjects",
       setup: "Ajustes",
       files: "Mis archivos",
     },
@@ -69,6 +70,7 @@ export const esControls = {
       proShort: "Pro",
       engineLive: "Motor activo",
       connectionsExpertSubtitle: "Adaptadores persistentes de telemetría",
+      codeProjectsExpertSubtitle: "Parsing local y SonarQube",
       setupExpertSubtitle: "Preferencias del deck de monitoreo",
       currentFocus: "Foco actual",
       collapseSidebar: "Colapsar lateral",
@@ -248,6 +250,7 @@ export const esControls = {
       pastSessions: "Sesiones anteriores",
       noPreviousSessions: "No se encontraron sesiones previas.",
       connectionsSubtitle: "Conexiones en la nube, colas y adaptadores",
+      codeProjectsSubtitle: "Repositorios, scanner local y SonarQube",
       setupSubtitle: "Respuesta del deck y comportamiento del monitor",
       filesSubtitle: "Fuentes de log y perfiles sonoros",
       monitorSubtitle: "Monitoreo en vivo y reproducción reactiva",
@@ -578,6 +581,18 @@ export const esControls = {
     },
     codeProjects: {
       ready: "Listo",
+      title: "Proyectos de código",
+      signalSourceKicker: "Fuente de señal",
+      signalSourceDescription:
+        "Parseá repositorios localmente o conectá SonarQube para convertir hallazgos de calidad en señales monitoreables.",
+      localScannerTitle: "Scanner local tipo plugin",
+      localScannerDescription:
+        "Maia puede analizar un repositorio local sin servidor. Usá este modo para validar calidad de código como complemento local.",
+      connectedScannerDescription:
+        "Cuando tengas servidor, Maia puede consultar issues de SonarQube y usarlos como stream de evidencia.",
+      serverOptional: "Servidor opcional",
+      rulesSyncPending: "Sync de reglas pendiente",
+      savedProjects: "Proyectos guardados",
       testing: "Probando",
       error: "Error",
       notConfigured: "No configurado",
@@ -585,7 +600,12 @@ export const esControls = {
       projectNamePlaceholder: "Mi proyecto",
       projectNameHelp: "Un nombre legible para tu proyecto de código",
       repositoryUrl: "URL del repositorio",
-      repositoryUrlHelp: "URL de GitHub o ruta del repositorio local",
+      repositoryUrlHelp: "URL de GitHub o ruta del repositorio local ya clonado",
+      browseLocalRepository: "Explorar repositorio local",
+      localRepositoryPickerHelp:
+        "Elegí una carpeta local que ya contenga el repositorio clonado. Maia lo usará en modo complemento local sin servidor.",
+      repositoryPickerFailed:
+        "No se pudo abrir el selector nativo. Pegá la ruta local manualmente.",
       invalidRepositoryLocation: "URL de repositorio o ruta local invalida",
       create: "Crear proyecto",
       newProject: "Nuevo proyecto de código",

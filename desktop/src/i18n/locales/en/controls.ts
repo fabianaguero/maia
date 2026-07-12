@@ -56,6 +56,7 @@ export const enControls = {
     nav: {
       monitor: "Monitor",
       connections: "Connections",
+      codeProjects: "CodeProjects",
       setup: "Setup",
       files: "My files",
     },
@@ -68,6 +69,7 @@ export const enControls = {
       proShort: "Pro",
       engineLive: "Engine live",
       connectionsExpertSubtitle: "Persistent telemetry adapters",
+      codeProjectsExpertSubtitle: "Local parsing and SonarQube",
       setupExpertSubtitle: "Monitor deck preferences",
       currentFocus: "Current focus",
       collapseSidebar: "Collapse sidebar",
@@ -247,6 +249,7 @@ export const enControls = {
       pastSessions: "Past sessions",
       noPreviousSessions: "No previous sessions found.",
       connectionsSubtitle: "GCP Cloud, file tails, and adapters",
+      codeProjectsSubtitle: "Repositories, local scanner, and SonarQube",
       setupSubtitle: "Deck response and monitor behavior",
       filesSubtitle: "Log sources and track profiles",
       monitorSubtitle: "Live monitoring and reactive playback",
@@ -572,6 +575,18 @@ export const enControls = {
     },
     codeProjects: {
       ready: "Ready",
+      title: "Code projects",
+      signalSourceKicker: "Signal source",
+      signalSourceDescription:
+        "Parse repositories locally or connect SonarQube to turn quality findings into monitorable signals.",
+      localScannerTitle: "Plugin-style local scanner",
+      localScannerDescription:
+        "Maia can analyze a local repository without a server. Use this mode to validate code quality as a local complement.",
+      connectedScannerDescription:
+        "When a server is available, Maia can poll SonarQube issues and use them as an evidence stream.",
+      serverOptional: "Server optional",
+      rulesSyncPending: "Rules sync pending",
+      savedProjects: "Saved projects",
       testing: "Testing",
       error: "Error",
       notConfigured: "Not configured",
@@ -579,7 +594,11 @@ export const enControls = {
       projectNamePlaceholder: "My project",
       projectNameHelp: "A human-readable name for your code project",
       repositoryUrl: "Repository URL",
-      repositoryUrlHelp: "GitHub URL or local repository path",
+      repositoryUrlHelp: "GitHub URL or path to an already cloned local repository",
+      browseLocalRepository: "Browse local repository",
+      localRepositoryPickerHelp:
+        "Choose a local folder that already contains the cloned repository. Maia will use it in local plugin mode without a server.",
+      repositoryPickerFailed: "Could not open the native picker. Paste the local path manually.",
       invalidRepositoryLocation: "Invalid repository URL or local path",
       create: "Create project",
       newProject: "New code project",

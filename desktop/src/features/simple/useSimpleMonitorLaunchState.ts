@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { flushSync } from "react-dom";
 
 import type { AppTranslations } from "../../i18n/types";
@@ -30,6 +30,7 @@ export function useSimpleMonitorLaunchState({
   onStartMonitoring,
 }: UseSimpleMonitorLaunchStateInput) {
   const [selectedSoundId, setSelectedSoundId] = useState("");
+  const [selectedCodeProjectId, setSelectedCodeProjectId] = useState("");
   const { projects: codeProjects } = useCodeProjectsState();
   const monitorSourceCopy = buildMonitorSourceCopy(t);
   const selector = useSimpleMonitorSourceSelector(
@@ -47,6 +48,7 @@ export function useSimpleMonitorLaunchState({
     ),
   );
   const {
+    allMonitorSourceOptions,
     filteredMonitorSourceOptions,
     selectedSourceOption,
     canStartSelectedSource,
@@ -59,13 +61,52 @@ export function useSimpleMonitorLaunchState({
     isLaunchingMonitor,
     setIsLaunchingMonitor,
   } = selector;
+  const codeProjectSourceOptions = (allMonitorSourceOptions ?? []).filter(
+    (source) => source.origin === "codeProject",
+  );
+  const selectedCodeProjectOption =
+    codeProjectSourceOptions.find((source) => source.id === selectedCodeProjectId) ?? null;
+  const setExclusiveSourceId = useCallback(
+    (value: string | ((previous: string) => string)) => {
+      setSelectedSourceId((previous) => {
+        const next = typeof value === "function" ? value(previous) : value;
+        if (next) {
+          setSelectedCodeProjectId("");
+        }
+        return next;
+      });
+    },
+    [setSelectedSourceId],
+  );
+  const setExclusiveCodeProjectId = useCallback(
+    (value: string | ((previous: string) => string)) => {
+      setSelectedCodeProjectId((previous) => {
+        const next = typeof value === "function" ? value(previous) : value;
+        if (next) {
+          setSelectedSourceId("");
+        }
+        return next;
+      });
+    },
+    [setSelectedSourceId],
+  );
+  const effectiveSelectedSourceOption = selectedCodeProjectOption ?? selectedSourceOption;
+  const effectiveCanStartSelectedSource = selectedCodeProjectOption
+    ? Boolean(selectedCodeProjectOption.startable)
+    : canStartSelectedSource;
+  const effectiveStartHint =
+    selectedCodeProjectOption && !selectedCodeProjectOption.startable
+      ? t.simpleMode.setup.startHintCodeNotConfigured
+      : selectedCodeProjectOption && selectedSoundId
+        ? t.simpleMode.setup.startHintReady
+        : startHint;
 
   const handleStartMonitoringRequest = async () => {
     const didStart = await executeSimpleMonitorStartRequest(
       buildSimpleMonitorStartRequestInput({
         selector: {
-          selectedSourceOption,
-          canStartSelectedSource,
+          selectedSourceOption: effectiveSelectedSourceOption,
+          canStartSelectedSource: effectiveCanStartSelectedSource,
         },
         selectedSoundId,
         onResumeAudio,
@@ -90,13 +131,17 @@ export function useSimpleMonitorLaunchState({
   return buildSimpleMonitorLaunchStateResult({
     selectedSoundId,
     setSelectedSoundId,
+    codeProjectSourceOptions,
+    selectedCodeProjectId,
+    setSelectedCodeProjectId: setExclusiveCodeProjectId,
+    allMonitorSourceOptions,
     filteredMonitorSourceOptions,
     selectedSourceOption,
-    canStartSelectedSource,
+    canStartSelectedSource: effectiveCanStartSelectedSource,
     sourceEmptyMessage,
-    startHint,
+    startHint: effectiveStartHint,
     selectedSourceId,
-    setSelectedSourceId,
+    setSelectedSourceId: setExclusiveSourceId,
     sourceFilter,
     setSourceFilter,
     isLaunchingMonitor,

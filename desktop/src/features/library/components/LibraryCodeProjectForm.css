@@ -41,6 +41,43 @@
   cursor: not-allowed;
 }
 
+.code-project-form__path-row {
+  display: flex;
+  gap: var(--space-xs, 6px);
+}
+
+.code-project-form__path-row .maia-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.code-project-form__browse {
+  align-items: center;
+  background: rgba(54, 211, 255, 0.08);
+  border: 1px solid rgba(54, 211, 255, 0.3);
+  border-radius: 6px;
+  color: var(--accent-cyan, #36d3ff);
+  cursor: pointer;
+  display: inline-flex;
+  font-family:
+    IBM Plex Sans,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  justify-content: center;
+  min-width: 42px;
+  padding: var(--space-sm, 8px);
+}
+
+.code-project-form__browse:hover:not(:disabled) {
+  border-color: var(--accent-cyan, #36d3ff);
+}
+
+.code-project-form__browse:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .code-project-form .field-error {
   color: var(--color-critical);
   font-size: 12px;

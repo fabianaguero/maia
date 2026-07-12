@@ -4,6 +4,7 @@ export const APP_SECTIONS = [
   "inspect",
   "compose",
   "connections",
+  "codeProjects",
   "setup",
 ] as const;
 

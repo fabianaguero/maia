@@ -143,6 +143,49 @@ describe("monitorProviderSessionRuntime", () => {
     );
   });
 
+  it("starts a SonarQube CodeProject session through the live monitor pipeline", async () => {
+    const startLiveMonitorSession = vi.fn(async () => undefined);
+    const resolveLiveMonitorPollMode = vi.fn(async () => "session" as const);
+
+    const ok = await startMonitorProviderSessionState({
+      repo: createRepo(),
+      sessionInput: createSessionInput({
+        adapterKind: "sonarqube",
+        source: "/repos/visits",
+        connectionConfig: {
+          analysisMode: "local",
+          repositoryUrl: "/repos/visits",
+          localRulesProfile: "maia-default",
+        },
+      }),
+      persistedSessionId: "persisted-code-1",
+      sessionRef: { current: null },
+      replaceExistingSessionIfPresent: vi.fn(),
+      resolveLiveMonitorPollMode,
+      startLiveMonitorSession,
+      liveStartInput: createLiveStartInput(),
+      logger: { info: vi.fn() },
+    });
+
+    expect(ok).toBe(true);
+    expect(resolveLiveMonitorPollMode).toHaveBeenCalledWith({
+      sessionInput: expect.objectContaining({
+        adapterKind: "sonarqube",
+        source: "/repos/visits",
+      }),
+    });
+    expect(startLiveMonitorSession.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        session: expect.objectContaining({
+          adapterKind: "sonarqube",
+          sourcePath: "/repos/visits",
+          pollMode: "session",
+        }),
+        persistedSessionId: "persisted-code-1",
+      }),
+    );
+  });
+
   it("rejects non-file monitoring starts", async () => {
     await expect(
       startMonitorProviderSessionState({
