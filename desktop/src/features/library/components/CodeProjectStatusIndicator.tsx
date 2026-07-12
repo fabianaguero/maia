@@ -4,10 +4,11 @@ import {
   resolveCodeProjectStatusClass,
   resolveCodeProjectStatusLabel,
 } from "../codeProjectsViewModel";
+import type { CodeProjectStatus } from "../../../types/codeProject";
 import "./CodeProjectStatusIndicator.css";
 
 interface CodeProjectStatusIndicatorProps {
-  status: "not-configured" | "testing" | "ready" | "error";
+  status: CodeProjectStatus;
   errorMessage?: string;
   issueCount?: number;
   lastCheckedAt?: string;

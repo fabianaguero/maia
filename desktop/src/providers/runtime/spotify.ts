@@ -8,34 +8,61 @@ import { normalizePlaylistId, normalizeTrackId, normalizeIsoTimestamp } from "./
 
 const SPOTIFY_API_BASE = "https://api.spotify.com/v1";
 
-export function normalizeSpotifyPlaylist(raw: any): PlaylistMetadata {
+type UnknownRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): UnknownRecord {
+  return value && typeof value === "object" ? (value as UnknownRecord) : {};
+}
+
+function asString(value: unknown, fallback = ""): string {
+  return typeof value === "string" ? value : fallback;
+}
+
+function asNumber(value: unknown, fallback = 0): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function asBoolean(value: unknown, fallback = false): boolean {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+export function normalizeSpotifyPlaylist(raw: unknown): PlaylistMetadata {
+  const playlist = asRecord(raw);
+  const tracks = asRecord(playlist.tracks);
+  const images = Array.isArray(playlist.images) ? playlist.images.map(asRecord) : [];
+  const externalUrls = asRecord(playlist.external_urls);
+  const sourceId = asString(playlist.id);
+
   return {
-    id: normalizePlaylistId("spotify", raw.id),
+    id: normalizePlaylistId("spotify", sourceId),
     sourceType: "spotify",
-    sourceId: raw.id,
+    sourceId,
     sourceName: "Spotify",
-    name: raw.name || "Untitled",
-    description: raw.description || null,
-    trackCount: raw.tracks?.total || 0,
-    imageUrl: raw.images?.[0]?.url || null,
-    isPublic: raw.public ?? false,
-    externalUrl: raw.external_urls?.spotify || null,
+    name: asString(playlist.name, "Untitled"),
+    description: asString(playlist.description) || null,
+    trackCount: asNumber(tracks.total),
+    imageUrl: asString(images[0]?.url) || null,
+    isPublic: asBoolean(playlist.public),
+    externalUrl: asString(externalUrls.spotify) || null,
     syncedAt: normalizeIsoTimestamp(),
   };
 }
 
-export function normalizeSpotifyTrack(raw: any): RemoteTrackMetadata {
-  const artists = Array.isArray(raw.artists) ? raw.artists : [];
-  const artist = artists.length > 0 ? artists[0].name : "Unknown";
+export function normalizeSpotifyTrack(raw: unknown): RemoteTrackMetadata {
+  const track = asRecord(raw);
+  const artists = Array.isArray(track.artists) ? track.artists.map(asRecord) : [];
+  const artist = artists.length > 0 ? asString(artists[0].name, "Unknown") : "Unknown";
+  const externalUrls = asRecord(track.external_urls);
+  const sourceId = asString(track.id);
 
   return {
-    id: normalizeTrackId("spotify", raw.id),
+    id: normalizeTrackId("spotify", sourceId),
     sourceType: "spotify",
-    title: raw.name || "Untitled",
+    title: asString(track.name, "Untitled"),
     artist,
-    durationSeconds: (raw.duration_ms || 0) / 1000,
-    isPlayable: raw.is_playable ?? true,
-    externalUrl: raw.external_urls?.spotify || null,
+    durationSeconds: asNumber(track.duration_ms) / 1000,
+    isPlayable: asBoolean(track.is_playable, true),
+    externalUrl: asString(externalUrls.spotify) || null,
     syncedAt: normalizeIsoTimestamp(),
   };
 }
@@ -78,8 +105,9 @@ export async function listSpotifyPlaylists(
     } as ProviderError;
   }
 
-  const data = await response.json();
-  return (data.items || []).map(normalizeSpotifyPlaylist);
+  const data = asRecord(await response.json());
+  const items = Array.isArray(data.items) ? data.items : [];
+  return items.map(normalizeSpotifyPlaylist);
 }
 
 export async function listTracksInSpotifyPlaylist(
@@ -110,9 +138,10 @@ export async function listTracksInSpotifyPlaylist(
     } as ProviderError;
   }
 
-  const data = await response.json();
-  return (data.items || [])
-    .map((item: any) => item.track)
-    .filter((track: any) => track !== null)
+  const data = asRecord(await response.json());
+  const items = Array.isArray(data.items) ? data.items.map(asRecord) : [];
+  return items
+    .map((item) => item.track)
+    .filter((track): track is unknown => track !== null && track !== undefined)
     .map(normalizeSpotifyTrack);
 }

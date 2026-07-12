@@ -1,4 +1,5 @@
 export type CodeProjectAnalysisMode = "local" | "connected";
+export type CodeProjectStatus = "not-configured" | "testing" | "ready" | "error";
 
 export interface CodeProjectSonarQubeConfig {
   analysisMode: CodeProjectAnalysisMode;
@@ -17,7 +18,7 @@ export interface CodeProject {
   analysisMode: CodeProjectAnalysisMode;
   sonarqubeConfig?: CodeProjectSonarQubeConfig;
   enabled: boolean;
-  status: "not-configured" | "testing" | "ready" | "error";
+  status: CodeProjectStatus;
   errorMessage?: string;
   lastCheckedAt?: string;
   createdAt: string;

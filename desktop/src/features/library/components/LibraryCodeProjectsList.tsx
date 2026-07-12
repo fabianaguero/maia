@@ -69,7 +69,7 @@ export function LibraryCodeProjectsList({
           </div>
 
           <CodeProjectStatusIndicator
-            status={project.status as any}
+            status={project.status}
             errorMessage={project.errorMessage}
             lastCheckedAt={project.lastCheckedAt}
           />
