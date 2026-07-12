@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import type { RepositoryAnalysis } from "../../types/library";
+import type { CodeProject } from "../../types/codeProject";
 import {
   buildMonitorSourceSelectionModel,
   shouldResetSelectedSource,
@@ -11,6 +12,7 @@ import { usePersistentLogSourceConnections } from "./usePersistentLogSourceConne
 
 export interface UseSimpleMonitorSourceSelectorInput {
   repositories: RepositoryAnalysis[];
+  codeProjects?: CodeProject[];
   selectedSoundId: string;
   isListening: boolean;
   copy: MonitorSourceCopy;
@@ -18,6 +20,7 @@ export interface UseSimpleMonitorSourceSelectorInput {
 
 export function useSimpleMonitorSourceSelector({
   repositories,
+  codeProjects,
   selectedSoundId,
   isListening,
   copy,
@@ -38,12 +41,21 @@ export function useSimpleMonitorSourceSelector({
       buildMonitorSourceSelectionModel({
         repositories,
         persistentConnections,
+        codeProjects: codeProjects ?? [],
         selectedSourceId,
         selectedSoundId,
         sourceFilter,
         copy,
       }),
-    [repositories, persistentConnections, selectedSourceId, selectedSoundId, sourceFilter, copy],
+    [
+      repositories,
+      persistentConnections,
+      codeProjects,
+      selectedSourceId,
+      selectedSoundId,
+      sourceFilter,
+      copy,
+    ],
   );
 
   useEffect(() => {

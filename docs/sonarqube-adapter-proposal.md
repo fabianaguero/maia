@@ -6,7 +6,7 @@
 
 ## Overview
 
-Extend Maia's monitoring capabilities to include **static code analysis anomalies** from SonarQube. Instead of monitoring only live logs or runtime behavior, this adapter continuously polls SonarQube API for code quality issues and maps them into Maia's signal-stream anomaly/sonification pipeline.
+Extend Maia's monitoring capabilities to include **static code analysis anomalies** without making a SonarQube server mandatory. CodeProjects now support a local plugin-style mode that scans the working tree directly, plus a connected mode that can use SonarQube server access for issue polling now and rules/profile synchronization as the integration matures.
 
 See also: `docs/signal-streams-roadmap.md`.
 
@@ -14,6 +14,8 @@ See also: `docs/signal-streams-roadmap.md`.
 
 - **Shift left:** Catch architectural and code-quality drifts before they hit production logs
 - **Continuous quality:** Monitor code health like current system monitoring operational health
+- **Local-first:** Let Maia run on a repository without requiring network or a SonarQube server
+- **Connected when useful:** Use SonarQube server access to sync rules/quality profiles or poll server-side findings
 - **Same deck model:** Reuse existing deck, waveform, and playback logic without creating a SonarQube-specific monitor surface
 - **Natural mapping:** SonarQube severities (CRITICAL, MAJOR, MINOR, INFO) → anomaly types → musical deformation
 
@@ -25,7 +27,8 @@ The current Maia architecture **is fully prepared** for SonarQube adapter. Key e
 
 Landed:
 
-- `CodeProjects` Library UI for creating, editing, deleting, and configuring SonarQube-backed projects.
+- `CodeProjects` Library UI for creating, editing, deleting, and configuring local or SonarQube-connected code quality projects.
+- CodeProjects can be created from a local repository path or an HTTP(S) repository URL; local paths are the primary path for serverless local analysis.
 - `desktop/src/types/codeProject.ts` with strict TypeScript contracts.
 - `database/schema.sql` with `code_projects`.
 - Native commands in `desktop/src-tauri/src/main.rs`:
@@ -34,8 +37,17 @@ Landed:
   - `update_code_project`
   - `delete_code_project`
   - `test_sonarqube_connection`
-- SonarQube issue polling branch in `poll_stream_session`.
-- `format_sonarqube_issue_as_log_line` compatibility formatter.
+- `desktop/src-tauri/src/main.rs` keeps session orchestration in `poll_code_project_stream_session`.
+- `desktop/src-tauri/src/code_project_scanner.rs` owns serverless local code-quality evidence.
+- `desktop/src-tauri/src/code_project_stream.rs` owns CodeProject stream config parsing, connected-mode validation, and idle/baseline status messages.
+- `desktop/src-tauri/src/sonarqube_client.rs` owns SonarQube issue polling and `format_sonarqube_issue_as_log_line`.
+
+Local profiles:
+
+- `maia-default`: local operational heuristics, including TODO/FIXME, fail-fast paths, dynamic execution, and low-severity debug output signals.
+- `sonar-way-compatible`: lower-noise local profile aligned with SonarQube-style quality findings; it suppresses debug-output informational signals and keeps higher-value risk/quality signals.
+
+The local scanner is intentionally deterministic and lightweight in the MVP. It is not a bundled SonarLint engine yet; real SonarQube quality profile/rule synchronization remains a follow-up.
 
 Not landed / still needs validation:
 
@@ -78,11 +90,15 @@ The long-term contract should preserve structured source evidence so SonarQube d
 
 ## Implementation Plan
 
-### Phase 1: Adapter Skeleton (Rust) ✅ Implemented in `main.rs`
+### Phase 1: Adapter Skeleton (Rust) ✅ Implemented in native modules
 
-**Current file:** `desktop/src-tauri/src/main.rs`
+**Current files:**
+- `desktop/src-tauri/src/main.rs` coordinates session registry polling.
+- `desktop/src-tauri/src/code_project_stream.rs` parses stream configuration and validates local/connected mode.
+- `desktop/src-tauri/src/code_project_scanner.rs` scans local repositories without a SonarQube server.
+- `desktop/src-tauri/src/sonarqube_client.rs` polls remote SonarQube issues.
 
-An earlier standalone `sonarqube_adapter.rs` was removed; the current implementation lives in the native runtime file with the rest of the session registry plumbing.
+An earlier standalone `sonarqube_adapter.rs` was removed; the current implementation is split across native runtime modules while the session registry still owns lifecycle.
 
 ```rust
 pub struct SonarQubeAdapter {
@@ -103,10 +119,11 @@ impl SonarQubeAdapter {
 }
 ```
 
-**Integration in SessionRegistry (`main.rs`):**
+**Integration in SessionRegistry:**
 - [x] Add `sonarqube` case to `adapter_kind` match.
 - [x] Poll API from the native runtime.
 - [x] Track `last_known_issues` inside the active session.
+- [x] Keep CodeProject config parsing and idle status formatting in a pure tested module.
 - [ ] Rework blocking/async boundary if needed; current `Runtime::new().block_on(...)` path should be watched for UI-freeze regressions.
 - [ ] Treat polling output as source evidence rather than only text lines.
 
@@ -137,7 +154,7 @@ In the future, the same issue should also be representable as a structured evide
 
 **Current UI path:**
 - CodeProjects lives in the Library, not `ConnectionsScreen`.
-- Users can create a code project, configure SonarQube server URL/project key/auth token, and test the connection.
+- Users can create a code project from a local repository path or HTTP(S) URL, configure SonarQube server URL/project key/auth token when connected mode is needed, and test the connection.
 - Auth token is currently stored in plaintext SQLite, not encrypted.
 
 **Still needed:**
@@ -204,10 +221,15 @@ React deck waveform + Web Audio playback
 ## Success Criteria
 
 - [x] `sonarqube` adapter kind is recognized in the native polling path
+- [x] CodeProjects can run in local plugin mode without a SonarQube server
 - [x] SonarQube issues format into log lines matching analyzer's expected pattern
 - [x] UI allows saving SonarQube connection with auth token + project key through CodeProjects
+- [x] Monitor setup can launch configured CodeProjects as SonarQube-backed sessions
+- [x] Initial SonarQube poll seeds a passive baseline instead of sonifying every pre-existing issue
+- [x] SonarQube issue lines preserve issue timestamps when the API provides them
 - [ ] Monitor deck renders SonarQube anomalies with same waveform/severity visual
 - [ ] Test with real SonarQube instance (Cloud or self-hosted)
+- [ ] Sync real SonarQube quality profiles/rules for local analysis
 - [ ] Playback deforms based on code quality drift (same as log severity)
 - [ ] Issue state tracking works (new/closed issues detected across polls)
 - [ ] Token storage is not plaintext SQLite

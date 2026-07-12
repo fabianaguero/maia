@@ -66,14 +66,18 @@ export function buildAppV0RepositoryStartInput(input: {
   repo: RepositoryAnalysis;
   track: LibraryTrack;
   trackTitle: string;
+  adapterKind?: StartSessionInput["adapterKind"];
+  connectionConfig?: Record<string, unknown>;
 }): StartSessionInput {
   return {
     sessionId: input.sessionId,
     source: input.repo.sourcePath,
-    adapterKind: "file",
+    adapterKind: input.adapterKind ?? "file",
+    label: input.repo.title,
     trackId: input.track.id,
     trackTitle: input.trackTitle,
     startFromBeginning: true,
+    connectionConfig: input.connectionConfig,
   };
 }
 
@@ -120,6 +124,8 @@ export function buildAppV0RepositoryLaunchPlan(input: {
   trackTitle: string;
   guideTrackPath: string | null;
   sessionId: string;
+  adapterKind?: StartSessionInput["adapterKind"];
+  connectionConfig?: Record<string, unknown>;
 }): Extract<AppV0MonitorLaunchPlan, { kind: "repository" }> {
   return {
     kind: "repository",
@@ -133,7 +139,56 @@ export function buildAppV0RepositoryLaunchPlan(input: {
       repo: input.repo,
       track: input.track,
       trackTitle: input.trackTitle,
+      adapterKind: input.adapterKind,
+      connectionConfig: input.connectionConfig,
     }),
+  };
+}
+
+export function buildCodeProjectRepositoryFromLaunchSource(input: {
+  source: MonitorLaunchSource;
+  importedAt: string;
+}): RepositoryAnalysis {
+  const analysisMode =
+    typeof input.source.connectionConfig?.analysisMode === "string"
+      ? input.source.connectionConfig.analysisMode
+      : "local";
+
+  return {
+    id: input.source.id,
+    title: input.source.title,
+    sourcePath: input.source.sourcePath,
+    storagePath: null,
+    sourceKind: analysisMode === "local" ? "directory" : "url",
+    importedAt: input.importedAt,
+    suggestedBpm: null,
+    confidence: 0,
+    summary:
+      analysisMode === "local"
+        ? "Code quality signal source monitored through Maia local scanner."
+        : "Code quality signal source monitored through SonarQube.",
+    analyzerStatus:
+      analysisMode === "local"
+        ? "CodeProject local monitor source"
+        : "CodeProject monitor source",
+    buildSystem: analysisMode === "local" ? "maia-local-code-scanner" : "sonarqube",
+    primaryLanguage: "code-quality",
+    javaFileCount: 0,
+    testFileCount: 0,
+    waveformBins: [],
+    beatGrid: [],
+    bpmCurve: [],
+    notes: [
+      analysisMode === "local"
+        ? "This monitor source uses Maia's local CodeProject scanner without requiring a SonarQube server."
+        : "This monitor source is backed by a SonarQube CodeProject adapter.",
+    ],
+    tags: ["code-project", analysisMode === "local" ? "local-code-scan" : "sonarqube", "signal-source"],
+    metrics: {
+      sourceKind: "code-project",
+      adapterKind: input.source.adapterKind ?? "sonarqube",
+      analysisMode,
+    },
   };
 }
 
@@ -160,6 +215,21 @@ export function buildAppV0MonitorLaunchPlan(input: {
       trackTitle: trackSelection.trackTitle,
       guideTrackPath: trackSelection.guideTrackPath,
       sessionId: input.sessionId,
+    });
+  }
+
+  if (input.source.origin === "codeProject") {
+    return buildAppV0RepositoryLaunchPlan({
+      repo: buildCodeProjectRepositoryFromLaunchSource({
+        source: input.source,
+        importedAt: new Date().toISOString(),
+      }),
+      track: trackSelection.track,
+      trackTitle: trackSelection.trackTitle,
+      guideTrackPath: trackSelection.guideTrackPath,
+      sessionId: input.sessionId,
+      adapterKind: input.source.adapterKind ?? "sonarqube",
+      connectionConfig: input.source.connectionConfig,
     });
   }
 

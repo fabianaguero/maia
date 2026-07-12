@@ -22,10 +22,13 @@ export function createEmptyCodeProjectDraft(): CodeProjectFormDraft {
   return {
     label: "",
     repositoryUrl: "",
+    analysisMode: "local",
     sonarqubeApiUrl: "",
     sonarqubeProjectKey: "",
     sonarqubeAuthToken: "",
     sonarqubePollingInterval: "30",
+    sonarqubeSyncRules: false,
+    localRulesProfile: "maia-default",
   };
 }
 
@@ -36,9 +39,12 @@ export function createCodeProjectDraftFromProject(
     id: project.id,
     label: project.label,
     repositoryUrl: project.repositoryUrl,
+    analysisMode: project.analysisMode,
     sonarqubeApiUrl: project.sonarqubeConfig?.apiUrl ?? "",
     sonarqubeProjectKey: project.sonarqubeConfig?.projectKey ?? "",
     sonarqubeAuthToken: project.sonarqubeConfig?.authToken ?? "",
     sonarqubePollingInterval: project.sonarqubeConfig?.pollingInterval ?? "30",
+    sonarqubeSyncRules: project.sonarqubeConfig?.syncRules ?? false,
+    localRulesProfile: project.sonarqubeConfig?.localRulesProfile ?? "maia-default",
   };
 }

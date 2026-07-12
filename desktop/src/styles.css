@@ -6995,6 +6995,12 @@ dd {
   border-color: rgba(99, 179, 237, 0.24);
 }
 
+.selector-type-badge--code {
+  color: #c4ff76;
+  background: rgba(196, 255, 118, 0.12);
+  border-color: rgba(196, 255, 118, 0.26);
+}
+
 /* Static Wave Components */
 .visual-wave-static {
   display: flex;
@@ -9311,6 +9317,30 @@ dd {
   background:
     radial-gradient(circle at top right, rgba(99, 179, 237, 0.18), transparent 42%),
     linear-gradient(180deg, rgba(15, 21, 29, 0.96) 0%, rgba(8, 12, 18, 0.94) 100%);
+}
+
+.selector-brand-shell--code {
+  background:
+    radial-gradient(circle at top right, rgba(196, 255, 118, 0.18), transparent 42%),
+    linear-gradient(180deg, rgba(15, 21, 29, 0.96) 0%, rgba(8, 12, 18, 0.94) 100%);
+}
+
+.mode-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.checkbox-row {
+  align-items: center;
+  color: var(--text-primary);
+  display: flex;
+  gap: 0.55rem;
+  letter-spacing: 0.02em;
+}
+
+.checkbox-row input {
+  accent-color: var(--accent-cyan);
 }
 
 .selector-brand-shell--track {

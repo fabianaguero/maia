@@ -237,6 +237,7 @@ export const enControls = {
       logFile: "Log file",
       folder: "Folder",
       cloud: "Cloud",
+      code: "Code",
       logSource: "Log source",
       soundProfile: "Sound profile",
       ambientFallback: "Ambient",
@@ -251,9 +252,12 @@ export const enControls = {
       monitorSubtitle: "Live monitoring and reactive playback",
       cloudRemote: "Cloud / remote",
       cloudConnection: "Cloud connection",
+      codeProject: "Code project",
       emptyCloudReady: "Choose a saved cloud connection to start passive monitoring.",
       emptyCloudMissing:
         "No cloud-ready log source is available here yet. Configure GCP adapters in Connections.",
+      emptyCodeReady: "Choose a CodeProject to monitor code-quality evidence.",
+      emptyCodeMissing: "No CodeProject is ready yet. Configure SonarQube projects in Library.",
       emptyFolder:
         "Folders are visible for inspection, but passive monitoring starts from log files.",
       emptyDefault: "No source matches this filter.",
@@ -263,6 +267,8 @@ export const enControls = {
         "This cloud connection exists but is disabled. Enable it in Connections first.",
       startHintCloudManaged:
         "Cloud adapters are configured under Connections. Use a file log here, or manage cloud tails from that panel.",
+      startHintCodeNotConfigured:
+        "This CodeProject needs a complete SonarQube configuration before it can be monitored.",
       startHintFileOnly:
         "This source is useful for inspection, but passive monitoring starts from a file log.",
       startHintReady: "Ready to start passive monitoring.",
@@ -574,9 +580,25 @@ export const enControls = {
       projectNameHelp: "A human-readable name for your code project",
       repositoryUrl: "Repository URL",
       repositoryUrlHelp: "GitHub URL or local repository path",
+      invalidRepositoryLocation: "Invalid repository URL or local path",
       create: "Create project",
       newProject: "New code project",
       configureSonarQube: "Configure SonarQube",
+      analysisMode: "Analysis mode",
+      localMode: "Local plugin",
+      connectedMode: "Connected",
+      localModeHelp:
+        "Run Maia's local code-quality scanner without requiring a SonarQube server.",
+      connectedModeHelp:
+        "Use SonarQube server access for issue polling now and rule/profile sync as the integration grows.",
+      localRulesProfile: "Local rules profile",
+      localRulesProfileHelp:
+        "Choose the local rule profile Maia applies when the server is not required.",
+      localRulesMaiaDefault: "Maia default",
+      localRulesSonarWay: "Sonar way compatible",
+      syncRulesFromServer: "Sync rules from server",
+      syncRulesFromServerHelp:
+        "Optional. Keep disabled for fully local analysis; enable when you want Maia to pull quality-profile settings.",
       sonarqubeServerUrl: "SonarQube server URL",
       sonarqubeServerUrlHelp: "Base URL of your SonarQube instance",
       sonarqubeProjectKey: "Project key",

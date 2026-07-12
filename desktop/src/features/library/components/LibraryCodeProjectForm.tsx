@@ -28,8 +28,8 @@ export function LibraryCodeProjectForm({
     }
     if (!draft.repositoryUrl.trim()) {
       newErrors.repositoryUrl = t.simpleMode.common.required || "Required";
-    } else if (!isValidUrl(draft.repositoryUrl)) {
-      newErrors.repositoryUrl = "Invalid URL format";
+    } else if (!isValidRepositoryLocation(draft.repositoryUrl)) {
+      newErrors.repositoryUrl = t.simpleMode.codeProjects.invalidRepositoryLocation;
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -69,7 +69,7 @@ export function LibraryCodeProjectForm({
         </label>
         <input
           id="repo-url"
-          type="url"
+          type="text"
           className="maia-input"
           value={draft.repositoryUrl}
           onChange={(e) => onDraftChange({ repositoryUrl: e.target.value })}
@@ -106,10 +106,18 @@ export function LibraryCodeProjectForm({
   );
 }
 
-function isValidUrl(url: string): boolean {
-  try {
-    new URL(url);
+function isValidRepositoryLocation(value: string): boolean {
+  const trimmed = value.trim();
+  if (trimmed.startsWith("/") || trimmed.startsWith("./") || trimmed.startsWith("../")) {
     return true;
+  }
+  if (/^[A-Za-z]:[\\/]/.test(trimmed)) {
+    return true;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
   } catch {
     return false;
   }

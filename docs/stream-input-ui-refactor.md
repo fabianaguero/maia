@@ -39,7 +39,10 @@ Refactor the connection management UI from "Log-centric" to "Stream Input" - a g
 - `desktop/src/features/library/useCodeProjectsState.ts` provides list/create/update/delete/test state.
 - `desktop/src/features/library/components/*CodeProject*` implements the Library UI.
 - `desktop/src-tauri/src/main.rs` contains `create_code_project`, `list_code_projects`, `update_code_project`, `delete_code_project`, and `test_sonarqube_connection`.
-- `desktop/src-tauri/src/main.rs` contains the current SonarQube polling branch in `poll_stream_session`.
+- `desktop/src-tauri/src/code_project_scanner.rs` contains the local CodeProject scanner and local rule-profile behavior.
+- `desktop/src-tauri/src/code_project_stream.rs` contains CodeProject stream config parsing, connected-mode validation, and idle/baseline status copy.
+- `desktop/src-tauri/src/sonarqube_client.rs` contains SonarQube issue formatting and remote polling.
+- `desktop/src-tauri/src/main.rs` coordinates CodeProject stream sessions through `poll_code_project_stream_session`.
 - `database/schema.sql` includes `code_projects`.
 
 Known gaps:
@@ -47,7 +50,7 @@ Known gaps:
 - SonarQube auth tokens are currently stored in plaintext SQLite.
 - SonarQube findings are converted to log-shaped lines before analysis.
 - CodeProjects and `log_source_connections` are two parallel source systems, not one unified `stream_input_connections` table.
-- Monitor launch/picker behavior still needs end-to-end verification for CodeProjects.
+- Real SonarQube server verification is still pending.
 
 ## Refactoring Plan
 
@@ -219,7 +222,9 @@ const connectionTypeColors = {
 ### Phase 2: Adapter Integration
 - [x] SonarQube adapter implemented
 - [x] Integrate SonarQube polling into `SessionRegistry`/`poll_stream_session` compatibility path.
-- [ ] Verify CodeProject monitor launch end-to-end from Library/Monitor setup.
+- [x] Wire CodeProjects into the Monitor setup selector with a Code/SonarQube source kind.
+- [x] Launch configured CodeProjects as monitor sessions with SonarQube connection config attached to the native session.
+- [ ] Verify CodeProject monitor launch end-to-end against a real SonarQube instance.
 - [ ] Verify existing file/process/gcloud adapters still work after CodeProject changes.
 - [ ] Add one event-native adapter, such as GitHub Actions or Alertmanager, to prove the design is not log-only
 - [ ] Add one numeric adapter, such as Prometheus polling, to prove continuous pressure mapping
@@ -227,13 +232,15 @@ const connectionTypeColors = {
 ### Phase 3: React UI
 - [x] Add CodeProjects Library UI and i18n strings.
 - [x] Add SonarQube-specific setup form and status indicator components.
+- [x] Add monitor source-kind chips and labels for CodeProjects/SonarQube in setup.
 - [ ] Decide whether CodeProjects remain a separate Library tab or become a source-kind inside unified Stream Inputs.
-- [ ] Add monitor source-kind chips and labels across setup/replay/tail surfaces.
+- [ ] Extend source-kind chips and labels across replay/tail/detail surfaces.
 - [ ] Gradually rename user-facing "log source" labels to "signal source" where source-agnostic.
 
 ### Phase 4: Testing
 - [x] Add/adjust tests for CodeProjects tab integration in library view-model/controller coverage.
-- [ ] Unit tests for SonarQube issue formatting and polling diff behavior.
+- [x] Add tests for CodeProject source selection and monitor launch-plan contracts.
+- [x] Unit tests for SonarQube issue formatting, local scanner baseline behavior, and CodeProject stream config parsing.
 - [ ] Integration test: create CodeProject → test connection → start monitor session → poll → render evidence.
 - [ ] Regression tests: file/local/cloud monitoring still tail and still keep track audio faithful while idle.
 

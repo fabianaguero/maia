@@ -9,6 +9,7 @@ describe("streamAdapter", () => {
     expect(getStreamAdapterLabel("websocket")).toBe("WebSocket");
     expect(getStreamAdapterLabel("http-poll")).toBe("HTTP poll");
     expect(getStreamAdapterLabel("journald")).toBe("journald");
+    expect(getStreamAdapterLabel("sonarqube")).toBe("SonarQube");
   });
 
   it("returns file-specific and disabled-adapter descriptions", () => {
@@ -17,5 +18,6 @@ describe("streamAdapter", () => {
     expect(getStreamAdapterDescription("websocket")).toContain("Use an imported log file instead");
     expect(getStreamAdapterDescription("http-poll")).toContain("Use an imported log file instead");
     expect(getStreamAdapterDescription("journald")).toContain("Use an imported log file instead");
+    expect(getStreamAdapterDescription("sonarqube")).toContain("code-quality issues");
   });
 });

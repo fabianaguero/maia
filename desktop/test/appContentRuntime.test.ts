@@ -257,6 +257,27 @@ describe("appContentRuntime", () => {
     });
   });
 
+  it("marks local CodeProject fallback sessions as local directory scans", () => {
+    expect(
+      buildFallbackSessionRepository({
+        adapterKind: "sonarqube",
+        label: "checkout quality",
+        nowIso: "2026-06-25T00:00:00.000Z",
+        sessionId: "session-code",
+        source: "/workspace/checkout",
+      }),
+    ).toMatchObject({
+      id: "session-code",
+      sourceKind: "directory",
+      buildSystem: "maia-local-code-scanner",
+      analyzerStatus: "CodeProject local monitor source",
+      metrics: {
+        analysisMode: "local",
+      },
+      tags: ["code-project", "local-code-scan"],
+    });
+  });
+
   it("reuses an existing repository before creating a fallback session source", () => {
     const existing = {
       id: "repo-1",

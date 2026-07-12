@@ -157,7 +157,8 @@ Current MVP-compatible adapters are unified under one session contract:
 - `websocket`
 - `journald`
 - cloud-backed adapters routed through saved connections in the UI
-- planned non-log adapters such as `sonarqube`, CI/CD event feeds, incident feeds, and metrics polling
+- CodeProject/SonarQube adapters: local CodeProject scanning plus optional SonarQube issue polling
+- planned non-log adapters such as CI/CD event feeds, incident feeds, and metrics polling
 
 Architecturally, Maia should treat them the same after ingestion: once source evidence enters the session buffer, the analyzer path and monitor deck should behave identically regardless of origin.
 
@@ -166,7 +167,7 @@ The long-term target is a normalized evidence event shape so non-log sources do 
 
 ```mermaid
 flowchart LR
-  Adapter[Adapter<br/>file / gcloud / sonarqube / ci / metrics]
+  Adapter[Adapter<br/>file / gcloud / code project / sonarqube / ci / metrics]
   Evidence[Source evidence<br/>row or event]
   Analyzer[Analyzer]
   Pressure[Pressure + anomalies]

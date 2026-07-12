@@ -5,6 +5,7 @@ import type { AppTranslations } from "../../i18n/types";
 import type { RepositoryAnalysis } from "../../types/library";
 import { buildMonitorSourceCopy } from "./monitorSourceOptions";
 import type { MonitorLaunchSource } from "../../types/monitorLaunch";
+import { useCodeProjectsState } from "../library/useCodeProjectsState";
 import { executeSimpleMonitorStartRequest } from "./simpleMonitorInteractionRuntime";
 import {
   buildSimpleMonitorLaunchSelectorInput,
@@ -29,11 +30,13 @@ export function useSimpleMonitorLaunchState({
   onStartMonitoring,
 }: UseSimpleMonitorLaunchStateInput) {
   const [selectedSoundId, setSelectedSoundId] = useState("");
+  const { projects: codeProjects } = useCodeProjectsState();
   const monitorSourceCopy = buildMonitorSourceCopy(t);
   const selector = useSimpleMonitorSourceSelector(
     buildSimpleMonitorLaunchSelectorInput(
       {
         repositories,
+        codeProjects,
         isListening,
         t,
         onResumeAudio,

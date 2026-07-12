@@ -24,6 +24,8 @@ export function getStreamAdapterCode(adapterKind: StreamAdapterKind | undefined)
       return "WEBSOCKET_STREAM";
     case "journald":
       return "JOURNALD_STREAM";
+    case "sonarqube":
+      return "SONARQUBE_SIGNAL";
     case "file":
     default:
       return "FILE_TAIL";

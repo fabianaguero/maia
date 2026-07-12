@@ -34,6 +34,9 @@ export function CodeProjectSonarQubeConfigForm({
   const [_errors, setErrors] = useState<Record<string, string>>({});
 
   const handleTestConnection = useCallback(async () => {
+    if (draft.analysisMode !== "connected") {
+      return;
+    }
     setTesting(true);
     try {
       const result = await onTestConnection(
@@ -51,14 +54,100 @@ export function CodeProjectSonarQubeConfigForm({
   }, [draft, onTestConnection]);
 
   const canTest =
+    draft.analysisMode === "connected" &&
     draft.sonarqubeApiUrl.trim() &&
     draft.sonarqubeProjectKey.trim() &&
     draft.sonarqubeAuthToken.trim();
 
-  const canSave = canTest && testResult?.valid;
+  const canSave =
+    draft.analysisMode === "local" || (Boolean(canTest) && testResult?.valid);
 
   return (
     <form className="sonarqube-config-form" onSubmit={(e) => e.preventDefault()}>
+      <div className="form-field">
+        <span className="field-label">
+          {t.simpleMode.codeProjects.analysisMode}
+        </span>
+        <div className="mode-toggle-row" role="radiogroup">
+          <button
+            type="button"
+            className={`selector-filter-chip ${draft.analysisMode === "local" ? "active" : ""}`}
+            onClick={() =>
+              onDraftChange({
+                analysisMode: "local",
+                sonarqubeSyncRules: false,
+              })
+            }
+            disabled={saving || testing}
+            aria-pressed={draft.analysisMode === "local"}
+          >
+            {t.simpleMode.codeProjects.localMode}
+          </button>
+          <button
+            type="button"
+            className={`selector-filter-chip ${draft.analysisMode === "connected" ? "active" : ""}`}
+            onClick={() =>
+              onDraftChange({
+                analysisMode: "connected",
+                sonarqubeSyncRules: true,
+              })
+            }
+            disabled={saving || testing}
+            aria-pressed={draft.analysisMode === "connected"}
+          >
+            {t.simpleMode.codeProjects.connectedMode}
+          </button>
+        </div>
+        <span className="support-copy">
+          {draft.analysisMode === "local"
+            ? t.simpleMode.codeProjects.localModeHelp
+            : t.simpleMode.codeProjects.connectedModeHelp}
+        </span>
+      </div>
+
+      <div className="form-field">
+        <label htmlFor="local-rules-profile" className="field-label">
+          {t.simpleMode.codeProjects.localRulesProfile}
+        </label>
+        <select
+          id="local-rules-profile"
+          className="maia-input"
+          value={draft.localRulesProfile}
+          onChange={(e) => onDraftChange({ localRulesProfile: e.target.value })}
+          disabled={saving || testing}
+        >
+          <option value="maia-default">
+            {t.simpleMode.codeProjects.localRulesMaiaDefault}
+          </option>
+          <option value="sonar-way-compatible">
+            {t.simpleMode.codeProjects.localRulesSonarWay}
+          </option>
+        </select>
+        <span className="support-copy">
+          {t.simpleMode.codeProjects.localRulesProfileHelp}
+        </span>
+      </div>
+
+      <div className="form-field">
+        <label className="checkbox-row">
+          <input
+            type="checkbox"
+            checked={draft.sonarqubeSyncRules}
+            onChange={(e) =>
+              onDraftChange({
+                sonarqubeSyncRules: e.target.checked,
+                analysisMode: e.target.checked ? "connected" : draft.analysisMode,
+              })
+            }
+            disabled={saving || testing}
+          />
+          <span>{t.simpleMode.codeProjects.syncRulesFromServer}</span>
+        </label>
+        <span className="support-copy">
+          {t.simpleMode.codeProjects.syncRulesFromServerHelp}
+        </span>
+      </div>
+
       <div className="form-field">
         <label htmlFor="sonarqube-url" className="field-label">
           {t.simpleMode.codeProjects.sonarqubeServerUrl}
@@ -70,7 +159,7 @@ export function CodeProjectSonarQubeConfigForm({
           value={draft.sonarqubeApiUrl}
           onChange={(e) => onDraftChange({ sonarqubeApiUrl: e.target.value })}
           placeholder="https://sonarqube.example.com"
-          disabled={saving || testing}
+          disabled={saving || testing || draft.analysisMode === "local"}
         />
         <span className="support-copy">
           {t.simpleMode.codeProjects.sonarqubeServerUrlHelp}
@@ -88,7 +177,7 @@ export function CodeProjectSonarQubeConfigForm({
           value={draft.sonarqubeProjectKey}
           onChange={(e) => onDraftChange({ sonarqubeProjectKey: e.target.value })}
           placeholder="org.example:my-service"
-          disabled={saving || testing}
+          disabled={saving || testing || draft.analysisMode === "local"}
         />
         <span className="support-copy">
           {t.simpleMode.codeProjects.sonarqubeProjectKeyHelp}
@@ -106,7 +195,7 @@ export function CodeProjectSonarQubeConfigForm({
           value={draft.sonarqubeAuthToken}
           onChange={(e) => onDraftChange({ sonarqubeAuthToken: e.target.value })}
           placeholder="squ_xxxxxxxxxxxx"
-          disabled={saving || testing}
+          disabled={saving || testing || draft.analysisMode === "local"}
         />
         <span className="support-copy">
           {t.simpleMode.codeProjects.sonarqubeAuthTokenHelp}

@@ -82,10 +82,13 @@ export function LibraryCodeProjectDrawer({
         label: draft.label,
         repositoryUrl: draft.repositoryUrl,
         sonarqubeConfig: {
+          analysisMode: draft.analysisMode,
           apiUrl: draft.sonarqubeApiUrl,
           projectKey: draft.sonarqubeProjectKey,
           authToken: draft.sonarqubeAuthToken,
           pollingInterval: draft.sonarqubePollingInterval,
+          syncRules: draft.sonarqubeSyncRules,
+          localRulesProfile: draft.localRulesProfile,
         },
       };
       await onUpdate(createdProject.id, input);
@@ -115,7 +118,7 @@ export function LibraryCodeProjectDrawer({
           <button
             className="close-button"
             onClick={handleClose}
-            aria-label="Close"
+            aria-label={t.simpleMode.common.close}
           >
             <X size={20} />
           </button>

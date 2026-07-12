@@ -14,5 +14,6 @@ export function buildMonitorSetupSourceFilterOptions(
     { id: "file", label: t.simpleMode.setup.logFile },
     { id: "folder", label: t.simpleMode.setup.folder },
     { id: "cloud", label: t.simpleMode.setup.cloud },
+    { id: "code", label: t.simpleMode.setup.code },
   ];
 }

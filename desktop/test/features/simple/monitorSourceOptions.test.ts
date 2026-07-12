@@ -1,142 +1,145 @@
 import { describe, expect, it } from "vitest";
 
-import { en } from "../../../src/i18n/en";
+import type { CodeProject } from "../../../src/types/codeProject";
 import {
   buildMonitorSourceSelectionModel,
-  shouldResetSelectedSource,
+  type MonitorSourceCopy,
 } from "../../../src/features/simple/monitorSourceOptions";
-import type { RepositoryAnalysis } from "../../../src/types/library";
-import type { LogSourceConnection } from "../../../src/types/monitor";
+
+const copy: MonitorSourceCopy = {
+  logFile: "Log file",
+  folder: "Folder",
+  cloudRemote: "Cloud / remote",
+  cloudConnection: "Cloud connection",
+  codeProject: "Code project",
+  emptyCloudReady: "Choose a cloud connection.",
+  emptyCloudMissing: "No cloud connections.",
+  emptyCodeReady: "Choose a code project.",
+  emptyCodeMissing: "No code projects.",
+  emptyFolder: "Folders are not monitorable.",
+  emptyDefault: "No sources.",
+  startHintDisabledConnection: "Connection disabled.",
+  startHintCloudManaged: "Cloud managed elsewhere.",
+  startHintCodeNotConfigured: "CodeProject not configured.",
+  startHintFileOnly: "File only.",
+  startHintReady: "Ready.",
+  startHintSelect: "Select source and sound.",
+};
+
+function codeProject(overrides: Partial<CodeProject> = {}): CodeProject {
+  return {
+    id: "project-1",
+    label: "checkout quality",
+    repositoryUrl: "https://github.com/acme/checkout",
+    analysisMode: "connected",
+    sonarqubeConfig: {
+      analysisMode: "connected",
+      apiUrl: "https://sonar.local",
+      projectKey: "checkout",
+      authToken: "squ_test",
+      pollingInterval: "30",
+      syncRules: true,
+      localRulesProfile: "sonar-way-compatible",
+    },
+    enabled: true,
+    status: "ready",
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: "2026-01-01T00:00:00Z",
+    ...overrides,
+  };
+}
 
 describe("monitorSourceOptions", () => {
-  const repositories = [
-    {
-      id: "repo-file",
-      title: "visits-service",
-      sourcePath: "/logs/visits-service.log",
-      sourceKind: "file",
-    },
-    {
-      id: "repo-folder",
-      title: "spring-logs",
-      sourcePath: "/logs/maia_spring_logs",
-      sourceKind: "directory",
-    },
-  ] as unknown as RepositoryAnalysis[];
-
-  const connections = [
-    {
-      id: "conn-cloud-enabled",
-      kind: "gcp_cloud_run",
-      label: "services",
-      sourceUri: "gcp-cloud-run://project/services",
-      enabled: true,
-      adapterKind: "process",
-      config: {},
-      lastCursor: 0,
-      lastSeenAt: null,
-      createdAt: "2026-01-01T00:00:00Z",
-      updatedAt: "2026-01-01T00:00:00Z",
-    },
-    {
-      id: "conn-cloud-disabled",
-      kind: "gcp_cloud_run",
-      label: "disabled-services",
-      sourceUri: "gcp-cloud-run://project/disabled",
-      enabled: false,
-      adapterKind: "process",
-      config: {},
-      lastCursor: 0,
-      lastSeenAt: null,
-      createdAt: "2026-01-01T00:00:00Z",
-      updatedAt: "2026-01-01T00:00:00Z",
-    },
-  ] as LogSourceConnection[];
-
-  const copy = {
-    logFile: en.simpleMode.setup.logFile,
-    folder: en.simpleMode.setup.folder,
-    cloudRemote: en.simpleMode.setup.cloudRemote,
-    cloudConnection: en.simpleMode.setup.cloudConnection,
-    emptyCloudReady: en.simpleMode.setup.emptyCloudReady,
-    emptyCloudMissing: en.simpleMode.setup.emptyCloudMissing,
-    emptyFolder: en.simpleMode.setup.emptyFolder,
-    emptyDefault: en.simpleMode.setup.emptyDefault,
-    startHintDisabledConnection: en.simpleMode.setup.startHintDisabledConnection,
-    startHintCloudManaged: en.simpleMode.setup.startHintCloudManaged,
-    startHintFileOnly: en.simpleMode.setup.startHintFileOnly,
-    startHintReady: en.simpleMode.setup.startHintReady,
-    startHintSelect: en.simpleMode.setup.startHintSelect,
-  };
-
-  it("builds mixed source options for repositories and cloud connections", () => {
+  it("exposes configured CodeProjects as startable monitor sources", () => {
     const model = buildMonitorSourceSelectionModel({
-      repositories,
-      persistentConnections: connections,
-      selectedSourceId: "",
-      selectedSoundId: "",
-      sourceFilter: "all",
-      copy,
-    });
-
-    expect(model.allMonitorSourceOptions).toHaveLength(4);
-    expect(model.filteredMonitorSourceOptions).toHaveLength(4);
-  });
-
-  it("filters cloud sources and exposes cloud-specific empty state copy", () => {
-    const model = buildMonitorSourceSelectionModel({
-      repositories,
+      repositories: [],
       persistentConnections: [],
-      selectedSourceId: "",
-      selectedSoundId: "",
-      sourceFilter: "cloud",
-      copy,
-    });
-
-    expect(model.filteredMonitorSourceOptions).toEqual([]);
-    expect(model.sourceEmptyMessage).toContain("Configure GCP adapters");
-  });
-
-  it("marks disabled cloud connections as not startable with the correct hint", () => {
-    const model = buildMonitorSourceSelectionModel({
-      repositories,
-      persistentConnections: connections,
-      selectedSourceId: "connection:conn-cloud-disabled",
+      codeProjects: [codeProject()],
+      selectedSourceId: "code-project:project-1",
       selectedSoundId: "track-1",
-      sourceFilter: "cloud",
+      sourceFilter: "code",
       copy,
     });
 
-    expect(model.selectedSourceOption?.startable).toBe(false);
-    expect(model.canStartSelectedSource).toBe(false);
-    expect(model.startHint).toContain("disabled");
-  });
-
-  it("returns ready hint when file source and sound are both selected", () => {
-    const model = buildMonitorSourceSelectionModel({
-      repositories,
-      persistentConnections: connections,
-      selectedSourceId: "repo-file",
-      selectedSoundId: "track-1",
-      sourceFilter: "file",
-      copy,
+    expect(model.filteredMonitorSourceOptions).toHaveLength(1);
+    expect(model.selectedSourceOption).toMatchObject({
+      id: "code-project:project-1",
+      sourceType: "code",
+      sourceTypeLabel: "Code project",
+      origin: "codeProject",
+      adapterKind: "sonarqube",
+      startable: true,
     });
-
+    expect(model.selectedSourceOption?.connectionConfig).toMatchObject({
+      apiUrl: "https://sonar.local",
+      projectKey: "checkout",
+      authToken: "squ_test",
+    });
     expect(model.canStartSelectedSource).toBe(true);
-    expect(model.startHint).toContain("Ready to start passive monitoring");
+    expect(model.startHint).toBe("Ready.");
   });
 
-  it("resets selection only when filter excludes the selected source", () => {
+  it("keeps incomplete CodeProjects visible but not startable", () => {
     const model = buildMonitorSourceSelectionModel({
-      repositories,
-      persistentConnections: connections,
-      selectedSourceId: "repo-file",
-      selectedSoundId: "",
-      sourceFilter: "all",
+      repositories: [],
+      persistentConnections: [],
+      codeProjects: [
+        codeProject({
+          id: "project-2",
+          sonarqubeConfig: {
+            analysisMode: "connected",
+            apiUrl: "https://sonar.local",
+            projectKey: "",
+            authToken: "squ_test",
+            pollingInterval: "30",
+            syncRules: true,
+            localRulesProfile: "sonar-way-compatible",
+          },
+        }),
+      ],
+      selectedSourceId: "code-project:project-2",
+      selectedSoundId: "track-1",
+      sourceFilter: "code",
       copy,
     });
 
-    expect(shouldResetSelectedSource("repo-file", model.selectedSourceOption, "all")).toBe(false);
-    expect(shouldResetSelectedSource("repo-file", model.selectedSourceOption, "cloud")).toBe(true);
+    expect(model.filteredMonitorSourceOptions).toHaveLength(1);
+    expect(model.canStartSelectedSource).toBe(false);
+    expect(model.startHint).toBe("CodeProject not configured.");
+  });
+
+  it("allows local CodeProjects without SonarQube server credentials", () => {
+    const model = buildMonitorSourceSelectionModel({
+      repositories: [],
+      persistentConnections: [],
+      codeProjects: [
+        codeProject({
+          id: "project-local",
+          repositoryUrl: "/workspace/checkout",
+          analysisMode: "local",
+          sonarqubeConfig: {
+            analysisMode: "local",
+            apiUrl: "",
+            projectKey: "",
+            authToken: "",
+            pollingInterval: "30",
+            syncRules: false,
+            localRulesProfile: "maia-default",
+          },
+        }),
+      ],
+      selectedSourceId: "code-project:project-local",
+      selectedSoundId: "track-1",
+      sourceFilter: "code",
+      copy,
+    });
+
+    expect(model.selectedSourceOption?.sourcePath).toBe("/workspace/checkout");
+    expect(model.selectedSourceOption?.connectionConfig).toMatchObject({
+      analysisMode: "local",
+      localRulesProfile: "maia-default",
+      repositoryUrl: "/workspace/checkout",
+    });
+    expect(model.canStartSelectedSource).toBe(true);
   });
 });

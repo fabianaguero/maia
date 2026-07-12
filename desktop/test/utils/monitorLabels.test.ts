@@ -27,6 +27,7 @@ describe("monitorLabels", () => {
     expect(getStreamAdapterCode("http-poll")).toBe("HTTP_POLL");
     expect(getStreamAdapterCode("websocket")).toBe("WEBSOCKET_STREAM");
     expect(getStreamAdapterCode("journald")).toBe("JOURNALD_STREAM");
+    expect(getStreamAdapterCode("sonarqube")).toBe("SONARQUBE_SIGNAL");
     expect(getStreamAdapterCode(undefined)).toBe("FILE_TAIL");
   });
 

@@ -14,6 +14,13 @@ use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager, State};
 
+mod code_project_scanner;
+use code_project_scanner::scan_local_code_project_issues;
+mod code_project_stream;
+use code_project_stream::{waiting_status_for_code_project, CodeProjectStreamConfig};
+mod sonarqube_client;
+use sonarqube_client::poll_sonarqube_issues;
+
 const CONTRACT_VERSION: &str = "1.0";
 const INITIAL_LOG_TAIL_BYTES: u64 = 32 * 1024;
 const MAX_LOG_TAIL_READ_BYTES: u64 = 32 * 1024;
@@ -383,10 +390,24 @@ struct LiveLogStreamUpdate {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct CodeProjectSonarQubeConfig {
+    #[serde(default = "default_code_project_analysis_mode")]
+    analysis_mode: String,
     api_url: String,
     project_key: String,
     auth_token: String,
     polling_interval: String,
+    #[serde(default)]
+    sync_rules: bool,
+    #[serde(default = "default_local_rules_profile")]
+    local_rules_profile: String,
+}
+
+fn default_code_project_analysis_mode() -> String {
+    "local".to_string()
+}
+
+fn default_local_rules_profile() -> String {
+    "maia-default".to_string()
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -395,6 +416,7 @@ struct CodeProject {
     id: String,
     label: String,
     repository_url: String,
+    analysis_mode: String,
     sonarqube_config: Option<CodeProjectSonarQubeConfig>,
     enabled: bool,
     status: String,
@@ -407,7 +429,6 @@ struct CodeProject {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct UpsertCodeProjectInput {
-    id: Option<String>,
     label: String,
     repository_url: String,
     sonarqube_config: Option<CodeProjectSonarQubeConfig>,
@@ -447,6 +468,7 @@ struct StreamSessionState {
     gcp_backfill_freshness: Option<String>,
     gcp_history_seeded: bool,
     sonarqube_last_known_issues: HashSet<String>,
+    sonarqube_baseline_seeded: bool,
 }
 
 impl StreamSessionState {
@@ -460,6 +482,7 @@ impl StreamSessionState {
             gcp_backfill_freshness: None,
             gcp_history_seeded: false,
             sonarqube_last_known_issues: HashSet::new(),
+            sonarqube_baseline_seeded: false,
         }
     }
 
@@ -504,6 +527,7 @@ struct StartSessionInput {
     label: Option<String>,
     command: Option<Vec<String>>,
     start_from_beginning: Option<bool>,
+    connection_config: Option<Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -2265,6 +2289,7 @@ fn start_log_source_connection(
             label: Some(connection.label.clone()),
             command,
             start_from_beginning: input.start_from_beginning,
+            connection_config: None,
         },
         registry,
     )?;
@@ -2376,7 +2401,9 @@ fn start_stream_session(
 
     {
         let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
-        reg.sessions.insert(session_id.clone(), StreamSessionState::new(record.clone()));
+        let mut state = StreamSessionState::new(record.clone());
+        state.connection_config = input.connection_config.clone();
+        reg.sessions.insert(session_id.clone(), state);
     }
 
     if input.adapter_kind == "journald" {
@@ -2556,85 +2583,86 @@ fn delete_session_bookmark(app_handle: AppHandle, id: i64) -> Result<bool, Strin
     db_delete_session_bookmark(&conn, id)
 }
 
-// ---------------------------------------------------------------------------
-// SonarQube Adapter — Static code analysis polling
-// ---------------------------------------------------------------------------
-
-fn format_sonarqube_issue_as_log_line(issue: &Value) -> String {
-    let severity = issue.get("severity").and_then(|v| v.as_str()).unwrap_or("INFO");
-
-    let rule = issue.get("rule").and_then(|v| v.as_str()).unwrap_or("unknown:rule");
-
-    let message = issue.get("message").and_then(|v| v.as_str()).unwrap_or("Code quality issue");
-
-    let component = issue.get("component").and_then(|v| v.as_str()).unwrap_or("unknown");
-
-    let line = issue.get("line").and_then(|v| v.as_i64());
-
-    let log_level = match severity {
-        "BLOCKER" => "CRITICAL",
-        "CRITICAL" => "CRITICAL",
-        "MAJOR" => "ERROR",
-        "MINOR" => "WARN",
-        _ => "INFO",
+fn poll_code_project_stream_session(
+    session_id: &str,
+    registry: &SessionRegistryState,
+    warnings: Vec<String>,
+) -> Result<StreamSessionPollResult, String> {
+    let connection_config = {
+        let reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+        let session = reg
+            .sessions
+            .get(session_id)
+            .ok_or_else(|| format!("Session not found: {session_id}"))?;
+        session.connection_config.clone()
     };
 
-    let now = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    let config = connection_config.ok_or("SonarQube connection config missing")?;
+    let code_project_config = CodeProjectStreamConfig::from_json(&config);
 
-    if let Some(line_num) = line {
-        format!(
-            "[{}] [SONARQUBE-{}] {} {} ({}:{})",
-            now, log_level, rule, message, component, line_num
-        )
-    } else {
-        format!("[{}] [SONARQUBE-{}] {} {} ({})", now, log_level, rule, message, component)
-    }
-}
+    let runtime = tokio::runtime::Runtime::new()
+        .map_err(|e| format!("Failed to create tokio runtime: {}", e))?;
 
-async fn poll_sonarqube_issues(
-    api_url: &str,
-    project_key: &str,
-    auth_token: &str,
-    last_known_keys: &mut HashSet<String>,
-) -> Result<Vec<String>, String> {
-    let client = reqwest::Client::new();
-    let url = format!(
-        "{}/api/issues/search?componentKeys={}&statuses=OPEN,CONFIRMED&ps=500",
-        api_url, project_key
-    );
+    let (new_lines, issue_count, baseline_seeded) = runtime.block_on(async {
+        let reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+        let session = reg
+            .sessions
+            .get(session_id)
+            .ok_or_else(|| format!("Session not found: {session_id}"))?;
+        let mut last_known = session.sonarqube_last_known_issues.clone();
+        let baseline_seeded = session.sonarqube_baseline_seeded;
+        drop(reg);
 
-    let response = client
-        .get(&url)
-        .bearer_auth(auth_token)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to fetch SonarQube issues: {}", e))?;
+        let (lines, issue_count) = if code_project_config.analysis_mode.is_local() {
+            scan_local_code_project_issues(
+                &code_project_config.repository_url,
+                &code_project_config.local_rules_profile,
+                &mut last_known,
+                baseline_seeded,
+            )?
+        } else {
+            code_project_config.validate_connected()?;
+            poll_sonarqube_issues(
+                &code_project_config.api_url,
+                &code_project_config.project_key,
+                &code_project_config.auth_token,
+                &mut last_known,
+                baseline_seeded,
+            )
+            .await?
+        };
 
-    let data: Value =
-        response.json().await.map_err(|e| format!("Failed to parse SonarQube response: {}", e))?;
-
-    let issues = data
-        .get("issues")
-        .and_then(|v| v.as_array())
-        .ok_or("No issues array in SonarQube response")?;
-
-    let mut new_log_lines = Vec::new();
-    let mut current_keys = HashSet::new();
-
-    for issue in issues {
-        let key = issue.get("key").and_then(|v| v.as_str()).unwrap_or("unknown");
-
-        current_keys.insert(key.to_string());
-
-        // Only report new issues
-        if !last_known_keys.contains(key) {
-            let line = format_sonarqube_issue_as_log_line(issue);
-            new_log_lines.push(line);
+        {
+            let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+            if let Some(session) = reg.sessions.get_mut(session_id) {
+                session.sonarqube_last_known_issues = last_known;
+                session.sonarqube_baseline_seeded = true;
+            }
         }
+
+        Ok::<(Vec<String>, usize, bool), String>((lines, issue_count, baseline_seeded))
+    })?;
+
+    let session_record = update_session_metadata(registry, session_id, |session| {
+        session.record.last_polled_at = Some(now_iso());
+        session.record.total_polls += 1;
+    })?;
+
+    if !new_lines.is_empty() {
+        append_lines_to_session(registry, session_id, new_lines)?;
     }
 
-    *last_known_keys = current_keys;
-    Ok(new_log_lines)
+    let (_, pending_chunk) = drain_pending_chunk(registry, session_id)?;
+    if pending_chunk.trim().is_empty() {
+        let status = waiting_status_for_code_project(
+            &code_project_config.analysis_mode,
+            baseline_seeded,
+            issue_count,
+        );
+        return Ok(waiting_stream_poll_result(session_record, &status, warnings));
+    }
+
+    analyze_stream_chunk(session_record, pending_chunk, warnings)
 }
 
 #[tauri::command]
@@ -2691,79 +2719,7 @@ fn poll_stream_session(
     }
 
     if adapter_kind == "sonarqube" {
-        // SonarQube adapter: poll API for code quality issues
-        let connection_config = {
-            let reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
-            let session = reg
-                .sessions
-                .get(&session_id)
-                .ok_or_else(|| format!("Session not found: {session_id}"))?;
-            session.connection_config.clone()
-        };
-
-        let config = connection_config.ok_or("SonarQube connection config missing")?;
-        let api_url = config
-            .get("apiUrl")
-            .and_then(|v| v.as_str())
-            .ok_or("SonarQube apiUrl not found in config")?
-            .to_string();
-        let project_key = config
-            .get("projectKey")
-            .and_then(|v| v.as_str())
-            .ok_or("SonarQube projectKey not found in config")?
-            .to_string();
-        let auth_token = config
-            .get("authToken")
-            .and_then(|v| v.as_str())
-            .ok_or("SonarQube authToken not found in config")?
-            .to_string();
-
-        // Use tokio runtime to call async function
-        let runtime = tokio::runtime::Runtime::new()
-            .map_err(|e| format!("Failed to create tokio runtime: {}", e))?;
-
-        let new_lines = runtime.block_on(async {
-            let reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
-            let session = reg
-                .sessions
-                .get(&session_id)
-                .ok_or_else(|| format!("Session not found: {session_id}"))?;
-            let mut last_known = session.sonarqube_last_known_issues.clone();
-            drop(reg);
-
-            let lines =
-                poll_sonarqube_issues(&api_url, &project_key, &auth_token, &mut last_known).await?;
-
-            // Update session with new last_known_issues
-            {
-                let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
-                if let Some(session) = reg.sessions.get_mut(&session_id) {
-                    session.sonarqube_last_known_issues = last_known;
-                }
-            }
-
-            Ok::<Vec<String>, String>(lines)
-        })?;
-
-        let session_record = update_session_metadata(&registry, &session_id, |session| {
-            session.record.last_polled_at = Some(now_iso());
-            session.record.total_polls += 1;
-        })?;
-
-        if !new_lines.is_empty() {
-            append_lines_to_session(&registry, &session_id, new_lines)?;
-        }
-
-        let (_, pending_chunk) = drain_pending_chunk(&registry, &session_id)?;
-        if pending_chunk.trim().is_empty() {
-            return Ok(waiting_stream_poll_result(
-                session_record,
-                "Waiting for new code quality issues.",
-                warnings,
-            ));
-        }
-
-        return analyze_stream_chunk(session_record, pending_chunk, warnings);
+        return poll_code_project_stream_session(&session_id, &registry, warnings);
     }
 
     if source.starts_with("gcp-cloud-run://") {
@@ -4118,15 +4074,15 @@ fn ensure_session_event_parsed_lines_column(conn: &Connection) -> Result<(), Str
 }
 
 fn ensure_code_projects_table(conn: &Connection) -> Result<(), String> {
-    // Table is created by schema.sql; this migration backfills the `enabled`
-    // column on databases created before it was added to the schema.
+    // Table is created by schema.sql; these migrations backfill columns on
+    // databases created before CodeProjects became local-first.
     let mut statement = conn
         .prepare("PRAGMA table_info(code_projects)")
         .map_err(|error| format!("Failed to inspect code_projects columns: {error}"))?;
     let mut rows = statement
         .query([])
         .map_err(|error| format!("Failed to query code_projects columns: {error}"))?;
-    let mut has_enabled = false;
+    let mut columns = HashSet::new();
 
     while let Some(row) = rows
         .next()
@@ -4135,52 +4091,82 @@ fn ensure_code_projects_table(conn: &Connection) -> Result<(), String> {
         let name: String = row
             .get(1)
             .map_err(|error| format!("Failed to read code_projects column name: {error}"))?;
-        if name == "enabled" {
-            has_enabled = true;
-            break;
+        columns.insert(name);
+    }
+
+    let migrations = [
+        (
+            "analysis_mode",
+            "ALTER TABLE code_projects ADD COLUMN analysis_mode TEXT NOT NULL DEFAULT 'local';",
+        ),
+        (
+            "sonarqube_sync_rules",
+            "ALTER TABLE code_projects ADD COLUMN sonarqube_sync_rules INTEGER NOT NULL DEFAULT 0;",
+        ),
+        (
+            "local_rules_profile",
+            "ALTER TABLE code_projects ADD COLUMN local_rules_profile TEXT NOT NULL DEFAULT 'maia-default';",
+        ),
+        (
+            "enabled",
+            "ALTER TABLE code_projects ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1;",
+        ),
+    ];
+
+    for (column, sql) in migrations {
+        if !columns.contains(column) {
+            conn.execute_batch(sql)
+                .map_err(|error| format!("Failed to add code_projects {column} column: {error}"))?;
         }
     }
 
-    if has_enabled {
-        return Ok(());
-    }
-
-    conn.execute_batch("ALTER TABLE code_projects ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1;")
-        .map_err(|error| format!("Failed to add code_projects enabled column: {error}"))?;
+    conn.execute_batch(
+        "UPDATE code_projects
+         SET analysis_mode = 'connected', sonarqube_sync_rules = 1
+         WHERE sonarqube_api_url IS NOT NULL
+           AND TRIM(sonarqube_api_url) != ''
+           AND analysis_mode = 'local';",
+    )
+    .map_err(|error| format!("Failed to backfill connected CodeProjects: {error}"))?;
 
     Ok(())
 }
 
 fn row_to_code_project(row: &rusqlite::Row<'_>) -> rusqlite::Result<CodeProject> {
-    let api_url: Option<String> = row.get(3)?;
-    let sonarqube_config = if api_url.is_some() {
-        Some(CodeProjectSonarQubeConfig {
-            api_url: api_url.unwrap_or_default(),
-            project_key: row.get(4)?,
-            auth_token: row.get(5)?,
-            polling_interval: row.get(6)?,
-        })
-    } else {
-        None
-    };
+    let analysis_mode: String = row.get(3)?;
+    let api_url: Option<String> = row.get(4)?;
+    let project_key: Option<String> = row.get(5)?;
+    let auth_token: Option<String> = row.get(6)?;
+    let polling_interval: Option<String> = row.get(7)?;
+    let sonarqube_config = Some(CodeProjectSonarQubeConfig {
+        analysis_mode: analysis_mode.clone(),
+        api_url: api_url.unwrap_or_default(),
+        project_key: project_key.unwrap_or_default(),
+        auth_token: auth_token.unwrap_or_default(),
+        polling_interval: polling_interval.unwrap_or_else(|| "30".to_string()),
+        sync_rules: row.get::<_, i64>(8)? == 1,
+        local_rules_profile: row.get(9)?,
+    });
 
     Ok(CodeProject {
         id: row.get(0)?,
         label: row.get(1)?,
         repository_url: row.get(2)?,
+        analysis_mode,
         sonarqube_config,
-        enabled: row.get::<_, i64>(7)? == 1,
-        status: row.get(8)?,
-        error_message: row.get(9)?,
-        last_checked_at: row.get(10)?,
-        created_at: row.get(11)?,
-        updated_at: row.get(12)?,
+        enabled: row.get::<_, i64>(10)? == 1,
+        status: row.get(11)?,
+        error_message: row.get(12)?,
+        last_checked_at: row.get(13)?,
+        created_at: row.get(14)?,
+        updated_at: row.get(15)?,
     })
 }
 
-const CODE_PROJECT_SELECT_COLUMNS: &str = "id, label, repository_url, sonarqube_api_url, \
-     sonarqube_project_key, sonarqube_auth_token, sonarqube_polling_interval, enabled, status, \
-     error_message, last_checked_at, created_at, updated_at";
+const CODE_PROJECT_SELECT_COLUMNS: &str = "id, label, repository_url, analysis_mode, \
+     sonarqube_api_url, sonarqube_project_key, sonarqube_auth_token, sonarqube_polling_interval, \
+     sonarqube_sync_rules, local_rules_profile, enabled, status, error_message, last_checked_at, \
+     created_at, updated_at";
 
 fn composition_export_note(export_path: &str) -> String {
     format!("Managed composition plan snapshot written to {export_path}.")
@@ -7719,21 +7705,36 @@ fn create_code_project(
     let id = format!("project-{:x}", stable_hash(&format!("{}:{}", input.label, now)));
 
     let sonarqube_config = input.sonarqube_config.as_ref();
+    let analysis_mode = sonarqube_config
+        .map(|config| config.analysis_mode.trim())
+        .filter(|mode| !mode.is_empty())
+        .unwrap_or("local");
+    let initial_status = if analysis_mode == "local" {
+        "ready"
+    } else {
+        "not-configured"
+    };
 
     conn.execute(
         "INSERT INTO code_projects
-         (id, label, repository_url, sonarqube_api_url, sonarqube_project_key,
-          sonarqube_auth_token, sonarqube_polling_interval, status, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+         (id, label, repository_url, analysis_mode, sonarqube_api_url, sonarqube_project_key,
+          sonarqube_auth_token, sonarqube_polling_interval, sonarqube_sync_rules,
+          local_rules_profile, status, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
         rusqlite::params![
             &id,
             input.label.trim(),
             input.repository_url.trim(),
+            analysis_mode,
             sonarqube_config.map(|c| c.api_url.clone()),
             sonarqube_config.map(|c| c.project_key.clone()),
             sonarqube_config.map(|c| c.auth_token.clone()),
             sonarqube_config.map(|c| c.polling_interval.clone()),
-            "not-configured",
+            sonarqube_config.map(|c| if c.sync_rules { 1 } else { 0 }).unwrap_or(0),
+            sonarqube_config
+                .map(|c| c.local_rules_profile.clone())
+                .unwrap_or_else(|| "maia-default".to_string()),
+            initial_status,
             &now,
             &now,
         ],
@@ -7777,20 +7778,36 @@ fn update_code_project(
 
     let now = now_iso();
     let sonarqube_config = input.sonarqube_config.as_ref();
+    let analysis_mode = sonarqube_config
+        .map(|config| config.analysis_mode.trim())
+        .filter(|mode| !mode.is_empty())
+        .unwrap_or("local");
+    let status = if analysis_mode == "local" {
+        "ready"
+    } else {
+        "not-configured"
+    };
 
     conn.execute(
         "UPDATE code_projects
-         SET label = ?1, repository_url = ?2, sonarqube_api_url = ?3,
-             sonarqube_project_key = ?4, sonarqube_auth_token = ?5,
-             sonarqube_polling_interval = ?6, updated_at = ?7
-         WHERE id = ?8",
+         SET label = ?1, repository_url = ?2, analysis_mode = ?3, sonarqube_api_url = ?4,
+             sonarqube_project_key = ?5, sonarqube_auth_token = ?6,
+             sonarqube_polling_interval = ?7, sonarqube_sync_rules = ?8,
+             local_rules_profile = ?9, status = ?10, updated_at = ?11
+         WHERE id = ?12",
         rusqlite::params![
             input.label.trim(),
             input.repository_url.trim(),
+            analysis_mode,
             sonarqube_config.map(|c| c.api_url.clone()),
             sonarqube_config.map(|c| c.project_key.clone()),
             sonarqube_config.map(|c| c.auth_token.clone()),
             sonarqube_config.map(|c| c.polling_interval.clone()),
+            sonarqube_config.map(|c| if c.sync_rules { 1 } else { 0 }).unwrap_or(0),
+            sonarqube_config
+                .map(|c| c.local_rules_profile.clone())
+                .unwrap_or_else(|| "maia-default".to_string()),
+            status,
             &now,
             &id,
         ],

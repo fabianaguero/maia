@@ -93,9 +93,18 @@ After ingestion, the monitor should not care whether the original source was a f
 | `parsedLines` | `evidenceRows` | Rows may come from issues, metrics, tests, traces, or incidents. |
 | `LiveLogMonitor` | `LiveSignalMonitor` | Rename gradually to avoid a risky large-bang refactor. |
 
-## Compatibility With SonarQube
+## Compatibility With SonarQube And Local Code Analysis
 
-SonarQube fits Maia because it produces a stream of quality findings:
+Maia should treat code quality as a local-first signal stream. A SonarQube server is useful, but it should not be mandatory for passive monitoring.
+
+The intended model is close to IDE plugins such as SonarQube for IDE/SonarLint:
+
+- run a local analyzer against the working tree
+- optionally connect to a server to synchronize rules and quality profiles
+- keep source evidence local unless the user explicitly chooses connected behavior
+- only sonify new or changed evidence after the initial baseline
+
+SonarQube fits Maia because it can produce or enrich a stream of quality findings:
 
 - new issue
 - reopened issue
@@ -104,7 +113,7 @@ SonarQube fits Maia because it produces a stream of quality findings:
 - debt increase
 - duplication/security hotspot change
 
-The initial adapter can format findings as text lines for compatibility, but the product should not permanently define this as "fake logs".
+The current compatibility adapter can format local and SonarQube-backed findings as text lines, but the product should not permanently define this as "fake logs".
 The better long-term shape is a normalized evidence event:
 
 ```json
@@ -294,11 +303,14 @@ Why it fits:
 
 - [x] Add CodeProject types and Library UI state.
 - [x] Add SQLite table and native CRUD/test commands.
+- [x] Add local CodeProject scanner mode so SonarQube server access is optional.
 - [x] Add SonarQube polling support inside the native stream session path.
-- [ ] Wire CodeProjects into the monitor source picker with clear source-kind chips.
-- [ ] Ensure monitor launch from CodeProjects creates an active session with a selected track/playlist bed.
+- [x] Wire CodeProjects into the monitor source picker with clear source-kind chips.
+- [x] Ensure monitor launch from CodeProjects creates an active session with a selected track/playlist bed.
 - [ ] Verify polling emits evidence rows into the same deck/tail view as file and cloud sessions.
-- [ ] Add UX for idle SonarQube state: "connected, waiting for issue changes" without fake anomalies or beeps.
+- [x] Add idle SonarQube baseline behavior: existing issues are indexed first, then only new issue changes become evidence/anomaly candidates.
+- [ ] Sync real SonarQube quality profiles/rules into the local scanner cache.
+- [ ] Add explicit UI copy for idle SonarQube state: "connected, waiting for issue changes" without fake anomalies or beeps.
 
 ### Phase 3: Contracts And Types
 

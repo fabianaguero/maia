@@ -238,6 +238,7 @@ export const esControls = {
       logFile: "Archivo de log",
       folder: "Carpeta",
       cloud: "Nube",
+      code: "Código",
       logSource: "Fuente de log",
       soundProfile: "Perfil sonoro",
       ambientFallback: "Ambient",
@@ -252,9 +253,13 @@ export const esControls = {
       monitorSubtitle: "Monitoreo en vivo y reproducción reactiva",
       cloudRemote: "Nube / remoto",
       cloudConnection: "Conexión en la nube",
+      codeProject: "Proyecto de código",
       emptyCloudReady: "Elegí una conexión en la nube guardada para iniciar el monitoreo pasivo.",
       emptyCloudMissing:
         "Todavía no hay una fuente en la nube lista acá. Configurá los adaptadores de GCP en Conexiones.",
+      emptyCodeReady: "Elegí un CodeProject para monitorear evidencia de calidad de código.",
+      emptyCodeMissing:
+        "Todavía no hay CodeProjects listos. Configurá proyectos SonarQube en Biblioteca.",
       emptyFolder:
         "Las carpetas se muestran para inspección, pero el monitoreo pasivo arranca desde archivos de log.",
       emptyDefault: "Ninguna fuente coincide con este filtro.",
@@ -264,6 +269,8 @@ export const esControls = {
         "Esta conexión en la nube existe pero está deshabilitada. Habilitala primero en Conexiones.",
       startHintCloudManaged:
         "Los adaptadores en la nube se configuran en Conexiones. Usá acá un archivo de log o gestioná las colas en la nube desde ese panel.",
+      startHintCodeNotConfigured:
+        "Este CodeProject necesita una configuración SonarQube completa antes de monitorearse.",
       startHintFileOnly:
         "Esta fuente sirve para inspección, pero el monitoreo pasivo arranca desde un archivo de log.",
       startHintReady: "Todo listo para iniciar el monitoreo pasivo.",
@@ -579,9 +586,25 @@ export const esControls = {
       projectNameHelp: "Un nombre legible para tu proyecto de código",
       repositoryUrl: "URL del repositorio",
       repositoryUrlHelp: "URL de GitHub o ruta del repositorio local",
+      invalidRepositoryLocation: "URL de repositorio o ruta local invalida",
       create: "Crear proyecto",
       newProject: "Nuevo proyecto de código",
       configureSonarQube: "Configurar SonarQube",
+      analysisMode: "Modo de análisis",
+      localMode: "Complemento local",
+      connectedMode: "Conectado",
+      localModeHelp:
+        "Ejecuta el scanner local de calidad de Maia sin requerir un servidor SonarQube.",
+      connectedModeHelp:
+        "Usa acceso al servidor SonarQube para polling de issues ahora y sincronización de reglas/perfiles a medida que crezca la integración.",
+      localRulesProfile: "Perfil de reglas local",
+      localRulesProfileHelp:
+        "Elegí el perfil de reglas local que Maia aplica cuando no se requiere servidor.",
+      localRulesMaiaDefault: "Maia default",
+      localRulesSonarWay: "Compatible con Sonar way",
+      syncRulesFromServer: "Sincronizar reglas del servidor",
+      syncRulesFromServerHelp:
+        "Opcional. Dejalo apagado para análisis totalmente local; activalo cuando quieras que Maia traiga configuración de quality profiles.",
       sonarqubeServerUrl: "URL del servidor SonarQube",
       sonarqubeServerUrlHelp: "URL base de tu instancia de SonarQube",
       sonarqubeProjectKey: "Clave del proyecto",

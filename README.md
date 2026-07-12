@@ -79,7 +79,7 @@ The current desktop app already includes:
 - Local log-file analysis plus live signal sonification with Web Audio
 - OpenTelemetry-friendly passive log monitoring with `trace_id` / `span_id` compatible intake and correlated anomaly views
 - Stream-input direction for non-log sources such as SonarQube, CI/CD, incident feeds, metrics, security findings, and business-process events
-- CodeProjects groundwork for SonarQube-backed code quality signal sources; monitor integration and secure token storage are still in progress
+- CodeProjects groundwork for local-first code quality signal sources; projects can point to a local repository path or an HTTP(S) repository URL, Monitor can launch them without a SonarQube server, and SonarQube can be used optionally for connected rules/profile sync while secure token storage is still in progress
 - Live monitor scenes with genre palettes, sequencer presets, component routing, beat-locked scheduling, and base-track/base-playlist anchoring
 - Session persistence, replay, replay bookmarks, and feedback-driven mix suggestions for monitored streams
 - Composition planning with `plan.json`, generated `preview.wav`, in-app playback, and WAV stem export

@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 
 import type { MonitorLaunchSource } from "../../types/monitorLaunch";
+import type { CodeProject } from "../../types/codeProject";
 import type { MonitorSourceFilter } from "./monitorSourceOptions";
 import type { MonitorSourceCopy } from "./monitorSourceOptions";
 import type { UseSimpleMonitorLaunchStateInput } from "./useSimpleMonitorLaunchState";
@@ -27,12 +28,13 @@ export interface SimpleMonitorLaunchStateResult extends SimpleMonitorLaunchState
 }
 
 export function buildSimpleMonitorLaunchSelectorInput(
-  input: UseSimpleMonitorLaunchStateInput,
+  input: UseSimpleMonitorLaunchStateInput & { codeProjects: CodeProject[] },
   selectedSoundId: string,
   copy: MonitorSourceCopy,
 ) {
   return {
     repositories: input.repositories,
+    codeProjects: input.codeProjects,
     selectedSoundId,
     isListening: input.isListening,
     copy,
