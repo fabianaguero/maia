@@ -1,5 +1,12 @@
 export type MonitorLogLevel = "trace" | "debug" | "info" | "warn" | "error";
 
+export interface SonarQubeMeta {
+  rule: string;
+  component: string;
+  line?: number;
+  sonarSeverity: string;
+}
+
 export interface MonitorLogLine {
   id: string;
   timestamp: string;
@@ -7,6 +14,7 @@ export interface MonitorLogLine {
   message: string;
   isAnomaly: boolean;
   anomalyId: string | null;
+  sonarQubeMeta?: SonarQubeMeta;
 }
 
 export function formatCloudTimestamp(isoTimestamp: string): string {
@@ -57,6 +65,15 @@ export function isMonitorAnomaly(level: MonitorLogLevel, message: string): boole
   );
 }
 
+function mapSonarQubeSeverityToLevel(sonarSeverity: string): MonitorLogLevel {
+  const upper = sonarSeverity.toUpperCase();
+  // Rust maps: BLOCKER/CRITICAL→"CRITICAL", MAJOR→"ERROR", MINOR→"WARN", else→"INFO"
+  // So we map the resulting log_level: CRITICAL→error, ERROR→warn, WARN→warn, INFO→info
+  if (upper === "CRITICAL") return "error";
+  if (upper === "ERROR" || upper === "WARN") return "warn";
+  return "info";
+}
+
 export function parseMonitorLogLine(raw: string, lineIndex: number): MonitorLogLine {
   const cloudSeverityFirstPattern = /^([A-Z]+)\s+(\d{4}-\d{2}-\d{2}T\S+)\s+(.*)$/;
   const cloudSeverityFirstMatch = raw.match(cloudSeverityFirstPattern);
@@ -95,6 +112,37 @@ export function parseMonitorLogLine(raw: string, lineIndex: number): MonitorLogL
       message,
       isAnomaly,
       anomalyId,
+    };
+  }
+
+  // SonarQube format: [timestamp] [SONARQUBE-LEVEL] rule message (component:line)
+  const sonarQubePattern = /^\[(.+?)\]\s\[SONARQUBE-(\w+)\]\s(\S+)\s(.*?)\s\(([^:()]+)(?::(\d+))?\)$/;
+  const sonarQubeMatch = raw.match(sonarQubePattern);
+  if (sonarQubeMatch) {
+    const timestamp = sonarQubeMatch[1] ?? "";
+    const sonarSeverity = sonarQubeMatch[2] ?? "INFO";
+    const rule = sonarQubeMatch[3] ?? "";
+    const message = (sonarQubeMatch[4] || "").trim() || raw.trim();
+    const component = sonarQubeMatch[5] ?? "";
+    const lineNum = sonarQubeMatch[6] ? parseInt(sonarQubeMatch[6], 10) : undefined;
+
+    const level = mapSonarQubeSeverityToLevel(sonarSeverity);
+    const isAnomaly = isMonitorAnomaly(level, message);
+    const anomalyId = isAnomaly ? `${timestamp}-${lineIndex}-${message.slice(0, 48)}` : null;
+
+    return {
+      id: `${timestamp}-${lineIndex}-${message.slice(0, 64)}`,
+      timestamp,
+      level,
+      message,
+      isAnomaly,
+      anomalyId,
+      sonarQubeMeta: {
+        rule,
+        component,
+        line: lineNum,
+        sonarSeverity,
+      },
     };
   }
 

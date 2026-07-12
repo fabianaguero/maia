@@ -52,6 +52,18 @@ export function LiveTailPanelLines({
             <span className="line-anomaly-slot" aria-hidden="true" />
           )}
           <span className="line-msg">{line.message}</span>
+          {line.sonarQubeMeta && (
+            <span
+              className="line-source-badge"
+              title={`${line.sonarQubeMeta.rule} in ${line.sonarQubeMeta.component}${line.sonarQubeMeta.line ? `:${line.sonarQubeMeta.line}` : ""}`}
+            >
+              <span className="badge-rule">{line.sonarQubeMeta.rule}</span>
+              <span className="badge-component">
+                {line.sonarQubeMeta.component}
+                {line.sonarQubeMeta.line && `:${line.sonarQubeMeta.line}`}
+              </span>
+            </span>
+          )}
         </div>
       ))}
     </>

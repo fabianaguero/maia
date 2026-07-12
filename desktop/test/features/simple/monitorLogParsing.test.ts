@@ -127,4 +127,59 @@ describe("monitorLogParsing", () => {
     );
     expect(isMonitorAnomaly("info", "timeout while reading upstream response")).toBe(true);
   });
+
+  it("parses SonarQube issues with line numbers and extracts metadata", () => {
+    // Rust maps MAJOR severity to ERROR log_level
+    const line = parseMonitorLogLine(
+      "[2026-07-12T03:00:00Z] [SONARQUBE-ERROR] typescript:S1234 Unexpected complexity (src/app.ts:42)",
+      0,
+    );
+
+    expect(line.timestamp).toBe("2026-07-12T03:00:00Z");
+    expect(line.level).toBe("warn"); // ERROR log_level from MAJOR → warn in TS
+    expect(line.message).toBe("Unexpected complexity");
+    expect(line.sonarQubeMeta).toBeDefined();
+    expect(line.sonarQubeMeta?.rule).toBe("typescript:S1234");
+    expect(line.sonarQubeMeta?.component).toBe("src/app.ts");
+    expect(line.sonarQubeMeta?.line).toBe(42);
+    expect(line.sonarQubeMeta?.sonarSeverity).toBe("ERROR");
+    expect(line.isAnomaly).toBe(true);
+  });
+
+  it("parses SonarQube issues without line numbers", () => {
+    // Rust maps MINOR severity to WARN log_level
+    const line = parseMonitorLogLine(
+      "[2026-07-12T03:00:00Z] [SONARQUBE-WARN] java:S0123 Potential null pointer (Auth.java)",
+      1,
+    );
+
+    expect(line.level).toBe("warn"); // WARN log_level from MINOR → warn in TS
+    expect(line.message).toBe("Potential null pointer");
+    expect(line.sonarQubeMeta?.rule).toBe("java:S0123");
+    expect(line.sonarQubeMeta?.component).toBe("Auth.java");
+    expect(line.sonarQubeMeta?.line).toBeUndefined();
+    expect(line.sonarQubeMeta?.sonarSeverity).toBe("WARN");
+  });
+
+  it("maps SonarQube BLOCKER/CRITICAL to error level", () => {
+    // Rust maps BLOCKER/CRITICAL severity to CRITICAL log_level
+    const blocker = parseMonitorLogLine(
+      "[2026-07-12T03:00:00Z] [SONARQUBE-CRITICAL] typescript:S9999 Security issue (index.ts:10)",
+      0,
+    );
+
+    expect(blocker.level).toBe("error"); // CRITICAL log_level → error in TS
+    expect(blocker.isAnomaly).toBe(true);
+  });
+
+  it("maps SonarQube INFO severity to info level", () => {
+    // Rust keeps INFO severity as INFO log_level
+    const info = parseMonitorLogLine(
+      "[2026-07-12T03:00:00Z] [SONARQUBE-INFO] python:S0001 Info message (utils.py:25)",
+      1,
+    );
+
+    expect(info.level).toBe("info"); // INFO log_level → info in TS
+    expect(info.isAnomaly).toBe(false);
+  });
 });

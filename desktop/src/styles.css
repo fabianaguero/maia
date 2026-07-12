@@ -9178,6 +9178,33 @@ dd {
   color: rgba(178, 193, 208, 0.74);
 }
 
+.line-source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 9px;
+  color: rgba(178, 193, 208, 0.8);
+}
+
+.badge-rule {
+  display: inline;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-weight: 500;
+}
+
+.badge-component {
+  display: inline;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.02);
+  font-weight: 400;
+}
+
 .line-anomaly-slot {
   display: block;
   min-height: 22px;
