@@ -1,23 +1,49 @@
 # SonarQube Static Analysis Adapter Proposal
 
-**Branch:** `feat/sonarqube-adapter`  
-**Status:** Design phase  
-**Updated:** 2026-07-10
+**Branch:** `feat/refactor-sonarqube-to-projects`
+**Status:** Partially implemented
+**Updated:** 2026-07-11
 
 ## Overview
 
-Extend Maia's monitoring capabilities to include **static code analysis anomalies** from SonarQube. Instead of monitoring live logs or runtime behavior, this adapter continuously polls SonarQube API for code quality issues and maps them into the existing anomaly/sonification pipeline.
+Extend Maia's monitoring capabilities to include **static code analysis anomalies** from SonarQube. Instead of monitoring only live logs or runtime behavior, this adapter continuously polls SonarQube API for code quality issues and maps them into Maia's signal-stream anomaly/sonification pipeline.
+
+See also: `docs/signal-streams-roadmap.md`.
 
 ## Motivation
 
 - **Shift left:** Catch architectural and code-quality drifts before they hit production logs
 - **Continuous quality:** Monitor code health like current system monitoring operational health
-- **Same interface:** Reuse existing deck, waveform, and playback logic - no UI changes needed
+- **Same deck model:** Reuse existing deck, waveform, and playback logic without creating a SonarQube-specific monitor surface
 - **Natural mapping:** SonarQube severities (CRITICAL, MAJOR, MINOR, INFO) → anomaly types → musical deformation
 
 ## Architecture Compatibility
 
 The current Maia architecture **is fully prepared** for SonarQube adapter. Key evidence:
+
+## Current Implementation Snapshot
+
+Landed:
+
+- `CodeProjects` Library UI for creating, editing, deleting, and configuring SonarQube-backed projects.
+- `desktop/src/types/codeProject.ts` with strict TypeScript contracts.
+- `database/schema.sql` with `code_projects`.
+- Native commands in `desktop/src-tauri/src/main.rs`:
+  - `create_code_project`
+  - `list_code_projects`
+  - `update_code_project`
+  - `delete_code_project`
+  - `test_sonarqube_connection`
+- SonarQube issue polling branch in `poll_stream_session`.
+- `format_sonarqube_issue_as_log_line` compatibility formatter.
+
+Not landed / still needs validation:
+
+- End-to-end CodeProject selection from Monitor setup.
+- Active session launch from CodeProject with a real track or playlist bed.
+- Deck/tail rendering of SonarQube evidence as source evidence, not just generic log rows.
+- Structured `evidenceEvents` contract.
+- Token encryption or OS keychain storage.
 
 ### Unified Adapter Contract (Rust)
 
@@ -47,13 +73,16 @@ Python analyzer (`maia_analyzer`) receives:
 [2026-07-10T10:15:33.000Z] [SONARQUBE-MAJOR] java:S1135 Hardcoded password in Auth.java:42
 ```
 
-It extracts severity + timestamp + message → anomaly marker. **No code changes needed.**
+It extracts severity + timestamp + message → anomaly marker. This compatibility mode is useful for the first implementation.
+The long-term contract should preserve structured source evidence so SonarQube does not have to masquerade permanently as a log line.
 
 ## Implementation Plan
 
-### Phase 1: Adapter Skeleton (Rust)
+### Phase 1: Adapter Skeleton (Rust) ✅ Implemented in `main.rs`
 
-**File:** `desktop/src-tauri/src/sonarqube_adapter.rs`
+**Current file:** `desktop/src-tauri/src/main.rs`
+
+An earlier standalone `sonarqube_adapter.rs` was removed; the current implementation lives in the native runtime file with the rest of the session registry plumbing.
 
 ```rust
 pub struct SonarQubeAdapter {
@@ -74,10 +103,12 @@ impl SonarQubeAdapter {
 }
 ```
 
-**Integration in SessionRegistry (main.rs):**
-- Add `sonarqube` case to `adapter_kind` match
-- Initialize `SonarQubeAdapter` with connection config
-- Treat polling output identically to file/process/http-poll
+**Integration in SessionRegistry (`main.rs`):**
+- [x] Add `sonarqube` case to `adapter_kind` match.
+- [x] Poll API from the native runtime.
+- [x] Track `last_known_issues` inside the active session.
+- [ ] Rework blocking/async boundary if needed; current `Runtime::new().block_on(...)` path should be watched for UI-freeze regressions.
+- [ ] Treat polling output as source evidence rather than only text lines.
 
 ### Phase 2: Issue → Log Line Format
 
@@ -99,46 +130,55 @@ impl SonarQubeAdapter {
 [2026-07-10T10:15:33.000Z] [SONARQUBE-MAJOR] java:S1135 Hardcoded password in Auth.java:42
 ```
 
-**Python analyzer treats as:** Code anomaly with severity mapped to metrics + waveform mutations
+**Python analyzer treats as:** Code-quality anomaly with severity mapped to metrics + waveform mutations.
+In the future, the same issue should also be representable as a structured evidence event with `sourceKind=sonarqube`, `eventType`, `component`, `rule`, and `attributes`.
 
-### Phase 3: UI Connection (React)
+### Phase 3: UI Connection (React) ✅ Partially landed
 
-**ConnectionsScreen.tsx additions:**
-- Input for SonarQube server URL
-- Input for project key (e.g., `org.example:my-service`)
-- Auth token input (stored encrypted in SQLite)
-- Polling interval dropdown (30s, 5m, 15m)
-- Test connection button
+**Current UI path:**
+- CodeProjects lives in the Library, not `ConnectionsScreen`.
+- Users can create a code project, configure SonarQube server URL/project key/auth token, and test the connection.
+- Auth token is currently stored in plaintext SQLite, not encrypted.
 
-**SessionSetupPanel.tsx updates:**
-- Select SonarQube source → auto-populate project
-- Same "Start monitoring" flow as logs
-- Waveform shows code quality drift in real-time
+**Still needed:**
+- Select CodeProject/SonarQube source from Monitor setup.
+- Same "Start monitoring" flow as file/cloud/process sources.
+- Waveform shows code quality drift in real-time.
+- Idle state remains musical and quiet when no new issues arrive.
 
-### Phase 4: Database Schema
+### Phase 4: Database Schema ✅ Implemented as `code_projects`
 
-**log_source_connections table** (already exists):
+Current schema:
 ```sql
--- Add sonarqube example to config JSON
-INSERT INTO log_source_connections (
-  kind, adapter_kind, label, source_uri, config
-) VALUES (
-  'sonarqube',
-  'sonarqube', 
-  'API Service Code Quality',
-  'https://sonarqube.example.com',
-  '{"projectKey": "org.example:api-service", "tokenEncrypted": "..."}'
+CREATE TABLE IF NOT EXISTS code_projects (
+  id TEXT PRIMARY KEY,
+  label TEXT NOT NULL,
+  repository_url TEXT NOT NULL,
+  sonarqube_api_url TEXT,
+  sonarqube_project_key TEXT,
+  sonarqube_auth_token TEXT,
+  sonarqube_polling_interval TEXT,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  status TEXT DEFAULT 'not-configured',
+  error_message TEXT,
+  last_checked_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 ```
 
+Security limitation: `sonarqube_auth_token` is plaintext. This must be moved to keychain/secure storage before recommending real production use.
+
 ### Phase 5: Analyzer Integration (Python)
 
-**No changes required!** The analyzer already:
+**No immediate changes required for the compatibility path.** The analyzer already:
 1. Receives text chunks from SessionRegistry
 2. Parses lines by `[TIMESTAMP] [SEVERITY]` pattern
 3. Extracts anomalies regardless of source
 
 **Optional enhancements (future):**
+- Add `sourceKind` / `eventType` metadata.
+- Add structured `evidenceEvents`.
 - Track issue lifecycle (new → acknowledged → fixed)
 - Weight repeated violations differently (decay over time)
 - Correlate multiple violations in same file → severity boost
@@ -150,7 +190,7 @@ SonarQube API (/api/issues/search)
     ↓
 SonarQubeAdapter::poll() (Rust)
     ↓
-format_issue_as_log_line() 
+format_issue_as_log_line() or normalized evidence event
     ↓
 Ring buffer (identical to file/log/http)
     ↓
@@ -163,13 +203,14 @@ React deck waveform + Web Audio playback
 
 ## Success Criteria
 
-- [ ] `sonarqube` adapter kind is recognized and polled correctly
-- [ ] SonarQube issues format into log lines matching analyzer's expected pattern
-- [ ] UI allows saving SonarQube connection with auth token + project key
+- [x] `sonarqube` adapter kind is recognized in the native polling path
+- [x] SonarQube issues format into log lines matching analyzer's expected pattern
+- [x] UI allows saving SonarQube connection with auth token + project key through CodeProjects
 - [ ] Monitor deck renders SonarQube anomalies with same waveform/severity visual
 - [ ] Test with real SonarQube instance (Cloud or self-hosted)
 - [ ] Playback deforms based on code quality drift (same as log severity)
 - [ ] Issue state tracking works (new/closed issues detected across polls)
+- [ ] Token storage is not plaintext SQLite
 
 ## Future Enhancements
 

@@ -11,13 +11,13 @@ export const contentEs = {
   hero: {
     badge: "Open source · Monitoreo audible · Licencia MIT",
     title: "Escuchá tus sistemas como música de fondo.",
-    body: "MAIA convierte logs, streams, repositorios y scans de archivos en una mezcla de monitoreo en background para equipos técnicos.",
+    body: "MAIA convierte streams de señales técnicas en una mezcla de monitoreo en background para equipos técnicos.",
     body2:
       "El equipo elige un track o playlist base que le gusta escuchar y Maia deja que el comportamiento del sistema deforme esa base para que estabilidad, presión y anomalías se puedan oír sin quedarse mirando un dashboard.",
     cta1: "Descargar para macOS/Windows/Linux",
     cta2: "Ver en GitHub",
     stats: [
-      { label: "Entradas", value: "Logs · Streams · Repos · Scans" },
+      { label: "Entradas", value: "Logs · Repos · CI · Métricas · Incidentes" },
       { label: "Runtime", value: "macOS · Windows · Ubuntu/Linux" },
       { label: "Salida", value: "Mix de fondo · Replay · Cues" },
     ],
@@ -27,7 +27,7 @@ export const contentEs = {
     subtitle: "base musical, señal en vivo y respuesta audible",
     badge: "señal local",
     lanesTitle: "Canales de entrada",
-    lanes: ["track / playlist base", "tail del log", "sesión de proceso", "scan del repositorio"],
+    lanes: ["track / playlist base", "evidencia en vivo", "sesión de proceso", "calidad / señal CI"],
     metricsTitle: "Métricas de señal",
     responseTitle: "Superficie de respuesta musical",
     tags: ["estable → groove calmo", "warn → elevación tonal", "error → golpe más agudo"],
@@ -36,7 +36,7 @@ export const contentEs = {
   product: {
     eyebrow: "Producto",
     title: "Monitoreá sistemas sin solo mirarlos",
-    text: "MAIA crea una capa audible de monitoreo para servers, logs, repositorios, streams y scans de archivos.",
+    text: "MAIA crea una capa audible de monitoreo para logs, calidad de código, CI/CD, métricas, incidentes, eventos cloud y streams locales.",
     features: [
       {
         title: "Un track o playlist fija la cama",
@@ -44,7 +44,7 @@ export const contentEs = {
       },
       {
         title: "La señal operativa se vuelve cambio musical",
-        text: "Logs, streams y patrones del repo deforman el groove cuando el comportamiento cambia.",
+        text: "Los streams de señal deforman el groove cuando cambia el comportamiento: logs, hallazgos de calidad, fallas de CI, drift de métricas o presión de incidentes.",
       },
       {
         title: "Escucha sin lock-in al dashboard",
@@ -67,7 +67,7 @@ export const contentEs = {
       },
       {
         title: "Conectá la fuente",
-        text: "Importá un repositorio, seguí un log, abrí una sesión de stream o escaneá archivos localmente.",
+        text: "Conectá un log, repositorio, proceso, feed cloud, fuente de análisis estático, stream de CI o query de métricas.",
       },
       {
         title: "Mapeá el comportamiento",
@@ -81,9 +81,9 @@ export const contentEs = {
   },
   didactic: {
     eyebrow: "Ejemplo didáctico",
-    title: "Mirá cómo un log típico se transforma en sonido",
-    text: "Warnings y errores cambian el sonido para que la anomalía se vuelva audible antes de escanear visualmente el stream.",
-    inputTitle: "Log productivo típico",
+    title: "Mirá cómo una señal técnica se transforma en sonido",
+    text: "Warnings, checks fallidos, hallazgos de calidad y drift cambian el sonido para que la anomalía se vuelva audible antes de escanear visualmente el stream.",
+    inputTitle: "Señal productiva típica",
     inputSubtitle: "Muestra de stream de entrada",
     outputTitle: "En qué lo convierte MAIA",
     outputSubtitle: "Ejemplo de mapeo audible",
@@ -150,7 +150,7 @@ export const contentEs = {
       "App desktop multiplataforma para macOS, Windows y Ubuntu/Linux",
       "Tracks y playlists base como cama de escucha",
       "Ingesta de repositorios con parsing estructural",
-      "Import de logs locales + sonificación live tail",
+      "Import de logs locales + sonificación de señales en vivo",
       "Monitoreo por sesiones para archivos locales, procesos, WebSocket y HTTP poll",
       "Catálogo de base assets reutilizables",
       "Respuesta en vivo anclada a la base musical",
@@ -189,7 +189,7 @@ export const contentEs = {
       },
       {
         title: "Las señales empujan las mutaciones",
-        text: "Logs, streams, repos y scans son las entradas que deforman la música.",
+        text: "Logs, hallazgos de calidad, eventos CI/CD, métricas, incidentes, repos y scans son las entradas que deforman la música.",
       },
       {
         title: "Instrumental y determinístico",
@@ -221,8 +221,8 @@ export const contentEs = {
         title: "Volver más inteligente el loop de escucha",
         items: [
           {
-            label: "03 · Adapters de streams más amplios",
-            text: "Crecer hacia CloudWatch, ELK, Loki, Splunk, Datadog, Google Cloud Logging y Azure Monitor.",
+            label: "03 · Adapters de señal más amplios",
+            text: "Crecer hacia SonarQube, GitHub Actions, Alertmanager, Prometheus, CloudWatch, ELK, Loki, Splunk, Datadog, Google Cloud Logging y Azure Monitor.",
           },
           {
             label: "04 · Motor de sonificación más rico",

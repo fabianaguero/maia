@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Implement CodeProjects tab in Maia Library with SonarQube integration, enabling users to manage repositories and poll code quality issues alongside real-time log monitoring.
+**Goal:** Implement CodeProjects tab in Maia Library with SonarQube integration, enabling users to manage repositories and poll code quality issues as a non-log signal source alongside real-time stream monitoring.
 
-**Architecture:** Backend-first approach: (1) database table + Rust API, (2) React components + state management, (3) i18n (4) integration with Monitor. Each layer builds on previous. Components follow Connections patterns (ViewModel builders, custom hooks, focused components). SonarQube validation happens via backend test-connection endpoint.
+**Architecture:** Backend-first approach: (1) database table + Rust API, (2) React components + state management, (3) i18n (4) integration with Monitor. Each layer builds on previous. Components follow Connections patterns (ViewModel builders, custom hooks, focused components). SonarQube validation happens via backend test-connection endpoint. The monitor integration should align with `docs/signal-streams-roadmap.md`: CodeProjects produce source evidence and anomaly/pressure metrics, not UI-specific fake log flows.
 
 **Tech Stack:** 
 - Rust (Tauri, SQLite)
@@ -21,6 +21,39 @@
 - **DRY:** Reuse Connections patterns (ViewModel builders, hook structure)
 - **Error Handling:** Specific error messages, user-actionable feedback
 - **Commits:** Frequent, one per task, descriptive messages
+
+---
+
+## Current Status After App Updates
+
+This plan was originally written before implementation. The app has since moved forward.
+
+Already landed:
+
+- `desktop/src/types/codeProject.ts`
+- `desktop/src/features/library/useCodeProjectsState.ts`
+- `desktop/src/features/library/codeProjectsViewModel.ts`
+- `desktop/src/features/library/components/LibraryCodeProjectsList.tsx`
+- `desktop/src/features/library/components/LibraryCodeProjectDrawer.tsx`
+- `desktop/src/features/library/components/LibraryCodeProjectForm.tsx`
+- `desktop/src/features/library/components/CodeProjectSonarQubeConfigForm.tsx`
+- `desktop/src/features/library/components/CodeProjectStatusIndicator.tsx`
+- CodeProject i18n keys in library locale slices.
+- `database/schema.sql` `code_projects` table.
+- Native CRUD and SonarQube test commands in `desktop/src-tauri/src/main.rs`.
+- SonarQube polling branch in `poll_stream_session`.
+- Unit tests updated around the library CodeProjects tab and controller/view-model integration.
+
+Still pending:
+
+- CodeProject selection in Monitor setup as a real signal source.
+- End-to-end launch path: CodeProject → active monitor session → SonarQube poll → deck evidence rows → audio mutation.
+- Structured source evidence contract; current SonarQube path still formats issues as log-shaped text rows.
+- Token security: `sonarqube_auth_token` is currently plaintext in SQLite.
+- Real SonarQube/SonarCloud smoke test.
+- Regression tests proving existing file/cloud/process monitoring still works after CodeProjects landed.
+
+Use the remaining detailed tasks below as historical implementation context, not as a fresh unchecked task list.
 
 ---
 
@@ -2123,4 +2156,3 @@ git commit -m "feat: Integrate CodeProjects list into Library tab"
 - ✅ DRY principles (reused Connections patterns)
 
 **Total Commits:** 11 commits covering backend, components, i18n, and integration
-

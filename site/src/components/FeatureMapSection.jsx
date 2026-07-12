@@ -5,13 +5,13 @@ const features = [
     id: "live-view",
     title: "MAIA Live View",
     description: "Real-time monitoring with base music + live signals",
-    highlight: "Watch how code anomalies translate into musical variations",
+    highlight: "Watch how technical anomalies translate into musical variations",
   },
   {
     id: "input-lanes",
     title: "Input Lanes",
-    description: "Base track, log tail, process sessions, repository scans",
-    highlight: "Connect multiple data sources simultaneously",
+    description: "Base track, source evidence, process sessions, quality and CI feeds",
+    highlight: "Connect multiple signal sources through the same deck",
   },
   {
     id: "response-surface",
@@ -103,7 +103,7 @@ export default function FeatureMapSection() {
           <div className="space-y-3 text-sm text-gray-600 dark:text-gray-400 font-mono">
             <div className="flex items-center gap-2">
               <span className="text-cyan-400">→</span>
-              <span>Ingest: Logs, code changes, repository events</span>
+              <span>Ingest: Logs, quality findings, CI/CD events, metrics, incidents</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-cyan-400">→</span>

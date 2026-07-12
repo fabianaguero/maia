@@ -4,9 +4,11 @@
 
 ## Intent
 Maia is a local-first desktop product for passive operational monitoring through sound.
-The operator selects a real musical track as the listening bed, then Maia parses repositories, tails logs, or follows runtime streams and translates that signal into audible mutations plus DJ-style monitoring visuals.
+The operator selects a real musical track as the listening bed, then Maia follows **signal streams** and translates source evidence into audible mutations plus DJ-style monitoring visuals.
 
-The MVP goal is not "alerting with sounds". The goal is a stable, recognizable musical base where code and log pressure deform the mix just enough to make drift, bursts, and anomalies perceptible.
+Logs are one signal stream. Repositories, static-analysis findings, process output, cloud events, CI/CD events, metrics, incidents, security findings, and business-process events should fit the same architecture when they can expose pressure, drift, or anomalies.
+
+The MVP goal is not "alerting with sounds". The goal is a stable, recognizable musical base where source pressure deforms the mix just enough to make drift, bursts, and anomalies perceptible.
 
 ## Source Of Truth
 - Desktop shell: `desktop/`
@@ -23,7 +25,7 @@ flowchart LR
   Runtime[Native Runtime<br/>Rust session registry]
   Analyzer[Analyzer<br/>Python + deterministic heuristics]
   Storage[(SQLite + managed local assets)]
-  Sources[Sources<br/>repos / files / process / gcloud / websockets / http poll / journald]
+  Sources[Signal sources<br/>logs / repos / process / gcloud / sonarqube / ci / metrics / incidents]
   Audio[Web Audio playback<br/>real track + reactive mutations]
 
   Operator --> Desktop
@@ -55,7 +57,7 @@ flowchart TD
 
   subgraph Analysis["Analyzer"]
     Parse[Chunk parsing]
-    Metrics[Severity + cadence + anomalies + BPM suggestions]
+    Metrics[Pressure + cadence + anomalies + BPM suggestions]
     Cues[Sonification cues]
   end
 
@@ -103,7 +105,7 @@ sequenceDiagram
     R->>S: read next chunk
     S-->>R: appended text
     R->>P: analyze(chunk, context)
-    P-->>R: parsedLines + metrics + anomalyMarkers + cues
+    P-->>R: evidenceRows + metrics + anomalyMarkers + cues
     R-->>UI: LiveLogStreamUpdate
     UI->>A: mutate real track playback graph
     UI->>UI: update tail, waveform, anomaly links
@@ -114,7 +116,7 @@ sequenceDiagram
 The MVP keeps the domain intentionally small:
 
 - `track_analysis`: imported tracks and their analysis artifacts
-- `repo_analysis`: repository or log-source analysis baseline
+- `repo_analysis`: current compatibility type for repository, log-source, and source-signal analysis baselines
 - `base_asset`: reusable sound building blocks
 - `composition_result`: exported or previewable arrangement result
 
@@ -125,7 +127,7 @@ The important architectural decision is that live monitoring does **not** create
 flowchart LR
   subgraph Persistent["Persistent data"]
     Tracks[track_analysis]
-    Repos[repo_analysis]
+    Repos[source analysis baseline]
     Assets[base_asset]
     Results[composition_result]
     Sessions[sessions]
@@ -146,7 +148,7 @@ flowchart LR
   DeckState --> AudioState
 ```
 
-## Stream Adapters
+## Signal Stream Adapters
 Current MVP-compatible adapters are unified under one session contract:
 
 - `file`
@@ -155,8 +157,28 @@ Current MVP-compatible adapters are unified under one session contract:
 - `websocket`
 - `journald`
 - cloud-backed adapters routed through saved connections in the UI
+- planned non-log adapters such as `sonarqube`, CI/CD event feeds, incident feeds, and metrics polling
 
-Architecturally, Maia should treat them the same after ingestion: once text enters the session buffer, the analyzer path and monitor deck should behave identically regardless of origin.
+Architecturally, Maia should treat them the same after ingestion: once source evidence enters the session buffer, the analyzer path and monitor deck should behave identically regardless of origin.
+
+The current text-chunk path remains useful for compatibility, especially for logs and process output.
+The long-term target is a normalized evidence event shape so non-log sources do not become "fake logs".
+
+```mermaid
+flowchart LR
+  Adapter[Adapter<br/>file / gcloud / sonarqube / ci / metrics]
+  Evidence[Source evidence<br/>row or event]
+  Analyzer[Analyzer]
+  Pressure[Pressure + anomalies]
+  UI[Deck evidence lane]
+  Audio[Track mutation]
+
+  Adapter --> Evidence
+  Evidence --> Analyzer
+  Analyzer --> Pressure
+  Pressure --> UI
+  Pressure --> Audio
+```
 
 ## Audio Model
 Maia does not synthesize a full song from scratch for monitoring mode.
@@ -172,7 +194,7 @@ flowchart LR
   Output[Output gain]
   Deck[Deck gain]
   Speaker[Playback]
-  Signal[Log pressure + anomalies + cues]
+  Signal[Signal pressure + anomalies + cues]
 
   Track --> Decode --> Filter
   Filter --> Dry --> Output
@@ -190,6 +212,7 @@ This keeps the product aligned with the UX promise:
 - real track always present
 - anomalies modify texture, filtering, drive, and emphasis
 - quiet streams let the track breathe instead of collapsing
+- sources without new evidence must not generate fake anomalies or synthetic beeps
 
 ## UI Architecture
 The main monitor surface is moving toward a modular deck:
@@ -201,7 +224,7 @@ The main monitor surface is moving toward a modular deck:
 - `MonitorSetupScreen.tsx`: dedicated setup route from the lateral menu
 - `ConnectionsScreen.tsx`: persistent cloud/file/process connection management
 - `MonitorActiveHeader.tsx`: session identity and state
-- `LiveTailPanel.tsx`: tail view with anomaly linking
+- `LiveTailPanel.tsx`: current tail/evidence view with anomaly linking
 - `MonitorDeckHeader.tsx`: BPM, time, severity legend
 - `MonitorDeckControlPanel.tsx`: operator-editable deck parameters
 - `MonitorDeckWavePanel.tsx`: overview + moving waveform deck
@@ -316,7 +339,7 @@ This must feel like a DJ deck, not a dashboard.
 That means:
 
 - the waveform is a transport surface, not just a graph
-- the log tail is linked to audible and visual anomalies
+- source evidence is linked to audible and visual anomalies
 - controls should feel like deck parameters, not admin settings
 - the real track remains legible as the primary listening object
 
@@ -333,3 +356,4 @@ That means:
 3. Continue reducing `SimpleMonitorScreen.tsx` by isolating canvas interaction, scrub logic, and active-session composition.
 4. Persist typed operator customization profiles per skin/preset so the deck survives restarts consistently.
 5. Expand locale-aware tests so UI copy regressions are caught without relying on brittle literal snapshots.
+6. Start the gradual naming migration from log-centric terms to signal-stream terms, following `docs/signal-streams-roadmap.md`.

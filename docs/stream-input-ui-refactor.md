@@ -1,12 +1,12 @@
 # Stream Input UI Refactor
 
-**Branch:** `feat/sonarqube-adapter`  
-**Status:** Design & implementation  
-**Updated:** 2026-07-10
+**Branch:** `feat/refactor-sonarqube-to-projects`
+**Status:** Design & implementation, partially landed
+**Updated:** 2026-07-11
 
 ## Objective
 
-Refactor the connection management UI from "Log-centric" to "Stream Input" - a generic, heterogeneous system supporting:
+Refactor the connection management UI from "Log-centric" to "Stream Input" - a generic, heterogeneous system supporting source evidence that can expose pressure, drift, or anomalies:
 - **Files:** Local log files (`file` adapter)
 - **Repositories:** Code analysis (`repo` adapter)
 - **HTTP/Polling:** Web endpoints (`http-poll` adapter)
@@ -14,17 +14,40 @@ Refactor the connection management UI from "Log-centric" to "Stream Input" - a g
 - **System Logs:** journald (`journald` adapter)
 - **Cloud:** Cloud Run logs via GCP (`gcloud` adapter)
 - **SonarQube:** Static code analysis (`sonarqube` adapter)
+- **CI/CD:** Pipeline events and failed checks (`github-actions`, `gitlab-ci`, `jenkins` adapters)
+- **Metrics:** Numeric signal polling (`prometheus`, `datadog`, `cloud-monitoring` adapters)
+- **Incidents:** Alert and incident events (`alertmanager`, `pagerduty` adapters)
+- **Security:** Vulnerability and policy findings (`snyk`, `trivy`, `semgrep` adapters)
 - **Future:** GraphQL, Kafka, S3, etc.
 
 ## Current State
 
 | Component | Name | Scope |
 |-----------|------|-------|
-| Rust struct | `LogSourceConnection` | Assumes log input |
+| Rust struct | `LogSourceConnection` | Still exists for saved file/cloud/process connections |
+| Rust struct | `CodeProject` | Landed for SonarQube-backed repository quality sources |
 | React screen | `ConnectionsScreen` | "Connections" (good, generic) |
+| React Library tab | `CodeProjects` | Landed for SonarQube setup, CRUD, and connection testing |
 | UI panels | `ConnectionsFormPanel` | Log-specific form fields |
 | DB table | `log_source_connections` | Implies log-only |
+| DB table | `code_projects` | Landed; stores SonarQube config and status |
 | i18n labels | `connections` | Could be better |
+
+## Current Landed Work
+
+- `desktop/src/types/codeProject.ts` defines the CodeProject domain contract.
+- `desktop/src/features/library/useCodeProjectsState.ts` provides list/create/update/delete/test state.
+- `desktop/src/features/library/components/*CodeProject*` implements the Library UI.
+- `desktop/src-tauri/src/main.rs` contains `create_code_project`, `list_code_projects`, `update_code_project`, `delete_code_project`, and `test_sonarqube_connection`.
+- `desktop/src-tauri/src/main.rs` contains the current SonarQube polling branch in `poll_stream_session`.
+- `database/schema.sql` includes `code_projects`.
+
+Known gaps:
+
+- SonarQube auth tokens are currently stored in plaintext SQLite.
+- SonarQube findings are converted to log-shaped lines before analysis.
+- CodeProjects and `log_source_connections` are two parallel source systems, not one unified `stream_input_connections` table.
+- Monitor launch/picker behavior still needs end-to-end verification for CodeProjects.
 
 ## Refactoring Plan
 
@@ -51,7 +74,7 @@ pub struct StreamInputConnection {
 }
 ```
 
-**Why:** "Stream Input" captures the abstraction: any input that becomes a stream of text.
+**Why:** "Stream Input" captures the abstraction: any input that becomes a time-ordered stream of source evidence. Text lines are one representation, but the target contract should also support structured events.
 
 ### 2. Update Database Schema
 
@@ -124,6 +147,9 @@ pub fn start_stream_session(
 }
 ```
 
+The first implementation can continue returning text rows for compatibility.
+The next contract should add a structured `evidenceEvents` path so adapters like SonarQube, CI/CD, metrics, incident feeds, and security tools do not have to masquerade as log lines.
+
 ### 5. Internationalization
 
 **Before:**
@@ -185,35 +211,42 @@ const connectionTypeColors = {
 ## Implementation Phases
 
 ### Phase 1: Data Layer ✓
-- [x] Update Rust types (LogSourceConnection → StreamInputConnection)
-- [ ] Update database schema
-- [ ] Update query/insert functions
+- [x] Add CodeProject domain types for the first non-log source.
+- [x] Add `code_projects` schema.
+- [x] Add CodeProject query/insert/update/delete functions.
+- [ ] Defer `log_source_connections` → `stream_input_connections` rename until after CodeProjects monitor flow is stable.
 
 ### Phase 2: Adapter Integration
 - [x] SonarQube adapter implemented
-- [ ] Integrate all adapters with SessionRegistry
-- [ ] Verify existing adapters still work
+- [x] Integrate SonarQube polling into `SessionRegistry`/`poll_stream_session` compatibility path.
+- [ ] Verify CodeProject monitor launch end-to-end from Library/Monitor setup.
+- [ ] Verify existing file/process/gcloud adapters still work after CodeProject changes.
+- [ ] Add one event-native adapter, such as GitHub Actions or Alertmanager, to prove the design is not log-only
+- [ ] Add one numeric adapter, such as Prometheus polling, to prove continuous pressure mapping
 
 ### Phase 3: React UI
-- [ ] Update ConnectionsFormPanel to be type-aware
-- [ ] Add type-specific form fields by kind
-- [ ] Update i18n strings
-- [ ] Add connection type icons/badges
+- [x] Add CodeProjects Library UI and i18n strings.
+- [x] Add SonarQube-specific setup form and status indicator components.
+- [ ] Decide whether CodeProjects remain a separate Library tab or become a source-kind inside unified Stream Inputs.
+- [ ] Add monitor source-kind chips and labels across setup/replay/tail surfaces.
+- [ ] Gradually rename user-facing "log source" labels to "signal source" where source-agnostic.
 
 ### Phase 4: Testing
-- [ ] Unit tests for type-specific config
-- [ ] Integration test with SonarQube adapter
-- [ ] Manual test: create connections of different types
+- [x] Add/adjust tests for CodeProjects tab integration in library view-model/controller coverage.
+- [ ] Unit tests for SonarQube issue formatting and polling diff behavior.
+- [ ] Integration test: create CodeProject → test connection → start monitor session → poll → render evidence.
+- [ ] Regression tests: file/local/cloud monitoring still tail and still keep track audio faithful while idle.
 
 ## Breaking Changes
 
 **For users:**
-- `log_source_connections` table renamed → requires migration script
+- No immediate table rename. `log_source_connections` and `code_projects` coexist.
+- Future `stream_input_connections` migration still requires a tested migration script.
 - API response shape changes slightly (adds `kind`, restructures `config`)
 
 **For integrators:**
-- `LogSourceConnection` → `StreamInputConnection`
-- "Log connections" terminology → "Stream inputs"
+- `LogSourceConnection` may eventually become `StreamInputConnection`.
+- "Log connections" terminology should become "Stream inputs" or "Signal sources" in source-agnostic UI.
 
 ## Backward Compatibility
 
@@ -229,6 +262,9 @@ WHERE kind = 'gcloud';
 
 - [ ] All 7+ adapter types work identically through generic UI
 - [ ] No log-specific terminology in UI or API
-- [ ] SonarQube connection can be created + monitored like any other source
+- [x] SonarQube-backed CodeProject can be created and connection-tested
+- [ ] SonarQube-backed CodeProject can be monitored like any other source
+- [ ] At least one non-log event source can be monitored without source-specific deck code
+- [ ] At least one numeric source can affect pressure without creating fake anomalies
 - [ ] i18n strings support all connection types
 - [ ] Docs reflect "Stream Input" naming

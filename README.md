@@ -1,6 +1,6 @@
 # Maia – Auditory Monitoring for Technical Teams
 
-Maia is a local-first desktop app for auditory monitoring. A team chooses a favorite track or playlist as the musical base, then Maia turns repositories, logs, streams, file scans, and reusable sonic assets into a continuous, pleasant monitoring mix that can run in the background and be understood by ear.
+Maia is a local-first desktop app for auditory monitoring. A team chooses a favorite track or playlist as the musical base, then Maia turns signal streams such as logs, repositories, static-analysis findings, process output, cloud events, metrics, and reusable sonic assets into a continuous, pleasant monitoring mix that can run in the background and be understood by ear.
 
 The product is not meant to replace dashboards. It adds an audible monitoring layer so operators can hear when a system is calm, tense, drifting, or anomalous without staring at a screen.
 
@@ -44,6 +44,7 @@ If you are preparing a public release, also review:
 - `docs/testing-and-quality.md`: quality gates, coverage commands, and testing priorities for contributors
 - `docs/pre-release-manual-test-plan.md`: manual QA flow to validate Maia as a desktop product before publishing or tagging a release
 - `docs/ai-roadmap.md`: staged plan for ML and AI adoption across analyzer, prep workflows, and hybrid mixing
+- `docs/signal-streams-roadmap.md`: product and architecture plan for evolving Maia beyond log-centric monitoring into generic signal streams
 - `docs/github-publish-checklist.md`: pre-publication checklist before making the repository public
 - `docs/demo-assets-and-fixtures.md`: explanation of demo audio, curated fixtures, and non-runtime helper artifacts
 - `docs/archive/`: archived implementation plans and historical verification notes that are no longer active source-of-truth docs
@@ -75,8 +76,10 @@ The current desktop app already includes:
 - DJ-style analyzer views for waveform, beat grid, BPM curve, key/energy metadata, repository metrics, base asset metrics, and composition structure
 - Native Tauri imports with managed local snapshots and SQLite persistence
 - Repository parsing with tree-sitter-backed language support for Java, Kotlin, Python, TypeScript/TSX, Rust, and Go
-- Local log-file analysis plus live sonification with Web Audio
+- Local log-file analysis plus live signal sonification with Web Audio
 - OpenTelemetry-friendly passive log monitoring with `trace_id` / `span_id` compatible intake and correlated anomaly views
+- Stream-input direction for non-log sources such as SonarQube, CI/CD, incident feeds, metrics, security findings, and business-process events
+- CodeProjects groundwork for SonarQube-backed code quality signal sources; monitor integration and secure token storage are still in progress
 - Live monitor scenes with genre palettes, sequencer presets, component routing, beat-locked scheduling, and base-track/base-playlist anchoring
 - Session persistence, replay, replay bookmarks, and feedback-driven mix suggestions for monitored streams
 - Composition planning with `plan.json`, generated `preview.wav`, in-app playback, and WAV stem export
@@ -120,7 +123,7 @@ Core entity: `musical_asset`
 | Type | Description |
 |------|-------------|
 | `track_analysis` | Full audio analysis result |
-| `repo_analysis` | Code/log repository scan result |
+| `repo_analysis` | Current compatibility type for code, log, and source-signal analysis baselines |
 | `base_asset` | Reuseable musical segment |
 | `composition_result` | Assembled composition |
 
@@ -141,7 +144,7 @@ If you want to understand Maia quickly without reading the whole codebase first:
 2. Start the desktop app with `cd desktop && npm run tauri dev`.
 3. Use a real track from your machine or one already present in your local library.
 4. Use one of the bundled log fixtures under `desktop/test/logs/`.
-5. Start passive monitoring and verify the tail, deck, anomalies, and audio bed together.
+5. Start passive monitoring and verify the evidence tail, deck, anomalies, and audio bed together.
 
 The highest-value local fixtures for a first run are:
 
@@ -193,6 +196,8 @@ If you are new to the repository, start from the layer you actually want to chan
 - `desktop/src-tauri/src/main.rs`: native commands, filesystem, SQLite, transient stream sessions
 - `analyzer/src/maia_analyzer/`: deterministic analysis logic
 - `contracts/`: JSON boundary between desktop and analyzer
+
+If you are extending Maia beyond logs, read `docs/signal-streams-roadmap.md` before adding a new adapter. New sources should normalize into source evidence and anomaly/pressure metrics instead of hard-coding source-specific behavior into the UI.
 
 For the active frontend shell, the mounted path is:
 

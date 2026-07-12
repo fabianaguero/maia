@@ -11,13 +11,13 @@ export const contentEn = {
   hero: {
     badge: "Open source auditory monitoring · MIT licensed",
     title: "Hear your systems as background music.",
-    body: "MAIA turns logs, streams, repositories, and scanned files into a background monitoring mix for technical teams.",
+    body: "MAIA turns technical signal streams into a background monitoring mix for technical teams.",
     body2:
       "A team chooses a favorite track or playlist as the musical bed, then Maia lets system behavior bend that bed so stability, pressure, and anomalies can be heard without staring at a dashboard.",
     cta1: "Download for macOS/Windows/Linux",
     cta2: "View on GitHub",
     stats: [
-      { label: "Inputs", value: "Logs · Streams · Repos · File scans" },
+      { label: "Inputs", value: "Logs · Repos · CI · Metrics · Incidents" },
       { label: "Runtime", value: "macOS · Windows · Ubuntu/Linux" },
       { label: "Output", value: "Background mix · Replay · Cues" },
     ],
@@ -27,7 +27,7 @@ export const contentEn = {
     subtitle: "base music, live signal, audible response",
     badge: "local signal",
     lanesTitle: "Input lanes",
-    lanes: ["base track / playlist", "log tail", "process session", "repository scan"],
+    lanes: ["base track / playlist", "live evidence", "process session", "quality / CI signal"],
     metricsTitle: "Signal metrics",
     responseTitle: "Musical response surface",
     tags: ["stable → calm groove", "warn → tonal lift", "error → sharper hit"],
@@ -36,7 +36,7 @@ export const contentEn = {
   product: {
     eyebrow: "Product",
     title: "Monitor systems without only watching them",
-    text: "MAIA creates an audible monitoring layer for servers, logs, repositories, streams, and scanned files.",
+    text: "MAIA creates an audible monitoring layer for logs, code quality, CI/CD, metrics, incidents, cloud events, and local streams.",
     features: [
       {
         title: "A base track or playlist sets the bed",
@@ -44,7 +44,7 @@ export const contentEn = {
       },
       {
         title: "Operational signals become musical change",
-        text: "Logs, streams, and repository patterns bend the groove when behavior shifts.",
+        text: "Signal streams bend the groove when behavior shifts: logs, quality findings, CI failures, metrics drift, or incident pressure.",
       },
       {
         title: "Listen without dashboard lock-in",
@@ -67,7 +67,7 @@ export const contentEn = {
       },
       {
         title: "Connect the source",
-        text: "Import a repository, tail a log, open a stream session, or scan files locally.",
+        text: "Connect a log, repository, process, cloud feed, static-analysis source, CI event stream, or metric query.",
       },
       {
         title: "Map the behavior",
@@ -81,9 +81,9 @@ export const contentEn = {
   },
   didactic: {
     eyebrow: "Didactic example",
-    title: "See a typical log turn into sound",
-    text: "Warnings and errors change the sound so the anomaly becomes audible before someone scans the stream visually.",
-    inputTitle: "Typical production log",
+    title: "See a technical signal turn into sound",
+    text: "Warnings, failed checks, quality findings, and drift change the sound so the anomaly becomes audible before someone scans the stream visually.",
+    inputTitle: "Typical production signal",
     inputSubtitle: "Input stream sample",
     outputTitle: "What MAIA turns it into",
     outputSubtitle: "Audible mapping example",
@@ -149,8 +149,8 @@ export const contentEn = {
       "Cross-platform desktop app for macOS, Windows, and Ubuntu/Linux",
       "Base tracks and playlists as the listening bed",
       "Repository intake with structural parsing",
-      "Local log-file import + live tail sonification",
-      "Session-based monitoring for local files, processes, WebSocket, and HTTP poll",
+      "Local log-file import + live signal sonification",
+      "Session-based monitoring for local files, processes, WebSocket, HTTP poll, and cloud/event feeds",
       "Reusable base assets catalog",
       "Beat-aware live response anchored to the base bed",
       "Session replay, bookmarks, and feedback-driven mix suggestions",
@@ -188,7 +188,7 @@ export const contentEn = {
       },
       {
         title: "Signals drive the mutations",
-        text: "Logs, streams, repos, and scans are the inputs that bend the music.",
+        text: "Logs, quality findings, CI/CD events, metrics, incidents, repos, and scans are the inputs that bend the music.",
       },
       {
         title: "Instrumental and deterministic",
@@ -220,8 +220,8 @@ export const contentEn = {
         title: "Make the listening loop smarter",
         items: [
           {
-            label: "03 · Broader stream adapters",
-            text: "Grow toward CloudWatch, ELK, Loki, Splunk, Datadog, Google Cloud Logging, and Azure Monitor.",
+            label: "03 · Broader signal adapters",
+            text: "Grow toward SonarQube, GitHub Actions, Alertmanager, Prometheus, CloudWatch, ELK, Loki, Splunk, Datadog, Google Cloud Logging, and Azure Monitor.",
           },
           {
             label: "04 · Richer sonification engine",

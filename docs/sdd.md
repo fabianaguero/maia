@@ -1,11 +1,11 @@
 # SDD (lightweight) - Maia
 
 ## Summary
-Maia is a local-first desktop app for auditory monitoring. The user chooses a track or playlist as the musical base, then Maia turns repositories, logs, streams, scanned files, and reusable sonic assets into a continuous monitoring mix and audible operational signals by altering that base. It runs as a Tauri + React + TypeScript desktop shell with a Python analyzer, SQLite storage, and JSON contracts over IPC.
+Maia is a local-first desktop app for auditory monitoring. The user chooses a track or playlist as the musical base, then Maia turns signal streams such as repositories, logs, static-analysis findings, process output, cloud events, metrics, scanned files, and reusable sonic assets into a continuous monitoring mix and audible operational signals by altering that base. It runs as a Tauri + React + TypeScript desktop shell with a Python analyzer, SQLite storage, and JSON contracts over IPC.
 
 ## Goals
-- Make software behavior listenable (code + logs) with deterministic analysis.
-- Let source-derived events alter a known musical base instead of generating abstract cues only.
+- Make software behavior listenable with deterministic analysis across logs, code, quality gates, process output, metrics, incidents, and other event streams.
+- Let source-derived evidence alter a known musical base instead of generating abstract cues only.
 - Let teams monitor systems mainly by ear, with visuals as support rather than the primary channel.
 - Keep the listening experience pleasant enough for long background use.
 - Provide DJ-like analysis views: waveform, beat grid, BPM curve.
@@ -47,11 +47,12 @@ Maia is a local-first desktop app for auditory monitoring. The user chooses a tr
 - Repo analysis reads the full code snapshot ("tail" of the codebase) to build a musical signal baseline.
 - Optional repo parsing filters can narrow analysis by language or file extension.
 
-3) Log import and live monitoring
+3) Signal import and live monitoring
 - Local log file is snapshotted; live tail reads from original path.
 - Analyzer derives severity/anomaly metrics and a BPM suggestion.
 - Live monitor uses Web Audio to trigger cues.
-- Log tailing is the streaming version of the same signal idea: a "tail" of events that drives the musical cues.
+- Log tailing is the first streaming version of the same signal idea: a "tail" of events that drives the musical cues.
+- Non-log sources such as SonarQube, CI/CD feeds, incident streams, metrics, and security findings should normalize into the same source-evidence path instead of adding UI-specific monitoring flows.
 - The target user experience is auditory monitoring in background: the team should be able to hear stability, pressure, drift, and anomalies without continuously watching the UI.
 
 4) Base asset import
@@ -89,6 +90,7 @@ Maia is a local-first desktop app for auditory monitoring. The user chooses a tr
 - Beat-phase-aware scheduling: persistent `BeatClock` seeded from anchor BPM (or first live-detected BPM); `nextBeatTime` aligns cue start to the nearest subdivision boundary; gentle ±12% drift re-sync per poll window. ✅
 - Monitor prefs persistence: `MonitorPrefs` (`basePlaylist`, `selectedStyleProfileId`, `selectedMutationProfileId`) saved to `localStorage` keyed by `repository.id`; restored on repo switch, with loader-side migration from the older `referencePlaylistIds` / `selectedGenreId` / `selectedPresetId` shape. ✅
 - Blend details in scene panel: `LiveSonificationScenePanel` shows a "Blend style" row when the active anchor is a playlist composite. ✅
+- CodeProjects / SonarQube groundwork: Library-side CodeProjects, SonarQube configuration/testing, SQLite persistence, and a native SonarQube polling path are in progress as the first non-log signal source. The remaining work is Monitor integration, structured source evidence, token security, and end-to-end validation. ⏳
 
 ## Still missing / future work
 The most realistic implementation order from this point: (1) deepen imported-track and playlist prep inside the current app workflow; (2) push the current app-level monitor into a true background music-server mode for teams; (3) broaden stream adapters beyond the current file / process / WebSocket / HTTP-poll / journald set; (4) deepen the sonification engine with denser sequencing and component-level mapping; (5) add fuller export/bounce beyond `plan.json`, `preview.wav`, and stem WAVs; and (6) only later add virtual output / system-audio passthrough as a broader runtime expansion.
@@ -96,7 +98,7 @@ The most realistic implementation order from this point: (1) deepen imported-tra
 - **Track / playlist prep depth** ⏳ pending (full-track analysis, stronger cue maps, smarter playlist intelligence, and prep closer to DJ-style library workflows).
 - **Always-on app-level monitoring** ✅ (shipped: `MonitorContext` lifts poll loop to root, sidebar live badge, session survives navigation) — resolved.
 - **Background music-server mode / headless runtime** ⏳ pending.
-- **Broader stream adapters** ✅ (shipped: WebSocket adapter manages JS `WebSocket` and feeds chunks into Rust `SessionRegistry`; HTTP-poll adapter fetches URL on each interval through the same path; `ingest_stream_chunk` Rust command; panel URL inputs; `journald` adapter via native `journalctl -f -o json` follow mode with optional unit filter in `LiveLogMonitorPanel`).
+- **Broader stream adapters** ✅ (shipped: WebSocket adapter manages JS `WebSocket` and feeds chunks into Rust `SessionRegistry`; HTTP-poll adapter fetches URL on each interval through the same path; `ingest_stream_chunk` Rust command; panel URL inputs; `journald` adapter via native `journalctl -f -o json` follow mode with optional unit filter in `LiveLogMonitorPanel`). Next direction: move from log-centric streams to generic signal streams; see `docs/signal-streams-roadmap.md`.
 - **Test coverage** ✅ (shipped: `test_schema_validation.py` — 11 tests validating request/response JSON schemas with `jsonschema`; `test_golden_analysis.py` — 18 tests pinning stable metric values, mock vs native gate for health/analyze/error shapes; `jsonschema[format-nongpl]` added to requirements-dev.txt; contract schema synced: `healthPayload.supportedTrackFormats` added)
 - **Dense multi-track arrangement** ✅ (shipped: per-component gain/mute routing panel, `ComponentRoutingPanel`, arrangement-lane display with foundation/motion/accent tracks; `PadSequencerPanel` — 16-step × 3-track authoring grid with BPM playhead, Fill-from-scene seed, clear, per-track colour coding)
 - **Export/bounce pipeline** ✅ (shipped: `write_stem_wavs()` renders one WAV per stem; `export-stems` CLI; Rust `export_composition_stems` + `pick_stems_export_directory`; stems button in `ExportCompositionPanel`; 10 dedicated tests passing)
@@ -160,6 +162,8 @@ The most realistic implementation order from this point: (1) deepen imported-tra
 - Current suite status from this session: Desktop build passing, `cargo check` passing, desktop tests 128/128 passing, and analyzer Python suite 150/150 passing.
 
 ## Next session
-- Add `kafka` and `loki` stream adapters end-to-end: enum/plumbing in the UI, configuration fields (`bootstrap server`, `topic`, `Loki URL`, `query`), and Rust `main.rs` branches wrapping `kcat`/`kafkacat` and `logcli tail`.
+- Finish the first non-log signal adapter end-to-end: CodeProjects/SonarQube must launch from Monitor, poll, render evidence rows, and affect the deck/audio without fake anomalies.
+- Add structured source-evidence metadata after the compatibility text-line path is stable.
+- Add `kafka` and `loki` stream adapters end-to-end after the generic signal-source vocabulary is in place: enum/plumbing in the UI, configuration fields (`bootstrap server`, `topic`, `Loki URL`, `query`), and Rust `main.rs` branches wrapping `kcat`/`kafkacat` and `logcli tail`.
 - Design the background music-server / headless runtime boundary so monitoring can continue outside the foreground desktop screen lifecycle.
 - Decide whether the future background runtime should reuse the in-process Rust `SessionRegistry` directly or extract it into a longer-lived native service boundary with the same session contract.
