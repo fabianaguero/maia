@@ -12,10 +12,7 @@ export function resolveCodeProjectStatusClass(status: string): string {
   return "status-badge--not-configured";
 }
 
-export function resolveCodeProjectStatusLabel(
-  status: string,
-  t: AppTranslations,
-): string {
+export function resolveCodeProjectStatusLabel(status: string, t: AppTranslations): string {
   if (status === "ready") return t.simpleMode.codeProjects.ready;
   if (status === "testing") return t.simpleMode.codeProjects.testing;
   if (status === "error") return t.simpleMode.codeProjects.error;
@@ -36,9 +33,7 @@ export function createEmptyCodeProjectDraft(): CodeProjectFormDraft {
   };
 }
 
-export function createCodeProjectDraftFromProject(
-  project: CodeProject,
-): CodeProjectFormDraft {
+export function createCodeProjectDraftFromProject(project: CodeProject): CodeProjectFormDraft {
   return {
     id: project.id,
     label: project.label,

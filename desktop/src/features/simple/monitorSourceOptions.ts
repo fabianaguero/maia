@@ -113,9 +113,10 @@ function buildCodeProjectSourceOptions(
       config?.apiUrl.trim() && config.projectKey.trim() && config.authToken.trim(),
     );
     const hasLocalConfig = Boolean(project.repositoryUrl.trim());
-    const sourcePath = analysisMode === "connected" && config
-      ? `sonarqube://${config.apiUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")}/${config.projectKey}`
-      : project.repositoryUrl;
+    const sourcePath =
+      analysisMode === "connected" && config
+        ? `sonarqube://${config.apiUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")}/${config.projectKey}`
+        : project.repositoryUrl;
 
     return {
       id: `code-project:${project.id}`,
@@ -123,9 +124,7 @@ function buildCodeProjectSourceOptions(
       sourcePath,
       sourceType: "code",
       sourceTypeLabel: copy.codeProject,
-      startable:
-        project.enabled &&
-        (analysisMode === "local" ? hasLocalConfig : hasRemoteConfig),
+      startable: project.enabled && (analysisMode === "local" ? hasLocalConfig : hasRemoteConfig),
       origin: "codeProject",
       adapterKind: "sonarqube",
       connectionConfig: {
@@ -194,19 +193,19 @@ export function buildMonitorSourceSelectionModel(input: {
         ? codeProjectCount > 0
           ? input.copy.emptyCodeReady
           : input.copy.emptyCodeMissing
-      : input.sourceFilter === "folder"
-        ? input.copy.emptyFolder
-        : input.copy.emptyDefault;
+        : input.sourceFilter === "folder"
+          ? input.copy.emptyFolder
+          : input.copy.emptyDefault;
 
   const startHint =
     selectedSourceOption && !selectedSourceOption.startable
       ? selectedSourceOption.origin === "codeProject"
         ? input.copy.startHintCodeNotConfigured
         : selectedSourceOption.origin === "connection"
-        ? input.copy.startHintDisabledConnection
-        : selectedSourceOption.sourceType === "cloud"
-          ? input.copy.startHintCloudManaged
-          : input.copy.startHintFileOnly
+          ? input.copy.startHintDisabledConnection
+          : selectedSourceOption.sourceType === "cloud"
+            ? input.copy.startHintCloudManaged
+            : input.copy.startHintFileOnly
       : input.selectedSourceId && input.selectedSoundId
         ? input.copy.startHintReady
         : input.copy.startHintSelect;

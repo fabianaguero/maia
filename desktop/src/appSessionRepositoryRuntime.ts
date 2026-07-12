@@ -59,7 +59,10 @@ export function buildFallbackSessionRepository(input: {
     notes: [],
     tags:
       input.adapterKind === "sonarqube"
-        ? ["code-project", input.source.startsWith("sonarqube://") ? "sonarqube" : "local-code-scan"]
+        ? [
+            "code-project",
+            input.source.startsWith("sonarqube://") ? "sonarqube" : "local-code-scan",
+          ]
         : [],
     metrics:
       input.adapterKind === "sonarqube"

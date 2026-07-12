@@ -168,9 +168,7 @@ export function buildCodeProjectRepositoryFromLaunchSource(input: {
         ? "Code quality signal source monitored through Maia local scanner."
         : "Code quality signal source monitored through SonarQube.",
     analyzerStatus:
-      analysisMode === "local"
-        ? "CodeProject local monitor source"
-        : "CodeProject monitor source",
+      analysisMode === "local" ? "CodeProject local monitor source" : "CodeProject monitor source",
     buildSystem: analysisMode === "local" ? "maia-local-code-scanner" : "sonarqube",
     primaryLanguage: "code-quality",
     javaFileCount: 0,
@@ -183,7 +181,11 @@ export function buildCodeProjectRepositoryFromLaunchSource(input: {
         ? "This monitor source uses Maia's local CodeProject scanner without requiring a SonarQube server."
         : "This monitor source is backed by a SonarQube CodeProject adapter.",
     ],
-    tags: ["code-project", analysisMode === "local" ? "local-code-scan" : "sonarqube", "signal-source"],
+    tags: [
+      "code-project",
+      analysisMode === "local" ? "local-code-scan" : "sonarqube",
+      "signal-source",
+    ],
     metrics: {
       sourceKind: "code-project",
       adapterKind: input.source.adapterKind ?? "sonarqube",

@@ -17,7 +17,7 @@ export interface CodeProject {
   analysisMode: CodeProjectAnalysisMode;
   sonarqubeConfig?: CodeProjectSonarQubeConfig;
   enabled: boolean;
-  status: 'not-configured' | 'testing' | 'ready' | 'error';
+  status: "not-configured" | "testing" | "ready" | "error";
   errorMessage?: string;
   lastCheckedAt?: string;
   createdAt: string;

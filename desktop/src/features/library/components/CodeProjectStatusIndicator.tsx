@@ -36,9 +36,7 @@ export function CodeProjectStatusIndicator({
           <span className="issue-count"> • {issueCount} issues</span>
         )}
       </span>
-      {status === "error" && errorMessage && (
-        <div className="error-tooltip">{errorMessage}</div>
-      )}
+      {status === "error" && errorMessage && <div className="error-tooltip">{errorMessage}</div>}
     </div>
   );
 }

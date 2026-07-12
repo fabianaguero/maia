@@ -40,9 +40,7 @@ export function LibraryCodeProjectDrawer({
 }: LibraryCodeProjectDrawerProps) {
   const t = useT();
   const [step, setStep] = useState<DrawerStep>("create");
-  const [draft, setDraft] = useState<CodeProjectFormDraft>(
-    createEmptyCodeProjectDraft(),
-  );
+  const [draft, setDraft] = useState<CodeProjectFormDraft>(createEmptyCodeProjectDraft());
   const [saving, setSaving] = useState(false);
   const [createdProject, setCreatedProject] = useState<CodeProject | null>(null);
 
@@ -60,12 +58,9 @@ export function LibraryCodeProjectDrawer({
     }
   }, [visible, project]);
 
-  const handleDraftChange = useCallback(
-    (patch: Partial<CodeProjectFormDraft>) => {
-      setDraft((prev) => ({ ...prev, ...patch }));
-    },
-    [],
-  );
+  const handleDraftChange = useCallback((patch: Partial<CodeProjectFormDraft>) => {
+    setDraft((prev) => ({ ...prev, ...patch }));
+  }, []);
 
   const handleCreateSubmit = useCallback(async () => {
     setSaving(true);

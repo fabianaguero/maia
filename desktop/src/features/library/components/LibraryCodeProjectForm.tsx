@@ -58,9 +58,7 @@ export function LibraryCodeProjectForm({
           disabled={saving}
         />
         {errors.label && <span className="field-error">{errors.label}</span>}
-        <span className="support-copy">
-          {t.simpleMode.codeProjects.projectNameHelp}
-        </span>
+        <span className="support-copy">{t.simpleMode.codeProjects.projectNameHelp}</span>
       </div>
 
       <div className="form-field">
@@ -76,29 +74,15 @@ export function LibraryCodeProjectForm({
           placeholder="https://github.com/org/repo"
           disabled={saving}
         />
-        {errors.repositoryUrl && (
-          <span className="field-error">{errors.repositoryUrl}</span>
-        )}
-        <span className="support-copy">
-          {t.simpleMode.codeProjects.repositoryUrlHelp}
-        </span>
+        {errors.repositoryUrl && <span className="field-error">{errors.repositoryUrl}</span>}
+        <span className="support-copy">{t.simpleMode.codeProjects.repositoryUrlHelp}</span>
       </div>
 
       <div className="form-actions">
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={handleSubmit}
-          disabled={saving}
-        >
+        <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
           {saving ? t.simpleMode.common.saving : t.simpleMode.codeProjects.create}
         </button>
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={onCancel}
-          disabled={saving}
-        >
+        <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={saving}>
           {t.simpleMode.common.cancel}
         </button>
       </div>

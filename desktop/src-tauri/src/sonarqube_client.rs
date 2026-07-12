@@ -35,10 +35,7 @@ fn format_sonarqube_issue_as_log_line(issue: &Value) -> String {
             timestamp, log_level, rule, message, component, line_num
         )
     } else {
-        format!(
-            "[{}] [SONARQUBE-{}] {} {} ({})",
-            timestamp, log_level, rule, message, component
-        )
+        format!("[{}] [SONARQUBE-{}] {} {} ({})", timestamp, log_level, rule, message, component)
     }
 }
 
@@ -58,20 +55,13 @@ pub async fn poll_sonarqube_issues(
     let response = client
         .get(&url)
         .bearer_auth(auth_token)
-        .query(&[
-            ("componentKeys", project_key),
-            ("statuses", "OPEN,CONFIRMED"),
-            ("ps", "500"),
-        ])
+        .query(&[("componentKeys", project_key), ("statuses", "OPEN,CONFIRMED"), ("ps", "500")])
         .send()
         .await
         .map_err(|e| format!("Failed to fetch SonarQube issues: {}", e))?;
 
     if !response.status().is_success() {
-        return Err(format!(
-            "Failed to fetch SonarQube issues: HTTP {}",
-            response.status()
-        ));
+        return Err(format!("Failed to fetch SonarQube issues: HTTP {}", response.status()));
     }
 
     let data: Value =

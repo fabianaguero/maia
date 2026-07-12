@@ -22,7 +22,8 @@ fn expanded_input_path(raw_path: &str) -> Result<PathBuf, String> {
         return Err("Local code analysis path is empty.".to_string());
     }
     if trimmed == "~" {
-        return home_dir().ok_or_else(|| "Failed to resolve the home directory for `~`.".to_string());
+        return home_dir()
+            .ok_or_else(|| "Failed to resolve the home directory for `~`.".to_string());
     }
     if let Some(rest) = trimmed.strip_prefix("~/") {
         return home_dir()
@@ -111,16 +112,10 @@ pub fn scan_local_code_project_issues(
 ) -> Result<(Vec<String>, usize), String> {
     let root = expanded_input_path(repository_path)?;
     if !root.exists() {
-        return Err(format!(
-            "Local code analysis path does not exist: {}",
-            root.display()
-        ));
+        return Err(format!("Local code analysis path does not exist: {}", root.display()));
     }
     if !root.is_dir() {
-        return Err(format!(
-            "Local code analysis path is not a directory: {}",
-            root.display()
-        ));
+        return Err(format!("Local code analysis path is not a directory: {}", root.display()));
     }
 
     let mut stack = vec![root.clone()];
@@ -131,8 +126,8 @@ pub fn scan_local_code_project_issues(
             continue;
         }
 
-        let entries =
-            fs::read_dir(&dir).map_err(|error| format!("Failed to scan {}: {error}", dir.display()))?;
+        let entries = fs::read_dir(&dir)
+            .map_err(|error| format!("Failed to scan {}: {error}", dir.display()))?;
 
         for entry in entries {
             let entry = entry.map_err(|error| {
@@ -201,10 +196,7 @@ mod tests {
     fn unique_temp_dir(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!(
             "maia-{name}-{}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_nanos()
+            SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos()
         ));
         fs::create_dir_all(&dir).expect("create temp dir");
         dir
@@ -218,9 +210,13 @@ mod tests {
             .expect("write source");
 
         let mut last_known = HashSet::new();
-        let (lines, issue_count) =
-            scan_local_code_project_issues(dir.to_str().unwrap(), "maia-default", &mut last_known, false)
-                .expect("scan local project");
+        let (lines, issue_count) = scan_local_code_project_issues(
+            dir.to_str().unwrap(),
+            "maia-default",
+            &mut last_known,
+            false,
+        )
+        .expect("scan local project");
 
         assert!(lines.is_empty());
         assert_eq!(issue_count, 1);
@@ -237,8 +233,13 @@ mod tests {
             .expect("write source");
 
         let mut last_known = HashSet::new();
-        scan_local_code_project_issues(dir.to_str().unwrap(), "maia-default", &mut last_known, false)
-            .expect("seed baseline");
+        scan_local_code_project_issues(
+            dir.to_str().unwrap(),
+            "maia-default",
+            &mut last_known,
+            false,
+        )
+        .expect("seed baseline");
 
         fs::write(
             &source,
@@ -246,9 +247,13 @@ mod tests {
         )
         .expect("append source issue");
 
-        let (lines, issue_count) =
-            scan_local_code_project_issues(dir.to_str().unwrap(), "maia-default", &mut last_known, true)
-                .expect("scan local project");
+        let (lines, issue_count) = scan_local_code_project_issues(
+            dir.to_str().unwrap(),
+            "maia-default",
+            &mut last_known,
+            true,
+        )
+        .expect("scan local project");
 
         assert_eq!(issue_count, 2);
         assert_eq!(lines.len(), 1);

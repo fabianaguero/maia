@@ -587,8 +587,7 @@ export const enControls = {
       analysisMode: "Analysis mode",
       localMode: "Local plugin",
       connectedMode: "Connected",
-      localModeHelp:
-        "Run Maia's local code-quality scanner without requiring a SonarQube server.",
+      localModeHelp: "Run Maia's local code-quality scanner without requiring a SonarQube server.",
       connectedModeHelp:
         "Use SonarQube server access for issue polling now and rule/profile sync as the integration grows.",
       localRulesProfile: "Local rules profile",
@@ -608,7 +607,8 @@ export const enControls = {
       testConnection: "Test Connection",
       connectionValid: "Connection valid",
       noProjectsYet: "No projects yet",
-      noProjectsBody: "No code projects imported yet. Use the button below to add your first project.",
+      noProjectsBody:
+        "No code projects imported yet. Use the button below to add your first project.",
       edit: "Edit project",
       startMonitoring: "Start monitoring",
       delete: "Delete project",

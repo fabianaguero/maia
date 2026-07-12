@@ -27,7 +27,12 @@ export const contentEs = {
     subtitle: "base musical, señal en vivo y respuesta audible",
     badge: "señal local",
     lanesTitle: "Canales de entrada",
-    lanes: ["track / playlist base", "evidencia en vivo", "sesión de proceso", "calidad / señal CI"],
+    lanes: [
+      "track / playlist base",
+      "evidencia en vivo",
+      "sesión de proceso",
+      "calidad / señal CI",
+    ],
     metricsTitle: "Métricas de señal",
     responseTitle: "Superficie de respuesta musical",
     tags: ["estable → groove calmo", "warn → elevación tonal", "error → golpe más agudo"],

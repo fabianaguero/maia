@@ -85,7 +85,9 @@ describe("CodeProjectSonarQubeConfigForm", () => {
       screen.getByRole("button", { name: en.simpleMode.codeProjects.testConnection }),
     ).toBeEnabled();
 
-    fireEvent.click(screen.getByRole("button", { name: en.simpleMode.codeProjects.testConnection }));
+    fireEvent.click(
+      screen.getByRole("button", { name: en.simpleMode.codeProjects.testConnection }),
+    );
 
     await waitFor(() => {
       expect(props.onTestConnection).toHaveBeenCalledWith(

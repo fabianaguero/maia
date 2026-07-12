@@ -610,11 +610,13 @@ export const esControls = {
       sonarqubeProjectKey: "Clave del proyecto",
       sonarqubeProjectKeyHelp: "La clave del proyecto SonarQube (p. ej., org.example:mi-servicio)",
       sonarqubeAuthToken: "Token de autenticación",
-      sonarqubeAuthTokenHelp: "Token de usuario de SonarQube para acceso a la API (comienza con squ_)",
+      sonarqubeAuthTokenHelp:
+        "Token de usuario de SonarQube para acceso a la API (comienza con squ_)",
       testConnection: "Probar conexión",
       connectionValid: "Conexión válida",
       noProjectsYet: "Sin proyectos aún",
-      noProjectsBody: "Todavía no importaste proyectos de código. Usá el botón abajo para agregar tu primer proyecto.",
+      noProjectsBody:
+        "Todavía no importaste proyectos de código. Usá el botón abajo para agregar tu primer proyecto.",
       edit: "Editar proyecto",
       startMonitoring: "Iniciar monitoreo",
       delete: "Eliminar proyecto",

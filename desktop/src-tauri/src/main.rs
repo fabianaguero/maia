@@ -4084,9 +4084,8 @@ fn ensure_code_projects_table(conn: &Connection) -> Result<(), String> {
         .map_err(|error| format!("Failed to query code_projects columns: {error}"))?;
     let mut columns = HashSet::new();
 
-    while let Some(row) = rows
-        .next()
-        .map_err(|error| format!("Failed to iterate code_projects columns: {error}"))?
+    while let Some(row) =
+        rows.next().map_err(|error| format!("Failed to iterate code_projects columns: {error}"))?
     {
         let name: String = row
             .get(1)
@@ -7709,11 +7708,7 @@ fn create_code_project(
         .map(|config| config.analysis_mode.trim())
         .filter(|mode| !mode.is_empty())
         .unwrap_or("local");
-    let initial_status = if analysis_mode == "local" {
-        "ready"
-    } else {
-        "not-configured"
-    };
+    let initial_status = if analysis_mode == "local" { "ready" } else { "not-configured" };
 
     conn.execute(
         "INSERT INTO code_projects
@@ -7782,11 +7777,7 @@ fn update_code_project(
         .map(|config| config.analysis_mode.trim())
         .filter(|mode| !mode.is_empty())
         .unwrap_or("local");
-    let status = if analysis_mode == "local" {
-        "ready"
-    } else {
-        "not-configured"
-    };
+    let status = if analysis_mode == "local" { "ready" } else { "not-configured" };
 
     conn.execute(
         "UPDATE code_projects

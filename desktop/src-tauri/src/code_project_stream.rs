@@ -32,21 +32,13 @@ pub struct CodeProjectStreamConfig {
 impl CodeProjectStreamConfig {
     pub fn from_json(config: &Value) -> Self {
         Self {
-            api_url: config
-                .get("apiUrl")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string(),
+            api_url: config.get("apiUrl").and_then(|v| v.as_str()).unwrap_or("").to_string(),
             project_key: config
                 .get("projectKey")
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string(),
-            auth_token: config
-                .get("authToken")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string(),
+            auth_token: config.get("authToken").and_then(|v| v.as_str()).unwrap_or("").to_string(),
             analysis_mode: CodeProjectAnalysisMode::from_config_value(
                 config.get("analysisMode").and_then(|v| v.as_str()),
             ),
@@ -92,11 +84,7 @@ pub fn waiting_status_for_code_project(
 
     format!(
         "{} baseline indexed: {} issue(s). Waiting for new issues.",
-        if analysis_mode.is_local() {
-            "Local code analysis"
-        } else {
-            "SonarQube"
-        },
+        if analysis_mode.is_local() { "Local code analysis" } else { "SonarQube" },
         issue_count,
     )
 }

@@ -59,15 +59,12 @@ export function CodeProjectSonarQubeConfigForm({
     draft.sonarqubeProjectKey.trim() &&
     draft.sonarqubeAuthToken.trim();
 
-  const canSave =
-    draft.analysisMode === "local" || (Boolean(canTest) && testResult?.valid);
+  const canSave = draft.analysisMode === "local" || (Boolean(canTest) && testResult?.valid);
 
   return (
     <form className="sonarqube-config-form" onSubmit={(e) => e.preventDefault()}>
       <div className="form-field">
-        <span className="field-label">
-          {t.simpleMode.codeProjects.analysisMode}
-        </span>
+        <span className="field-label">{t.simpleMode.codeProjects.analysisMode}</span>
         <div className="mode-toggle-row" role="radiogroup">
           <button
             type="button"
@@ -116,16 +113,12 @@ export function CodeProjectSonarQubeConfigForm({
           onChange={(e) => onDraftChange({ localRulesProfile: e.target.value })}
           disabled={saving || testing}
         >
-          <option value="maia-default">
-            {t.simpleMode.codeProjects.localRulesMaiaDefault}
-          </option>
+          <option value="maia-default">{t.simpleMode.codeProjects.localRulesMaiaDefault}</option>
           <option value="sonar-way-compatible">
             {t.simpleMode.codeProjects.localRulesSonarWay}
           </option>
         </select>
-        <span className="support-copy">
-          {t.simpleMode.codeProjects.localRulesProfileHelp}
-        </span>
+        <span className="support-copy">{t.simpleMode.codeProjects.localRulesProfileHelp}</span>
       </div>
 
       <div className="form-field">
@@ -143,9 +136,7 @@ export function CodeProjectSonarQubeConfigForm({
           />
           <span>{t.simpleMode.codeProjects.syncRulesFromServer}</span>
         </label>
-        <span className="support-copy">
-          {t.simpleMode.codeProjects.syncRulesFromServerHelp}
-        </span>
+        <span className="support-copy">{t.simpleMode.codeProjects.syncRulesFromServerHelp}</span>
       </div>
 
       <div className="form-field">
@@ -161,9 +152,7 @@ export function CodeProjectSonarQubeConfigForm({
           placeholder="https://sonarqube.example.com"
           disabled={saving || testing || draft.analysisMode === "local"}
         />
-        <span className="support-copy">
-          {t.simpleMode.codeProjects.sonarqubeServerUrlHelp}
-        </span>
+        <span className="support-copy">{t.simpleMode.codeProjects.sonarqubeServerUrlHelp}</span>
       </div>
 
       <div className="form-field">
@@ -179,9 +168,7 @@ export function CodeProjectSonarQubeConfigForm({
           placeholder="org.example:my-service"
           disabled={saving || testing || draft.analysisMode === "local"}
         />
-        <span className="support-copy">
-          {t.simpleMode.codeProjects.sonarqubeProjectKeyHelp}
-        </span>
+        <span className="support-copy">{t.simpleMode.codeProjects.sonarqubeProjectKeyHelp}</span>
       </div>
 
       <div className="form-field">
@@ -197,9 +184,7 @@ export function CodeProjectSonarQubeConfigForm({
           placeholder="squ_xxxxxxxxxxxx"
           disabled={saving || testing || draft.analysisMode === "local"}
         />
-        <span className="support-copy">
-          {t.simpleMode.codeProjects.sonarqubeAuthTokenHelp}
-        </span>
+        <span className="support-copy">{t.simpleMode.codeProjects.sonarqubeAuthTokenHelp}</span>
       </div>
 
       <div className="test-connection-section">
@@ -213,9 +198,7 @@ export function CodeProjectSonarQubeConfigForm({
         </button>
 
         {testResult && (
-          <div
-            className={`test-result ${testResult.valid ? "success" : "error"}`}
-          >
+          <div className={`test-result ${testResult.valid ? "success" : "error"}`}>
             {testResult.valid ? (
               <>
                 <CheckCircle size={16} />
@@ -243,12 +226,7 @@ export function CodeProjectSonarQubeConfigForm({
         >
           {saving ? t.simpleMode.common.saving : t.simpleMode.common.save}
         </button>
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={onCancel}
-          disabled={saving}
-        >
+        <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={saving}>
           {t.simpleMode.common.cancel}
         </button>
       </div>
