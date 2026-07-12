@@ -109,4 +109,50 @@ describe("LibraryCodeProjectDrawer", () => {
 
     expect(screen.getByRole("button", { name: en.simpleMode.common.close })).toBeInTheDocument();
   });
+
+  it("clears connected credentials when an existing project is saved as local", async () => {
+    const connectedProject = createProject({
+      analysisMode: "connected",
+      sonarqubeConfig: {
+        analysisMode: "connected",
+        apiUrl: "https://sonar.example.com",
+        projectKey: "org.example:checkout",
+        authToken: "squ_secret",
+        pollingInterval: "45",
+        syncRules: true,
+        localRulesProfile: "sonar-way-compatible",
+      },
+    });
+    const onUpdate = vi.fn(async () => connectedProject);
+
+    renderWithI18n(
+      <LibraryCodeProjectDrawer
+        visible
+        project={connectedProject}
+        onClose={vi.fn()}
+        onCreate={vi.fn(async () => connectedProject)}
+        onUpdate={onUpdate}
+        onTestConnection={vi.fn(async () => ({ valid: true }))}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: en.simpleMode.codeProjects.localMode }));
+    fireEvent.click(screen.getByRole("button", { name: en.simpleMode.common.save }));
+
+    await waitFor(() => {
+      expect(onUpdate).toHaveBeenCalledWith(
+        "code-project-1",
+        expect.objectContaining({
+          sonarqubeConfig: expect.objectContaining({
+            analysisMode: "local",
+            apiUrl: "",
+            projectKey: "",
+            authToken: "",
+            syncRules: false,
+            localRulesProfile: "sonar-way-compatible",
+          }),
+        }),
+      );
+    });
+  });
 });

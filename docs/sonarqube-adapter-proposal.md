@@ -49,6 +49,8 @@ Local profiles:
 
 The local scanner is intentionally deterministic and lightweight in the MVP. It is not a bundled SonarLint engine yet; real SonarQube quality profile/rule synchronization remains a follow-up.
 
+When a CodeProject is switched from connected mode back to local mode, Maia sanitizes stale SonarQube server URL, project key, auth token, and remote rule sync fields before persistence. Local mode should remain serverless and should not retain remote credentials accidentally.
+
 Not landed / still needs validation:
 
 - End-to-end CodeProject selection from Monitor setup.

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   createCodeProjectDraftFromProject,
   createEmptyCodeProjectDraft,
+  createUpsertCodeProjectInputFromDraft,
   resolveCodeProjectStatusClass,
   resolveCodeProjectStatusLabel,
 } from "../../../src/features/library/codeProjectsViewModel";
@@ -73,6 +74,75 @@ describe("codeProjectsViewModel", () => {
     expect(draft.analysisMode).toBe("local");
     expect(draft.sonarqubeSyncRules).toBe(false);
     expect(draft.localRulesProfile).toBe("maia-default");
+  });
+
+  it("strips remote SonarQube credentials when saving a local project", () => {
+    const input = createUpsertCodeProjectInputFromDraft({
+      ...createEmptyCodeProjectDraft(),
+      label: "Checkout service",
+      repositoryUrl: "/repo/checkout",
+      analysisMode: "local",
+      sonarqubeApiUrl: "https://sonar.example.com",
+      sonarqubeProjectKey: "org.example:checkout",
+      sonarqubeAuthToken: "squ_secret",
+      sonarqubeSyncRules: true,
+      localRulesProfile: "sonar-way-compatible",
+    });
+
+    expect(input.sonarqubeConfig).toEqual({
+      analysisMode: "local",
+      apiUrl: "",
+      projectKey: "",
+      authToken: "",
+      pollingInterval: "30",
+      syncRules: false,
+      localRulesProfile: "sonar-way-compatible",
+    });
+  });
+
+  it("preserves remote SonarQube config when saving a connected project", () => {
+    const input = createUpsertCodeProjectInputFromDraft(
+      createCodeProjectDraftFromProject(createProject()),
+    );
+
+    expect(input.sonarqubeConfig).toEqual({
+      analysisMode: "connected",
+      apiUrl: "https://sonar.example.com",
+      projectKey: "org.example:checkout",
+      authToken: "squ_test",
+      pollingInterval: "45",
+      syncRules: true,
+      localRulesProfile: "sonar-way-compatible",
+    });
+  });
+
+  it("trims persisted draft fields before saving", () => {
+    const input = createUpsertCodeProjectInputFromDraft({
+      ...createEmptyCodeProjectDraft(),
+      label: "  Checkout service  ",
+      repositoryUrl: "  https://github.com/acme/checkout  ",
+      analysisMode: "connected",
+      sonarqubeApiUrl: "  https://sonar.example.com  ",
+      sonarqubeProjectKey: "  org.example:checkout  ",
+      sonarqubeAuthToken: "  squ_test  ",
+      sonarqubePollingInterval: "  45  ",
+      sonarqubeSyncRules: true,
+      localRulesProfile: "  sonar-way-compatible  ",
+    });
+
+    expect(input).toEqual({
+      label: "Checkout service",
+      repositoryUrl: "https://github.com/acme/checkout",
+      sonarqubeConfig: {
+        analysisMode: "connected",
+        apiUrl: "https://sonar.example.com",
+        projectKey: "org.example:checkout",
+        authToken: "squ_test",
+        pollingInterval: "45",
+        syncRules: true,
+        localRulesProfile: "sonar-way-compatible",
+      },
+    });
   });
 
   it("resolves status labels and classes through the shared translation contract", () => {

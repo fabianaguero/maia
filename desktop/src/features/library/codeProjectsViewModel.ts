@@ -1,5 +1,9 @@
 import type { AppTranslations } from "../../i18n/types";
-import type { CodeProject, CodeProjectFormDraft } from "../../types/codeProject";
+import type {
+  CodeProject,
+  CodeProjectFormDraft,
+  UpsertCodeProjectInput,
+} from "../../types/codeProject";
 
 export function resolveCodeProjectStatusClass(status: string): string {
   if (status === "ready") return "status-badge--ready";
@@ -46,5 +50,26 @@ export function createCodeProjectDraftFromProject(
     sonarqubePollingInterval: project.sonarqubeConfig?.pollingInterval ?? "30",
     sonarqubeSyncRules: project.sonarqubeConfig?.syncRules ?? false,
     localRulesProfile: project.sonarqubeConfig?.localRulesProfile ?? "maia-default",
+  };
+}
+
+export function createUpsertCodeProjectInputFromDraft(
+  draft: CodeProjectFormDraft,
+): UpsertCodeProjectInput {
+  const isLocal = draft.analysisMode === "local";
+
+  return {
+    label: draft.label.trim(),
+    repositoryUrl: draft.repositoryUrl.trim(),
+    sonarqubeConfig: {
+      analysisMode: draft.analysisMode,
+      // Local mode must not retain stale remote credentials after switching from connected mode.
+      apiUrl: isLocal ? "" : draft.sonarqubeApiUrl.trim(),
+      projectKey: isLocal ? "" : draft.sonarqubeProjectKey.trim(),
+      authToken: isLocal ? "" : draft.sonarqubeAuthToken.trim(),
+      pollingInterval: draft.sonarqubePollingInterval.trim(),
+      syncRules: isLocal ? false : draft.sonarqubeSyncRules,
+      localRulesProfile: draft.localRulesProfile.trim(),
+    },
   };
 }

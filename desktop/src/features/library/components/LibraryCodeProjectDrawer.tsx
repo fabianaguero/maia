@@ -4,10 +4,15 @@ import { useT } from "../../../i18n/I18nContext";
 import {
   createEmptyCodeProjectDraft,
   createCodeProjectDraftFromProject,
+  createUpsertCodeProjectInputFromDraft,
 } from "../codeProjectsViewModel";
 import { LibraryCodeProjectForm } from "./LibraryCodeProjectForm";
 import { CodeProjectSonarQubeConfigForm } from "./CodeProjectSonarQubeConfigForm";
-import type { CodeProject, CodeProjectFormDraft, UpsertCodeProjectInput } from "../../../types/codeProject";
+import type {
+  CodeProject,
+  CodeProjectFormDraft,
+  UpsertCodeProjectInput,
+} from "../../../types/codeProject";
 import "./LibraryCodeProjectDrawer.css";
 
 interface LibraryCodeProjectDrawerProps {
@@ -78,19 +83,7 @@ export function LibraryCodeProjectDrawer({
     if (!createdProject) return;
     setSaving(true);
     try {
-      const input: UpsertCodeProjectInput = {
-        label: draft.label,
-        repositoryUrl: draft.repositoryUrl,
-        sonarqubeConfig: {
-          analysisMode: draft.analysisMode,
-          apiUrl: draft.sonarqubeApiUrl,
-          projectKey: draft.sonarqubeProjectKey,
-          authToken: draft.sonarqubeAuthToken,
-          pollingInterval: draft.sonarqubePollingInterval,
-          syncRules: draft.sonarqubeSyncRules,
-          localRulesProfile: draft.localRulesProfile,
-        },
-      };
+      const input = createUpsertCodeProjectInputFromDraft(draft);
       await onUpdate(createdProject.id, input);
       onClose();
     } finally {

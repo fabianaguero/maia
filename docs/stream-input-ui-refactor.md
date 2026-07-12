@@ -38,6 +38,7 @@ Refactor the connection management UI from "Log-centric" to "Stream Input" - a g
 - `desktop/src/types/codeProject.ts` defines the CodeProject domain contract.
 - `desktop/src/features/library/useCodeProjectsState.ts` provides list/create/update/delete/test state.
 - `desktop/src/features/library/components/*CodeProject*` implements the Library UI.
+- `desktop/src/features/library/codeProjectsViewModel.ts` owns CodeProject draft defaults and sanitizes connected credentials when a project is saved back to local mode.
 - `desktop/src-tauri/src/main.rs` contains `create_code_project`, `list_code_projects`, `update_code_project`, `delete_code_project`, and `test_sonarqube_connection`.
 - `desktop/src-tauri/src/code_project_scanner.rs` contains the local CodeProject scanner and local rule-profile behavior.
 - `desktop/src-tauri/src/code_project_stream.rs` contains CodeProject stream config parsing, connected-mode validation, and idle/baseline status copy.
@@ -48,6 +49,7 @@ Refactor the connection management UI from "Log-centric" to "Stream Input" - a g
 Known gaps:
 
 - SonarQube auth tokens are currently stored in plaintext SQLite.
+- Local CodeProjects intentionally clear SonarQube URL/project/token values when switching from connected mode back to local mode.
 - SonarQube findings are converted to log-shaped lines before analysis.
 - CodeProjects and `log_source_connections` are two parallel source systems, not one unified `stream_input_connections` table.
 - Real SonarQube server verification is still pending.
