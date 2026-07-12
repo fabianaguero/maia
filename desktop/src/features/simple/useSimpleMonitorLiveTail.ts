@@ -35,15 +35,16 @@ export function useSimpleMonitorLiveTail({
   useEffect(() => {
     const container = terminalLinesRef.current;
     if (!container) {
+      console.debug("[useSimpleMonitorLiveTail] no container ref");
       return;
     }
 
-    // Update tail pinned state based on current scroll position
-    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-    const currentlyAtBottom = distanceFromBottom <= 48; // Match threshold
-    if (currentlyAtBottom) {
-      isTailPinnedRef.current = true;
-    }
+    console.debug(
+      "[useSimpleMonitorLiveTail] effect fired: %d lines, isPinned=%s, container=%O",
+      liveLines.length,
+      isTailPinnedRef.current,
+      { scrollHeight: container.scrollHeight, scrollTop: container.scrollTop, clientHeight: container.clientHeight },
+    );
 
     const syncPlan = buildSimpleMonitorLiveTailEffectState({
       liveLines,
@@ -51,6 +52,8 @@ export function useSimpleMonitorLiveTail({
       shouldFocusSelectedLog: focusSelectedLogRef.current,
       isTailPinned: isTailPinnedRef.current,
     });
+
+    console.debug("[useSimpleMonitorLiveTail] syncPlan type=%s", syncPlan.type);
 
     if (syncPlan.type === "focus") {
       const node = lineRefs.current.get(syncPlan.lineId);
@@ -62,6 +65,7 @@ export function useSimpleMonitorLiveTail({
     }
 
     if (syncPlan.type === "pin") {
+      console.debug("[useSimpleMonitorLiveTail] SCROLLING to bottom");
       safeElementScrollTo(container, container.scrollHeight, "auto");
     }
   }, [liveLines, selectedAnomalyId]);
