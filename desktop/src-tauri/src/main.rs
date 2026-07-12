@@ -2659,27 +2659,18 @@ fn poll_code_project_stream_session(
 
     if pending_chunk.trim().is_empty() {
         // If no new lines, emit a status message to show the monitor is active
-        if baseline_seeded {
-            let status = waiting_status_for_code_project(
-                &code_project_config.analysis_mode,
-                baseline_seeded,
-                issue_count,
-            );
-            let status_line = format!(
-                "[{}] [INFO] SONARQUBE_STATUS: {}",
-                chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-                status
-            );
-            // Return status as a line so frontend receives it
-            return analyze_stream_chunk(session_record, status_line, warnings);
-        }
-
         let status = waiting_status_for_code_project(
             &code_project_config.analysis_mode,
             baseline_seeded,
             issue_count,
         );
-        return Ok(waiting_stream_poll_result(session_record, &status, warnings));
+        let status_line = format!(
+            "[{}] [INFO] SONARQUBE_STATUS: {}",
+            chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+            status
+        );
+        // Always return status as a parsed line so frontend receives it and doesn't skip updates
+        return analyze_stream_chunk(session_record, status_line, warnings);
     }
 
     analyze_stream_chunk(session_record, pending_chunk, warnings)
