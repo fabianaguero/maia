@@ -2588,13 +2588,17 @@ fn poll_code_project_stream_session(
     registry: &SessionRegistryState,
     warnings: Vec<String>,
 ) -> Result<StreamSessionPollResult, String> {
-    let connection_config = {
+    let (connection_config, mut last_known, baseline_seeded) = {
         let reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
         let session = reg
             .sessions
             .get(session_id)
             .ok_or_else(|| format!("Session not found: {session_id}"))?;
-        session.connection_config.clone()
+        (
+            session.connection_config.clone(),
+            session.sonarqube_last_known_issues.clone(),
+            session.sonarqube_baseline_seeded,
+        )
     };
 
     let config = connection_config.ok_or("SonarQube connection config missing")?;
@@ -2603,17 +2607,8 @@ fn poll_code_project_stream_session(
     let runtime = tokio::runtime::Runtime::new()
         .map_err(|e| format!("Failed to create tokio runtime: {}", e))?;
 
-    let (new_lines, issue_count, baseline_seeded) = runtime.block_on(async {
-        let reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
-        let session = reg
-            .sessions
-            .get(session_id)
-            .ok_or_else(|| format!("Session not found: {session_id}"))?;
-        let mut last_known = session.sonarqube_last_known_issues.clone();
-        let baseline_seeded = session.sonarqube_baseline_seeded;
-        drop(reg);
-
-        let (lines, issue_count) = if code_project_config.analysis_mode.is_local() {
+    let (new_lines, issue_count) = runtime.block_on(async {
+        let result = if code_project_config.analysis_mode.is_local() {
             scan_local_code_project_issues(
                 &code_project_config.repository_url,
                 &code_project_config.local_rules_profile,
@@ -2632,16 +2627,16 @@ fn poll_code_project_stream_session(
             .await?
         };
 
-        {
-            let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
-            if let Some(session) = reg.sessions.get_mut(session_id) {
-                session.sonarqube_last_known_issues = last_known;
-                session.sonarqube_baseline_seeded = true;
-            }
-        }
-
-        Ok::<(Vec<String>, usize, bool), String>((lines, issue_count, baseline_seeded))
+        Ok::<(Vec<String>, usize), String>(result)
     })?;
+
+    {
+        let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+        if let Some(session) = reg.sessions.get_mut(session_id) {
+            session.sonarqube_last_known_issues = last_known;
+            session.sonarqube_baseline_seeded = true;
+        }
+    }
 
     let session_record = update_session_metadata(registry, session_id, |session| {
         session.record.last_polled_at = Some(now_iso());
