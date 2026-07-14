@@ -36,7 +36,7 @@ export function drawMonitorDeckLogLane(
   fillVerticalGradientRect(context, scene.log.bedRect, scene.log.bedStops);
 
   context.globalCompositeOperation = "screen";
-  context.globalAlpha = 0.44;
+  context.globalAlpha = 0.4;
   drawSingleSidedWaveform(
     context,
     logSamples,
@@ -46,7 +46,8 @@ export function drawMonitorDeckLogLane(
     createVerticalGradient(context, scene.log.bedRect, scene.log.waveformStops),
   );
   context.globalCompositeOperation = "source-over";
-  context.globalAlpha = 0.96;
+  // Increase alpha for quantized blocks to make log stream more visible and clearly linked to tail
+  context.globalAlpha = 1;
 
   drawQuantizedLogBlocks(
     context,
