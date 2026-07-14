@@ -9,4 +9,5 @@ export interface UseMonitorDeckScrubOptions {
   isConsoleExpanded: boolean;
   onToggleConsole?: () => void;
   onSelectAnomalyForFocus: (anomalyId: string) => void;
+  onWaveformClick?: (progress: number) => void;
 }

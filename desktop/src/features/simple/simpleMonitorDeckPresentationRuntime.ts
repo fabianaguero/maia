@@ -8,6 +8,7 @@ export interface BuildSimpleMonitorLiveTailHookInputArgs {
   setSelectedAnomalyId: (anomalyId: string) => void;
   trackWaveProgress: number;
   deckDurationSeconds: number | null;
+  onWaveformClick?: (progress: number) => void;
 }
 
 export function buildSimpleMonitorLiveTailHookInput(
@@ -19,6 +20,7 @@ export function buildSimpleMonitorLiveTailHookInput(
     onSelectAnomalyId: input.setSelectedAnomalyId,
     trackWaveProgress: input.trackWaveProgress,
     deckDurationSeconds: input.deckDurationSeconds,
+    onWaveformClick: input.onWaveformClick,
   };
 }
 

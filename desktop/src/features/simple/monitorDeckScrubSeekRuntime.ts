@@ -21,6 +21,7 @@ export function buildMonitorDeckScrubSeekHandlers(input: {
   setTrackElapsedSeconds: (value: number) => void;
   onSelectAnomalyForFocus: (anomalyId: string) => void;
   onToggleConsole?: () => void;
+  onWaveformClick?: (progress: number) => void;
 }) {
   const seekToTrackProgress = (nextProgress: number) => {
     const seekState = resolveMonitorDeckSeekState({
@@ -61,6 +62,8 @@ export function buildMonitorDeckScrubSeekHandlers(input: {
       return;
     }
     seekToTrackProgress(nextProgress);
+    // Jump to corresponding line in tail when clicking waveform
+    input.onWaveformClick?.(nextProgress);
   };
 
   const seekTrackFromOverviewViewport = (clientX: number) => {
