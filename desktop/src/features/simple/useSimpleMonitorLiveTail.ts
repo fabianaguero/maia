@@ -1,4 +1,4 @@
-import { useEffect, useRef, type UIEvent, useMemo } from "react";
+import { useEffect, useRef, type UIEvent } from "react";
 
 import type { MonitorLogLine } from "./monitorLogParsing";
 import {
@@ -36,11 +36,6 @@ export function useSimpleMonitorLiveTail({
   const focusSelectedLogRef = useRef(false);
   const lineRefs = useRef(new Map<string, HTMLDivElement>());
 
-  // Use line count and wave progress to trigger effect - keeps tail in sync with playhead
-  const lineCount = useMemo(() => liveLines.length, [liveLines.length]);
-  const waveKey = useMemo(() => `${trackWaveProgress.toFixed(3)}`, [trackWaveProgress]);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const container = terminalLinesRef.current;
     if (!container) {
@@ -105,7 +100,7 @@ export function useSimpleMonitorLiveTail({
       console.log("[useSimpleMonitorLiveTail] tail pinned - scrolling to bottom");
       safeElementScrollTo(container, container.scrollHeight, "smooth");
     }
-  }, [lineCount, waveKey, selectedAnomalyId, deckDurationSeconds]);
+  }, [liveLines, trackWaveProgress, selectedAnomalyId, deckDurationSeconds]);
 
   return {
     terminalLinesRef,
