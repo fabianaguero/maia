@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import type { MonitorLogLine } from "./monitorLogParsing";
 import { useSourceCodeLines } from "../../hooks/useSourceCodeLines";
 

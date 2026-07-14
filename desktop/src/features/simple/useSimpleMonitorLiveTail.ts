@@ -40,6 +40,7 @@ export function useSimpleMonitorLiveTail({
   const lineCount = useMemo(() => liveLines.length, [liveLines.length]);
   const waveKey = useMemo(() => `${trackWaveProgress.toFixed(3)}`, [trackWaveProgress]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const container = terminalLinesRef.current;
     if (!container) {
