@@ -1,4 +1,4 @@
-import { useEffect, useRef, type UIEvent } from "react";
+import { useEffect, useRef, type UIEvent, useMemo } from "react";
 
 import type { MonitorLogLine } from "./monitorLogParsing";
 import {
@@ -20,17 +20,25 @@ interface UseSimpleMonitorLiveTailInput {
   liveLines: MonitorLogLine[];
   selectedAnomalyId: string | null;
   onSelectAnomalyId: (anomalyId: string) => void;
+  trackWaveProgress: number; // 0-1, synchronized with waveform playhead
+  deckDurationSeconds: number | null;
 }
 
 export function useSimpleMonitorLiveTail({
   liveLines,
   selectedAnomalyId,
   onSelectAnomalyId,
+  trackWaveProgress,
+  deckDurationSeconds,
 }: UseSimpleMonitorLiveTailInput) {
   const terminalLinesRef = useRef<HTMLDivElement | null>(null);
   const isTailPinnedRef = useRef(true);
   const focusSelectedLogRef = useRef(false);
   const lineRefs = useRef(new Map<string, HTMLDivElement>());
+
+  // Use line count and wave progress to trigger effect - keeps tail in sync with playhead
+  const lineCount = useMemo(() => liveLines.length, [liveLines.length]);
+  const waveKey = useMemo(() => `${trackWaveProgress.toFixed(3)}`, [trackWaveProgress]);
 
   useEffect(() => {
     const container = terminalLinesRef.current;
@@ -39,12 +47,42 @@ export function useSimpleMonitorLiveTail({
       return;
     }
 
-    console.debug(
-      "[useSimpleMonitorLiveTail] effect fired: %d lines, isPinned=%s, container=%O",
+    console.log(
+      "[useSimpleMonitorLiveTail] effect: %d lines, wave=%.1f%%, isPinned=%s",
       liveLines.length,
+      trackWaveProgress * 100,
       isTailPinnedRef.current,
-      { scrollHeight: container.scrollHeight, scrollTop: container.scrollTop, clientHeight: container.clientHeight },
     );
+
+    // Sync with waveform playhead position
+    if (deckDurationSeconds && liveLines.length > 0 && !focusSelectedLogRef.current) {
+      const currentTimeSeconds = trackWaveProgress * deckDurationSeconds;
+      let targetLine: HTMLDivElement | null = null;
+      let closestTimeDiff = Infinity;
+
+      // Find line closest to current playback time
+      for (const [lineId, lineElement] of lineRefs.current.entries()) {
+        const line = liveLines.find(l => l.id === lineId);
+        if (!line || !line.timestamp) continue;
+
+        // Parse ISO timestamp to seconds
+        const lineTime = parseFloat(line.timestamp);
+        if (isNaN(lineTime)) continue;
+
+        const timeDiff = Math.abs(lineTime - currentTimeSeconds);
+        if (timeDiff < closestTimeDiff) {
+          closestTimeDiff = timeDiff;
+          targetLine = lineElement;
+        }
+      }
+
+      // Scroll to line that matches current playback time
+      if (targetLine && closestTimeDiff < 5) { // 5 second tolerance
+        targetLine.scrollIntoView({ block: "center", behavior: "smooth" });
+        console.log("[useSimpleMonitorLiveTail] synced to playback position (timeDiff=%.1fs)", closestTimeDiff);
+        return;
+      }
+    }
 
     const syncPlan = buildSimpleMonitorLiveTailEffectState({
       liveLines,
@@ -52,8 +90,6 @@ export function useSimpleMonitorLiveTail({
       shouldFocusSelectedLog: focusSelectedLogRef.current,
       isTailPinned: isTailPinnedRef.current,
     });
-
-    console.debug("[useSimpleMonitorLiveTail] syncPlan type=%s", syncPlan.type);
 
     if (syncPlan.type === "focus") {
       const node = lineRefs.current.get(syncPlan.lineId);
@@ -65,10 +101,10 @@ export function useSimpleMonitorLiveTail({
     }
 
     if (syncPlan.type === "pin") {
-      console.debug("[useSimpleMonitorLiveTail] SCROLLING to bottom");
-      safeElementScrollTo(container, container.scrollHeight, "auto");
+      console.log("[useSimpleMonitorLiveTail] tail pinned - scrolling to bottom");
+      safeElementScrollTo(container, container.scrollHeight, "smooth");
     }
-  }, [liveLines, selectedAnomalyId]);
+  }, [lineCount, waveKey, selectedAnomalyId, deckDurationSeconds]);
 
   return {
     terminalLinesRef,

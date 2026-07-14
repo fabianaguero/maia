@@ -19,6 +19,7 @@ function createLine(overrides: Partial<MonitorLogLine> = {}): MonitorLogLine {
 
 describe("useSimpleMonitorLiveTail", () => {
   it("pins the tail to the bottom while the console is near the end", () => {
+    vi.useFakeTimers();
     const onSelectAnomalyId = vi.fn();
     const container = {
       scrollHeight: 900,
@@ -44,12 +45,16 @@ describe("useSimpleMonitorLiveTail", () => {
 
     result.current.terminalLinesRef.current = container;
 
-    rerender({
-      liveLines: [createLine(), createLine({ id: "line-2", message: "next" })],
-      selectedAnomalyId: null,
+    act(() => {
+      rerender({
+        liveLines: [createLine(), createLine({ id: "line-2", message: "next" })],
+        selectedAnomalyId: null,
+      });
+      vi.runAllTimers();
     });
 
-    expect(container.scrollTo).toHaveBeenCalledWith({ top: 900, behavior: "auto" });
+    expect(container.scrollTo).toHaveBeenCalledWith({ top: 900, behavior: "smooth" });
+    vi.useRealTimers();
   });
 
   it("focuses the selected anomaly line after explicit anomaly selection", () => {

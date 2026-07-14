@@ -22,6 +22,7 @@ export interface LiveTailPanelProps {
   streamAdapterLabel: string;
   selectedAnomalyId: string | null;
   onSelectAnomalyLine: (anomalyId: string) => void;
+  onShowLineDetails?: (line: MonitorLogLine) => void;
   registerLineRef: (lineId: string, node: HTMLDivElement | null) => void;
 }
 
@@ -40,6 +41,7 @@ export function LiveTailPanel({
   streamAdapterLabel,
   selectedAnomalyId,
   onSelectAnomalyLine,
+  onShowLineDetails,
   registerLineRef,
 }: LiveTailPanelProps) {
   const t = useT();
@@ -85,6 +87,7 @@ export function LiveTailPanel({
             lines={viewModel.filteredLines}
             selectedAnomalyId={selectedAnomalyId}
             onSelectAnomalyLine={onSelectAnomalyLine}
+            onShowLineDetails={onShowLineDetails}
             registerLineRef={registerLineRef}
             t={t}
           />

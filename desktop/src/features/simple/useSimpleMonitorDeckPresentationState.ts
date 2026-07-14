@@ -15,6 +15,8 @@ export function useSimpleMonitorDeckPresentationState(
       liveLines: input.liveLines,
       selectedAnomalyId: input.selectedAnomalyId,
       setSelectedAnomalyId: input.setSelectedAnomalyId,
+      trackWaveProgress: input.trackWaveProgress,
+      deckDurationSeconds: input.deckDurationSeconds,
     }),
   );
   const visualState = useSimpleMonitorDeckVisualState(

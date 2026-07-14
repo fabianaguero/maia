@@ -6,6 +6,8 @@ export interface BuildSimpleMonitorLiveTailHookInputArgs {
   liveLines: MonitorLogLine[];
   selectedAnomalyId: string | null;
   setSelectedAnomalyId: (anomalyId: string) => void;
+  trackWaveProgress: number;
+  deckDurationSeconds: number | null;
 }
 
 export function buildSimpleMonitorLiveTailHookInput(
@@ -15,6 +17,8 @@ export function buildSimpleMonitorLiveTailHookInput(
     liveLines: input.liveLines,
     selectedAnomalyId: input.selectedAnomalyId,
     onSelectAnomalyId: input.setSelectedAnomalyId,
+    trackWaveProgress: input.trackWaveProgress,
+    deckDurationSeconds: input.deckDurationSeconds,
   };
 }
 

@@ -469,6 +469,7 @@ struct StreamSessionState {
     gcp_history_seeded: bool,
     sonarqube_last_known_issues: HashSet<String>,
     sonarqube_baseline_seeded: bool,
+    sonarqube_baseline_emitted: bool,
 }
 
 impl StreamSessionState {
@@ -483,6 +484,7 @@ impl StreamSessionState {
             gcp_history_seeded: false,
             sonarqube_last_known_issues: HashSet::new(),
             sonarqube_baseline_seeded: false,
+            sonarqube_baseline_emitted: false,
         }
     }
 
@@ -2590,7 +2592,7 @@ fn poll_code_project_stream_session(
 ) -> Result<StreamSessionPollResult, String> {
     eprintln!("[MAIA:Rust] poll_code_project_stream_session START id={}", session_id);
 
-    let (connection_config, mut last_known, baseline_seeded) = {
+    let (connection_config, mut last_known, baseline_seeded, baseline_emitted) = {
         let reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
         let session = reg
             .sessions
@@ -2600,6 +2602,7 @@ fn poll_code_project_stream_session(
             session.connection_config.clone(),
             session.sonarqube_last_known_issues.clone(),
             session.sonarqube_baseline_seeded,
+            session.sonarqube_baseline_emitted,
         )
     };
 
@@ -2618,7 +2621,7 @@ fn poll_code_project_stream_session(
                 &code_project_config.repository_url,
                 &code_project_config.local_rules_profile,
                 &mut last_known,
-                baseline_seeded,
+                true, // Always emit issues, even on first scan (for testing)
             )?
         } else {
             eprintln!("[MAIA:Rust] Polling SonarQube: {}", code_project_config.api_url);
@@ -2641,7 +2644,7 @@ fn poll_code_project_stream_session(
     {
         let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
         if let Some(session) = reg.sessions.get_mut(session_id) {
-            session.sonarqube_last_known_issues = last_known;
+            session.sonarqube_last_known_issues = last_known.clone();
             session.sonarqube_baseline_seeded = true;
         }
     }
@@ -2658,6 +2661,37 @@ fn poll_code_project_stream_session(
     let (_, pending_chunk) = drain_pending_chunk(registry, session_id)?;
 
     if pending_chunk.trim().is_empty() {
+        // If baseline just completed and not yet emitted, emit baseline issues
+        eprintln!("[MAIA:Rust] pending_chunk empty: baseline_seeded={} baseline_emitted={} last_known.len()={}",
+            baseline_seeded, baseline_emitted, last_known.len());
+
+        if baseline_seeded && !baseline_emitted && !last_known.is_empty() {
+            let mut baseline_lines = Vec::new();
+            for (idx, issue) in last_known.iter().enumerate() {
+                // Format as SonarQube line: [timestamp] [SONARQUBE-WARN] RULE message (component:line)
+                let baseline_line = format!(
+                    "[baseline] [SONARQUBE-WARN] baseline-issue-{} {} (unknown)",
+                    idx + 1,
+                    issue
+                );
+                baseline_lines.push(baseline_line);
+            }
+            eprintln!("[MAIA:Rust] Emitting {} baseline issues", baseline_lines.len());
+            if !baseline_lines.is_empty() {
+                let combined = baseline_lines.join("\n");
+
+                // Mark baseline as emitted so we don't re-emit it
+                {
+                    let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+                    if let Some(session) = reg.sessions.get_mut(session_id) {
+                        session.sonarqube_baseline_emitted = true;
+                    }
+                }
+
+                return analyze_stream_chunk(session_record, combined, warnings);
+            }
+        }
+
         // If no new lines, emit a status message to show the monitor is active
         let status = waiting_status_for_code_project(
             &code_project_config.analysis_mode,
@@ -7893,6 +7927,50 @@ async fn test_sonarqube_connection(
 }
 
 #[tauri::command]
+fn read_source_code_lines(file_path: String, line_number: usize, context: usize) -> Result<Vec<String>, String> {
+    use std::fs;
+    use std::path::Path;
+
+    // Expand ~ to home directory
+    let expanded_path = if file_path.starts_with("~/") {
+        let home = std::env::var("HOME").ok();
+        home.map(|h| file_path.replace("~", &h))
+            .unwrap_or(file_path)
+    } else {
+        file_path
+    };
+
+    let path = Path::new(&expanded_path);
+    if !path.exists() {
+        return Err(format!("File not found: {}", expanded_path));
+    }
+
+    let content = fs::read_to_string(path)
+        .map_err(|e| format!("Failed to read file: {e}"))?;
+
+    let lines: Vec<&str> = content.lines().collect();
+    let start = if line_number > context {
+        line_number - context - 1
+    } else {
+        0
+    };
+    let end = std::cmp::min(line_number + context, lines.len());
+
+    let result: Vec<String> = lines[start..end]
+        .iter()
+        .enumerate()
+        .map(|(i, line)| {
+            let actual_line_num = start + i + 1;
+            let is_target = actual_line_num == line_number;
+            let marker = if is_target { "▶ " } else { "  " };
+            format!("{}{:4} | {}", marker, actual_line_num, line)
+        })
+        .collect();
+
+    Ok(result)
+}
+
+#[tauri::command]
 fn quit_app(app: AppHandle) {
     app.exit(0);
 }
@@ -8011,6 +8089,7 @@ fn main() {
             import_repository,
             discover_repository_logs,
             read_audio_bytes,
+            read_source_code_lines,
             log_to_terminal,
             hide_window,
             show_window,

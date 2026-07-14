@@ -1,4 +1,5 @@
 import type { MouseEvent, PointerEvent, RefObject, UIEvent } from "react";
+import { useState } from "react";
 
 import type { MonitorLogLine } from "./monitorLogParsing";
 import type {
@@ -12,6 +13,7 @@ import { MonitorActiveHeader } from "./MonitorActiveHeader";
 import { MonitorActiveDeckSection } from "./MonitorActiveDeckSection";
 import { MonitorActiveFooter } from "./MonitorActiveFooter";
 import { LiveTailPanel } from "./LiveTailPanel";
+import { AnomalyDetailsPanel } from "./AnomalyDetailsPanel";
 import { useT } from "../../i18n/I18nContext";
 import { buildSimpleMonitorActiveViewSections } from "./simpleMonitorActiveViewRuntime";
 
@@ -79,17 +81,36 @@ export interface SimpleMonitorActiveViewProps {
 
 export function SimpleMonitorActiveView({ ...props }: SimpleMonitorActiveViewProps) {
   const t = useT();
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
+
   const { headerProps, deckSectionProps, liveTailProps, footerProps } =
     buildSimpleMonitorActiveViewSections({
       t,
       props,
     });
 
+  // Find the selected line from liveLines
+  const selectedLine = props.selectedAnomalyId
+    ? props.liveLines.find((line) => line.anomalyId === props.selectedAnomalyId)
+    : null;
+
+  const handleShowLineDetails = (line: typeof selectedLine) => {
+    if (line?.anomalyId) {
+      props.onSelectAnomalyLine(line.anomalyId);
+    }
+    setDetailsExpanded(true);
+  };
+
   return (
     <div className="monitor-active">
       <MonitorActiveHeader {...headerProps} />
       <MonitorActiveDeckSection {...deckSectionProps} />
-      <LiveTailPanel {...liveTailProps} />
+      <LiveTailPanel {...liveTailProps} onShowLineDetails={handleShowLineDetails} />
+      <AnomalyDetailsPanel
+        selectedLine={selectedLine ?? null}
+        isExpanded={detailsExpanded}
+        onToggle={() => setDetailsExpanded(!detailsExpanded)}
+      />
       <MonitorActiveFooter {...footerProps} />
     </div>
   );

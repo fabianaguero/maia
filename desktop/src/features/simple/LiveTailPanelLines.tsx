@@ -8,6 +8,7 @@ interface LiveTailPanelLinesProps {
   lines: MonitorLogLine[];
   selectedAnomalyId: string | null;
   onSelectAnomalyLine: (anomalyId: string) => void;
+  onShowLineDetails?: (line: MonitorLogLine) => void;
   registerLineRef: (lineId: string, node: HTMLDivElement | null) => void;
   t: AppTranslations;
 }
@@ -16,6 +17,7 @@ export function LiveTailPanelLines({
   lines,
   selectedAnomalyId,
   onSelectAnomalyLine,
+  onShowLineDetails,
   registerLineRef,
   t,
 }: LiveTailPanelLinesProps) {
@@ -64,6 +66,16 @@ export function LiveTailPanelLines({
               </span>
             </span>
           )}
+          <button
+            className="line-details-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              onShowLineDetails?.(line);
+            }}
+            title="Ver detalles"
+          >
+            ℹ
+          </button>
         </div>
       ))}
     </>
