@@ -84,6 +84,7 @@ export function buildSimpleMonitorActiveHookArgs(input: {
     deckPresetLabel: input.deckRuntime.deckPresetLabel,
     deckBpm: input.deckRuntime.deckBpm,
     trackElapsedSeconds: input.deckRuntime.trackElapsedSeconds,
+    trackWaveProgress: input.deckRuntime.trackWaveProgress,
     deckRemainingSeconds: input.screenMeta.deckRemainingSeconds,
     selectedDeckMarker: input.deckRuntime.selectedDeckMarker,
     selectedBurstCount: input.deckRuntime.selectedBurstRegion?.count ?? null,

@@ -1,6 +1,7 @@
 export interface DeckOverviewScrubMarker {
   id: string;
   progress: number;
+  observedAtMs?: number;
 }
 
 export interface MonitorDeckScrubRefs {

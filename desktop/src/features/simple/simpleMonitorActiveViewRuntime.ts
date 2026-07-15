@@ -75,6 +75,7 @@ export function buildSimpleMonitorActiveViewSections(input: {
       selectedBurstRegionId: props.selectedBurstRegionId,
       overviewAnomalyMarkers: props.overviewAnomalyMarkers,
       selectedAnomalyId: props.selectedAnomalyId,
+      trackWaveProgress: props.trackWaveProgress,
       overviewWindowLeftPercent: props.overviewWindowLeftPercent,
       overviewWindowWidthPercent: props.overviewWindowWidthPercent,
       overviewPlayheadLeftPercent: props.overviewPlayheadLeftPercent,

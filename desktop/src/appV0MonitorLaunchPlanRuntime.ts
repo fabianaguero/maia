@@ -72,7 +72,8 @@ export function buildAppV0RepositoryStartInput(input: {
   return {
     sessionId: input.sessionId,
     source: input.repo.sourcePath,
-    adapterKind: input.adapterKind ?? "file",
+    adapterKind:
+      input.adapterKind ?? (input.repo.sourceKind === "directory" ? "directory-tail" : "file"),
     label: input.repo.title,
     trackId: input.track.id,
     trackTitle: input.trackTitle,

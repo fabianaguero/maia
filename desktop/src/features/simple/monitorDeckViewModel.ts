@@ -19,6 +19,7 @@ export function buildMonitorDeckDerivedState(input: {
   visibleWindowSeconds: number;
   logSignalBuffer: Array<{ val: number; heat: number }>;
   selectedAnomalyId: string | null;
+  nowMs?: number;
 }): MonitorDeckDerivedState {
   return buildMonitorDeckDerivedStateBase({
     ...input,

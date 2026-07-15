@@ -14,6 +14,7 @@ export function buildMonitorDeckDerivedState({
   logSignalBuffer,
   selectedAnomalyId,
   sampleOverviewWave,
+  nowMs,
 }: {
   waveformBins: number[] | null | undefined;
   waveformAnomalies: WaveformAnomalyMarker[];
@@ -23,10 +24,22 @@ export function buildMonitorDeckDerivedState({
   logSignalBuffer: Array<{ val: number; heat: number }>;
   selectedAnomalyId: string | null;
   sampleOverviewWave: (bins: number[] | null | undefined) => number[];
+  nowMs?: number;
 }): MonitorDeckDerivedState {
+  const streamWindowMs = 120_000;
+  const displayWaveformAnomalies = waveformAnomalies
+    .map((marker) =>
+      typeof marker.observedAtMs === "number" && typeof nowMs === "number"
+        ? {
+            ...marker,
+            progress: Math.max(0, 1 - (nowMs - marker.observedAtMs) / streamWindowMs),
+          }
+        : marker,
+    )
+    .filter((marker) => marker.progress > 0 && marker.progress <= 1);
   const overviewWaveSamples = sampleOverviewWave(waveformBins ?? null);
-  const overviewAnomalyDensity = sampleOverviewAnomalyDensity(waveformAnomalies);
-  const anomalyBurstRegions = buildAnomalyBurstRegions(waveformAnomalies);
+  const overviewAnomalyDensity = sampleOverviewAnomalyDensity(displayWaveformAnomalies);
+  const anomalyBurstRegions = buildAnomalyBurstRegions(displayWaveformAnomalies);
   const overviewWindowWidthPercent =
     typeof deckDurationSeconds === "number" && deckDurationSeconds > 0
       ? Math.min(100, (visibleWindowSeconds / deckDurationSeconds) * 100)
@@ -46,14 +59,14 @@ export function buildMonitorDeckDerivedState({
       ? overviewWindowLeftPercent + overviewWindowWidthPercent / 2
       : trackWaveProgress * 100;
   const logWaveOverlay = sampleLogWaveOverlay(logSignalBuffer);
-  const overviewAnomalyMarkers = waveformAnomalies
+  const overviewAnomalyMarkers = displayWaveformAnomalies
     .map((marker) => ({
       ...marker,
       leftPercent: marker.progress * 100,
     }))
     .filter((marker) => marker.leftPercent >= 0 && marker.leftPercent <= 100);
   const selectedDeckMarker = selectedAnomalyId
-    ? (waveformAnomalies.find((marker) => marker.id === selectedAnomalyId) ?? null)
+    ? (displayWaveformAnomalies.find((marker) => marker.id === selectedAnomalyId) ?? null)
     : null;
   const selectedBurstRegion = selectedDeckMarker
     ? (anomalyBurstRegions.find(
@@ -64,6 +77,7 @@ export function buildMonitorDeckDerivedState({
     : null;
 
   return {
+    waveformAnomalies: displayWaveformAnomalies,
     overviewWaveSamples,
     overviewAnomalyDensity,
     anomalyBurstRegions,

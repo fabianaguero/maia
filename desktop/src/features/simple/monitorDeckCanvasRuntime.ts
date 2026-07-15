@@ -65,9 +65,9 @@ export function buildMonitorDeckLayout(width: number, height: number): MonitorDe
     deckHeight,
     trackBaseY: headerInset + deckHeight * 0.22,
     trackAmplitude: Math.max(12, deckHeight * 0.16),
-    logBaseY: headerInset + deckHeight * 0.88,
-    logAmplitude: Math.max(18, deckHeight * 0.26),
-    separatorY: headerInset + deckHeight * 0.56,
+    logBaseY: headerInset + deckHeight * 0.94,
+    logAmplitude: Math.max(24, deckHeight * 0.38),
+    separatorY: headerInset + deckHeight * 0.52,
     centerBandHeight: Math.max(2, safeHeight * 0.012),
   };
 }

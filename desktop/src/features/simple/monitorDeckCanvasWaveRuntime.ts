@@ -1,4 +1,5 @@
 export {
+  drawRekordboxWaveformBars,
   drawSingleSidedWaveform,
   drawWaveContour,
 } from "./monitorDeckCanvasWaveformPrimitiveRuntime";

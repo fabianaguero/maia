@@ -470,6 +470,9 @@ struct StreamSessionState {
     sonarqube_last_known_issues: HashSet<String>,
     sonarqube_baseline_seeded: bool,
     sonarqube_baseline_emitted: bool,
+    directory_cursors: HashMap<String, u64>,
+    directory_initialized: bool,
+    directory_start_from_beginning: bool,
 }
 
 impl StreamSessionState {
@@ -485,6 +488,9 @@ impl StreamSessionState {
             sonarqube_last_known_issues: HashSet::new(),
             sonarqube_baseline_seeded: false,
             sonarqube_baseline_emitted: false,
+            directory_cursors: HashMap::new(),
+            directory_initialized: false,
+            directory_start_from_beginning: false,
         }
     }
 
@@ -2313,7 +2319,7 @@ fn start_log_source_connection(
             )?;
         }
     }
-    if connection.kind == "file_log" {
+    if connection.kind == "file_log" && session.adapter_kind == "file" {
         match read_log_stream_chunk(&connection.source_uri, None, None) {
             Ok((resolved_path, _from_offset, to_offset, chunk, warnings)) => {
                 let file_lines: Vec<String> = chunk
@@ -2385,16 +2391,23 @@ fn start_stream_session(
         return Err("source must not be empty".to_string());
     }
 
+    let adapter_kind = if input.adapter_kind == "file"
+        && resolve_existing_input_path(&input.source).is_ok_and(|path| path.is_dir())
+    {
+        "directory-tail".to_string()
+    } else {
+        input.adapter_kind.clone()
+    };
+    let start_from_beginning = input.start_from_beginning.unwrap_or(false);
     let record = StreamSessionRecord {
         session_id: session_id.clone(),
-        adapter_kind: input.adapter_kind.clone(),
+        adapter_kind: adapter_kind.clone(),
         source: input.source.clone(),
         label: input.label.clone(),
         created_at: now_iso(),
         last_polled_at: None,
         total_polls: 0,
-        file_cursor: if input.adapter_kind == "file" && input.start_from_beginning.unwrap_or(false)
-        {
+        file_cursor: if adapter_kind == "file" && start_from_beginning {
             Some(0)
         } else {
             None
@@ -2405,10 +2418,11 @@ fn start_stream_session(
         let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
         let mut state = StreamSessionState::new(record.clone());
         state.connection_config = input.connection_config.clone();
+        state.directory_start_from_beginning = start_from_beginning;
         reg.sessions.insert(session_id.clone(), state);
     }
 
-    if input.adapter_kind == "journald" {
+    if adapter_kind == "journald" {
         let mut cmd: Vec<String> = vec![
             "journalctl".to_string(),
             "-f".to_string(),
@@ -2730,6 +2744,41 @@ fn poll_stream_session(
     };
 
     let mut warnings: Vec<String> = Vec::new();
+
+    if adapter_kind == "directory-tail" {
+        let session_record = {
+            let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+            let session = reg
+                .sessions
+                .get_mut(&session_id)
+                .ok_or_else(|| format!("Session not found: {session_id}"))?;
+            let directory_update = read_log_directory_chunk(
+                &source,
+                &mut session.directory_cursors,
+                session.directory_initialized,
+                session.directory_start_from_beginning,
+            )?;
+            session.directory_initialized = true;
+            warnings.extend(directory_update.warnings);
+            if !directory_update.chunk.trim().is_empty() {
+                session.append_lines(directory_update.chunk.lines().map(str::to_string));
+            }
+            session.record.file_cursor = Some(directory_update.total_offset);
+            session.record.last_polled_at = Some(now_iso());
+            session.record.total_polls += 1;
+            session.record.clone()
+        };
+
+        let (_, pending_chunk) = drain_pending_chunk(&registry, &session_id)?;
+        if pending_chunk.trim().is_empty() {
+            return Ok(waiting_stream_poll_result(
+                session_record,
+                "Watching log directory for new lines.",
+                warnings,
+            ));
+        }
+        return analyze_stream_chunk(session_record, pending_chunk, warnings);
+    }
 
     if adapter_kind == "file" {
         let (resolved_path, _from, to_offset, chunk, read_warnings) =
@@ -3073,6 +3122,17 @@ fn resolve_missing_tracks_from_directory(
     Ok(RelinkMissingTracksResult { relinked_tracks, unresolved_track_ids })
 }
 
+fn is_supported_log_path(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| {
+            matches!(
+                extension.to_ascii_lowercase().as_str(),
+                "log" | "txt" | "out" | "err" | "jsonl" | "ndjson"
+            )
+        })
+}
+
 fn find_logs_recursive(dir: &Path, logs: &mut Vec<String>) -> std::io::Result<()> {
     if dir.is_dir() {
         // Skip hidden directories like .git or node_modules for performance
@@ -3091,10 +3151,8 @@ fn find_logs_recursive(dir: &Path, logs: &mut Vec<String>) -> std::io::Result<()
             let path = entry.path();
             if path.is_dir() {
                 find_logs_recursive(&path, logs)?;
-            } else if let Some(ext) = path.extension() {
-                if ext == "log" {
-                    logs.push(path.to_string_lossy().to_string());
-                }
+            } else if is_supported_log_path(&path) {
+                logs.push(path.to_string_lossy().to_string());
             }
             // Sanity limit to avoid UI explosion
             if logs.len() >= 50 {
@@ -3598,6 +3656,76 @@ fn copy_directory_recursively(source: &Path, destination: &Path) -> Result<(), S
     }
 
     Ok(())
+}
+
+struct DirectoryLogChunk {
+    chunk: String,
+    total_offset: u64,
+    warnings: Vec<String>,
+}
+
+fn read_log_directory_chunk(
+    source_path: &str,
+    cursors: &mut HashMap<String, u64>,
+    initialized: bool,
+    start_from_beginning: bool,
+) -> Result<DirectoryLogChunk, String> {
+    let root = resolve_existing_input_path(source_path)?;
+    if !root.is_dir() {
+        return Err(format!("Selected directory-tail source is not a directory: {}", root.display()));
+    }
+
+    let mut discovered_logs = Vec::new();
+    find_logs_recursive(&root, &mut discovered_logs)
+        .map_err(|error| format!("Failed to scan log directory {}: {error}", root.display()))?;
+    discovered_logs.sort();
+    if discovered_logs.is_empty() {
+        return Ok(DirectoryLogChunk {
+            chunk: String::new(),
+            total_offset: 0,
+            warnings: vec![format!("No supported log files found yet in {}.", root.display())],
+        });
+    }
+
+    let per_file_limit = (MAX_LOG_TAIL_READ_BYTES / discovered_logs.len() as u64).max(4096);
+    let mut chunks = Vec::new();
+    let mut warnings = Vec::new();
+
+    for log_path in discovered_logs {
+        let previous_cursor = cursors.get(&log_path).copied();
+        let cursor = match previous_cursor {
+            Some(offset) => Some(offset),
+            None if !initialized && start_from_beginning => Some(0),
+            None if !initialized => None,
+            None => Some(0),
+        };
+        let (resolved_path, _, next_cursor, chunk, file_warnings) =
+            read_log_stream_chunk(&log_path, cursor, Some(per_file_limit))?;
+        cursors.insert(resolved_path.clone(), next_cursor);
+        warnings.extend(file_warnings.into_iter().map(|warning| {
+            format!("{}: {warning}", Path::new(&resolved_path).display())
+        }));
+
+        if chunk.trim().is_empty() {
+            continue;
+        }
+        let relative_path = Path::new(&resolved_path)
+            .strip_prefix(&root)
+            .unwrap_or_else(|_| Path::new(&resolved_path))
+            .to_string_lossy();
+        chunks.extend(
+            chunk
+                .lines()
+                .filter(|line| !line.trim().is_empty())
+                .map(|line| format!("{line} [maia.source={relative_path}]")),
+        );
+    }
+
+    Ok(DirectoryLogChunk {
+        chunk: chunks.join("\n"),
+        total_offset: cursors.values().copied().sum(),
+        warnings,
+    })
 }
 
 fn read_log_stream_chunk(
@@ -8102,4 +8230,63 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running Maia desktop");
+}
+
+#[cfg(test)]
+mod directory_tail_tests {
+    use super::read_log_directory_chunk;
+    use std::collections::HashMap;
+    use std::fs::{self, OpenOptions};
+    use std::io::Write;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn test_directory(name: &str) -> std::path::PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("maia-{name}-{nonce}"));
+        fs::create_dir_all(&path).expect("create test directory");
+        path
+    }
+
+    #[test]
+    fn directory_tail_tracks_each_file_and_new_files_independently() {
+        let root = test_directory("directory-tail");
+        let api_log = root.join("api.log");
+        let worker_log = root.join("worker.err");
+        fs::write(&api_log, "[INFO] api ready\n").expect("write api log");
+        fs::write(&worker_log, "[WARN] worker slow\n").expect("write worker log");
+        let mut cursors = HashMap::new();
+
+        let initial = read_log_directory_chunk(
+            root.to_str().expect("utf8 path"),
+            &mut cursors,
+            false,
+            true,
+        )
+        .expect("initial directory read");
+        assert!(initial.chunk.contains("api ready [maia.source=api.log]"));
+        assert!(initial.chunk.contains("worker slow [maia.source=worker.err]"));
+        assert_eq!(cursors.len(), 2);
+
+        let mut api = OpenOptions::new().append(true).open(&api_log).expect("open api log");
+        writeln!(api, "[ERROR] api failed").expect("append api log");
+        fs::write(root.join("scheduler.jsonl"), "{\"level\":\"error\"}\n")
+            .expect("write new log");
+
+        let next = read_log_directory_chunk(
+            root.to_str().expect("utf8 path"),
+            &mut cursors,
+            true,
+            true,
+        )
+        .expect("incremental directory read");
+        assert!(!next.chunk.contains("api ready"));
+        assert!(next.chunk.contains("api failed [maia.source=api.log]"));
+        assert!(next.chunk.contains("[maia.source=scheduler.jsonl]"));
+        assert_eq!(cursors.len(), 3);
+
+        fs::remove_dir_all(root).expect("remove test directory");
+    }
 }

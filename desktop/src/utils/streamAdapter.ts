@@ -2,6 +2,7 @@ import type { StreamAdapterKind } from "../types/monitor";
 
 const STREAM_ADAPTER_LABELS: Record<StreamAdapterKind, string> = {
   file: "File tail",
+  "directory-tail": "Directory tail",
   process: "Process stdout",
   websocket: "WebSocket",
   "http-poll": "HTTP poll",
@@ -14,6 +15,8 @@ const DISABLED_ADAPTER_DESCRIPTION =
 
 const STREAM_ADAPTER_DESCRIPTIONS: Record<StreamAdapterKind, string> = {
   file: "Tail the imported log file directly from disk through Maia's single supported live-analysis pipeline.",
+  "directory-tail":
+    "Watch every supported log file in a directory with an independent cursor per file.",
   process: DISABLED_ADAPTER_DESCRIPTION,
   websocket: DISABLED_ADAPTER_DESCRIPTION,
   "http-poll": DISABLED_ADAPTER_DESCRIPTION,

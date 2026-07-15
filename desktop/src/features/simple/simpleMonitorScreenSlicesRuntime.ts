@@ -39,6 +39,7 @@ export interface SimpleMonitorDeckRuntimeSlice {
   focusAnomaly: BuildSimpleMonitorDeckHookStateArgs["focusAnomaly"];
   deckBpm: number | null;
   trackElapsedSeconds: number;
+  trackWaveProgress: number;
   deckDurationSeconds: number | null;
   overviewCanvasRef: BuildSimpleMonitorDeckHookStateArgs["overviewCanvasRef"];
   waveformCanvasRef: BuildSimpleMonitorDeckHookStateArgs["waveformCanvasRef"];
@@ -103,6 +104,7 @@ export function buildSimpleMonitorDeckRuntimeSlice(
     focusAnomaly: deckRuntime.focusAnomaly,
     deckBpm: deckRuntime.deckBpm,
     trackElapsedSeconds: deckRuntime.trackElapsedSeconds,
+    trackWaveProgress: deckRuntime.trackWaveProgress,
     deckDurationSeconds: deckRuntime.deckDurationSeconds,
     overviewCanvasRef: deckRuntime.overviewCanvasRef,
     waveformCanvasRef: deckRuntime.waveformCanvasRef,

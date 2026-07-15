@@ -1,8 +1,15 @@
 import type React from "react";
 
+import { formatAnomalyCueCode } from "./monitorDisplay";
+import { clusterVisibleStreamAnomalyMarkers } from "./monitorDeckAnomalyMarkerClusterRuntime";
+import {
+  isMonitorDeckRelativePositionVisible,
+  resolveMonitorDeckRelativePosition,
+} from "./monitorDeckCanvasRuntime";
 import type {
   DeckBeatMarkerViewModel,
   DeckTimelineMarkerViewModel,
+  OverviewAnomalyMarkerViewModel,
 } from "./monitorDeckWavePanelTypes";
 
 interface LaneLabelViewModel {
@@ -17,6 +24,14 @@ interface MonitorDeckWaveStageProps {
   waveformStageRef: React.RefObject<HTMLDivElement | null>;
   deckTimelineMarkers: DeckTimelineMarkerViewModel[];
   deckBeatMarkers: DeckBeatMarkerViewModel[];
+  anomalyMarkers: OverviewAnomalyMarkerViewModel[];
+  selectedAnomalyId: string | null;
+  trackWaveProgress: number;
+  onAnomalyClick: (
+    marker: OverviewAnomalyMarkerViewModel,
+    event: React.MouseEvent<HTMLButtonElement>,
+  ) => void;
+  onAnomalyPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => void;
   onStagePointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
   onStageClick: (event: React.MouseEvent<HTMLDivElement>) => void;
   laneLabels: LaneLabelViewModel[];
@@ -27,10 +42,28 @@ export function MonitorDeckWaveStage({
   waveformStageRef,
   deckTimelineMarkers,
   deckBeatMarkers,
+  anomalyMarkers,
+  selectedAnomalyId,
+  trackWaveProgress,
+  onAnomalyClick,
+  onAnomalyPointerDown,
   onStagePointerDown,
   onStageClick,
   laneLabels,
 }: MonitorDeckWaveStageProps) {
+  const anomalyWaveProgress = anomalyMarkers.some(
+    (marker) => typeof marker.observedAtMs === "number",
+  )
+    ? 1
+    : trackWaveProgress;
+  const anomalyMarkerClusters = clusterVisibleStreamAnomalyMarkers({
+    markers: anomalyMarkers,
+    currentProgress: anomalyWaveProgress,
+    selectedAnomalyId,
+    resolveRelativePosition: resolveMonitorDeckRelativePosition,
+    isVisible: (relative) => isMonitorDeckRelativePositionVisible(relative, 0),
+  });
+
   return (
     <div className="waveform-channel-hd monitor-deck-body monitor-deck-main monitor-deck-main--wave">
       <div className="monitor-deck-timeline" aria-hidden="true">
@@ -53,6 +86,33 @@ export function MonitorDeckWaveStage({
         onClick={onStageClick}
       >
         <canvas ref={waveformCanvasRef} className="monitor-wave-canvas" />
+        <div className="monitor-stream-anomaly-markers" aria-label="Anomalías del stream">
+          {anomalyMarkerClusters.map(({ id, marker, left, count, containsSelected }) => (
+            <button
+              key={`stream-anomaly-${id}`}
+              type="button"
+              className={`monitor-stream-anomaly-marker${marker.severity >= 0.9 ? " critical" : " warning"}${containsSelected ? " active" : ""}`}
+              style={{ left: `${left}%` }}
+              title={`${formatAnomalyCueCode(marker.id)} · ${marker.timestamp} · ${marker.message}`}
+              aria-label={`Ir a ${formatAnomalyCueCode(marker.id)} en el tail`}
+              onClick={(event) => onAnomalyClick(marker, event)}
+              onPointerDown={onAnomalyPointerDown}
+            >
+              <span className="monitor-stream-anomaly-marker__peak" aria-hidden="true" />
+              <span className="monitor-stream-anomaly-marker__count" aria-hidden="true">
+                {count}
+              </span>
+              <span className="monitor-stream-anomaly-marker__label">
+                {count > 1 ? `${count} anomalías` : formatAnomalyCueCode(marker.id)}
+              </span>
+            </button>
+          ))}
+        </div>
+        <div className="monitor-stream-time-direction" aria-hidden="true">
+          <span>HISTORIAL ←</span>
+          <span>AHORA</span>
+          <span>PRÓXIMOS DATOS →</span>
+        </div>
         <div className="monitor-deck-lane-labels" aria-hidden="true">
           {laneLabels.map((lane) => (
             <span

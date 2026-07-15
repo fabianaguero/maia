@@ -48,9 +48,35 @@ export function buildWaveformAnomalyMarkers(input: {
   beatSnapSubdivision: number;
   maxMarkers?: number;
   maxBatchMarkers?: number;
+  nowMs?: number;
+  streamWindowSeconds?: number;
 }): WaveformAnomalyMarker[] {
-  const retained = input.previous.filter((marker) => marker.progress >= 0 && marker.progress <= 1);
-  const anomalyLines = input.parsedLines.filter((line) => line.isAnomaly && line.anomalyId);
+  const usesStreamClock = typeof input.nowMs === "number";
+  const windowMs = (input.streamWindowSeconds ?? 120) * 1000;
+  const retained = input.previous
+    .map((marker) =>
+      usesStreamClock && typeof marker.observedAtMs === "number"
+        ? {
+            ...marker,
+            progress: clamp01(
+              1 - ((input.nowMs ?? marker.observedAtMs) - marker.observedAtMs) / windowMs,
+            ),
+          }
+        : marker,
+    )
+    .filter((marker) => marker.progress > 0 && marker.progress <= 1);
+  const retainedIds = new Set(retained.map((marker) => marker.id));
+  const batchIds = new Set<string>();
+  const anomalyLines = input.parsedLines.filter((line) => {
+    if (!line.isAnomaly || !line.anomalyId) {
+      return false;
+    }
+    if (retainedIds.has(line.anomalyId) || batchIds.has(line.anomalyId)) {
+      return false;
+    }
+    batchIds.add(line.anomalyId);
+    return true;
+  });
   const beatGrid = input.currentTrack?.analysis?.beatGrid ?? input.currentTrack?.beatGrid ?? [];
   const nextMarkers = anomalyLines.slice(0, input.maxBatchMarkers ?? 3).map((line, index) => ({
     id: line.anomalyId ?? `${line.id}-marker`,
@@ -58,13 +84,16 @@ export function buildWaveformAnomalyMarkers(input: {
     timestamp: line.timestamp,
     message: line.message,
     severity: line.level === "error" ? 1 : 0.72,
-    progress: quantizeProgressToBeatGrid(
-      clamp01(input.currentProgress + index * 0.0025),
-      input.durationSeconds,
-      input.bpm,
-      beatGrid,
-      input.beatSnapSubdivision,
-    ),
+    progress: usesStreamClock
+      ? clamp01(1 - index * 0.0025)
+      : quantizeProgressToBeatGrid(
+          clamp01(input.currentProgress + index * 0.0025),
+          input.durationSeconds,
+          input.bpm,
+          beatGrid,
+          input.beatSnapSubdivision,
+        ),
+    observedAtMs: usesStreamClock ? input.nowMs : undefined,
   }));
 
   return [...retained, ...nextMarkers].slice(-(input.maxMarkers ?? 24));

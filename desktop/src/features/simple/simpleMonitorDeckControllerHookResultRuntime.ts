@@ -12,7 +12,10 @@ export function buildSimpleMonitorDeckControllerHookResultArgs(input: {
     | "isMonitorActive"
     | "deckDurationSeconds"
   >;
-  playback: Pick<SimpleMonitorDeckPlaybackStateSlice, "trackElapsedSeconds">;
+  playback: Pick<
+    SimpleMonitorDeckPlaybackStateSlice,
+    "trackElapsedSeconds" | "trackWaveProgress"
+  >;
   liveState: Pick<
     SimpleMonitorDeckLiveControllerResult,
     "previewTrackId" | "toggleTrackPreview" | "liveLines" | "selectedAnomalyId" | "simulateLog"
@@ -30,6 +33,7 @@ export function buildSimpleMonitorDeckControllerHookResultArgs(input: {
     | "simulateLog"
     | "deckBpm"
     | "trackElapsedSeconds"
+    | "trackWaveProgress"
     | "deckDurationSeconds"
     | "waveformScale"
   >;
@@ -52,6 +56,7 @@ export function buildSimpleMonitorDeckControllerHookResultArgs(input: {
     focusAnomaly: input.presentationState.focusAnomaly,
     deckBpm: input.deckBpm,
     trackElapsedSeconds: input.playback.trackElapsedSeconds,
+    trackWaveProgress: input.playback.trackWaveProgress,
     deckDurationSeconds: input.controllerModel.deckDurationSeconds,
     overviewCanvasRef: input.presentationState.overviewCanvasRef,
     waveformCanvasRef: input.presentationState.waveformCanvasRef,

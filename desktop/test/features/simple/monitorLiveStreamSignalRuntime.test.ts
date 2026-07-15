@@ -67,7 +67,7 @@ describe("monitorLiveStreamSignalRuntime", () => {
     });
     const simulated = advanceSimulatedLogSignalBuffer(seed, "warn");
 
-    expect(activeBuffer[60]?.val).toBeGreaterThan(20);
+    expect(activeBuffer[60]?.val).toBeGreaterThan(14);
     expect(activeBuffer[60]?.heat).toBeGreaterThan(0);
     expect(idleBuffer[60]?.val).not.toBe(20);
     expect(simulated[60]?.heat).toBeGreaterThan(0);
@@ -92,7 +92,7 @@ describe("monitorLiveStreamSignalRuntime", () => {
     });
     const simulatedInfo = advanceSimulatedLogSignalBuffer(seed, "info");
 
-    expect(activeBuffer[60]?.val).toBeGreaterThan(20);
+    expect(activeBuffer[60]?.val).toBeGreaterThan(14);
     expect(activeBuffer[60]?.heat).toBeLessThan(0.4);
     expect(idleBuffer[60]?.val).toBeGreaterThan(0);
     expect(idleBuffer[60]?.heat).toBeLessThan(seed[60]!.heat);
@@ -116,7 +116,7 @@ describe("monitorLiveStreamSignalRuntime", () => {
       anomalyMix: 0.9,
     });
 
-    expect(anomalyOnlyBuffer[60]?.val).toBeCloseTo(20, 0);
+    expect(anomalyOnlyBuffer[60]?.val).toBeGreaterThan(20);
     expect(anomalyOnlyBuffer[60]?.heat).toBeGreaterThan(0);
   });
 

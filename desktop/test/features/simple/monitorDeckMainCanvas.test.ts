@@ -5,6 +5,7 @@ const {
   drawDeckBurstRegions,
   drawPhraseRibbon,
   drawQuantizedLogBlocks,
+  drawRekordboxWaveformBars,
   drawSelectedMarkerBeam,
   drawSingleSidedWaveform,
   drawTrackEnergyBand,
@@ -15,6 +16,7 @@ const {
   drawDeckBurstRegions: vi.fn(),
   drawPhraseRibbon: vi.fn(),
   drawQuantizedLogBlocks: vi.fn(),
+  drawRekordboxWaveformBars: vi.fn(),
   drawSelectedMarkerBeam: vi.fn(),
   drawSingleSidedWaveform: vi.fn(),
   drawTrackEnergyBand: vi.fn(),
@@ -27,6 +29,7 @@ vi.mock("../../../src/features/simple/monitorDeckCanvasDrawRuntime", () => ({
   drawDeckBurstRegions,
   drawPhraseRibbon,
   drawQuantizedLogBlocks,
+  drawRekordboxWaveformBars,
   drawSelectedMarkerBeam,
   drawSingleSidedWaveform,
   drawTrackEnergyBand,
@@ -101,6 +104,7 @@ function mockCanvasState() {
       centerBandHeight: 8,
     },
     logSamples: [0.12, 0.28, 0.44],
+    logWaveOverlay: [],
   });
 }
 
@@ -158,14 +162,15 @@ describe("monitorDeckMainCanvas", () => {
 
     expect(context.setTransform).toHaveBeenCalledWith(2, 0, 0, 2, 0, 0);
     expect(context.clearRect).toHaveBeenCalledWith(0, 0, 800, 240);
-    expect(drawTrackEnergyBand).toHaveBeenCalledTimes(1);
-    expect(drawPhraseRibbon).toHaveBeenCalledTimes(1);
-    expect(drawSingleSidedWaveform).toHaveBeenCalledTimes(3);
-    expect(drawQuantizedLogBlocks).toHaveBeenCalledTimes(1);
+    expect(drawTrackEnergyBand).not.toHaveBeenCalled();
+    expect(drawPhraseRibbon).not.toHaveBeenCalled();
+    expect(drawSingleSidedWaveform).toHaveBeenCalledTimes(2);
+    expect(drawRekordboxWaveformBars).toHaveBeenCalledTimes(2);
+    expect(drawQuantizedLogBlocks).not.toHaveBeenCalled();
     expect(drawDeckBurstRegions).toHaveBeenCalledTimes(1);
     expect(drawAnomalyWash).toHaveBeenCalledTimes(1);
     expect(drawSelectedMarkerBeam).toHaveBeenCalledTimes(1);
-    expect(drawWaveContour).toHaveBeenCalledTimes(1);
+    expect(drawWaveContour).toHaveBeenCalledTimes(2);
     expect(buildMonitorDeckMainCanvasState).toHaveBeenCalledWith({
       stageWidth: 800,
       stageHeight: 240,

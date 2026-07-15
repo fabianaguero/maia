@@ -13,6 +13,7 @@ export function MonitorDeckWavePanel({
   selectedBurstRegionId,
   overviewAnomalyMarkers,
   selectedAnomalyId,
+  trackWaveProgress,
   overviewWindowLeftPercent,
   overviewWindowWidthPercent,
   overviewPlayheadLeftPercent,
@@ -31,7 +32,11 @@ export function MonitorDeckWavePanel({
 
   return (
     <>
-      <div className="waveform-dual-channel" style={{ height: `${stageHeightPx}px` }}>
+      <div
+        className="waveform-dual-channel"
+        style={{ minHeight: `${stageHeightPx}px` }}
+        title="Arrastra el borde inferior para cambiar la altura de las waves"
+      >
         <MonitorDeckOverviewPanel
           overviewCanvasRef={overviewCanvasRef}
           anomalyBurstRegions={anomalyBurstRegions}
@@ -53,6 +58,11 @@ export function MonitorDeckWavePanel({
           waveformStageRef={waveformStageRef}
           deckTimelineMarkers={deckTimelineMarkers}
           deckBeatMarkers={deckBeatMarkers}
+          anomalyMarkers={overviewAnomalyMarkers}
+          selectedAnomalyId={selectedAnomalyId}
+          trackWaveProgress={trackWaveProgress}
+          onAnomalyClick={onOverviewAnomalyClick}
+          onAnomalyPointerDown={onOverviewAnomalyPointerDown}
           onStagePointerDown={onStagePointerDown}
           onStageClick={onStageClick}
           laneLabels={viewModel.laneLabels}

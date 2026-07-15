@@ -63,6 +63,7 @@ export function applyMonitorLiveStreamSubscriptionUpdate(
     previousLiveLines: input.previousLiveLines,
     previousWaveformAnomalies: input.previousWaveformAnomalies,
     previousLogSignalBuffer: input.previousLogSignalBuffer,
+    nowMs: input.nowMs,
   });
   const { cueBatch, hasRealLines, hasMeaningfulUpdate } = updateState.normalizedUpdate;
 

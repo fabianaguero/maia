@@ -1,6 +1,7 @@
 export {
   drawPhraseRibbon,
   drawQuantizedLogBlocks,
+  drawRekordboxWaveformBars,
   drawSingleSidedWaveform,
   drawTrackEnergyBand,
   drawWaveContour,

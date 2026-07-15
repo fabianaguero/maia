@@ -36,6 +36,7 @@ export interface SimpleMonitorActiveViewProps {
   liveLines: MonitorLogLine[];
   streamAdapterLabel: string;
   selectedAnomalyId: string | null;
+  trackWaveProgress: number;
   onSelectAnomalyLine: (anomalyId: string) => void;
   registerLineRef: (lineId: string, node: HTMLDivElement | null) => void;
   monitorTrackTitle: string;

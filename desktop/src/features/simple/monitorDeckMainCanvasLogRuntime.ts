@@ -47,21 +47,21 @@ export function buildMonitorDeckCanvasLogPlan(input: {
       { offset: 1, color: withAlpha(palette.logCool, 0.12) },
     ],
     waveformStops: [
-      { offset: 0, color: withAlpha(palette.logHot, 0.18) },
-      { offset: 0.4, color: withAlpha(palette.logWarm, 0.22) },
-      { offset: 1, color: withAlpha(palette.logCool, 0.12) },
+      { offset: 0, color: withAlpha(palette.logWarm, 0.68) },
+      { offset: 0.48, color: withAlpha(palette.logCool, 0.52) },
+      { offset: 1, color: withAlpha(palette.logCool, 0.2) },
     ],
-    waveformAmplitudeScale: 0.74,
+    waveformAmplitudeScale: 0.92,
     quantizedBlockAmplitudeScale: 0.96,
     contourPoints: buildMonitorDeckLogContourPoints({
       samples: logSamples,
       width,
       baseY: logBaseY,
-      amplitude: logAmplitude * 0.72,
+      amplitude: logAmplitude * 0.92,
     }),
     contourStops: [
-      { offset: 0, color: withAlpha(palette.contourStroke, 0.56) },
-      { offset: 1, color: withAlpha(palette.logHot, 0.08) },
+      { offset: 0, color: withAlpha(palette.contourStroke, 0.88) },
+      { offset: 1, color: withAlpha(palette.logWarm, 0.28) },
     ],
   };
 }

@@ -105,6 +105,24 @@ describe("monitorLogParsing", () => {
     expect(line.isAnomaly).toBe(false);
   });
 
+  it("parses Spring-style thread logs and keeps INFO rows non-anomalous", () => {
+    const info = parseMonitorLogLine(
+      "2026-04-12 20:13:12.903 [http-nio-8790-exec-15] INFO api-gateway trace_id=54ed0ab1722e2a257123676f",
+      6,
+    );
+    const error = parseMonitorLogLine(
+      "2026-04-12 20:13:12.903 [http-nio-8757-exec-17] ERROR api-gateway request failed",
+      7,
+    );
+
+    expect(info.level).toBe("info");
+    expect(info.isAnomaly).toBe(false);
+    expect(info.anomalyId).toBeNull();
+    expect(error.level).toBe("error");
+    expect(error.isAnomaly).toBe(true);
+    expect(error.message).toContain("http-nio-8757-exec-17");
+  });
+
   it("falls back to classic parsing for plain lines without brackets", () => {
     const line = parseMonitorLogLine("NOTICE process boot completed", 7);
 

@@ -33,6 +33,7 @@ export interface MonitorActiveDeckSectionProps {
   selectedBurstRegionId: string | null;
   overviewAnomalyMarkers: OverviewAnomalyMarker[];
   selectedAnomalyId: string | null;
+  trackWaveProgress: number;
   overviewWindowLeftPercent: number;
   overviewWindowWidthPercent: number;
   overviewPlayheadLeftPercent: number;
@@ -82,6 +83,7 @@ export function MonitorActiveDeckSection(props: MonitorActiveDeckSectionProps) {
           selectedBurstRegionId={props.selectedBurstRegionId}
           overviewAnomalyMarkers={props.overviewAnomalyMarkers}
           selectedAnomalyId={props.selectedAnomalyId}
+          trackWaveProgress={props.trackWaveProgress}
           overviewWindowLeftPercent={props.overviewWindowLeftPercent}
           overviewWindowWidthPercent={props.overviewWindowWidthPercent}
           overviewPlayheadLeftPercent={props.overviewPlayheadLeftPercent}

@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
 const drawSingleSidedWaveform = vi.fn();
+const drawRekordboxWaveformBars = vi.fn();
 const drawWaveContour = vi.fn();
 const createVerticalGradient = vi.fn(() => ({ addColorStop: vi.fn() }));
 
 vi.mock("../../../src/features/simple/monitorDeckCanvasDrawRuntime", () => ({
   drawSingleSidedWaveform: (...args: unknown[]) => drawSingleSidedWaveform(...args),
+  drawRekordboxWaveformBars: (...args: unknown[]) => drawRekordboxWaveformBars(...args),
   drawWaveContour: (...args: unknown[]) => drawWaveContour(...args),
 }));
 
@@ -37,8 +39,16 @@ describe("monitorDeckTrackWaveRuntime", () => {
 
     drawMonitorDeckTrackWave(context, state, 640, scene);
 
-    expect(createVerticalGradient).toHaveBeenCalledTimes(2);
-    expect(drawSingleSidedWaveform).toHaveBeenCalledTimes(2);
+    expect(createVerticalGradient).not.toHaveBeenCalled();
+    expect(drawSingleSidedWaveform).not.toHaveBeenCalled();
+    expect(drawRekordboxWaveformBars).toHaveBeenCalledWith(
+      expect.objectContaining({
+        samples: state.trackWaveSamples,
+        width: 640,
+        centerY: 82,
+        amplitudeScale: 28,
+      }),
+    );
     expect(drawWaveContour).toHaveBeenCalledWith(
       context,
       state.trackWaveSamples,
@@ -48,6 +58,16 @@ describe("monitorDeckTrackWaveRuntime", () => {
       "#def",
       1.4,
       "top",
+    );
+    expect(drawWaveContour).toHaveBeenCalledWith(
+      context,
+      state.trackWaveSamples,
+      640,
+      82,
+      28,
+      "#def",
+      0.8,
+      "bottom",
     );
     expect(context.globalCompositeOperation).toBe("source-over");
   });

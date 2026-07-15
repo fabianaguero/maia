@@ -107,7 +107,8 @@ export function resolveResumeSessionError(input: {
     return input.copy.session.noStoredSourceResume;
   }
 
-  if ((input.session.adapterKind || "file") !== "file") {
+  const adapterKind = input.session.adapterKind || "file";
+  if (adapterKind !== "file" && adapterKind !== "directory-tail") {
     return input.copy.session.unsupportedAdapterResume;
   }
 

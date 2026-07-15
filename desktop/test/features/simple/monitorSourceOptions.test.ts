@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { CodeProject } from "../../../src/types/codeProject";
+import type { RepositoryAnalysis } from "../../../src/types/library";
 import {
   buildMonitorSourceSelectionModel,
   type MonitorSourceCopy,
@@ -50,6 +51,31 @@ function codeProject(overrides: Partial<CodeProject> = {}): CodeProject {
 }
 
 describe("monitorSourceOptions", () => {
+  it("exposes log directories through the directory-tail adapter", () => {
+    const repository = {
+      id: "logs-folder",
+      title: "service logs",
+      sourcePath: "/var/log/services",
+      sourceKind: "directory",
+    } as RepositoryAnalysis;
+    const model = buildMonitorSourceSelectionModel({
+      repositories: [repository],
+      persistentConnections: [],
+      codeProjects: [],
+      selectedSourceId: repository.id,
+      selectedSoundId: "track-1",
+      sourceFilter: "folder",
+      copy,
+    });
+
+    expect(model.selectedSourceOption).toMatchObject({
+      sourceType: "folder",
+      adapterKind: "directory-tail",
+      startable: true,
+    });
+    expect(model.canStartSelectedSource).toBe(true);
+  });
+
   it("exposes configured CodeProjects as startable monitor sources", () => {
     const model = buildMonitorSourceSelectionModel({
       repositories: [],

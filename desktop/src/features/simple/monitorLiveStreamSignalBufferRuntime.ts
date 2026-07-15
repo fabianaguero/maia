@@ -8,46 +8,56 @@ export function advanceActiveLogSignalBuffer(input: {
   anomalyMarkers: LiveLogMarker[];
   reactivityMix: number;
   anomalyMix: number;
+  lineCount?: number;
+  warningCount?: number;
+  errorCount?: number;
   randomValue?: number;
 }): MonitorLogSignalPoint[] {
-  let val = 20;
+  const lineCount = input.lineCount ?? 0;
+  const warningCount = input.warningCount ?? 0;
+  const errorCount = input.errorCount ?? 0;
+  let val = 14 + Math.min(86, lineCount * 6);
   let heat = 0;
 
-  if (input.cueBatch.length > 0 || input.anomalyMarkers.length > 0) {
+  if (input.cueBatch.length > 0 || input.anomalyMarkers.length > 0 || lineCount > 0) {
     const avgGain =
       input.cueBatch.length > 0
         ? input.cueBatch.reduce((sum, cue) => sum + (cue.gain ?? 0), 0) / input.cueBatch.length
         : 0;
-    val = 20 + Math.min(120, avgGain * 150 * (0.45 + input.reactivityMix * 0.85));
+    val += Math.min(
+      72,
+      avgGain * 120 * (0.45 + input.reactivityMix * 0.85) +
+        input.anomalyMarkers.length * 18 +
+        warningCount * 10 +
+        errorCount * 24,
+    );
     heat =
-      input.anomalyMarkers.length > 0
+      input.anomalyMarkers.length > 0 || warningCount > 0 || errorCount > 0
         ? Math.min(
             1,
-            (0.28 + Math.min(0.72, input.anomalyMarkers.length * 0.1)) *
+            (0.24 +
+              Math.min(
+                0.76,
+                errorCount * 0.34 + warningCount * 0.14 + input.anomalyMarkers.length * 0.08,
+              )) *
               (0.35 + input.anomalyMix * 0.65),
           )
         : 0;
   } else {
-    val = 24 + (input.randomValue ?? Math.random()) * (6 + input.reactivityMix * 10);
+    val += (input.randomValue ?? Math.random()) * (4 + input.reactivityMix * 7);
   }
 
   const nextBuffer = [...input.previous];
   for (let index = 0; index < 60; index += 1) {
     nextBuffer[index] = input.previous[index + 1] || { val: 20, heat: 0 };
   }
-  const previousCenter = input.previous[60] || { val: 20, heat: 0 };
+  const previousCenter = input.previous[60] || { val: 14, heat: 0 };
   nextBuffer[60] = {
-    val: previousCenter.val * 0.52 + val * 0.48,
-    heat: previousCenter.heat * 0.35 + heat * 0.65,
+    val: previousCenter.val * 0.2 + val * 0.8,
+    heat: previousCenter.heat * 0.18 + heat * 0.82,
   };
   for (let index = 61; index < 120; index += 1) {
-    const decay = 1 - (index - 60) / 60;
-    const eased = Math.max(0, decay * decay);
-    const prevFuture = input.previous[index] || { val: 20, heat: 0 };
-    nextBuffer[index] = {
-      val: 20 + (nextBuffer[60].val - 20) * eased * 0.52 + (prevFuture.val - 20) * 0.26,
-      heat: nextBuffer[60].heat * eased * 0.62 + prevFuture.heat * 0.18,
-    };
+    nextBuffer[index] = { val: 10, heat: 0 };
   }
 
   return nextBuffer;
@@ -78,16 +88,7 @@ export function advanceIdleLogSignalBuffer(input: {
     heat: previousCenter.heat * (0.82 - input.idleMix * 0.22),
   };
   for (let index = 61; index < 120; index += 1) {
-    const decay = 1 - (index - 60) / 60;
-    const eased = Math.max(0, decay * decay);
-    const future = input.previous[index] || { val: 20, heat: 0 };
-    nextBuffer[index] = {
-      val:
-        20 +
-        (nextBuffer[60].val - 20) * eased * (0.16 + input.idleMix * 0.38) +
-        (future.val - 20) * (0.48 - input.idleMix * 0.2),
-      heat: future.heat * (0.82 - input.idleMix * 0.18),
-    };
+    nextBuffer[index] = { val: 10, heat: 0 };
   }
 
   return nextBuffer;
@@ -108,7 +109,7 @@ export function advanceSimulatedLogSignalBuffer(
   nextBuffer[60] = { val, heat };
 
   for (let index = 61; index < 120; index += 1) {
-    nextBuffer[index] = { val: 20, heat: 0 };
+    nextBuffer[index] = { val: 10, heat: 0 };
   }
 
   return nextBuffer;

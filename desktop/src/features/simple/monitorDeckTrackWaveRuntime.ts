@@ -1,5 +1,4 @@
-import { drawSingleSidedWaveform, drawWaveContour } from "./monitorDeckCanvasDrawRuntime";
-import { createVerticalGradient } from "./monitorDeckCanvasGradientRuntime";
+import { drawRekordboxWaveformBars, drawWaveContour } from "./monitorDeckCanvasDrawRuntime";
 import type { MonitorDeckMainCanvasState } from "./monitorDeckMainCanvasRuntime";
 import type { buildMonitorDeckCanvasScenePlan } from "./monitorDeckMainCanvasSceneRuntime";
 
@@ -7,50 +6,22 @@ export function drawMonitorDeckTrackWave(
   context: CanvasRenderingContext2D,
   state: MonitorDeckMainCanvasState,
   width: number,
-  scene: ReturnType<typeof buildMonitorDeckCanvasScenePlan>,
+  _scene: ReturnType<typeof buildMonitorDeckCanvasScenePlan>,
 ): void {
   const { palette, layout, trackWaveSamples } = state;
   const { trackBaseY, trackAmplitude } = layout;
 
-  context.globalAlpha = 0.96;
-  drawSingleSidedWaveform(
+  context.globalAlpha = 0.94;
+  drawRekordboxWaveformBars({
     context,
-    trackWaveSamples,
+    samples: trackWaveSamples,
     width,
-    trackBaseY,
-    trackAmplitude,
-    createVerticalGradient(
-      context,
-      {
-        x: 0,
-        y: trackBaseY - trackAmplitude,
-        width,
-        height: trackAmplitude + 2,
-      },
-      scene.track.fillStops,
-    ),
-  );
-
-  context.globalCompositeOperation = "screen";
-  context.globalAlpha = 0.56;
-  drawSingleSidedWaveform(
-    context,
-    trackWaveSamples,
-    width,
-    trackBaseY,
-    trackAmplitude * scene.track.glossAmplitudeScale,
-    createVerticalGradient(
-      context,
-      {
-        x: 0,
-        y: trackBaseY - trackAmplitude,
-        width,
-        height: trackAmplitude,
-      },
-      scene.track.glossStops,
-    ),
-  );
-  context.globalCompositeOperation = "source-over";
+    centerY: trackBaseY,
+    amplitudeScale: trackAmplitude,
+    lowColor: palette.trackBottomCool,
+    midColor: palette.trackTopMid,
+    highColor: palette.trackTopWarm,
+  });
 
   drawWaveContour(
     context,
@@ -62,4 +33,15 @@ export function drawMonitorDeckTrackWave(
     1.4,
     "top",
   );
+  drawWaveContour(
+    context,
+    trackWaveSamples,
+    width,
+    trackBaseY,
+    trackAmplitude,
+    palette.contourStroke,
+    0.8,
+    "bottom",
+  );
+  context.globalAlpha = 1;
 }

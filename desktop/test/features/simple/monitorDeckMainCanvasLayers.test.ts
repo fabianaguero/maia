@@ -4,6 +4,7 @@ const drawAnomalyWash = vi.fn();
 const drawDeckBurstRegions = vi.fn();
 const drawPhraseRibbon = vi.fn();
 const drawQuantizedLogBlocks = vi.fn();
+const drawRekordboxWaveformBars = vi.fn();
 const drawSelectedMarkerBeam = vi.fn();
 const drawSingleSidedWaveform = vi.fn();
 const drawTrackEnergyBand = vi.fn();
@@ -14,6 +15,7 @@ vi.mock("../../../src/features/simple/monitorDeckCanvasDrawRuntime", () => ({
   drawDeckBurstRegions: (...args: unknown[]) => drawDeckBurstRegions(...args),
   drawPhraseRibbon: (...args: unknown[]) => drawPhraseRibbon(...args),
   drawQuantizedLogBlocks: (...args: unknown[]) => drawQuantizedLogBlocks(...args),
+  drawRekordboxWaveformBars: (...args: unknown[]) => drawRekordboxWaveformBars(...args),
   drawSelectedMarkerBeam: (...args: unknown[]) => drawSelectedMarkerBeam(...args),
   drawSingleSidedWaveform: (...args: unknown[]) => drawSingleSidedWaveform(...args),
   drawTrackEnergyBand: (...args: unknown[]) => drawTrackEnergyBand(...args),
@@ -169,35 +171,14 @@ describe("monitorDeckMainCanvasLayers", () => {
 
     expect(context.createLinearGradient).toHaveBeenCalled();
     expect(context.fillRect).toHaveBeenCalled();
-    expect(drawTrackEnergyBand).toHaveBeenCalledWith(
-      context,
-      state.trackWaveSamples,
-      640,
-      expect.any(Number),
-      expect.any(Number),
-      state.palette,
-    );
-    expect(drawPhraseRibbon).toHaveBeenCalledWith(
-      context,
-      state.trackWaveSamples,
-      640,
-      expect.any(Number),
-      expect.any(Number),
-      state.palette,
-    );
-    expect(drawSingleSidedWaveform).toHaveBeenCalledTimes(3);
-    expect(drawWaveContour).toHaveBeenCalledTimes(1);
+    expect(drawTrackEnergyBand).not.toHaveBeenCalled();
+    expect(drawPhraseRibbon).not.toHaveBeenCalled();
+    expect(drawSingleSidedWaveform).toHaveBeenCalledTimes(2);
+    expect(drawRekordboxWaveformBars).toHaveBeenCalledTimes(2);
+    expect(drawWaveContour).toHaveBeenCalledTimes(2);
     expect(context.beginPath).toHaveBeenCalledTimes(1);
     expect(context.stroke).toHaveBeenCalledTimes(1);
-    expect(drawQuantizedLogBlocks).toHaveBeenCalledWith(
-      context,
-      state.logWaveOverlay,
-      640,
-      state.layout.logBaseY,
-      expect.any(Number),
-      state.palette,
-      84,
-    );
+    expect(drawQuantizedLogBlocks).not.toHaveBeenCalled();
     expect(drawDeckBurstRegions).toHaveBeenCalledWith(
       expect.objectContaining({
         context,

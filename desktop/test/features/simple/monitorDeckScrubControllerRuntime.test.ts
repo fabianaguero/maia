@@ -82,6 +82,13 @@ describe("monitorDeckScrubControllerRuntime", () => {
     expect(onSelectAnomalyForFocus).toHaveBeenCalledWith("marker-1");
     expect(onToggleConsole).toHaveBeenCalledTimes(1);
 
+    handlers.handleOverviewAnomalyClick(
+      { id: "stream-marker", progress: 1, observedAtMs: 120_000 },
+      { stopPropagation: vi.fn() } as unknown as React.MouseEvent<HTMLButtonElement>,
+    );
+    expect(seekToTrackProgress).toHaveBeenCalledTimes(1);
+    expect(onSelectAnomalyForFocus).toHaveBeenCalledWith("stream-marker");
+
     handlers.handleStagePointerDown({
       pointerId: 11,
       clientX: 210,

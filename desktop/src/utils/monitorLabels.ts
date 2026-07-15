@@ -26,6 +26,8 @@ export function getStreamAdapterCode(adapterKind: StreamAdapterKind | undefined)
       return "JOURNALD_STREAM";
     case "sonarqube":
       return "SONARQUBE_SIGNAL";
+    case "directory-tail":
+      return "DIRECTORY_TAIL";
     case "file":
     default:
       return "FILE_TAIL";

@@ -40,6 +40,7 @@ export function useSimpleMonitorDeckController({
       controllerModel,
       playback: {
         trackElapsedSeconds: playbackState.trackElapsedSeconds,
+        trackWaveProgress: playbackState.trackWaveProgress,
       },
       liveState: {
         previewTrackId: liveState.previewTrackId,

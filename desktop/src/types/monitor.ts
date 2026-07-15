@@ -76,6 +76,7 @@ export interface StartLogSourceConnectionInput {
 
 export type StreamAdapterKind =
   | "file"
+  | "directory-tail"
   | "process"
   | "websocket"
   | "http-poll"

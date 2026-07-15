@@ -37,9 +37,10 @@ export function buildMonitorDeckMainCanvasState(
     dpr: input.devicePixelRatio,
   });
   const layout = buildMonitorDeckLayout(size.width, size.height);
-  const logSamples = input.logWaveOverlay.map((point) =>
-    Math.max(0.04, point.level * (0.2 + point.heat * 0.45)),
-  );
+  const logSamples = input.logWaveOverlay.map((point) => {
+    const activity = Math.max(0, Math.min(1, (point.level - 0.1) / 0.9));
+    return Math.min(1, 0.035 + Math.pow(activity, 0.72) * 0.78 + point.heat * 0.22);
+  });
 
   return {
     palette,

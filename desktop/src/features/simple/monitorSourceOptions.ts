@@ -77,9 +77,10 @@ function buildRepositorySourceOptions(
           : sourceType === "folder"
             ? copy.folder
             : copy.cloudRemote,
-      startable: repo.sourceKind === "file",
+      startable: repo.sourceKind === "file" || repo.sourceKind === "directory",
       origin: "repository",
       connectionId: undefined,
+      adapterKind: repo.sourceKind === "directory" ? "directory-tail" : "file",
     };
   });
 }

@@ -18,7 +18,7 @@ import {
 type LiveStartInput = Omit<MonitorProviderLiveStartBaseInput, never>;
 
 function isSessionBackedMonitoringAdapter(adapterKind: StartSessionInput["adapterKind"]): boolean {
-  return adapterKind === "file" || adapterKind === "sonarqube";
+  return adapterKind === "file" || adapterKind === "directory-tail" || adapterKind === "sonarqube";
 }
 
 export async function startMonitorProviderSessionState(input: {
@@ -72,7 +72,9 @@ export async function startMonitorProviderSessionState(input: {
       sourceTemplateId: input.sessionInput.sourceTemplateId ?? null,
       persistedSessionId: input.persistedSessionId,
       startFromBeginning:
-        input.sessionInput.adapterKind === "file" && input.sessionInput.startFromBeginning,
+        (input.sessionInput.adapterKind === "file" ||
+          input.sessionInput.adapterKind === "directory-tail") &&
+        input.sessionInput.startFromBeginning,
       logger: input.logger,
       logLabel: "startSession",
     }),
