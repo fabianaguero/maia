@@ -7,6 +7,7 @@ export type AppV0SectionContentKind =
   | "simple-library"
   | "pro-library"
   | "connections"
+  | "code-projects"
   | "setup"
   | "fallback";
 
@@ -21,6 +22,8 @@ export function resolveAppV0SectionContentKind(input: {
       return input.userMode === "simple" ? "simple-library" : "pro-library";
     case "connections":
       return "connections";
+    case "codeProjects":
+      return "code-projects";
     case "setup":
       return "setup";
     default:

@@ -1,5 +1,12 @@
 export type MonitorLogLevel = "trace" | "debug" | "info" | "warn" | "error";
 
+export interface SonarQubeMeta {
+  rule: string;
+  component: string;
+  line?: number;
+  sonarSeverity: string;
+}
+
 export interface MonitorLogLine {
   id: string;
   timestamp: string;
@@ -7,6 +14,7 @@ export interface MonitorLogLine {
   message: string;
   isAnomaly: boolean;
   anomalyId: string | null;
+  sonarQubeMeta?: SonarQubeMeta;
 }
 
 export function formatCloudTimestamp(isoTimestamp: string): string {
@@ -57,6 +65,15 @@ export function isMonitorAnomaly(level: MonitorLogLevel, message: string): boole
   );
 }
 
+function mapSonarQubeSeverityToLevel(sonarSeverity: string): MonitorLogLevel {
+  const upper = sonarSeverity.toUpperCase();
+  // Rust maps: BLOCKER/CRITICAL→"CRITICAL", MAJOR→"ERROR", MINOR→"WARN", else→"INFO"
+  // So we map the resulting log_level: CRITICAL→error, ERROR→warn, WARN→warn, INFO→info
+  if (upper === "CRITICAL") return "error";
+  if (upper === "ERROR" || upper === "WARN") return "warn";
+  return "info";
+}
+
 export function parseMonitorLogLine(raw: string, lineIndex: number): MonitorLogLine {
   const cloudSeverityFirstPattern = /^([A-Z]+)\s+(\d{4}-\d{2}-\d{2}T\S+)\s+(.*)$/;
   const cloudSeverityFirstMatch = raw.match(cloudSeverityFirstPattern);
@@ -98,7 +115,62 @@ export function parseMonitorLogLine(raw: string, lineIndex: number): MonitorLogL
     };
   }
 
-  const levelMatch = raw.match(/\[(ERROR|WARN|INFO|DEBUG|TRACE)\]/i);
+  // SonarQube format: [timestamp] [SONARQUBE-LEVEL] rule message (component:line)
+  // More flexible pattern that handles various spacing
+  const sonarQubePattern =
+    /^\[(.+?)\]\s*\[SONARQUBE-(\w+)\]\s+(\S+)\s+(.+?)\s*\(([^:)]+)(?::(\d+))?\)\s*$/;
+  const sonarQubeMatch = raw.match(sonarQubePattern);
+  if (sonarQubeMatch) {
+    const timestamp = sonarQubeMatch[1] ?? "";
+    const sonarSeverity = sonarQubeMatch[2] ?? "INFO";
+    const rule = sonarQubeMatch[3] ?? "";
+    const message = (sonarQubeMatch[4] || "").trim() || raw.trim();
+    const component = sonarQubeMatch[5] ?? "";
+    const lineNum = sonarQubeMatch[6] ? Number.parseInt(sonarQubeMatch[6], 10) : undefined;
+
+    const level = mapSonarQubeSeverityToLevel(sonarSeverity);
+    const isAnomaly = isMonitorAnomaly(level, message);
+    const anomalyId = isAnomaly ? `${timestamp}-${lineIndex}-${message.slice(0, 48)}` : null;
+
+    return {
+      id: `${timestamp}-${lineIndex}-${message.slice(0, 64)}`,
+      timestamp,
+      level,
+      message,
+      isAnomaly,
+      anomalyId,
+      sonarQubeMeta: {
+        rule,
+        component,
+        line: lineNum,
+        sonarSeverity,
+      },
+    };
+  }
+
+  const springLogPattern =
+    /^(?:\[?([^\]\s]+(?:\s+[^\]\s]+)?)\]?\s+)?\[([^\]]+)\]\s+(TRACE|DEBUG|INFO|WARN|ERROR|FATAL|CRITICAL)\s+(.+)$/i;
+  const springLogMatch = raw.match(springLogPattern);
+  if (springLogMatch) {
+    const timestamp = springLogMatch[1] ?? new Date().toLocaleTimeString().split(" ")[0];
+    const thread = springLogMatch[2] ?? "thread";
+    const level = normalizeMonitorLevel(springLogMatch[3] ?? "INFO");
+    const body = (springLogMatch[4] ?? raw).trim();
+    const message = `[${thread}] ${body}`;
+    const isAnomaly = isMonitorAnomaly(level, body);
+    const anomalyId = isAnomaly ? `${timestamp}-${lineIndex}-${body.slice(0, 48)}` : null;
+
+    return {
+      id: `${timestamp}-${lineIndex}-${body.slice(0, 64)}`,
+      timestamp,
+      level,
+      message,
+      isAnomaly,
+      anomalyId,
+    };
+  }
+
+  const levelMatch = raw.match(/(?:^|\s|\[)(ERROR|WARN|INFO|DEBUG|TRACE)(?:\]|\s|$)/i);
   const level = normalizeMonitorLevel(levelMatch ? levelMatch[1] : "info");
   const tsMatch = raw.match(/\[(.*?)\]/);
   const timestamp = tsMatch ? tsMatch[1] : new Date().toLocaleTimeString().split(" ")[0];

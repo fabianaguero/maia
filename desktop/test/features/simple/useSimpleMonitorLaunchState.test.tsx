@@ -6,6 +6,7 @@ import { en } from "../../../src/i18n/en";
 
 const state = vi.hoisted(() => ({
   sourceSelector: {
+    allMonitorSourceOptions: [],
     filteredMonitorSourceOptions: [],
     selectedSourceOption: {
       id: "repo:repo-1",

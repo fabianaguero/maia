@@ -8,33 +8,57 @@ import { normalizePlaylistId, normalizeTrackId, normalizeIsoTimestamp } from "./
 
 const SOUNDCLOUD_API_BASE = "https://api.soundcloud.com";
 
-export function normalizeSoundCloudPlaylist(raw: any): PlaylistMetadata {
+type UnknownRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): UnknownRecord {
+  return value && typeof value === "object" ? (value as UnknownRecord) : {};
+}
+
+function asString(value: unknown, fallback = ""): string {
+  return typeof value === "string" ? value : fallback;
+}
+
+function asNumber(value: unknown, fallback = 0): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function asBoolean(value: unknown, fallback = false): boolean {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+export function normalizeSoundCloudPlaylist(raw: unknown): PlaylistMetadata {
+  const playlist = asRecord(raw);
+  const sourceId = String(playlist.id ?? "");
+
   return {
-    id: normalizePlaylistId("soundcloud", `${raw.id}`),
+    id: normalizePlaylistId("soundcloud", sourceId),
     sourceType: "soundcloud",
-    sourceId: `${raw.id}`,
+    sourceId,
     sourceName: "SoundCloud",
-    name: raw.title || "Untitled",
-    description: raw.description || null,
-    trackCount: raw.track_count || 0,
-    imageUrl: raw.artwork_url || null,
-    isPublic: raw.public ?? false,
-    externalUrl: raw.permalink_url || null,
+    name: asString(playlist.title, "Untitled"),
+    description: asString(playlist.description) || null,
+    trackCount: asNumber(playlist.track_count),
+    imageUrl: asString(playlist.artwork_url) || null,
+    isPublic: asBoolean(playlist.public),
+    externalUrl: asString(playlist.permalink_url) || null,
     syncedAt: normalizeIsoTimestamp(),
   };
 }
 
-export function normalizeSoundCloudTrack(raw: any): RemoteTrackMetadata {
-  const artist = raw.user?.username || "Unknown";
+export function normalizeSoundCloudTrack(raw: unknown): RemoteTrackMetadata {
+  const track = asRecord(raw);
+  const user = asRecord(track.user);
+  const sourceId = String(track.id ?? "");
+  const artist = asString(user.username, "Unknown");
 
   return {
-    id: normalizeTrackId("soundcloud", `${raw.id}`),
+    id: normalizeTrackId("soundcloud", sourceId),
     sourceType: "soundcloud",
-    title: raw.title || "Untitled",
+    title: asString(track.title, "Untitled"),
     artist,
-    durationSeconds: (raw.duration || 0) / 1000,
-    isPlayable: raw.playable ?? true,
-    externalUrl: raw.permalink_url || null,
+    durationSeconds: asNumber(track.duration) / 1000,
+    isPlayable: asBoolean(track.playable, true),
+    externalUrl: asString(track.permalink_url) || null,
     syncedAt: normalizeIsoTimestamp(),
   };
 }
@@ -77,7 +101,7 @@ export async function listSoundCloudPlaylists(
     } as ProviderError;
   }
 
-  const data = await response.json();
+  const data: unknown = await response.json();
   return (Array.isArray(data) ? data : []).map(normalizeSoundCloudPlaylist);
 }
 
@@ -109,8 +133,8 @@ export async function listTracksInSoundCloudPlaylist(
     } as ProviderError;
   }
 
-  const data = await response.json();
+  const data: unknown = await response.json();
   return (Array.isArray(data) ? data : [])
-    .filter((track: any) => track !== null)
+    .filter((track): track is unknown => track !== null && track !== undefined)
     .map(normalizeSoundCloudTrack);
 }

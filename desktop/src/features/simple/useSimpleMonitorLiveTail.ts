@@ -20,12 +20,17 @@ interface UseSimpleMonitorLiveTailInput {
   liveLines: MonitorLogLine[];
   selectedAnomalyId: string | null;
   onSelectAnomalyId: (anomalyId: string) => void;
+  trackWaveProgress: number; // 0-1, synchronized with waveform playhead
+  deckDurationSeconds: number | null;
+  onWaveformClick?: (progress: number) => void; // callback when clicking waveform
 }
 
 export function useSimpleMonitorLiveTail({
   liveLines,
   selectedAnomalyId,
   onSelectAnomalyId,
+  trackWaveProgress,
+  deckDurationSeconds,
 }: UseSimpleMonitorLiveTailInput) {
   const terminalLinesRef = useRef<HTMLDivElement | null>(null);
   const isTailPinnedRef = useRef(true);
@@ -35,7 +40,49 @@ export function useSimpleMonitorLiveTail({
   useEffect(() => {
     const container = terminalLinesRef.current;
     if (!container) {
+      console.debug("[useSimpleMonitorLiveTail] no container ref");
       return;
+    }
+
+    console.log(
+      "[useSimpleMonitorLiveTail] effect: %d lines, wave=%.1f%%, isPinned=%s",
+      liveLines.length,
+      trackWaveProgress * 100,
+      isTailPinnedRef.current,
+    );
+
+    // Sync with waveform playhead position
+    if (deckDurationSeconds && liveLines.length > 0 && !focusSelectedLogRef.current) {
+      const currentTimeSeconds = trackWaveProgress * deckDurationSeconds;
+      let targetLine: HTMLDivElement | null = null;
+      let closestTimeDiff = Infinity;
+
+      // Find line closest to current playback time
+      for (const [lineId, lineElement] of lineRefs.current.entries()) {
+        const line = liveLines.find((l) => l.id === lineId);
+        if (!line || !line.timestamp) continue;
+
+        // Parse ISO timestamp to seconds
+        const lineTime = parseFloat(line.timestamp);
+        if (isNaN(lineTime)) continue;
+
+        const timeDiff = Math.abs(lineTime - currentTimeSeconds);
+        if (timeDiff < closestTimeDiff) {
+          closestTimeDiff = timeDiff;
+          targetLine = lineElement;
+        }
+      }
+
+      // Scroll to line that matches current playback time
+      if (targetLine && closestTimeDiff < 5) {
+        // 5 second tolerance
+        targetLine.scrollIntoView({ block: "center", behavior: "smooth" });
+        console.log(
+          "[useSimpleMonitorLiveTail] synced to playback position (timeDiff=%.1fs)",
+          closestTimeDiff,
+        );
+        return;
+      }
     }
 
     const syncPlan = buildSimpleMonitorLiveTailEffectState({
@@ -55,9 +102,42 @@ export function useSimpleMonitorLiveTail({
     }
 
     if (syncPlan.type === "pin") {
-      safeElementScrollTo(container, container.scrollHeight, "auto");
+      console.log("[useSimpleMonitorLiveTail] tail pinned - scrolling to bottom");
+      safeElementScrollTo(container, container.scrollHeight, "smooth");
     }
-  }, [liveLines, selectedAnomalyId]);
+  }, [liveLines, trackWaveProgress, selectedAnomalyId, deckDurationSeconds]);
+
+  const handleWaveformClick = (progress: number) => {
+    const container = terminalLinesRef.current;
+    if (!container || !deckDurationSeconds || liveLines.length === 0) return;
+
+    const clickTimeSeconds = progress * deckDurationSeconds;
+    let targetLine: HTMLDivElement | null = null;
+    let closestTimeDiff = Infinity;
+
+    // Find line closest to clicked time
+    for (const [lineId, lineElement] of lineRefs.current.entries()) {
+      const line = liveLines.find((l) => l.id === lineId);
+      if (!line || !line.timestamp) continue;
+
+      const lineTime = Number.parseFloat(line.timestamp);
+      if (Number.isNaN(lineTime)) continue;
+
+      const timeDiff = Math.abs(lineTime - clickTimeSeconds);
+      if (timeDiff < closestTimeDiff) {
+        closestTimeDiff = timeDiff;
+        targetLine = lineElement;
+      }
+    }
+
+    if (targetLine) {
+      targetLine.scrollIntoView({ block: "center", behavior: "smooth" });
+      console.log(
+        "[useSimpleMonitorLiveTail] waveform click → jumped to line (timeDiff=%.1fs)",
+        closestTimeDiff,
+      );
+    }
+  };
 
   return {
     terminalLinesRef,
@@ -80,5 +160,6 @@ export function useSimpleMonitorLiveTail({
       focusSelectedLogRef.current = focusState.shouldFocusSelectedLog;
       onSelectAnomalyId(focusState.anomalyId);
     },
+    handleWaveformClick,
   };
 }

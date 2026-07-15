@@ -224,6 +224,73 @@ describe("monitorLiveStreamRuntime", () => {
     expect(markers[1]?.progress).toBeGreaterThanOrEqual(0.35);
   });
 
+  it("keeps stream anomalies on a rolling clock independent from track progress", () => {
+    const markers = buildWaveformAnomalyMarkers({
+      previous: [
+        {
+          id: "recent",
+          lineId: "recent",
+          timestamp: "00:10",
+          message: "recent",
+          severity: 1,
+          progress: 1,
+          observedAtMs: 70_000,
+        },
+        {
+          id: "expired",
+          lineId: "expired",
+          timestamp: "00:00",
+          message: "expired",
+          severity: 1,
+          progress: 1,
+          observedAtMs: 0,
+        },
+      ],
+      parsedLines: anomalyLines.slice(0, 1),
+      currentTrack: track,
+      durationSeconds: 320,
+      bpm: 126,
+      currentProgress: 0.02,
+      beatSnapSubdivision: DEFAULT_MONITOR_DECK_CONTROLS.beatSnapSubdivision,
+      nowMs: 120_000,
+      streamWindowSeconds: 120,
+    });
+
+    expect(markers.map((marker) => marker.id)).toEqual(["recent", anomalyLines[0]?.anomalyId]);
+    expect(markers[0]?.progress).toBeCloseTo(7 / 12);
+    expect(markers[1]?.progress).toBe(1);
+    expect(markers[1]?.observedAtMs).toBe(120_000);
+  });
+
+  it("does not pin a polled anomaly back to now when the same line is received again", () => {
+    const anomalyId = anomalyLines[0]?.anomalyId;
+    const markers = buildWaveformAnomalyMarkers({
+      previous: [
+        {
+          id: anomalyId ?? "repeated",
+          lineId: "repeated-line",
+          timestamp: "00:10",
+          message: "repeated",
+          severity: 0.72,
+          progress: 1,
+          observedAtMs: 60_000,
+        },
+      ],
+      parsedLines: anomalyLines.slice(0, 1),
+      currentTrack: track,
+      durationSeconds: 320,
+      bpm: 126,
+      currentProgress: 0.5,
+      beatSnapSubdivision: DEFAULT_MONITOR_DECK_CONTROLS.beatSnapSubdivision,
+      nowMs: 90_000,
+      streamWindowSeconds: 120,
+    });
+
+    expect(markers).toHaveLength(1);
+    expect(markers[0]?.progress).toBeCloseTo(0.75);
+    expect(markers[0]?.observedAtMs).toBe(60_000);
+  });
+
   it("advances active and idle buffers deterministically", () => {
     const seed = createMonitorSignalBuffer(120, { val: 20, heat: 0 });
     const activeBuffer = advanceActiveLogSignalBuffer({

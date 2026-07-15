@@ -35,7 +35,9 @@ export function buildMonitorDeckScrubInteractionHandlers(input: {
       event: ReactMouseEvent<HTMLButtonElement>,
     ) => {
       event.stopPropagation();
-      input.seekToTrackProgress(marker.progress);
+      if (typeof marker.observedAtMs !== "number") {
+        input.seekToTrackProgress(marker.progress);
+      }
       input.onSelectAnomalyForFocus(marker.id);
       if (!input.isConsoleExpanded) {
         input.onToggleConsole?.();

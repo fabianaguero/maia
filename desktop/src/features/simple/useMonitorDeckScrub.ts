@@ -17,6 +17,7 @@ export function useMonitorDeckScrub({
   isConsoleExpanded,
   onToggleConsole,
   onSelectAnomalyForFocus,
+  onWaveformClick,
 }: UseMonitorDeckScrubOptions) {
   const waveformStageRef = useRef<HTMLDivElement | null>(null);
   const waveformCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -42,6 +43,7 @@ export function useMonitorDeckScrub({
       setTrackElapsedSeconds,
       onSelectAnomalyForFocus,
       onToggleConsole,
+      onWaveformClick,
     });
 
   useEffect(() => {

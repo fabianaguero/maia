@@ -35,6 +35,7 @@ export function buildMonitorLiveStreamUpdateState(input: {
   previousLiveLines: MonitorLogLine[];
   previousWaveformAnomalies: WaveformAnomalyMarker[];
   previousLogSignalBuffer: MonitorLogSignalPoint[];
+  nowMs?: number;
 }): MonitorLiveStreamUpdateState {
   const normalizedUpdate = sanitizeLiveLogStreamUpdate(input.update);
   const parsed = normalizedUpdate.parsedLines.map((raw, lineIndex) =>
@@ -60,12 +61,16 @@ export function buildMonitorLiveStreamUpdateState(input: {
       bpm: waveContext.bpm,
       currentProgress: waveContext.currentProgress,
       beatSnapSubdivision: input.controls.beatSnapSubdivision,
+      nowMs: input.nowMs,
     }),
     nextSelectedAnomalyId: resolveInitialSelectedAnomalyId(input.selectedAnomalyId, parsed),
     nextLogSignalBuffer: advanceActiveLogSignalBuffer({
       previous: input.previousLogSignalBuffer,
       cueBatch: normalizedUpdate.cueBatch,
       anomalyMarkers: normalizedUpdate.anomalyMarkers,
+      lineCount: parsed.length,
+      warningCount: parsed.filter((line) => line.level === "warn").length,
+      errorCount: parsed.filter((line) => line.level === "error").length,
       reactivityMix: input.controls.reactivity / 100,
       anomalyMix: input.controls.anomalyEmphasis / 100,
     }),

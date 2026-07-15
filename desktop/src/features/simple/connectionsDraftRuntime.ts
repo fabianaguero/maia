@@ -5,7 +5,9 @@ export type ConnectionKind = LogSourceConnectionKind;
 export interface ConnectionDraft {
   kind: ConnectionKind;
   label: string;
+  // File adapter
   sourcePath: string;
+  // GCP Cloud Run
   gcpProjectId: string;
   gcpServiceName: string;
   gcpRegion: string;

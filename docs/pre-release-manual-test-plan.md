@@ -118,6 +118,39 @@ Verify:
 - loading/probe states are visible
 - the chosen source can be launched into monitoring
 
+## CodeProjects / Local Quality Flow
+
+1. Open Library / CodeProjects.
+2. Create a CodeProject using a local repository path.
+3. Keep the analysis mode as local plugin.
+4. Save the project.
+5. Return to Monitor and select the CodeProject as the source.
+6. Start monitoring with a real track selected.
+
+Verify:
+- local repository paths are accepted without requiring a SonarQube server
+- the CodeProject appears in the monitor source selector
+- the monitor opens as a normal passive session
+- existing local findings seed a baseline instead of triggering fake anomaly bursts
+- quiet local analysis keeps the track stable
+
+## Optional SonarQube Connected Flow
+
+Run this only if you have a test SonarQube or SonarCloud project.
+
+1. Edit a CodeProject.
+2. Switch analysis mode to connected.
+3. Enter server URL, project key, and token.
+4. Test the connection.
+5. Save the project.
+6. Switch it back to local plugin mode and save again.
+
+Verify:
+- Save stays blocked until a connected configuration has passed the connection test
+- switching back to local clears remote URL/project/token fields before persistence
+- local mode remains usable without network access
+- no connected token appears in screenshots, docs, or exported debug output
+
 ## Setup / Skin / Preferences Flow
 
 1. Open setup/preferences.

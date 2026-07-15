@@ -39,7 +39,7 @@ describe("useMonitorLiveStreamIdleMotion", () => {
 
     const before = logSignalBufferRef.current[60]?.val;
     act(() => {
-      vi.advanceTimersByTime(500);
+      vi.advanceTimersByTime(700);
     });
 
     expect(setLogSignalBuffer).toHaveBeenCalled();

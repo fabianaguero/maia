@@ -1,4 +1,4 @@
-import { drawQuantizedLogBlocks, drawSingleSidedWaveform } from "./monitorDeckCanvasDrawRuntime";
+import { drawRekordboxWaveformBars, drawSingleSidedWaveform } from "./monitorDeckCanvasDrawRuntime";
 import {
   createVerticalGradient,
   fillVerticalGradientRect,
@@ -36,7 +36,7 @@ export function drawMonitorDeckLogLane(
   fillVerticalGradientRect(context, scene.log.bedRect, scene.log.bedStops);
 
   context.globalCompositeOperation = "screen";
-  context.globalAlpha = 0.44;
+  context.globalAlpha = 0.9;
   drawSingleSidedWaveform(
     context,
     logSamples,
@@ -45,18 +45,30 @@ export function drawMonitorDeckLogLane(
     logAmplitude * scene.log.waveformAmplitudeScale,
     createVerticalGradient(context, scene.log.bedRect, scene.log.waveformStops),
   );
-  context.globalCompositeOperation = "source-over";
-  context.globalAlpha = 0.96;
-
-  drawQuantizedLogBlocks(
+  context.globalAlpha = 0.58;
+  drawRekordboxWaveformBars({
     context,
-    logWaveOverlay,
+    samples: logSamples,
+    width,
+    centerY: logBaseY,
+    amplitudeScale: logAmplitude * scene.log.waveformAmplitudeScale,
+    lowColor: palette.logCool,
+    midColor: palette.logWarm,
+    highColor: palette.logHot,
+    symmetric: false,
+  });
+  const anomalyHeatSamples = logWaveOverlay.map((point) => point.level * point.heat);
+  context.globalAlpha = 0.72;
+  drawSingleSidedWaveform(
+    context,
+    anomalyHeatSamples,
     width,
     logBaseY,
-    logAmplitude * scene.log.quantizedBlockAmplitudeScale,
-    palette,
-    84,
+    logAmplitude,
+    palette.logHot,
   );
+  context.globalCompositeOperation = "source-over";
+  context.globalAlpha = 1;
 
   drawMonitorDeckLogContour(context, scene);
 }

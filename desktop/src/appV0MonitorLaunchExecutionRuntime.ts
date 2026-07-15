@@ -46,7 +46,7 @@ export async function executeAppV0ConnectionLaunchPlan(
   const streamSession = await deps.startConnection({
     connectionId: plan.connectionId,
     sessionId: plan.sessionId,
-    startFromBeginning: false,
+    startFromBeginning: true,
   });
   const initialStreamUpdate = await deps.pollConnectionSession(
     streamSession.sessionId,

@@ -7,6 +7,9 @@ import type { BuildSimpleMonitorDeckHookStateArgs } from "./simpleMonitorDeckHoo
 export interface SimpleMonitorLaunchStateSlice {
   selectedSoundId: string;
   setSelectedSoundId: Dispatch<SetStateAction<string>>;
+  codeProjectSourceOptions: MonitorLaunchSource[];
+  selectedCodeProjectId: string;
+  setSelectedCodeProjectId: Dispatch<SetStateAction<string>>;
   filteredMonitorSourceOptions: MonitorLaunchSource[];
   selectedSourceOption: MonitorLaunchSource | null;
   canStartSelectedSource: boolean;
@@ -36,6 +39,7 @@ export interface SimpleMonitorDeckRuntimeSlice {
   focusAnomaly: BuildSimpleMonitorDeckHookStateArgs["focusAnomaly"];
   deckBpm: number | null;
   trackElapsedSeconds: number;
+  trackWaveProgress: number;
   deckDurationSeconds: number | null;
   overviewCanvasRef: BuildSimpleMonitorDeckHookStateArgs["overviewCanvasRef"];
   waveformCanvasRef: BuildSimpleMonitorDeckHookStateArgs["waveformCanvasRef"];
@@ -64,6 +68,9 @@ export function buildSimpleMonitorLaunchStateSlice(
   return {
     selectedSoundId: launchState.selectedSoundId,
     setSelectedSoundId: launchState.setSelectedSoundId,
+    codeProjectSourceOptions: launchState.codeProjectSourceOptions,
+    selectedCodeProjectId: launchState.selectedCodeProjectId,
+    setSelectedCodeProjectId: launchState.setSelectedCodeProjectId,
     filteredMonitorSourceOptions: launchState.filteredMonitorSourceOptions,
     selectedSourceOption: launchState.selectedSourceOption,
     canStartSelectedSource: launchState.canStartSelectedSource,
@@ -97,6 +104,7 @@ export function buildSimpleMonitorDeckRuntimeSlice(
     focusAnomaly: deckRuntime.focusAnomaly,
     deckBpm: deckRuntime.deckBpm,
     trackElapsedSeconds: deckRuntime.trackElapsedSeconds,
+    trackWaveProgress: deckRuntime.trackWaveProgress,
     deckDurationSeconds: deckRuntime.deckDurationSeconds,
     overviewCanvasRef: deckRuntime.overviewCanvasRef,
     waveformCanvasRef: deckRuntime.waveformCanvasRef,

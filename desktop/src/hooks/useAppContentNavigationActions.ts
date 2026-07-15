@@ -18,7 +18,7 @@ interface UseAppContentNavigationActionsInput {
   };
   setPillar: (pillar: AppPillar) => void;
   setScreen: (screen: "library" | "inspect" | "compose" | "session") => void;
-  setLibraryTab: (tab: "tracks" | "sources" | "connections" | "bases") => void;
+  setLibraryTab: (tab: "tracks" | "sources" | "projects" | "connections" | "bases") => void;
 }
 
 export function useAppContentNavigationActions({

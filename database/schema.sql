@@ -244,3 +244,29 @@ CREATE TABLE IF NOT EXISTS provider_tracks (
 );
 
 CREATE INDEX IF NOT EXISTS idx_provider_tracks_playlist ON provider_tracks(provider_playlist_id);
+
+CREATE TABLE IF NOT EXISTS code_projects (
+  id TEXT PRIMARY KEY,
+  label TEXT NOT NULL,
+  repository_url TEXT NOT NULL,
+  analysis_mode TEXT NOT NULL DEFAULT 'local' CHECK (analysis_mode IN ('local', 'connected')),
+  sonarqube_api_url TEXT,
+  sonarqube_project_key TEXT,
+  -- SECURITY LIMITATION: stored as plaintext. No encryption-at-rest layer exists
+  -- yet for this column. Treat the SQLite file as sensitive (do not commit it,
+  -- back it up unencrypted, or sync it to untrusted storage) until an
+  -- encryption layer (e.g. OS keychain or an encrypted column) is added.
+  sonarqube_auth_token TEXT,
+  sonarqube_polling_interval TEXT,
+  sonarqube_sync_rules INTEGER NOT NULL DEFAULT 0,
+  local_rules_profile TEXT NOT NULL DEFAULT 'maia-default',
+  enabled INTEGER NOT NULL DEFAULT 1,
+  status TEXT DEFAULT 'not-configured',
+  error_message TEXT,
+  last_checked_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_code_projects_status_updated
+  ON code_projects (status, updated_at DESC);

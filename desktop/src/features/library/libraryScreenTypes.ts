@@ -14,7 +14,7 @@ import type {
   SaveBaseTrackPlaylistInput,
 } from "../../types/library";
 
-export type LibraryTab = "tracks" | "sources" | "connections" | "bases";
+export type LibraryTab = "tracks" | "sources" | "projects" | "connections" | "bases";
 
 export interface LibraryScreenProps {
   tracks: LibraryTrack[];

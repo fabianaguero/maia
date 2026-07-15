@@ -51,6 +51,7 @@ describe("MonitorDeckWavePanel", () => {
           },
         ]}
         selectedAnomalyId="anomaly-1"
+        trackWaveProgress={0.25}
         overviewWindowLeftPercent={20}
         overviewWindowWidthPercent={40}
         overviewPlayheadLeftPercent={35}
@@ -77,7 +78,8 @@ describe("MonitorDeckWavePanel", () => {
     expect(screen.getByTitle("Upper lane")).toHaveTextContent("Track");
     expect(screen.getByTitle("Lower lane")).toHaveTextContent("Log");
 
-    const anomalyButton = container.querySelector(".monitor-overview-wave__anomaly");
+    const anomalyButton = container.querySelector(".monitor-stream-anomaly-marker");
+    const dualChannel = container.querySelector(".waveform-dual-channel") as HTMLElement;
     const overviewWave = screen.getByText("Full track map").closest(".monitor-overview-wave");
     const deckStage = container.querySelector(".monitor-deck-stage");
 
@@ -95,7 +97,9 @@ describe("MonitorDeckWavePanel", () => {
     );
     expect(onOverviewPointerDown).toHaveBeenCalled();
     expect(onOverviewClick).toHaveBeenCalled();
-    expect(onStagePointerDown).toHaveBeenCalledTimes(1);
-    expect(onStageClick).toHaveBeenCalledTimes(1);
+    expect(onStagePointerDown).toHaveBeenCalledTimes(2);
+    expect(onStageClick).toHaveBeenCalledTimes(2);
+    expect(dualChannel.style.minHeight).toBe("188px");
+    expect(dualChannel.style.height).toBe("");
   });
 });

@@ -34,6 +34,7 @@ export function buildLibraryScreenViewModelInput(input: {
   showForm: boolean;
   tracksCount: number;
   repositoriesCount: number;
+  codeProjectsCount: number;
   logConnectionsCount: number;
   baseAssetsCount: number;
   missingTrackCount: number;
@@ -52,6 +53,7 @@ export function buildLibraryScreenViewModelInput(input: {
     counts: {
       tracks: input.tracksCount,
       repositories: input.repositoriesCount,
+      codeProjects: input.codeProjectsCount,
       logConnections: input.logConnectionsCount,
       baseAssets: input.baseAssetsCount,
       missingTracks: input.missingTrackCount,

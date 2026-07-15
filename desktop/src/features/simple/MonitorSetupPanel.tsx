@@ -20,6 +20,9 @@ export interface MonitorSetupPanelProps {
   selectedSourceId: string;
   onSelectSourceId: (id: string) => void;
   sourceEmptyMessage: string;
+  codeProjectSourceOptions: MonitorLaunchSource[];
+  selectedCodeProjectId: string;
+  onSelectCodeProjectId: (id: string) => void;
   tracks: LibraryTrack[];
   selectedSoundId: string;
   onSelectSoundId: (id: string) => void;
@@ -39,6 +42,9 @@ export function MonitorSetupPanel({
   selectedSourceId,
   onSelectSourceId,
   sourceEmptyMessage,
+  codeProjectSourceOptions,
+  selectedCodeProjectId,
+  onSelectCodeProjectId,
   tracks,
   selectedSoundId,
   onSelectSoundId,
@@ -52,7 +58,11 @@ export function MonitorSetupPanel({
 }: MonitorSetupPanelProps) {
   const t = useT();
   const sourceFilterOptions = buildMonitorSetupSourceFilterOptions(t);
-  const canLaunch = Boolean(selectedSourceId && selectedSoundId && canStartSelectedSource);
+  const hasMonitorSource = Boolean(selectedSourceId || selectedCodeProjectId);
+  const canLaunch = Boolean(hasMonitorSource && selectedSoundId && canStartSelectedSource);
+  const filteredOperationalSources = filteredMonitorSourceOptions.filter(
+    (source) => source.origin !== "codeProject",
+  );
 
   return (
     <section className="monitor-setup-workbench" aria-label={t.simpleMode.setup.startMonitoring}>
@@ -68,7 +78,7 @@ export function MonitorSetupPanel({
       <div className="setup-container-modern">
         <MonitorSetupModernSelector
           label={t.simpleMode.setup.logSource}
-          items={filteredMonitorSourceOptions}
+          items={filteredOperationalSources}
           selectedId={selectedSourceId}
           onSelect={onSelectSourceId}
           headerAside={
@@ -96,6 +106,30 @@ export function MonitorSetupPanel({
           emptyMessage={sourceEmptyMessage}
           color="var(--color-calm)"
           seedPrefix="repo"
+        />
+
+        <MonitorSetupModernSelector
+          label={t.simpleMode.setup.codeProject}
+          items={codeProjectSourceOptions}
+          selectedId={selectedCodeProjectId}
+          onSelect={(id) => onSelectCodeProjectId(id === selectedCodeProjectId ? "" : id)}
+          renderLeading={(source, isSelected) => (
+            <span
+              className={`selector-brand-shell selector-brand-shell--code${isSelected ? " active" : ""}`}
+            >
+              <BrandIcon className="selector-brand-icon" />
+            </span>
+          )}
+          renderTitle={(source) => source.title}
+          renderSub={(source) => source.sourcePath}
+          renderBadge={(source) => (
+            <span className={`selector-type-badge selector-type-badge--${source.sourceType}`}>
+              {source.sourceTypeLabel}
+            </span>
+          )}
+          emptyMessage={t.simpleMode.setup.emptyCodeMissing}
+          color="var(--color-warning)"
+          seedPrefix="code-project"
         />
 
         <MonitorSetupModernSelector

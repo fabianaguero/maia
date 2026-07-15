@@ -1,4 +1,5 @@
 import { ConnectionsScreen } from "./features/simple/ConnectionsScreen";
+import { CodeProjectsScreen } from "./features/simple/CodeProjectsScreen";
 import { MonitorSetupScreen } from "./features/simple/MonitorSetupScreen";
 import { ProLibraryScreen } from "./features/simple/ProLibraryScreen";
 import { ProMonitorScreen } from "./features/simple/ProMonitorScreen";
@@ -31,6 +32,8 @@ export function AppV0SectionRenderer({ renderModel }: AppV0SectionRendererProps)
       return <ProLibraryScreen {...renderModel.proLibraryProps} />;
     case "connections":
       return <ConnectionsScreen {...renderModel.connectionsProps} />;
+    case "code-projects":
+      return <CodeProjectsScreen />;
     case "setup":
       return <MonitorSetupScreen {...renderModel.setupProps} />;
     case "fallback":

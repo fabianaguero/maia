@@ -17,6 +17,7 @@ describe("libraryScreenViewModel", () => {
       counts: {
         tracks: 4,
         repositories: 2,
+        codeProjects: 0,
         logConnections: 1,
         baseAssets: 3,
         missingTracks: 2,
@@ -38,6 +39,7 @@ describe("libraryScreenViewModel", () => {
     expect(model.tabs).toEqual([
       { id: "tracks", label: en.library.sounds, count: 4 },
       { id: "sources", label: en.library.logSources, count: 2 },
+      { id: "projects", label: "Code Projects", count: 0 },
       { id: "connections", label: en.library.connections, count: 1 },
       { id: "bases", label: en.library.profiles, count: 3 },
     ]);
@@ -66,6 +68,7 @@ describe("libraryScreenViewModel", () => {
       counts: {
         tracks: 0,
         repositories: 0,
+        codeProjects: 0,
         logConnections: 5,
         baseAssets: 0,
         missingTracks: 0,

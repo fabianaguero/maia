@@ -74,7 +74,14 @@ export interface StartLogSourceConnectionInput {
   startFromBeginning?: boolean;
 }
 
-export type StreamAdapterKind = "file" | "process" | "websocket" | "http-poll" | "journald";
+export type StreamAdapterKind =
+  | "file"
+  | "directory-tail"
+  | "process"
+  | "websocket"
+  | "http-poll"
+  | "journald"
+  | "sonarqube";
 
 export interface StreamSessionRecord {
   sessionId: string;
@@ -99,6 +106,7 @@ export interface StartSessionInput {
   wsUrl?: string;
   httpUrl?: string;
   sourceTemplateId?: string;
+  connectionConfig?: Record<string, unknown>;
 }
 
 export interface StreamSessionPollResult {

@@ -21,7 +21,7 @@ export function buildMonitorOverviewRenderPlan(input: {
     overviewWaveSamples: input.derivedDeckState.overviewWaveSamples,
     overviewAnomalyDensity: input.derivedDeckState.overviewAnomalyDensity,
     anomalyBurstRegions: input.derivedDeckState.anomalyBurstRegions,
-    waveformAnomalies: input.waveformAnomalies,
+    waveformAnomalies: input.derivedDeckState.waveformAnomalies,
     selectedDeckMarker: input.derivedDeckState.selectedDeckMarker,
     visualPreset: input.deckVisualPreset,
   };
@@ -48,8 +48,13 @@ export function buildMonitorWaveformRenderPlan(input: {
     logWaveOverlay: input.derivedDeckState.logWaveOverlay,
     anomalyBurstRegions: input.derivedDeckState.anomalyBurstRegions,
     selectedDeckMarker: input.derivedDeckState.selectedDeckMarker,
-    waveformAnomalies: input.waveformAnomalies,
+    waveformAnomalies: input.derivedDeckState.waveformAnomalies,
     trackWaveProgress: input.trackWaveProgress,
+    anomalyWaveProgress: input.derivedDeckState.waveformAnomalies.some(
+      (marker) => typeof marker.observedAtMs === "number",
+    )
+      ? 1
+      : input.trackWaveProgress,
     visualPreset: input.deckVisualPreset,
   };
 }

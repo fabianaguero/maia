@@ -25,6 +25,11 @@ describe("appNavigationViewModel", () => {
         subtitle: en.simpleMode.setup.connectionsSubtitle,
       },
       {
+        id: "codeProjects",
+        label: en.simpleMode.nav.codeProjects,
+        subtitle: en.simpleMode.setup.codeProjectsSubtitle,
+      },
+      {
         id: "setup",
         label: en.simpleMode.nav.setup,
         subtitle: en.simpleMode.setup.setupSubtitle,
@@ -46,9 +51,10 @@ describe("appNavigationViewModel", () => {
     ).toEqual([
       { id: "monitor", lane: "A01" },
       { id: "connections", lane: "B02" },
-      { id: "setup", lane: "C03" },
-      { id: "compose", lane: "D04" },
-      { id: "library", lane: "E05" },
+      { id: "codeProjects", lane: "C03" },
+      { id: "setup", lane: "D04" },
+      { id: "compose", lane: "E05" },
+      { id: "library", lane: "F06" },
     ]);
   });
 

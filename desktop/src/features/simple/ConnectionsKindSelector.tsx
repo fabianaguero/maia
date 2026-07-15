@@ -9,6 +9,10 @@ interface ConnectionsKindSelectorProps {
   onKindChange: (kind: ConnectionKind) => void;
 }
 
+function getIconForKind(kind: ConnectionKind) {
+  return kind === "file_log" ? <ScrollText size={24} /> : <Globe size={24} />;
+}
+
 export function ConnectionsKindSelector({
   ariaLabel,
   options,
@@ -23,9 +27,7 @@ export function ConnectionsKindSelector({
           className={`source-card ${option.isActive ? "active" : ""}`}
           onClick={() => onKindChange(option.id)}
         >
-          <div className="source-card-icon">
-            {option.id === "file_log" ? <ScrollText size={24} /> : <Globe size={24} />}
-          </div>
+          <div className="source-card-icon">{getIconForKind(option.id)}</div>
           <div className="source-card-content">
             <strong>{option.label}</strong>
             <p>{option.description}</p>

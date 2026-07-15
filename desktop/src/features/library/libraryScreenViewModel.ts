@@ -4,6 +4,7 @@ import type { LibraryTab } from "./libraryScreenTypes";
 export interface LibraryScreenCounts {
   tracks: number;
   repositories: number;
+  codeProjects: number;
   logConnections: number;
   baseAssets: number;
   missingTracks: number;
@@ -103,6 +104,7 @@ export function buildLibraryScreenViewModel(input: {
   const tabs: LibraryTabViewModel[] = [
     { id: "tracks", label: t.library.sounds, count: counts.tracks },
     { id: "sources", label: t.library.logSources, count: counts.repositories },
+    { id: "projects", label: t.library.codeProjects.title, count: counts.codeProjects },
     { id: "connections", label: t.library.connections, count: counts.logConnections },
     { id: "bases", label: t.library.profiles, count: counts.baseAssets },
   ];
@@ -127,6 +129,16 @@ export function buildLibraryScreenViewModel(input: {
       showNewPlaylist: false,
       showRelinkMissing: false,
       showCleanOrphans: counts.repositories > 0,
+    },
+    projects: {
+      eyebrow: t.library.codeProjects.title,
+      count: counts.codeProjects,
+      title: t.library.codeProjects.title,
+      note: t.library.codeProjects.description,
+      showSeedDemo: false,
+      showNewPlaylist: false,
+      showRelinkMissing: false,
+      showCleanOrphans: counts.codeProjects > 0,
     },
     connections: {
       eyebrow: t.library.connections,
@@ -160,6 +172,11 @@ export function buildLibraryScreenViewModel(input: {
       title: t.library.noSourcesYet,
       body: t.library.noSourcesBody,
       actionLabel: t.library.addSource,
+    },
+    projects: {
+      title: t.library.codeProjects.noProjectsYet,
+      body: t.library.codeProjects.noProjectsBody,
+      actionLabel: t.library.codeProjects.newProject,
     },
     connections: {
       title: t.library.noConnectionsYet,

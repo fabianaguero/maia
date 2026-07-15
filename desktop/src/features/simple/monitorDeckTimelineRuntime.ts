@@ -37,7 +37,7 @@ export function resolveVisibleWindowSeconds(
   bpm: number | null | undefined,
   beatGrid: readonly BeatGridPoint[] | null | undefined,
 ): number {
-  return Math.max(6, Math.min(18, resolveBeatDurationSeconds(bpm, beatGrid) * 16));
+  return Math.max(12, Math.min(32, resolveBeatDurationSeconds(bpm, beatGrid) * 32));
 }
 
 export function quantizeProgressToBeatGrid(

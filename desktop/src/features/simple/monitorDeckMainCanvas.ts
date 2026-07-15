@@ -16,6 +16,7 @@ export function renderMonitorDeckCanvas({
   selectedDeckMarker,
   waveformAnomalies,
   trackWaveProgress,
+  anomalyWaveProgress = trackWaveProgress,
   visualPreset = "balanced",
 }: {
   canvas: HTMLCanvasElement;
@@ -26,6 +27,7 @@ export function renderMonitorDeckCanvas({
   selectedDeckMarker: DeckSelectedMarker | null;
   waveformAnomalies: WaveformAnomalyMarker[];
   trackWaveProgress: number;
+  anomalyWaveProgress?: number;
   visualPreset?: MonitorDeckVisualPreset;
 }): void {
   const state = buildMonitorDeckMainCanvasState({
@@ -55,6 +57,6 @@ export function renderMonitorDeckCanvas({
     anomalyBurstRegions,
     selectedDeckMarker,
     waveformAnomalies,
-    trackWaveProgress,
+    anomalyWaveProgress,
   });
 }

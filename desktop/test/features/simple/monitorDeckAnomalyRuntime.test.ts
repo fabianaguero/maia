@@ -140,4 +140,31 @@ describe("monitorDeckAnomalyRuntime", () => {
     expect(unbounded.selectedDeckMarker).toBeNull();
     expect(unbounded.selectedBurstRegion).toBeNull();
   });
+
+  it("slides live anomaly peaks through the stream window as wall time advances", () => {
+    const liveMarker = {
+      ...markers[0],
+      id: "live-anomaly",
+      progress: 1,
+      observedAtMs: 100_000,
+    };
+    const input = {
+      waveformBins: [0.2],
+      waveformAnomalies: [liveMarker],
+      trackWaveProgress: 0.5,
+      deckDurationSeconds: 200,
+      visibleWindowSeconds: 50,
+      logSignalBuffer: [],
+      selectedAnomalyId: liveMarker.id,
+      sampleOverviewWave: (bins: number[] | null | undefined) => bins ?? [0.1],
+    };
+
+    const atArrival = buildMonitorDeckDerivedState({ ...input, nowMs: 100_000 });
+    const thirtySecondsLater = buildMonitorDeckDerivedState({ ...input, nowMs: 130_000 });
+
+    expect(atArrival.waveformAnomalies[0]?.progress).toBe(1);
+    expect(thirtySecondsLater.waveformAnomalies[0]?.progress).toBeCloseTo(0.75);
+    expect(thirtySecondsLater.selectedDeckMarker?.progress).toBeCloseTo(0.75);
+    expect(thirtySecondsLater.overviewAnomalyMarkers[0]?.progress).toBeCloseTo(0.75);
+  });
 });

@@ -10,6 +10,7 @@ describe("simpleMonitorDeckVisualStateRuntime", () => {
     overviewWaveSamples: [0.1, 0.2],
     overviewAnomalyDensity: [0, 1],
     anomalyBurstRegions: [],
+    waveformAnomalies: [],
     selectedDeckMarker: null,
     logWaveOverlay: [0.2, 0.3],
   } as never;

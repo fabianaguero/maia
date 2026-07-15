@@ -1,12 +1,14 @@
 import type { Dispatch, SetStateAction } from "react";
 
 import type { MonitorLaunchSource } from "../../types/monitorLaunch";
+import type { CodeProject } from "../../types/codeProject";
 import type { MonitorSourceFilter } from "./monitorSourceOptions";
 import type { MonitorSourceCopy } from "./monitorSourceOptions";
 import type { UseSimpleMonitorLaunchStateInput } from "./useSimpleMonitorLaunchState";
 import type { SimpleMonitorStartRequest } from "./simpleMonitorInteractionRuntime";
 
 export interface SimpleMonitorLaunchStateSelectorSlice {
+  allMonitorSourceOptions: MonitorLaunchSource[];
   filteredMonitorSourceOptions: MonitorLaunchSource[];
   selectedSourceOption: MonitorLaunchSource | null;
   canStartSelectedSource: boolean;
@@ -23,16 +25,20 @@ export interface SimpleMonitorLaunchStateSelectorSlice {
 export interface SimpleMonitorLaunchStateResult extends SimpleMonitorLaunchStateSelectorSlice {
   selectedSoundId: string;
   setSelectedSoundId: Dispatch<SetStateAction<string>>;
+  codeProjectSourceOptions: MonitorLaunchSource[];
+  selectedCodeProjectId: string;
+  setSelectedCodeProjectId: Dispatch<SetStateAction<string>>;
   handleStartMonitoringRequest: () => Promise<void>;
 }
 
 export function buildSimpleMonitorLaunchSelectorInput(
-  input: UseSimpleMonitorLaunchStateInput,
+  input: UseSimpleMonitorLaunchStateInput & { codeProjects: CodeProject[] },
   selectedSoundId: string,
   copy: MonitorSourceCopy,
 ) {
   return {
     repositories: input.repositories,
+    codeProjects: input.codeProjects,
     selectedSoundId,
     isListening: input.isListening,
     copy,

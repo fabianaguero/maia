@@ -20,7 +20,7 @@ describe("monitorDeckMainCanvasRuntime", () => {
 
     expect(state.size).toEqual({ width: 960, height: 240, dpr: 2 });
     expect(state.layout.logBaseY).toBeGreaterThan(state.layout.trackBaseY);
-    expect(state.logSamples[0]).toBe(0.04);
+    expect(state.logSamples[0]).toBe(0.035);
     expect(state.logSamples[1]).toBeGreaterThan(0.2);
     expect(state.palette.backgroundTop).toBeTruthy();
   });

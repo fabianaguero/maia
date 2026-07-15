@@ -44,6 +44,22 @@ export function ConnectionsFormPanel({
     t,
   });
 
+  const renderFieldsByKind = () => {
+    if (viewModel.isFileLog) {
+      return (
+        <ConnectionsFileFields
+          draft={draft}
+          saving={saving}
+          pickerBusy={pickerBusy}
+          t={t}
+          onDraftChange={onDraftChange}
+          onBrowseFile={onBrowseFile}
+        />
+      );
+    }
+    return <ConnectionsCloudFields draft={draft} t={t} onDraftChange={onDraftChange} />;
+  };
+
   return (
     <section className="panel connections-panel">
       <div className="form-intro">
@@ -58,18 +74,7 @@ export function ConnectionsFormPanel({
       />
 
       <div className="form-fields-section">
-        {viewModel.isFileLog ? (
-          <ConnectionsFileFields
-            draft={draft}
-            saving={saving}
-            pickerBusy={pickerBusy}
-            t={t}
-            onDraftChange={onDraftChange}
-            onBrowseFile={onBrowseFile}
-          />
-        ) : (
-          <ConnectionsCloudFields draft={draft} t={t} onDraftChange={onDraftChange} />
-        )}
+        {renderFieldsByKind()}
 
         <label className="field maia-field">
           <span className="field-label">{t.simpleMode.connections.connectionLabel}</span>

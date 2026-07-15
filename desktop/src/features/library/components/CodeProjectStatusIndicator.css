@@ -1,0 +1,73 @@
+/* desktop/src/features/library/components/CodeProjectStatusIndicator.css */
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs, 4px);
+  padding: var(--space-xs, 4px) var(--space-sm, 8px);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  position: relative;
+}
+
+.status-badge--not-configured {
+  background-color: var(--color-calm);
+  color: #000;
+  opacity: 0.6;
+}
+
+.status-badge--ready {
+  background-color: var(--color-accent);
+  color: #fff;
+}
+
+.status-badge--testing {
+  background-color: var(--color-attention);
+  color: #fff;
+}
+
+.status-badge--error {
+  background-color: var(--color-critical);
+  color: #fff;
+}
+
+.status-badge .spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.status-badge .error-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  margin-bottom: 4px;
+}
+
+.status-badge:hover .error-tooltip {
+  opacity: 1;
+}
+
+.issue-count {
+  font-weight: normal;
+  opacity: 0.9;
+}

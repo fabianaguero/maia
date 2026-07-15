@@ -5,6 +5,7 @@ export interface WaveformAnomalyMarker {
   message: string;
   severity: number;
   progress: number;
+  observedAtMs?: number;
 }
 
 export interface LogWaveOverlayPoint {
@@ -38,6 +39,7 @@ export interface OverviewAnomalyMarker extends WaveformAnomalyMarker {
 }
 
 export interface MonitorDeckDerivedState {
+  waveformAnomalies: WaveformAnomalyMarker[];
   overviewWaveSamples: number[];
   overviewAnomalyDensity: OverviewAnomalyDensityPoint[];
   anomalyBurstRegions: AnomalyBurstRegion[];

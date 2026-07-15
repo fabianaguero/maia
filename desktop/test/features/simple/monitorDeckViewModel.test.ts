@@ -24,6 +24,7 @@ describe("monitorDeckViewModel", () => {
     expect(timelineMarkers[3]?.emphasis).toBe("playhead");
     expect(timelineMarkers[3]?.leftPercent).toBeCloseTo(50, 4);
     expect(beatMarkers.length).toBeGreaterThan(8);
+    expect(resolveVisibleWindowSeconds(120, null)).toBe(16);
   });
 
   it("groups nearby anomalies into burst regions", () => {

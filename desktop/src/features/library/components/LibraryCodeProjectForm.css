@@ -1,0 +1,134 @@
+.code-project-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md, 16px);
+}
+
+.code-project-form .form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs, 4px);
+}
+
+.code-project-form .field-label {
+  font-weight: 500;
+  font-size: 13px;
+  color: inherit;
+}
+
+.code-project-form .maia-input {
+  padding: var(--space-sm, 8px) var(--space-md, 16px);
+  border: 1px solid var(--color-calm);
+  border-radius: 4px;
+  font-family:
+    IBM Plex Sans,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  font-size: 13px;
+  background-color: inherit;
+  color: inherit;
+}
+
+.code-project-form .maia-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(var(--color-accent-rgb), 0.1);
+}
+
+.code-project-form .maia-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.code-project-form__path-row {
+  display: flex;
+  gap: var(--space-xs, 6px);
+}
+
+.code-project-form__path-row .maia-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.code-project-form__browse {
+  align-items: center;
+  background: rgba(54, 211, 255, 0.08);
+  border: 1px solid rgba(54, 211, 255, 0.3);
+  border-radius: 6px;
+  color: var(--accent-cyan, #36d3ff);
+  cursor: pointer;
+  display: inline-flex;
+  font-family:
+    IBM Plex Sans,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  justify-content: center;
+  min-width: 42px;
+  padding: var(--space-sm, 8px);
+}
+
+.code-project-form__browse:hover:not(:disabled) {
+  border-color: var(--accent-cyan, #36d3ff);
+}
+
+.code-project-form__browse:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.code-project-form .field-error {
+  color: var(--color-critical);
+  font-size: 12px;
+}
+
+.code-project-form .support-copy {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.code-project-form .form-actions {
+  display: flex;
+  gap: var(--space-sm, 8px);
+  margin-top: var(--space-md, 16px);
+}
+
+.code-project-form .btn {
+  padding: var(--space-sm, 8px) var(--space-md, 16px);
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color 0.2s;
+  font-family:
+    IBM Plex Sans,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
+
+.code-project-form .btn-primary {
+  background-color: var(--color-accent);
+  color: #fff;
+}
+
+.code-project-form .btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.code-project-form .btn-secondary {
+  background-color: transparent;
+  color: inherit;
+  border: 1px solid var(--color-calm);
+}
+
+.code-project-form .btn-secondary:hover:not(:disabled) {
+  border-color: var(--color-accent);
+}
+
+.code-project-form .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

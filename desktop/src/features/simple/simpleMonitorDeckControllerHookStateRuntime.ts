@@ -20,6 +20,7 @@ export function buildSimpleMonitorDeckControllerHookState(input: {
   focusAnomaly: BuildSimpleMonitorDeckHookStateArgs["focusAnomaly"];
   deckBpm: number | null;
   trackElapsedSeconds: number;
+  trackWaveProgress: number;
   deckDurationSeconds: number | null;
   overviewCanvasRef: BuildSimpleMonitorDeckHookStateArgs["overviewCanvasRef"];
   waveformCanvasRef: BuildSimpleMonitorDeckHookStateArgs["waveformCanvasRef"];
@@ -57,6 +58,7 @@ export function buildSimpleMonitorDeckControllerHookState(input: {
     focusAnomaly: input.focusAnomaly,
     deckBpm: input.deckBpm,
     trackElapsedSeconds: input.trackElapsedSeconds,
+    trackWaveProgress: input.trackWaveProgress,
     deckDurationSeconds: input.deckDurationSeconds,
     overviewCanvasRef: input.overviewCanvasRef,
     waveformCanvasRef: input.waveformCanvasRef,

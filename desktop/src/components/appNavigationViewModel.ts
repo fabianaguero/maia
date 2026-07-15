@@ -37,6 +37,11 @@ export function buildShellNavItems(input: {
           subtitle: t.simpleMode.setup.connectionsSubtitle,
         },
         {
+          id: "codeProjects",
+          label: t.simpleMode.nav.codeProjects,
+          subtitle: t.simpleMode.setup.codeProjectsSubtitle,
+        },
+        {
           id: "setup",
           label: t.simpleMode.nav.setup,
           subtitle: t.simpleMode.setup.setupSubtitle,
@@ -61,22 +66,28 @@ export function buildShellNavItems(input: {
           lane: "B02",
         },
         {
+          id: "codeProjects",
+          label: t.simpleMode.nav.codeProjects,
+          subtitle: t.simpleMode.shell.codeProjectsExpertSubtitle,
+          lane: "C03",
+        },
+        {
           id: "setup",
           label: t.simpleMode.nav.setup,
           subtitle: t.simpleMode.shell.setupExpertSubtitle,
-          lane: "C03",
+          lane: "D04",
         },
         {
           id: "compose",
           label: t.nav.compose.label,
           subtitle: t.nav.compose.description,
-          lane: "D04",
+          lane: "E05",
         },
         {
           id: "library",
           label: t.nav.library.label,
           subtitle: t.nav.library.description,
-          lane: "E05",
+          lane: "F06",
         },
       ];
 }

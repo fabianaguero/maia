@@ -15,6 +15,7 @@ export interface OverviewAnomalyMarkerViewModel {
   timestamp: string;
   message: string;
   leftPercent: number;
+  observedAtMs?: number;
 }
 
 export interface DeckTimelineMarkerViewModel {
@@ -38,6 +39,7 @@ export interface MonitorDeckWavePanelProps {
   selectedBurstRegionId?: string | null;
   overviewAnomalyMarkers: OverviewAnomalyMarkerViewModel[];
   selectedAnomalyId: string | null;
+  trackWaveProgress: number;
   overviewWindowLeftPercent: number;
   overviewWindowWidthPercent: number;
   overviewPlayheadLeftPercent: number;

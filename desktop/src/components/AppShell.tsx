@@ -1,7 +1,7 @@
 import { useT } from "../i18n/I18nContext";
 import { useUserMode } from "../features/simple/UserModeContext";
 import type { AppSection } from "../features/simple/appSections";
-import { Radio, Library, AudioWaveform, Cable, Users, Sliders } from "lucide-react";
+import { Radio, Library, AudioWaveform, Cable, Users, Sliders, ScanSearch } from "lucide-react";
 import { BrandIcon, BrandLockup } from "./Branding";
 import { getMonitorAnomaliesInlineLabel, getMonitorLiveStatusLabel } from "../utils/monitorLabels";
 import { buildShellNavItems } from "./appNavigationViewModel";
@@ -54,6 +54,7 @@ export function AppShell({
   const shellIcons = {
     monitor: Radio,
     connections: Cable,
+    codeProjects: ScanSearch,
     setup: Sliders,
     compose: AudioWaveform,
     library: Library,

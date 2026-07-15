@@ -26,6 +26,7 @@ export interface BuildSimpleMonitorDeckHookStateArgs {
   focusAnomaly: (anomalyId: string) => void;
   deckBpm: number | null;
   trackElapsedSeconds: number;
+  trackWaveProgress: number;
   deckDurationSeconds: number | null;
   overviewCanvasRef: { current: HTMLCanvasElement | null };
   waveformCanvasRef: { current: HTMLCanvasElement | null };
@@ -75,6 +76,7 @@ export function buildSimpleMonitorDeckHookState(input: BuildSimpleMonitorDeckHoo
     focusAnomaly: input.focusAnomaly,
     deckBpm: input.deckBpm,
     trackElapsedSeconds: input.trackElapsedSeconds,
+    trackWaveProgress: input.trackWaveProgress,
     deckDurationSeconds: input.deckDurationSeconds,
     overviewCanvasRef: input.overviewCanvasRef,
     waveformCanvasRef: input.waveformCanvasRef,

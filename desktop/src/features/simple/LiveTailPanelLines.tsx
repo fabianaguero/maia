@@ -8,6 +8,7 @@ interface LiveTailPanelLinesProps {
   lines: MonitorLogLine[];
   selectedAnomalyId: string | null;
   onSelectAnomalyLine: (anomalyId: string) => void;
+  onShowLineDetails?: (line: MonitorLogLine) => void;
   registerLineRef: (lineId: string, node: HTMLDivElement | null) => void;
   t: AppTranslations;
 }
@@ -16,6 +17,7 @@ export function LiveTailPanelLines({
   lines,
   selectedAnomalyId,
   onSelectAnomalyLine,
+  onShowLineDetails,
   registerLineRef,
   t,
 }: LiveTailPanelLinesProps) {
@@ -52,6 +54,28 @@ export function LiveTailPanelLines({
             <span className="line-anomaly-slot" aria-hidden="true" />
           )}
           <span className="line-msg">{line.message}</span>
+          {line.sonarQubeMeta && (
+            <span
+              className="line-source-badge"
+              title={`${line.sonarQubeMeta.rule} in ${line.sonarQubeMeta.component}${line.sonarQubeMeta.line ? `:${line.sonarQubeMeta.line}` : ""}`}
+            >
+              <span className="badge-rule">{line.sonarQubeMeta.rule}</span>
+              <span className="badge-component">
+                {line.sonarQubeMeta.component}
+                {line.sonarQubeMeta.line && `:${line.sonarQubeMeta.line}`}
+              </span>
+            </span>
+          )}
+          <button
+            className="line-details-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              onShowLineDetails?.(line);
+            }}
+            title="Ver detalles"
+          >
+            ℹ
+          </button>
         </div>
       ))}
     </>

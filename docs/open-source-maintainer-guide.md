@@ -6,13 +6,13 @@ It is intentionally more operational than `docs/architecture.md` and more curren
 ## What Maia is
 
 Maia is a local-first desktop application for auditory monitoring.
-It lets an operator choose a real track or playlist as the musical bed, then turns repositories, logs, and live streams into audible mutations plus DJ-style monitoring visuals.
+It lets an operator choose a real track or playlist as the musical bed, then turns signal streams such as logs, repositories, CodeProjects/SonarQube findings, process output, cloud streams, and future CI/metric feeds into audible mutations plus DJ-style monitoring visuals.
 
 The system is built from three active runtime layers:
 
 1. `TypeScript / React` for UI state, monitor UX, and Web Audio playback.
 2. `Rust / Tauri` for native commands, SQLite persistence, file/system access, managed local snapshots, and transient stream sessions.
-3. `Python` for deterministic analysis of tracks, repositories, log files, and live log chunks over a JSON contract.
+3. `Python` for deterministic analysis of tracks, repositories, log files, and live signal chunks over a JSON contract.
 
 ## Source of truth
 
@@ -25,6 +25,7 @@ Use these paths first:
 - `database/schema.sql`: persistent storage model
 - `docs/architecture.md`: product-level architecture narrative
 - `docs/frontend-architecture.md`: active frontend module map and monitor startup flow
+- `docs/signal-streams-roadmap.md`: direction for generic signal sources beyond log-only monitoring
 - `docs/testing-and-quality.md`: current quality gates, coverage flow, and runtime testing priorities
 - `docs/sdd.md`: lightweight functional spec and roadmap history
 
@@ -46,6 +47,7 @@ Use this order instead:
 Practical routing rule:
 
 - if the change is about monitor UX, start in `desktop/src/features/simple/` and `desktop/src/features/analyzer/components/`
+- if the change is about CodeProjects or SonarQube source setup, start in `desktop/src/features/library/`, `desktop/src/types/codeProject.ts`, and `desktop/src-tauri/src/main.rs`
 - if the change is about native filesystem, SQLite, or stream sessions, start in `desktop/src-tauri/src/main.rs`
 - if the change is about deterministic analysis or anomaly derivation, start in `analyzer/src/maia_analyzer/`
 - if the change crosses runtimes, read `contracts/` before editing implementation code

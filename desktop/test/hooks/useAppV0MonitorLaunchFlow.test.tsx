@@ -214,7 +214,7 @@ describe("useAppV0MonitorScreenState launch flow", () => {
     expect(repositoriesApiMock.startLogSourceConnection).toHaveBeenCalledWith(
       expect.objectContaining({
         connectionId: "cloud-1",
-        startFromBeginning: false,
+        startFromBeginning: true,
       }),
     );
     expect(attachSession).toHaveBeenCalledWith(
@@ -300,7 +300,7 @@ describe("useAppV0MonitorScreenState launch flow", () => {
     expect(repositoriesApiMock.startLogSourceConnection).toHaveBeenCalledWith(
       expect.objectContaining({
         connectionId: "cloud-2",
-        startFromBeginning: false,
+        startFromBeginning: true,
       }),
     );
     expect(attachSession).toHaveBeenCalledWith(

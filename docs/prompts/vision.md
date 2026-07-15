@@ -8,7 +8,7 @@ It should:
 - let a team monitor systems mainly by ear while the mix keeps running in background
 - mark anomalous log or code events with distinct sounds, accents, or timbral changes
 - import local songs
-- support a base track or playlist chosen by listener preference
+- support a base track or playlist chosen by listener preferenceo
 - require choosing a curated music style before track import
 - allow browsing local tracks and project folders from the desktop workflow
 - keep parsing and analysis inside the app/analyzer once a source is selected, while still using OS-native dialogs for browsing

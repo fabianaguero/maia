@@ -12,6 +12,7 @@ import {
 import { useLibraryScreenState } from "./useLibraryScreenState";
 import { useLibraryScreenImportActions } from "./useLibraryScreenImportActions";
 import { useLibraryScreenToolbarActions } from "./useLibraryScreenToolbarActions";
+import { useCodeProjectsState } from "./useCodeProjectsState";
 
 export function useLibraryScreenController({
   tracks,
@@ -98,6 +99,7 @@ export function useLibraryScreenController({
   );
 
   const missingTrackCount = countMissingLibraryTracks(tracks);
+  const { projects: codeProjects } = useCodeProjectsState();
 
   const viewModel = buildLibraryScreenViewModel(
     buildLibraryScreenViewModelInput({
@@ -105,6 +107,7 @@ export function useLibraryScreenController({
       showForm,
       tracksCount: tracks.length,
       repositoriesCount: repositories.length,
+      codeProjectsCount: codeProjects.length,
       logConnectionsCount: logConnections.length,
       baseAssetsCount: baseAssets.length,
       missingTrackCount,

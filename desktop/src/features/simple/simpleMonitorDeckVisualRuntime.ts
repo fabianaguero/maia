@@ -50,6 +50,7 @@ export function buildSimpleMonitorDeckVisualDerivedState(
     visibleWindowSeconds,
     logSignalBuffer: input.logSignalBuffer,
     selectedAnomalyId: input.selectedAnomalyId,
+    nowMs: Date.now(),
   });
 
   return {

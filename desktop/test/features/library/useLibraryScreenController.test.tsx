@@ -8,6 +8,7 @@ import { useLibraryScreenController } from "../../../src/features/library/useLib
 
 const deleteLogSourceConnection = vi.fn();
 const useLibraryScreenState = vi.fn();
+const useCodeProjectsState = vi.fn();
 
 vi.mock("../../../src/api/repositories", () => ({
   deleteLogSourceConnection: (...args: unknown[]) => deleteLogSourceConnection(...args),
@@ -15,6 +16,10 @@ vi.mock("../../../src/api/repositories", () => ({
 
 vi.mock("../../../src/features/library/useLibraryScreenState", () => ({
   useLibraryScreenState: (...args: unknown[]) => useLibraryScreenState(...args),
+}));
+
+vi.mock("../../../src/features/library/useCodeProjectsState", () => ({
+  useCodeProjectsState: (...args: unknown[]) => useCodeProjectsState(...args),
 }));
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -62,6 +67,7 @@ function createProps() {
       { id: "repo-1", suggestedBpm: null },
       { id: "repo-2", suggestedBpm: 124 },
     ] as never,
+    codeProjects: [],
     baseAssets: [],
     newlyImportedId: null,
     selectedTrackId: null,
@@ -105,6 +111,16 @@ describe("useLibraryScreenController", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useLibraryScreenState.mockReturnValue(createState());
+    useCodeProjectsState.mockReturnValue({
+      projects: [],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      createProject: vi.fn(),
+      updateProject: vi.fn(),
+      deleteProject: vi.fn(),
+      testConnection: vi.fn(),
+    });
     vi.stubGlobal("alert", vi.fn());
     vi.stubGlobal(
       "confirm",

@@ -2,8 +2,9 @@ import type { AppTranslations } from "../../i18n/types";
 import type { RepositoryAnalysis } from "../../types/library";
 import type { MonitorLaunchSource } from "../../types/monitorLaunch";
 import type { LogSourceConnection } from "../../types/monitor";
+import type { CodeProject } from "../../types/codeProject";
 
-export type MonitorSourceFilter = "all" | "file" | "folder" | "cloud";
+export type MonitorSourceFilter = "all" | "file" | "folder" | "cloud" | "code";
 
 export interface MonitorSourceSelectionModel {
   allMonitorSourceOptions: MonitorLaunchSource[];
@@ -20,12 +21,16 @@ export interface MonitorSourceCopy {
   folder: string;
   cloudRemote: string;
   cloudConnection: string;
+  codeProject: string;
   emptyCloudReady: string;
   emptyCloudMissing: string;
+  emptyCodeReady: string;
+  emptyCodeMissing: string;
   emptyFolder: string;
   emptyDefault: string;
   startHintDisabledConnection: string;
   startHintCloudManaged: string;
+  startHintCodeNotConfigured: string;
   startHintFileOnly: string;
   startHintReady: string;
   startHintSelect: string;
@@ -37,12 +42,16 @@ export function buildMonitorSourceCopy(t: AppTranslations): MonitorSourceCopy {
     folder: t.simpleMode.setup.folder,
     cloudRemote: t.simpleMode.setup.cloudRemote,
     cloudConnection: t.simpleMode.setup.cloudConnection,
+    codeProject: t.simpleMode.setup.codeProject,
     emptyCloudReady: t.simpleMode.setup.emptyCloudReady,
     emptyCloudMissing: t.simpleMode.setup.emptyCloudMissing,
+    emptyCodeReady: t.simpleMode.setup.emptyCodeReady,
+    emptyCodeMissing: t.simpleMode.setup.emptyCodeMissing,
     emptyFolder: t.simpleMode.setup.emptyFolder,
     emptyDefault: t.simpleMode.setup.emptyDefault,
     startHintDisabledConnection: t.simpleMode.setup.startHintDisabledConnection,
     startHintCloudManaged: t.simpleMode.setup.startHintCloudManaged,
+    startHintCodeNotConfigured: t.simpleMode.setup.startHintCodeNotConfigured,
     startHintFileOnly: t.simpleMode.setup.startHintFileOnly,
     startHintReady: t.simpleMode.setup.startHintReady,
     startHintSelect: t.simpleMode.setup.startHintSelect,
@@ -68,9 +77,10 @@ function buildRepositorySourceOptions(
           : sourceType === "folder"
             ? copy.folder
             : copy.cloudRemote,
-      startable: repo.sourceKind === "file",
+      startable: repo.sourceKind === "file" || repo.sourceKind === "directory",
       origin: "repository",
       connectionId: undefined,
+      adapterKind: repo.sourceKind === "directory" ? "directory-tail" : "file",
     };
   });
 }
@@ -93,6 +103,46 @@ function buildCloudConnectionOptions(
     }));
 }
 
+function buildCodeProjectSourceOptions(
+  projects: CodeProject[],
+  copy: MonitorSourceCopy,
+): MonitorLaunchSource[] {
+  return projects.map((project) => {
+    const config = project.sonarqubeConfig;
+    const analysisMode = config?.analysisMode ?? project.analysisMode ?? "local";
+    const hasRemoteConfig = Boolean(
+      config?.apiUrl.trim() && config.projectKey.trim() && config.authToken.trim(),
+    );
+    const hasLocalConfig = Boolean(project.repositoryUrl.trim());
+    const sourcePath =
+      analysisMode === "connected" && config
+        ? `sonarqube://${config.apiUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")}/${config.projectKey}`
+        : project.repositoryUrl;
+
+    return {
+      id: `code-project:${project.id}`,
+      title: project.label,
+      sourcePath,
+      sourceType: "code",
+      sourceTypeLabel: copy.codeProject,
+      startable: project.enabled && (analysisMode === "local" ? hasLocalConfig : hasRemoteConfig),
+      origin: "codeProject",
+      adapterKind: "sonarqube",
+      connectionConfig: {
+        analysisMode,
+        apiUrl: config?.apiUrl ?? "",
+        projectKey: config?.projectKey ?? project.label,
+        authToken: config?.authToken ?? "",
+        pollingInterval: config?.pollingInterval ?? "30",
+        syncRules: config?.syncRules ?? false,
+        localRulesProfile: config?.localRulesProfile ?? "maia-default",
+        repositoryUrl: project.repositoryUrl,
+        codeProjectId: project.id,
+      },
+    };
+  });
+}
+
 export function shouldResetSelectedSource(
   selectedSourceId: string,
   selectedSourceOption: MonitorLaunchSource | null,
@@ -108,6 +158,7 @@ export function shouldResetSelectedSource(
 export function buildMonitorSourceSelectionModel(input: {
   repositories: RepositoryAnalysis[];
   persistentConnections: LogSourceConnection[];
+  codeProjects?: CodeProject[];
   selectedSourceId: string;
   selectedSoundId: string;
   sourceFilter: MonitorSourceFilter;
@@ -118,12 +169,15 @@ export function buildMonitorSourceSelectionModel(input: {
     input.persistentConnections,
     input.copy,
   );
+  const codeProjectOptions = buildCodeProjectSourceOptions(input.codeProjects ?? [], input.copy);
   const allMonitorSourceOptions: MonitorLaunchSource[] = [
     ...monitorSourceOptions,
     ...cloudConnectionOptions,
+    ...codeProjectOptions,
   ];
 
   const cloudConnectionCount = cloudConnectionOptions.length;
+  const codeProjectCount = codeProjectOptions.length;
   const filteredMonitorSourceOptions = allMonitorSourceOptions.filter((source) =>
     input.sourceFilter === "all" ? true : source.sourceType === input.sourceFilter,
   );
@@ -136,17 +190,23 @@ export function buildMonitorSourceSelectionModel(input: {
       ? cloudConnectionCount > 0
         ? input.copy.emptyCloudReady
         : input.copy.emptyCloudMissing
-      : input.sourceFilter === "folder"
-        ? input.copy.emptyFolder
-        : input.copy.emptyDefault;
+      : input.sourceFilter === "code"
+        ? codeProjectCount > 0
+          ? input.copy.emptyCodeReady
+          : input.copy.emptyCodeMissing
+        : input.sourceFilter === "folder"
+          ? input.copy.emptyFolder
+          : input.copy.emptyDefault;
 
   const startHint =
     selectedSourceOption && !selectedSourceOption.startable
-      ? selectedSourceOption.origin === "connection"
-        ? input.copy.startHintDisabledConnection
-        : selectedSourceOption.sourceType === "cloud"
-          ? input.copy.startHintCloudManaged
-          : input.copy.startHintFileOnly
+      ? selectedSourceOption.origin === "codeProject"
+        ? input.copy.startHintCodeNotConfigured
+        : selectedSourceOption.origin === "connection"
+          ? input.copy.startHintDisabledConnection
+          : selectedSourceOption.sourceType === "cloud"
+            ? input.copy.startHintCloudManaged
+            : input.copy.startHintFileOnly
       : input.selectedSourceId && input.selectedSoundId
         ? input.copy.startHintReady
         : input.copy.startHintSelect;

@@ -252,6 +252,62 @@ describe("appV0MonitorRuntime", () => {
     });
   });
 
+  it("builds a CodeProject SonarQube launch plan with native connection config", () => {
+    const source: MonitorLaunchSource = {
+      id: "code-project:project-1",
+      title: "checkout quality",
+      sourcePath: "sonarqube://sonar.local/checkout",
+      sourceType: "code",
+      sourceTypeLabel: "Code project",
+      startable: true,
+      origin: "codeProject",
+      adapterKind: "sonarqube",
+      connectionConfig: {
+        analysisMode: "connected",
+        apiUrl: "https://sonar.local",
+        projectKey: "checkout",
+        authToken: "squ_test",
+        pollingInterval: "30",
+        syncRules: true,
+        localRulesProfile: "sonar-way-compatible",
+      },
+    };
+
+    const plan = buildAppV0MonitorLaunchPlan({
+      source,
+      tracks: [track],
+      repositories: [repo],
+      trackId: "track-1",
+      sessionId: "session-code",
+    });
+
+    expect(plan).toMatchObject({
+      kind: "repository",
+      sessionId: "session-code",
+    });
+    if (plan.kind === "repository") {
+      expect(plan.repo).toMatchObject({
+        id: "code-project:project-1",
+        title: "checkout quality",
+        sourceKind: "url",
+        buildSystem: "sonarqube",
+        primaryLanguage: "code-quality",
+      });
+      expect(plan.startInput).toMatchObject({
+        sessionId: "session-code",
+        source: "sonarqube://sonar.local/checkout",
+        adapterKind: "sonarqube",
+        label: "checkout quality",
+        connectionConfig: {
+          analysisMode: "connected",
+          apiUrl: "https://sonar.local",
+          projectKey: "checkout",
+          authToken: "squ_test",
+        },
+      });
+    }
+  });
+
   it("returns invalid plans and playback labels conservatively", () => {
     const invalidTrackPlan = buildAppV0LibraryMonitorLaunchPlan({
       repoId: "repo-1",

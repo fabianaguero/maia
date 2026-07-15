@@ -54,7 +54,7 @@ export function useMonitorLiveStreamIdleMotion({
         logSignalBufferRef.current = nextBuffer;
         return nextBuffer;
       });
-    }, 450);
+    }, 650);
 
     return () => {
       window.clearInterval(timer);

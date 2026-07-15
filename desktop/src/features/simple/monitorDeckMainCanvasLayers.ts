@@ -16,7 +16,7 @@ export interface DrawMonitorDeckCanvasLayersInput {
   anomalyBurstRegions: Array<{ startProgress: number; endProgress: number; severity: number }>;
   selectedDeckMarker: DeckSelectedMarker | null;
   waveformAnomalies: WaveformAnomalyMarker[];
-  trackWaveProgress: number;
+  anomalyWaveProgress?: number;
 }
 
 export function sizeMonitorDeckCanvas(
@@ -37,7 +37,7 @@ export function drawMonitorDeckCanvasLayers({
   anomalyBurstRegions,
   selectedDeckMarker,
   waveformAnomalies,
-  trackWaveProgress,
+  anomalyWaveProgress = 0.5,
 }: DrawMonitorDeckCanvasLayersInput): void {
   const scene = buildMonitorDeckCanvasScenePlan({ state, width, height });
   drawMonitorDeckBackgroundLane(context, state, scene);
@@ -49,7 +49,7 @@ export function drawMonitorDeckCanvasLayers({
     anomalyBurstRegions,
     selectedDeckMarker,
     waveformAnomalies,
-    trackWaveProgress,
+    trackWaveProgress: anomalyWaveProgress,
     scene,
   });
 }
