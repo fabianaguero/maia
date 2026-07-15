@@ -59,7 +59,7 @@ export function useSimpleMonitorLiveTail({
 
       // Find line closest to current playback time
       for (const [lineId, lineElement] of lineRefs.current.entries()) {
-        const line = liveLines.find(l => l.id === lineId);
+        const line = liveLines.find((l) => l.id === lineId);
         if (!line || !line.timestamp) continue;
 
         // Parse ISO timestamp to seconds
@@ -74,9 +74,13 @@ export function useSimpleMonitorLiveTail({
       }
 
       // Scroll to line that matches current playback time
-      if (targetLine && closestTimeDiff < 5) { // 5 second tolerance
+      if (targetLine && closestTimeDiff < 5) {
+        // 5 second tolerance
         targetLine.scrollIntoView({ block: "center", behavior: "smooth" });
-        console.log("[useSimpleMonitorLiveTail] synced to playback position (timeDiff=%.1fs)", closestTimeDiff);
+        console.log(
+          "[useSimpleMonitorLiveTail] synced to playback position (timeDiff=%.1fs)",
+          closestTimeDiff,
+        );
         return;
       }
     }
@@ -113,7 +117,7 @@ export function useSimpleMonitorLiveTail({
 
     // Find line closest to clicked time
     for (const [lineId, lineElement] of lineRefs.current.entries()) {
-      const line = liveLines.find(l => l.id === lineId);
+      const line = liveLines.find((l) => l.id === lineId);
       if (!line || !line.timestamp) continue;
 
       const lineTime = Number.parseFloat(line.timestamp);
@@ -128,7 +132,10 @@ export function useSimpleMonitorLiveTail({
 
     if (targetLine) {
       targetLine.scrollIntoView({ block: "center", behavior: "smooth" });
-      console.log("[useSimpleMonitorLiveTail] waveform click → jumped to line (timeDiff=%.1fs)", closestTimeDiff);
+      console.log(
+        "[useSimpleMonitorLiveTail] waveform click → jumped to line (timeDiff=%.1fs)",
+        closestTimeDiff,
+      );
     }
   };
 

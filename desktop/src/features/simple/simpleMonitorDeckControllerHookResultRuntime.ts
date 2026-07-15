@@ -12,10 +12,7 @@ export function buildSimpleMonitorDeckControllerHookResultArgs(input: {
     | "isMonitorActive"
     | "deckDurationSeconds"
   >;
-  playback: Pick<
-    SimpleMonitorDeckPlaybackStateSlice,
-    "trackElapsedSeconds" | "trackWaveProgress"
-  >;
+  playback: Pick<SimpleMonitorDeckPlaybackStateSlice, "trackElapsedSeconds" | "trackWaveProgress">;
   liveState: Pick<
     SimpleMonitorDeckLiveControllerResult,
     "previewTrackId" | "toggleTrackPreview" | "liveLines" | "selectedAnomalyId" | "simulateLog"

@@ -14,10 +14,11 @@ export function AnomalyDetailsPanel({
 }: AnomalyDetailsPanelProps) {
   const sourceFile = selectedLine?.sonarQubeMeta?.component ?? null;
   const sourceLine = selectedLine?.sonarQubeMeta?.line ?? null;
-  const { lines: codeLines, loading: codeLoading, error: codeError } = useSourceCodeLines(
-    sourceFile,
-    sourceLine,
-  );
+  const {
+    lines: codeLines,
+    loading: codeLoading,
+    error: codeError,
+  } = useSourceCodeLines(sourceFile, sourceLine);
 
   return (
     <>
@@ -25,7 +26,9 @@ export function AnomalyDetailsPanel({
       <div className={`anomaly-details-panel ${isExpanded ? "expanded" : ""}`}>
         <div className="anomaly-details-header">
           <h3>Detalles de Anomalía</h3>
-          <button className="close-btn" onClick={onToggle}>✕</button>
+          <button className="close-btn" onClick={onToggle}>
+            ✕
+          </button>
         </div>
 
         {selectedLine && (
@@ -42,7 +45,9 @@ export function AnomalyDetailsPanel({
 
             <div className="detail-section">
               <label>Nivel</label>
-              <span className={`level-badge level-${selectedLine.level}`}>{selectedLine.level}</span>
+              <span className={`level-badge level-${selectedLine.level}`}>
+                {selectedLine.level}
+              </span>
             </div>
 
             <div className="detail-section">
