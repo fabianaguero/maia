@@ -2407,11 +2407,7 @@ fn start_stream_session(
         created_at: now_iso(),
         last_polled_at: None,
         total_polls: 0,
-        file_cursor: if adapter_kind == "file" && start_from_beginning {
-            Some(0)
-        } else {
-            None
-        },
+        file_cursor: if adapter_kind == "file" && start_from_beginning { Some(0) } else { None },
     };
 
     {
@@ -2622,15 +2618,20 @@ fn poll_code_project_stream_session(
 
     let config = connection_config.ok_or("SonarQube connection config missing")?;
     let code_project_config = CodeProjectStreamConfig::from_json(&config);
-    eprintln!("[MAIA:Rust] CodeProject config: mode={:?}, baseline_seeded={}",
-        code_project_config.analysis_mode, baseline_seeded);
+    eprintln!(
+        "[MAIA:Rust] CodeProject config: mode={:?}, baseline_seeded={}",
+        code_project_config.analysis_mode, baseline_seeded
+    );
 
     let runtime = tokio::runtime::Runtime::new()
         .map_err(|e| format!("Failed to create tokio runtime: {}", e))?;
 
     let (new_lines, issue_count) = runtime.block_on(async {
         let result = if code_project_config.analysis_mode.is_local() {
-            eprintln!("[MAIA:Rust] Scanning local code project: {}", code_project_config.repository_url);
+            eprintln!(
+                "[MAIA:Rust] Scanning local code project: {}",
+                code_project_config.repository_url
+            );
             scan_local_code_project_issues(
                 &code_project_config.repository_url,
                 &code_project_config.local_rules_profile,
@@ -2653,7 +2654,11 @@ fn poll_code_project_stream_session(
         Ok::<(Vec<String>, usize), String>(result)
     })?;
 
-    eprintln!("[MAIA:Rust] poll_code_project got {} new lines, {} total issues", new_lines.len(), issue_count);
+    eprintln!(
+        "[MAIA:Rust] poll_code_project got {} new lines, {} total issues",
+        new_lines.len(),
+        issue_count
+    );
 
     {
         let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
@@ -2696,7 +2701,8 @@ fn poll_code_project_stream_session(
 
                 // Mark baseline as emitted so we don't re-emit it
                 {
-                    let mut reg = registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
+                    let mut reg =
+                        registry.lock().map_err(|e| format!("Registry lock failed: {e}"))?;
                     if let Some(session) = reg.sessions.get_mut(session_id) {
                         session.sonarqube_baseline_emitted = true;
                     }
@@ -3123,14 +3129,12 @@ fn resolve_missing_tracks_from_directory(
 }
 
 fn is_supported_log_path(path: &Path) -> bool {
-    path.extension()
-        .and_then(|extension| extension.to_str())
-        .is_some_and(|extension| {
-            matches!(
-                extension.to_ascii_lowercase().as_str(),
-                "log" | "txt" | "out" | "err" | "jsonl" | "ndjson"
-            )
-        })
+    path.extension().and_then(|extension| extension.to_str()).is_some_and(|extension| {
+        matches!(
+            extension.to_ascii_lowercase().as_str(),
+            "log" | "txt" | "out" | "err" | "jsonl" | "ndjson"
+        )
+    })
 }
 
 fn find_logs_recursive(dir: &Path, logs: &mut Vec<String>) -> std::io::Result<()> {
@@ -3672,7 +3676,10 @@ fn read_log_directory_chunk(
 ) -> Result<DirectoryLogChunk, String> {
     let root = resolve_existing_input_path(source_path)?;
     if !root.is_dir() {
-        return Err(format!("Selected directory-tail source is not a directory: {}", root.display()));
+        return Err(format!(
+            "Selected directory-tail source is not a directory: {}",
+            root.display()
+        ));
     }
 
     let mut discovered_logs = Vec::new();
@@ -3702,9 +3709,11 @@ fn read_log_directory_chunk(
         let (resolved_path, _, next_cursor, chunk, file_warnings) =
             read_log_stream_chunk(&log_path, cursor, Some(per_file_limit))?;
         cursors.insert(resolved_path.clone(), next_cursor);
-        warnings.extend(file_warnings.into_iter().map(|warning| {
-            format!("{}: {warning}", Path::new(&resolved_path).display())
-        }));
+        warnings.extend(
+            file_warnings
+                .into_iter()
+                .map(|warning| format!("{}: {warning}", Path::new(&resolved_path).display())),
+        );
 
         if chunk.trim().is_empty() {
             continue;
@@ -8055,15 +8064,18 @@ async fn test_sonarqube_connection(
 }
 
 #[tauri::command]
-fn read_source_code_lines(file_path: String, line_number: usize, context: usize) -> Result<Vec<String>, String> {
+fn read_source_code_lines(
+    file_path: String,
+    line_number: usize,
+    context: usize,
+) -> Result<Vec<String>, String> {
     use std::fs;
     use std::path::Path;
 
     // Expand ~ to home directory
     let expanded_path = if file_path.starts_with("~/") {
         let home = std::env::var("HOME").ok();
-        home.map(|h| file_path.replace("~", &h))
-            .unwrap_or(file_path)
+        home.map(|h| file_path.replace("~", &h)).unwrap_or(file_path)
     } else {
         file_path
     };
@@ -8073,15 +8085,10 @@ fn read_source_code_lines(file_path: String, line_number: usize, context: usize)
         return Err(format!("File not found: {}", expanded_path));
     }
 
-    let content = fs::read_to_string(path)
-        .map_err(|e| format!("Failed to read file: {e}"))?;
+    let content = fs::read_to_string(path).map_err(|e| format!("Failed to read file: {e}"))?;
 
     let lines: Vec<&str> = content.lines().collect();
-    let start = if line_number > context {
-        line_number - context - 1
-    } else {
-        0
-    };
+    let start = if line_number > context { line_number - context - 1 } else { 0 };
     let end = std::cmp::min(line_number + context, lines.len());
 
     let result: Vec<String> = lines[start..end]
@@ -8241,10 +8248,7 @@ mod directory_tail_tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn test_directory(name: &str) -> std::path::PathBuf {
-        let nonce = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("system clock")
-            .as_nanos();
+        let nonce = SystemTime::now().duration_since(UNIX_EPOCH).expect("system clock").as_nanos();
         let path = std::env::temp_dir().join(format!("maia-{name}-{nonce}"));
         fs::create_dir_all(&path).expect("create test directory");
         path
@@ -8259,29 +8263,20 @@ mod directory_tail_tests {
         fs::write(&worker_log, "[WARN] worker slow\n").expect("write worker log");
         let mut cursors = HashMap::new();
 
-        let initial = read_log_directory_chunk(
-            root.to_str().expect("utf8 path"),
-            &mut cursors,
-            false,
-            true,
-        )
-        .expect("initial directory read");
+        let initial =
+            read_log_directory_chunk(root.to_str().expect("utf8 path"), &mut cursors, false, true)
+                .expect("initial directory read");
         assert!(initial.chunk.contains("api ready [maia.source=api.log]"));
         assert!(initial.chunk.contains("worker slow [maia.source=worker.err]"));
         assert_eq!(cursors.len(), 2);
 
         let mut api = OpenOptions::new().append(true).open(&api_log).expect("open api log");
         writeln!(api, "[ERROR] api failed").expect("append api log");
-        fs::write(root.join("scheduler.jsonl"), "{\"level\":\"error\"}\n")
-            .expect("write new log");
+        fs::write(root.join("scheduler.jsonl"), "{\"level\":\"error\"}\n").expect("write new log");
 
-        let next = read_log_directory_chunk(
-            root.to_str().expect("utf8 path"),
-            &mut cursors,
-            true,
-            true,
-        )
-        .expect("incremental directory read");
+        let next =
+            read_log_directory_chunk(root.to_str().expect("utf8 path"), &mut cursors, true, true)
+                .expect("incremental directory read");
         assert!(!next.chunk.contains("api ready"));
         assert!(next.chunk.contains("api failed [maia.source=api.log]"));
         assert!(next.chunk.contains("[maia.source=scheduler.jsonl]"));
